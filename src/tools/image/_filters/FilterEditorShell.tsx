@@ -180,7 +180,7 @@ export function FilterEditorShell<T>({
         <FileDrop
           accept={IMAGE_ACCEPT}
           label="Choose an image or drag it here"
-          hint="Supports JPG, PNG, WebP, SVG, AVIF, HEIC and more. 100% private in-browser."
+          hint="Supports JPG, PNG, WebP, SVG, AVIF, HEIC and more."
           onFiles={handleFiles}
         />
       ) : resultBlob ? (

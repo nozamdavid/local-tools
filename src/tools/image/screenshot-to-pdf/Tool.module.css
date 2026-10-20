@@ -6,8 +6,8 @@
 }
 
 .thumbCard {
-  background: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 0.75rem;
   display: flex;
@@ -17,7 +17,7 @@
 }
 
 .thumbCard:hover {
-  border-color: var(--color-brand);
+  border-color: var(--accent);
 }
 
 .thumbImgWrapper {
@@ -26,7 +26,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--color-card-bg);
+  background: var(--surface);
   border-radius: var(--radius-sm);
   overflow: hidden;
   margin-bottom: 0.5rem;
@@ -51,12 +51,12 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--color-text);
+  color: var(--text);
 }
 
 .thumbSize {
   font-size: 0.75rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .thumbControls {
@@ -68,10 +68,10 @@
 }
 
 .iconBtn {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  color: var(--color-text);
+  color: var(--text);
   padding: 0.25rem 0.5rem;
   font-size: 0.8rem;
   cursor: pointer;
@@ -81,8 +81,8 @@
 }
 
 .iconBtn:hover:not(:disabled) {
-  background: var(--color-brand-light);
-  border-color: var(--color-brand);
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 .iconBtn:disabled {
@@ -91,12 +91,12 @@
 }
 
 .removeBtn {
-  color: var(--color-danger);
+  color: var(--danger);
 }
 
 .removeBtn:hover {
-  background: var(--color-danger-bg);
-  border-color: var(--color-danger-border);
+  background: var(--danger-soft);
+  border-color: var(--danger-border);
 }
 
 .badgeIndex {

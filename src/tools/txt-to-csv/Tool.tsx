@@ -205,7 +205,7 @@ export default function TxtToCsvTool() {
                 <span className={styles.metaBadge}>{maxCols} columns</span>
               </div>
               {totalRows > 25 && (
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   Showing first 25 rows
                 </span>
               )}
@@ -215,7 +215,7 @@ export default function TxtToCsvTool() {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th style={{ width: '48px', color: 'var(--color-text-muted)' }}>#</th>
+                    <th style={{ width: '48px', color: 'var(--text-muted)' }}>#</th>
                     {previewHeaders.map((hdr, idx) => (
                       <th key={idx}>{hdr}</th>
                     ))}
@@ -224,7 +224,7 @@ export default function TxtToCsvTool() {
                 <tbody>
                   {previewBodyRows.map((row, rIdx) => (
                     <tr key={rIdx}>
-                      <td style={{ color: 'var(--color-text-muted)' }}>{rIdx + 1}</td>
+                      <td style={{ color: 'var(--text-muted)' }}>{rIdx + 1}</td>
                       {previewHeaders.map((_, cIdx) => (
                         <td key={cIdx}>{cIdx < row.length ? row[cIdx] : ''}</td>
                       ))}

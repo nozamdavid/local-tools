@@ -7,26 +7,26 @@
 }
 
 .noticeBanner {
-  background: var(--color-bg);
-  border: 1px solid var(--color-card-border);
-  border-left: 4px solid var(--color-brand);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--accent);
   padding: 0.75rem 1rem;
   border-radius: var(--radius-sm);
   margin-top: 1rem;
   font-size: 0.88rem;
-  color: var(--color-text);
+  color: var(--text);
   line-height: 1.4;
 }
 
 .status {
   margin: 2rem 0;
   text-align: center;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .noFieldsBox {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 2.5rem 1.5rem;
   text-align: center;
@@ -44,12 +44,12 @@
 .noFieldsTitle {
   font-size: 1.2rem;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--text);
   margin: 0;
 }
 
 .noFieldsDesc {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 0.95rem;
   max-width: 540px;
   line-height: 1.5;
@@ -64,8 +64,8 @@
 }
 
 .fieldsCard {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 1.5rem;
   display: flex;
@@ -82,16 +82,16 @@
 .fieldLabel {
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--text);
 }
 
 .textInput {
   width: 100%;
   padding: 0.6rem 0.8rem;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background-color: var(--color-input-bg);
-  color: var(--color-text);
+  border: 1px solid var(--input-border);
+  background-color: var(--input-bg);
+  color: var(--text);
   font-size: 0.95rem;
   box-sizing: border-box;
 }
@@ -100,9 +100,9 @@
   width: 100%;
   padding: 0.6rem 0.8rem;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background-color: var(--color-input-bg);
-  color: var(--color-text);
+  border: 1px solid var(--input-border);
+  background-color: var(--input-bg);
+  color: var(--text);
   font-size: 0.95rem;
   box-sizing: border-box;
   min-height: 80px;
@@ -137,9 +137,9 @@
   width: 100%;
   padding: 0.6rem 0.8rem;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background-color: var(--color-input-bg);
-  color: var(--color-text);
+  border: 1px solid var(--input-border);
+  background-color: var(--input-bg);
+  color: var(--text);
   font-size: 0.95rem;
   box-sizing: border-box;
 }
@@ -148,17 +148,17 @@
   width: 100%;
   padding: 0.5rem;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background-color: var(--color-input-bg);
-  color: var(--color-text);
+  border: 1px solid var(--input-border);
+  background-color: var(--input-bg);
+  color: var(--text);
   font-size: 0.95rem;
   box-sizing: border-box;
   min-height: 100px;
 }
 
 .optionsCard {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 1.25rem;
   display: flex;
@@ -182,11 +182,11 @@
 .flattenTitle {
   font-weight: 600;
   font-size: 0.95rem;
-  color: var(--color-text);
+  color: var(--text);
 }
 
 .flattenDesc {
   font-size: 0.85rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   line-height: 1.4;
 }

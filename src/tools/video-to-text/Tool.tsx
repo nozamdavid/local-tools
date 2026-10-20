@@ -158,7 +158,7 @@ export default function VideoToTextTool() {
         <FileDrop
           accept="video/*,audio/*"
           label="Choose a video or audio file"
-          hint="Supports MP4, MOV, WebM, MKV, MP3, WAV, AAC, M4A and more. 100% on-device."
+          hint="Supports MP4, MOV, WebM, MKV, MP3, WAV, AAC, M4A and more."
           onFiles={handleFiles}
         />
       ) : (

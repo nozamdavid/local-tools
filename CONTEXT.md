@@ -14,7 +14,7 @@
   - Image tools: `src/tools/image/<slug>/Tool.tsx` (registry id is `img-<slug>`, route is `/image/<slug>`).
   - PDF tools: `src/tools/pdf/<slug>/Tool.tsx` (registry id is `pdf-<slug>`, route is `/pdf/<slug>`).
 - Shared modules for a group of tools live in `src/tools/<media>/_<group>/` (for example `image/_pdf`, `image/_convert`, `pdf/_pages`, `pdf/_qpdf`, `pdf/_render`).
-- **Tool styling:** Tools may include a local CSS module, e.g. `Tool.module.css` next to `Tool.tsx`, or use global utility classes from `src/styles.css`.
+- **Tool styling:** Follow the design system (`docs/design-system.md`, live at `/design`). Use shared components from `src/components`, global classes from `src/design/components.css`, and semantic tokens from `src/design/tokens.css`. A local `Tool.module.css` is for tool-specific layout only: no hex colours, no legacy `--color-*` variables, and no `@media (prefers-color-scheme)`.
 - **Protected Files:** Sub-agents must not edit shared files outside their assigned scope.
 
 ## Folder Layout
@@ -29,13 +29,15 @@ loconvert/
 ├── src/
 │   ├── main.tsx            # Application entry
 │   ├── App.tsx             # Router: /, /file, /video, /image, /pdf, tool routes & redirects
-│   ├── styles.css          # Global theme styling, CSS variables, responsive rules
+│   ├── styles.css          # Imports design layers + app shell/page layouts
+│   ├── design/             # Design system: tokens.css, base.css, components.css, theme.ts, media.ts
 │   ├── components/         # Shared UI components
 │   │   ├── BatchResults.tsx    # Multi-file results list with per-file and ZIP download
 │   │   ├── CategorySections.tsx# Tools of one media grouped by category
-│   │   ├── Controls.tsx    # Field, Slider, Select, Button
+│   │   ├── CommandPalette.tsx # ⌘K tool search
+│   │   ├── Controls.tsx    # Button, Field, Input, Textarea, Select, Slider, Checkbox, Switch, SegmentedControl, Badge, Alert, Kbd, MediaTile
 │   │   ├── FileDrop.tsx    # Drag-and-drop file upload zone
-│   │   ├── Layout.tsx      # Header with File / Video / Image / PDF menus, footer
+│   │   ├── Layout.tsx      # Header with mega menus, search, theme toggle, mobile nav, footer
 │   │   ├── ProgressBar.tsx # Standardized progress indicator
 │   │   ├── ResultPanel.tsx # Output preview, stats, download, and reset triggers
 │   │   ├── ToolGrid.tsx    # Responsive grid of tool cards
@@ -44,6 +46,8 @@ loconvert/
 │   │   ├── download.ts     # downloadBlob()
 │   │   ├── ffmpeg.ts       # getFFmpeg(), runFFmpeg(), mimeFromName()
 │   │   ├── format.ts       # formatBytes(), formatDuration(), replaceExt(), withSuffix()
+│   │   ├── handoff.ts      # Home-page file handoff to tool FileDrops, accept matching, tool suggestions
+│   │   ├── search.ts       # searchTools() ranking for the palette and index filters
 │   │   ├── image.ts        # Image decode/encode helpers
 │   │   ├── jxl.ts          # JPEG XL WASM client, encode/decode, preview fallback
 │   │   ├── jxl.worker.ts   # Dedicated worker for @jsquash/jxl
@@ -53,8 +57,9 @@ loconvert/
 │   │   ├── useObjectUrl.ts # useObjectUrl() hook managing lifecycle of Blob/File URLs
 │   │   └── zip.ts          # zipFiles()
 │   ├── pages/
-│   │   ├── Home.tsx        # Hero + Promoted converter + File, Video, Image, PDF sections
-│   │   └── MediaIndex.tsx  # /file, /video, /image, /pdf pages
+│   │   ├── Home.tsx        # Hero, drop-any-file suggestions, popular tools, browse by type
+│   │   ├── MediaIndex.tsx  # /file, /video, /image, /pdf pages with filter + category chips
+│   │   └── DesignSystem.tsx# /design living style guide
 │   └── tools/
 │       ├── registry.ts     # Tool registry definitions, categories & lookup helpers
 │       ├── file-converter/ # Universal file format converter (Tool.tsx)
@@ -90,6 +95,7 @@ Exports: `categories`, `TOOL_METAS`, `tools`, `getToolMeta(id)`, `toolsByMedia(m
 ### Routes
 - `/`: Home (includes promoted universal converter and category sections).
 - `/file`, `/video`, `/image`, `/pdf`: Category-grouped indexes.
+- `/design`: Design system reference.
 - `/<slug>`: File tools (e.g. `/file-converter`, `/csv-viewer`, `/mhtml-to-html`, `/gpx-kml`, `/batch-rename`, `/file-inspector`, `/video-health`, `/css-viewer`, `/txt-to-csv`, `/json-csv`).
 - `/video/<id>`: Video tools.
 - `/image/<slug>`: Image tools.

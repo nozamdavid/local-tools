@@ -84,7 +84,7 @@ export default function PdfToMarkdownTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Headings, lists, paragraphs and links become Markdown. 100% on-device."
+          hint="Headings, lists, paragraphs and links become Markdown."
           onFiles={handleFiles}
         />
       ) : (

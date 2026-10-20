@@ -3,6 +3,7 @@ import { formatBytes } from '../lib/format';
 import { downloadBlob } from '../lib/download';
 import { useObjectUrl } from '../lib/useObjectUrl';
 import { zipFiles } from '../lib/zip';
+import { Download, File as FileIcon, FolderDown, RotateCcw } from 'lucide-react';
 import { Button } from './Controls';
 
 export interface BatchResultItem {
@@ -35,7 +36,7 @@ function BatchRow({ item }: { item: BatchResultItem }) {
         <img src={url} alt="" className="batch-thumb" />
       ) : (
         <div className="batch-thumb batch-thumb-fallback" aria-hidden="true">
-          📄
+          <FileIcon />
         </div>
       )}
 
@@ -55,8 +56,14 @@ function BatchRow({ item }: { item: BatchResultItem }) {
         </div>
       </div>
 
-      <Button variant="secondary" onClick={() => downloadBlob(item.blob, item.name)}>
-        Download
+      <Button
+        variant="ghost"
+        size="sm"
+        icon={<Download />}
+        aria-label={`Download ${item.name}`}
+        onClick={() => downloadBlob(item.blob, item.name)}
+      >
+        Save
       </Button>
     </li>
   );
@@ -87,14 +94,18 @@ export function BatchResults({ items, onReset }: BatchResultsProps) {
         ))}
       </ul>
 
-      {error && <div role="alert">{error}</div>}
+      {error && (
+        <div className="error-banner" role="alert">
+          {error}
+        </div>
+      )}
 
       <div className="batch-actions">
-        <Button variant="secondary" onClick={onReset}>
+        <Button variant="secondary" icon={<RotateCcw />} onClick={onReset}>
           Start over
         </Button>
-        <Button variant="primary" onClick={downloadAll} disabled={zipping || items.length === 0}>
-          {zipping ? 'Zipping…' : 'Download all (.zip)'}
+        <Button variant="primary" size="lg" icon={<FolderDown />} loading={zipping} onClick={downloadAll} disabled={items.length === 0}>
+          {zipping ? 'Zipping…' : `Download all ${items.length} (.zip)`}
         </Button>
       </div>
     </div>

@@ -138,7 +138,7 @@ export default function ScreenshotToPdfTool() {
           accept={IMAGE_ACCEPT}
           multiple
           label="Choose screenshots or drag them here"
-          hint="Supports PNG, JPG, WebP. Tuned for full-page and app screenshots. 100% on-device."
+          hint="Supports PNG, JPG, WebP. Tuned for full-page and app screenshots."
           onFiles={handleFiles}
         />
       ) : (

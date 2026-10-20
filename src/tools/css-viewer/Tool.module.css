@@ -10,10 +10,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  background: var(--surface-bg, #1e1e24);
+  background: var(--surface);
   padding: 0.85rem 1.25rem;
   border-radius: 8px;
-  border: 1px solid var(--border-color, #2d2d38);
+  border: 1px solid var(--border);
 }
 
 .deviceControls {
@@ -28,22 +28,22 @@
   gap: 0.35rem;
   padding: 0.4rem 0.75rem;
   font-size: 0.85rem;
-  background: var(--button-bg, #282833);
-  color: var(--text-color, #eee);
-  border: 1px solid var(--border-color, #3a3a4c);
+  background: var(--surface-sunken);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .deviceBtn:hover {
-  background: var(--button-hover-bg, #363645);
+  background: var(--surface-hover);
 }
 
 .deviceBtnActive {
-  background: #3b82f6;
-  color: #fff;
-  border-color: #2563eb;
+  background: var(--accent);
+  color: var(--on-accent);
+  border-color: var(--accent);
 }
 
 .actionBtns {
@@ -69,8 +69,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  background: var(--surface-bg, #1a1a20);
-  border: 1px solid var(--border-color, #2d2d38);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
 }
@@ -84,7 +84,7 @@
 .paneTitle {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--text-color, #f3f4f6);
+  color: var(--text);
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -93,9 +93,9 @@
 .presetSelect {
   padding: 0.3rem 0.6rem;
   font-size: 0.85rem;
-  background: #252530;
-  color: #eee;
-  border: 1px solid #3d3d4d;
+  background: var(--surface-hover);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 4px;
 }
 
@@ -107,9 +107,9 @@
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   font-size: 0.85rem;
   line-height: 1.45;
-  background: #111116;
-  color: #e2e8f0;
-  border: 1px solid #2e2e3e;
+  background: var(--surface-sunken);
+  color: var(--text);
+  border: 1px solid var(--border);
   border-radius: 6px;
   resize: vertical;
   white-space: pre;
@@ -117,19 +117,19 @@
 
 .codeArea:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--accent);
 }
 
 .previewWrapper {
   display: flex;
   justify-content: center;
   align-items: flex-start;
-  background: #0d0d12;
+  background: var(--surface-sunken);
   border-radius: 8px;
   padding: 1rem;
   overflow: auto;
   min-height: 480px;
-  border: 1px solid #2d2d38;
+  border: 1px solid var(--border);
 }
 
 .previewFrameContainer {
@@ -149,8 +149,8 @@
 }
 
 .diagPanel {
-  background: var(--surface-bg, #1a1a20);
-  border: 1px solid var(--border-color, #2d2d38);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.25rem;
   display: flex;
@@ -167,8 +167,8 @@
 .diagBadge {
   font-size: 0.75rem;
   padding: 0.2rem 0.5rem;
-  background: #374151;
-  color: #9ca3af;
+  background: var(--surface-active);
+  color: var(--text-muted);
   border-radius: 4px;
   text-transform: uppercase;
   font-weight: 600;
@@ -182,29 +182,29 @@
 }
 
 .statCard {
-  background: #121217;
+  background: var(--surface-sunken);
   padding: 0.75rem 1rem;
   border-radius: 6px;
-  border: 1px solid #252530;
+  border: 1px solid var(--border);
 }
 
 .statNum {
   font-size: 1.25rem;
   font-weight: 700;
-  color: #60a5fa;
+  color: var(--info);
 }
 
 .statLabel {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   margin-top: 0.2rem;
 }
 
 .diagDisclaimer {
   font-size: 0.8rem;
-  color: #9ca3af;
-  background: rgba(234, 179, 8, 0.08);
-  border: 1px solid rgba(234, 179, 8, 0.25);
+  color: var(--text-muted);
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-border);
   padding: 0.6rem 0.85rem;
   border-radius: 6px;
   line-height: 1.4;
@@ -221,8 +221,8 @@
 
 .diagWarningItem {
   font-size: 0.82rem;
-  color: #fbbf24;
-  background: rgba(251, 191, 36, 0.1);
+  color: var(--warning);
+  background: var(--warning-soft);
   padding: 0.4rem 0.6rem;
   border-radius: 4px;
 }

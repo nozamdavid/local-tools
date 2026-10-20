@@ -9,8 +9,8 @@
   flex-direction: column;
   gap: 1rem;
   padding: 1.25rem 1.5rem;
-  background-color: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
@@ -29,7 +29,7 @@
   width: 56px;
   height: 56px;
   border-radius: var(--radius-md);
-  background-color: var(--color-brand-light);
+  background-color: var(--accent-soft);
   flex-shrink: 0;
 }
 
@@ -44,7 +44,7 @@
 .detectedTitle {
   font-size: 1.25rem;
   font-weight: 700;
-  color: var(--color-text);
+  color: var(--text);
   display: flex;
   align-items: center;
   gap: 0.6rem;
@@ -56,7 +56,7 @@
   align-items: center;
   gap: 0.8rem;
   font-size: 0.85rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .mismatchBanner {
@@ -86,7 +86,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin-bottom: 0.6rem;
 }
 
@@ -102,8 +102,8 @@
   align-items: center;
   justify-content: center;
   padding: 0.65rem 0.5rem;
-  background-color: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.15s ease;
@@ -111,31 +111,31 @@
 }
 
 .targetChip:hover {
-  border-color: var(--color-brand);
-  background-color: var(--color-brand-light);
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
 }
 
 .targetChipActive {
-  border-color: var(--color-brand);
-  background-color: var(--color-brand-light);
-  box-shadow: 0 0 0 1px var(--color-brand);
+  border-color: var(--accent);
+  background-color: var(--accent-soft);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 
 .targetLabel {
   font-weight: 700;
   font-size: 0.95rem;
-  color: var(--color-text);
+  color: var(--text);
 }
 
 .targetDesc {
   font-size: 0.75rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   text-align: center;
 }
 
 .optionsCard {
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background-color: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 1.25rem;
   display: flex;
@@ -146,13 +146,13 @@
 .optionsTitle {
   font-size: 0.95rem;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--text);
 }
 
 .unsupportedCard {
   padding: 1.5rem;
-  background-color: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   display: flex;
   flex-direction: column;
@@ -162,11 +162,11 @@
 .unsupportedTitle {
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--color-text);
+  color: var(--text);
 }
 
 .unsupportedText {
   font-size: 0.9rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   line-height: 1.5;
 }

@@ -13,7 +13,7 @@
   justify-content: center;
   align-items: center;
   padding: 8px;
-  border: 1px solid var(--border, #333);
+  border: 1px solid var(--border);
 }
 
 .checkerboardPreview video {
@@ -34,7 +34,7 @@
   width: 48px;
   height: 38px;
   padding: 2px;
-  border: 1px solid var(--border, #ccc);
+  border: 1px solid var(--border);
   border-radius: 6px;
   cursor: pointer;
   background: transparent;
@@ -43,10 +43,10 @@
 .hexInput {
   width: 120px;
   padding: 8px 12px;
-  border: 1px solid var(--border, #ccc);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--bg-card, #222);
-  color: var(--text, #fff);
+  background: var(--surface);
+  color: var(--text);
   font-family: monospace;
 }
 

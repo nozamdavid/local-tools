@@ -5,8 +5,8 @@
 }
 
 .previewCard {
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background-color: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 1.25rem;
   display: flex;
@@ -19,7 +19,7 @@
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin-bottom: 0.75rem;
   align-self: flex-start;
 }
@@ -55,12 +55,12 @@
 }
 
 .overlayBox:hover {
-  outline-color: var(--color-brand);
+  outline-color: var(--accent);
 }
 
 .overlayDragging {
   cursor: grabbing !important;
-  outline: 2px solid var(--color-brand) !important;
+  outline: 2px solid var(--accent) !important;
 }
 
 .overlayImage {
@@ -80,10 +80,10 @@
 }
 
 .playToggleBtn {
-  background-color: var(--color-input-bg);
-  border: 1px solid var(--color-card-border);
+  background-color: var(--input-bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  color: var(--color-text);
+  color: var(--text);
   padding: 0.35rem 0.75rem;
   font-size: 0.85rem;
   font-weight: 600;
@@ -93,20 +93,20 @@
 }
 
 .playToggleBtn:hover {
-  border-color: var(--color-brand);
-  color: var(--color-brand);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .scrubber {
   flex: 1;
-  accent-color: var(--color-brand);
+  accent-color: var(--accent);
   cursor: pointer;
 }
 
 .timeDisplay {
   font-size: 0.8rem;
   font-family: monospace;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   white-space: nowrap;
 }
 
@@ -114,7 +114,7 @@
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1.25rem;
-  border-bottom: 1px solid var(--color-card-border);
+  border-bottom: 1px solid var(--border);
   padding-bottom: 0.75rem;
 }
 
@@ -122,23 +122,23 @@
   padding: 0.6rem 1.25rem;
   font-size: 0.95rem;
   font-weight: 600;
-  border: 1px solid var(--color-card-border);
-  background-color: var(--color-input-bg);
-  color: var(--color-text-muted);
+  border: 1px solid var(--border);
+  background-color: var(--input-bg);
+  color: var(--text-muted);
   border-radius: var(--radius-md);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .tab:hover {
-  color: var(--color-text);
-  border-color: var(--color-brand);
+  color: var(--text);
+  border-color: var(--accent);
 }
 
 .activeTab {
-  background-color: var(--color-brand-light);
-  border-color: var(--color-brand);
-  color: var(--color-brand);
+  background-color: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .sectionGrid {
@@ -154,8 +154,8 @@
 }
 
 .settingsCard {
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background-color: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 1.25rem;
 }
@@ -164,7 +164,7 @@
   font-size: 0.95rem;
   font-weight: 700;
   margin-bottom: 1rem;
-  color: var(--color-text);
+  color: var(--text);
 }
 
 .colorRow {
@@ -175,19 +175,19 @@
 
 .colorInput {
   -webkit-appearance: none;
-  border: 1px solid var(--color-card-border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   width: 42px;
   height: 38px;
   padding: 2px;
-  background-color: var(--color-input-bg);
+  background-color: var(--input-bg);
   cursor: pointer;
 }
 
 .colorHex {
   font-family: monospace;
   font-size: 0.9rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .quickPositionWrapper {
@@ -207,29 +207,29 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: var(--color-input-bg);
-  border: 1px solid var(--color-card-border);
+  background-color: var(--input-bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  color: var(--color-text);
+  color: var(--text);
   font-size: 1.15rem;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .posBtn:hover {
-  border-color: var(--color-brand);
-  color: var(--color-brand);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 .posBtnActive {
-  background-color: var(--color-brand);
-  border-color: var(--color-brand);
+  background-color: var(--accent);
+  border-color: var(--accent);
   color: #ffffff;
 }
 
 .dragHint {
   font-size: 0.8rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   margin-top: 0.5rem;
   font-style: italic;
 }
@@ -240,8 +240,8 @@
   gap: 1rem;
   margin-bottom: 1rem;
   padding: 0.75rem;
-  background-color: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
 }
 
@@ -269,5 +269,5 @@
 
 .imageSize {
   font-size: 0.75rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }

@@ -13,7 +13,7 @@ export interface DownloadResultProps {
 export function DownloadResult({ blob, filename, summary, onReset }: DownloadResultProps) {
   return (
     <div className="result-panel">
-      {summary && <p style={{ margin: '0 0 1rem', color: 'var(--color-text-muted)' }}>{summary}</p>}
+      {summary && <p style={{ margin: '0 0 1rem', color: 'var(--text-muted)' }}>{summary}</p>}
 
       <div className="stats-row">
         <div className="stat-item">

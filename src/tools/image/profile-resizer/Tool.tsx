@@ -212,7 +212,7 @@ export default function ProfileResizerTool() {
 
           {batchItems ? (
             <div>
-              <div style={{ marginBottom: '1rem', color: 'var(--color-text-muted)' }}>
+              <div style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
                 Your avatar ZIP has been generated! You can also download each avatar size individually below:
               </div>
               <BatchResults

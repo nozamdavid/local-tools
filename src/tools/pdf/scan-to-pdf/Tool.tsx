@@ -228,7 +228,7 @@ export default function ScanToPdfTool() {
             accept="image/*"
             multiple
             label="Or choose photos of your pages"
-            hint="JPG, PNG or WebP. 100% on-device."
+            hint="JPG, PNG or WebP."
             onFiles={handleUpload}
           />
 

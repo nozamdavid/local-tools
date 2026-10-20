@@ -489,7 +489,7 @@ export default function Tool() {
                   className={styles.iconBtn}
                   title="Delete layer (Del)"
                   onClick={() => deleteLayer(selectedLayerId)}
-                  style={{ color: 'var(--color-danger)' }}
+                  style={{ color: 'var(--danger)' }}
                 >
                   🗑
                 </button>

@@ -96,7 +96,6 @@ export default function CompressPdfTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Your PDF stays in this browser tab. Nothing is uploaded."
           onFiles={(files) => setFile(files[0] ?? null)}
         />
       ) : result ? (

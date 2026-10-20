@@ -15,8 +15,8 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  background: var(--bg-card, #1c1c1f);
-  border: 1px solid var(--border, #333);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
   overflow: hidden;
@@ -24,7 +24,7 @@
 
 .canvasHint {
   font-size: 0.8rem;
-  color: var(--text-muted, #888);
+  color: var(--text-muted);
   margin-bottom: 0.75rem;
   text-align: center;
 }
@@ -42,8 +42,8 @@
 }
 
 .controlsPanel {
-  background: var(--bg-card, #1c1c1f);
-  border: 1px solid var(--border, #333);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.25rem;
   display: flex;
@@ -67,7 +67,7 @@
   width: 44px;
   height: 38px;
   padding: 2px;
-  border: 1px solid var(--border, #444);
+  border: 1px solid var(--border);
   border-radius: 6px;
   cursor: pointer;
   background: transparent;
@@ -76,10 +76,10 @@
 .hexInput {
   width: 100px;
   padding: 8px 10px;
-  border: 1px solid var(--border, #444);
+  border: 1px solid var(--border);
   border-radius: 6px;
-  background: var(--bg-card, #222);
-  color: var(--text, #fff);
+  background: var(--surface);
+  color: var(--text);
   font-family: monospace;
   font-size: 0.85rem;
 }

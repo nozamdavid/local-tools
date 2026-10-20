@@ -41,7 +41,7 @@ function ExtractedItemRow({ item }: { item: ExtractedFrameItem }) {
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0.75rem 1rem',
-        background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+        background: 'var(--surface)',
         borderRadius: '8px',
         gap: '1rem',
       }}
@@ -220,7 +220,7 @@ export default function IconConverterTool() {
         {/* Mode Selector */}
         <div
           style={{
-            background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+            background: 'var(--surface)',
             padding: '1.25rem',
             borderRadius: '12px',
           }}
@@ -277,7 +277,7 @@ export default function IconConverterTool() {
         {processing && (
           <div
             style={{
-              background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+              background: 'var(--surface)',
               padding: '2rem',
               borderRadius: '12px',
               display: 'flex',
@@ -297,7 +297,7 @@ export default function IconConverterTool() {
         {mode === 'ico-to-png' && extractedFrames.length > 0 && (
           <div
             style={{
-              background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+              background: 'var(--surface)',
               padding: '1.25rem',
               borderRadius: '12px',
               display: 'flex',
@@ -334,7 +334,7 @@ export default function IconConverterTool() {
         {mode === 'png-to-ico' && generatedIcos.length > 0 && (
           <div
             style={{
-              background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+              background: 'var(--surface)',
               padding: '1.25rem',
               borderRadius: '12px',
               display: 'flex',

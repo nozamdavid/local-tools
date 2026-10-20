@@ -138,7 +138,7 @@ export default function ImageToPdfTool() {
           accept={IMAGE_ACCEPT}
           multiple
           label="Choose images or drag them here"
-          hint="Supports JPG, PNG, WebP, GIF, SVG, BMP, HEIC and more. 100% on-device."
+          hint="Supports JPG, PNG, WebP, GIF, SVG, BMP, HEIC and more."
           onFiles={handleFiles}
         />
       ) : (

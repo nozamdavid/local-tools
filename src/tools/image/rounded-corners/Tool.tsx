@@ -229,7 +229,7 @@ export default function RoundedCornersTool() {
               </div>
             )}
 
-            <div style={{ borderTop: '1px solid var(--color-border, rgba(255, 255, 255, 0.1))', paddingTop: '1rem' }}>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
                 <input
                   type="checkbox"

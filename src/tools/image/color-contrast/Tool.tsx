@@ -122,7 +122,7 @@ export default function ColorContrastTool() {
         </div>
 
         <div className={styles.ratioCard}>
-          <div style={{ fontSize: '0.9rem', color: 'var(--color-text-muted)', fontWeight: 600 }}>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>
             WCAG 2.x Contrast Ratio
           </div>
           <div className={styles.ratioValue}>{ratio.toFixed(2)} : 1</div>
@@ -169,7 +169,7 @@ export default function ColorContrastTool() {
                 </span>
               </div>
               <div className={styles.evalBadgeRow}>
-                <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                   Form borders & icons
                 </span>
                 <span className={evalResults.uiComponent ? styles.badgePass : styles.badgeFail}>
@@ -233,13 +233,13 @@ export default function ColorContrastTool() {
                         height: '28px',
                         borderRadius: '4px',
                         backgroundColor: suggestedAa.hex,
-                        border: '1px solid var(--color-card-border)',
+                        border: '1px solid var(--border)',
                       }}
                     />
                     <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
                       {suggestedAa.hex.toUpperCase()}
                     </span>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                       (Ratio: {suggestedAa.ratio.toFixed(2)} : 1 for AA)
                     </span>
                   </div>
@@ -262,13 +262,13 @@ export default function ColorContrastTool() {
                         height: '28px',
                         borderRadius: '4px',
                         backgroundColor: suggestedAaa.hex,
-                        border: '1px solid var(--color-card-border)',
+                        border: '1px solid var(--border)',
                       }}
                     />
                     <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
                       {suggestedAaa.hex.toUpperCase()}
                     </span>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                       (Ratio: {suggestedAaa.ratio.toFixed(2)} : 1 for AAA)
                     </span>
                   </div>

@@ -87,7 +87,7 @@ export default function BulkCompressTool() {
           accept={IMAGE_ACCEPT}
           multiple
           label="Choose multiple images or drag them here"
-          hint="Supports JPG, PNG, WEBP, GIF, BMP, SVG, HEIC and AVIF. Batch compress 100% on-device."
+          hint="Supports JPG, PNG, WEBP, GIF, BMP, SVG, HEIC and AVIF. Compress many at once."
           onFiles={handleFiles}
         />
       ) : results ? (

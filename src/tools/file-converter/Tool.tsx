@@ -314,7 +314,7 @@ export default function FileConverterTool() {
                       )}
 
                       {selectedTarget.id === 'jxl' && (
-                        <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted, #71717a)' }}>
+                        <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                           Encodes static SDR images. Animation and HDR gain maps are not preserved.
                         </p>
                       )}

@@ -38,7 +38,7 @@ export default function InstagramProfileTool() {
           file={file}
           onReset={() => setFile(null)}
           additionalInfo={
-            <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Instagram displays profile pictures as circles (320×320 on desktop), but stores them at 1080×1080. You can export a crisp 1080×1080 square or a transparent circular PNG.
             </div>
           }

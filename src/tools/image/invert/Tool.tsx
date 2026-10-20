@@ -73,7 +73,7 @@ export default function InvertTool() {
                   alignItems: 'center',
                   gap: '0.6rem',
                   padding: '0.75rem 1rem',
-                  background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+                  background: 'var(--surface)',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   border: options.invertR ? '1px solid #ef4444' : '1px solid transparent',
@@ -93,7 +93,7 @@ export default function InvertTool() {
                   alignItems: 'center',
                   gap: '0.6rem',
                   padding: '0.75rem 1rem',
-                  background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+                  background: 'var(--surface)',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   border: options.invertG ? '1px solid #22c55e' : '1px solid transparent',
@@ -113,7 +113,7 @@ export default function InvertTool() {
                   alignItems: 'center',
                   gap: '0.6rem',
                   padding: '0.75rem 1rem',
-                  background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+                  background: 'var(--surface)',
                   borderRadius: '8px',
                   cursor: 'pointer',
                   border: options.invertB ? '1px solid #3b82f6' : '1px solid transparent',
@@ -128,7 +128,7 @@ export default function InvertTool() {
               </label>
             </div>
 
-            <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted, #94a3b8)', margin: 0 }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
               Alpha transparency is preserved intact.
             </p>
           </div>

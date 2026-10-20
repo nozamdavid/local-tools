@@ -505,7 +505,7 @@ export default function Tool() {
             </div>
 
             {/* Tile Mode Section */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--color-card-border)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
               <label className="checkbox-label">
                 <input
                   type="checkbox"

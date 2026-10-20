@@ -9,7 +9,7 @@ export default function Tool() {
         expectedFormats: ['png'],
         expectedLabel: 'PNG',
         dropLabel: 'Choose PNG images or drag them here',
-        dropHint: 'Convert PNG images to standard JPG format. 100% private.',
+        dropHint: 'Convert PNG images to standard JPG format.',
       }}
     />
   );

@@ -271,7 +271,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
                     />
                     <span>Lossless compression</span>
                   </label>
-                  <p style={{ margin: '0.35rem 0 0 1.5rem', fontSize: '0.8rem', color: 'var(--text-muted, #71717a)' }}>
+                  <p style={{ margin: '0.35rem 0 0 1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     Encodes static SDR images. Animation and HDR gain maps are not preserved.
                   </p>
                 </div>

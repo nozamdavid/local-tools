@@ -361,7 +361,7 @@ export default function BlurTool() {
                 <div
                   style={{
                     padding: '0.85rem 1rem',
-                    background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+                    background: 'var(--surface)',
                     borderRadius: '8px',
                     fontSize: '0.86rem',
                     lineHeight: '1.45',
@@ -385,7 +385,7 @@ export default function BlurTool() {
                             alignItems: 'center',
                             justifyContent: 'space-between',
                             padding: '0.5rem 0.75rem',
-                            background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+                            background: 'var(--surface)',
                             borderRadius: '6px',
                           }}
                         >

@@ -178,7 +178,7 @@ export default function RotateTool() {
         <FileDrop
           accept={IMAGE_ACCEPT}
           label="Choose an image or drag it here"
-          hint="Supports JPG, PNG, WEBP, GIF, BMP, SVG, HEIC and AVIF. 100% on-device."
+          hint="Supports JPG, PNG, WEBP, GIF, BMP, SVG, HEIC and AVIF."
           onFiles={handleFiles}
         />
       ) : (

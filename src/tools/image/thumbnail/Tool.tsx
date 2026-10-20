@@ -48,7 +48,7 @@ export default function ThumbnailTool() {
           file={file}
           onReset={() => setFile(null)}
           additionalInfo={
-            <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               YouTube thumbnails must be 1280×720 and under 2 MB. Avoid putting critical text in the bottom right where YouTube places the video time badge.
             </div>
           }

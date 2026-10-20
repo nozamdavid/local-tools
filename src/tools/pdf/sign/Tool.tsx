@@ -332,7 +332,7 @@ export default function SignTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Draw, type or upload your signature and place it on any page. 100% on-device."
+          hint="Draw, type or upload your signature and place it on any page."
           onFiles={handleFiles}
         />
       ) : (
@@ -509,14 +509,14 @@ export default function SignTool() {
                       {uploadedUrl ? (
                         <div>
                           <img src={uploadedUrl} alt="Uploaded signature" className={styles.uploadPreview} />
-                          <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                          <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                             Click to choose a different signature image
                           </p>
                         </div>
                       ) : (
                         <div>
                           <p style={{ fontWeight: 600 }}>Click to upload signature image</p>
-                          <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', marginTop: '0.25rem' }}>
+                          <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                             Supports transparent PNG, JPG, or SVG
                           </p>
                         </div>
@@ -526,7 +526,7 @@ export default function SignTool() {
 
                   <div className={styles.placementSection}>
                     <h3>Position & Pages Preview</h3>
-                    <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)' }}>
+                    <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
                       Drag the signature in the preview below to place it, or use the position controls.
                     </p>
 
@@ -546,7 +546,7 @@ export default function SignTool() {
                               draggable={false}
                             />
                           ) : (
-                            <div style={{ padding: '4rem', color: 'var(--color-text-muted)' }}>
+                            <div style={{ padding: '4rem', color: 'var(--text-muted)' }}>
                               Loading page {previewPage}…
                             </div>
                           )}

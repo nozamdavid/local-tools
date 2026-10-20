@@ -156,7 +156,7 @@ export default function BoostVolumeTool() {
         <FileDrop
           accept="video/*"
           label="Choose a video or drag it here"
-          hint="Boost volume up to 400% or normalize loudness. 100% on-device."
+          hint="Boost volume up to 400% or normalize loudness."
           onFiles={handleFiles}
         />
       ) : (

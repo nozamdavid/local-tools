@@ -131,7 +131,7 @@ export default function ImageToSvgTool() {
           <FileDrop
             accept={IMAGE_ACCEPT}
             label="Choose an image or drag it here"
-            hint="Supports PNG, JPG, WebP and more. 100% private in-browser conversion."
+            hint="Supports PNG, JPG, WebP and more."
             onFiles={handleFiles}
           />
         ) : (
@@ -139,7 +139,7 @@ export default function ImageToSvgTool() {
             {/* Controls */}
             <div
               style={{
-                background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+                background: 'var(--surface)',
                 padding: '1.25rem',
                 borderRadius: '12px',
                 display: 'flex',
@@ -210,7 +210,7 @@ export default function ImageToSvgTool() {
             {/* Preview Box */}
             <div
               style={{
-                background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+                background: 'var(--surface)',
                 borderRadius: '12px',
                 padding: '1.25rem',
                 display: 'flex',

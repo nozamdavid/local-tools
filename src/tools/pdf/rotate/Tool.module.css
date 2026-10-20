@@ -9,7 +9,7 @@
 .status {
   margin: 2rem 0;
   text-align: center;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .controls {
@@ -42,7 +42,7 @@
 }
 
 .selectCount {
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 0.9rem;
   margin-right: auto;
 }
@@ -55,8 +55,8 @@
   max-height: 520px;
   overflow-y: auto;
   padding: 0.5rem;
-  background: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
 
@@ -67,8 +67,8 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.6rem 0.5rem 0.5rem;
-  background: var(--color-card-bg);
-  border: 2px solid var(--color-card-border);
+  background: var(--surface);
+  border: 2px solid var(--border);
   border-radius: var(--radius-sm);
   user-select: none;
 }
@@ -78,8 +78,8 @@
 }
 
 .pageCardSelected {
-  border-color: var(--color-brand);
-  background: var(--color-brand-light);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 .pageCheckbox {
@@ -90,11 +90,11 @@
   width: 1.1rem;
   height: 1.1rem;
   cursor: pointer;
-  accent-color: var(--color-brand);
+  accent-color: var(--accent);
 }
 
 .pageLabel {
   font-size: 0.82rem;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--text);
 }

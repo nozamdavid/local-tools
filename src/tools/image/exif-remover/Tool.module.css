@@ -5,8 +5,8 @@
 }
 
 .optionsCard {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 1.25rem;
   display: flex;
@@ -44,12 +44,12 @@
 .checkboxTitle {
   font-size: 0.95rem;
   font-weight: 500;
-  color: var(--color-text);
+  color: var(--text);
 }
 
 .checkboxHint {
   font-size: 0.8rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .removedSummaryList {
@@ -60,8 +60,8 @@
 }
 
 .removedCard {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.75rem 1rem;
   display: flex;
@@ -79,8 +79,8 @@
 }
 
 .removedTag {
-  background: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--bg);
+  border: 1px solid var(--border);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.75rem;

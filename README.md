@@ -35,6 +35,7 @@
 ## Tech Stack
 
 - **Framework:** React 19, TypeScript, Vite
+- **UI:** Token-based design system (`src/design`), light/dark themes, Geist fonts bundled locally, `lucide-react` icons
 - **Codecs & Runtimes:**
   - FFmpeg WASM (`@ffmpeg/ffmpeg`)
   - JPEG XL (`@jsquash/jxl`)
@@ -66,6 +67,7 @@ npx tsc -b
 
 ## Documentation
 
+- [Design System](docs/design-system.md) (live at `/design`)
 - [Tool Coverage & Source Mapping](docs/tool-coverage.md)
 - [Final Integration & Verification Report](docs/final-verification.md)
 - [AVIF Fallback Verification Report](docs/avif-verification.md)

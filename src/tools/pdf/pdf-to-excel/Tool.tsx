@@ -106,7 +106,7 @@ export default function PdfToExcelTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Tables are detected from the text positions and become spreadsheet cells. 100% on-device."
+          hint="Tables are detected from the text positions and become spreadsheet cells."
           onFiles={handleFiles}
         />
       ) : (

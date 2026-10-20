@@ -209,7 +209,7 @@ export default function WatermarkTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Stamp a customizable text or image watermark over your PDF pages. 100% on-device."
+          hint="Stamp a customizable text or image watermark over your PDF pages."
           onFiles={handleFiles}
         />
       ) : (
@@ -299,8 +299,8 @@ export default function WatermarkTool() {
                                 height: '42px',
                                 padding: '2px',
                                 borderRadius: '4px',
-                                border: '1px solid var(--color-input-border)',
-                                background: 'var(--color-input-bg)',
+                                border: '1px solid var(--input-border)',
+                                background: 'var(--input-bg)',
                                 cursor: 'pointer',
                               }}
                               value={textColor}

@@ -177,7 +177,7 @@ export default function BarcodeGeneratorTool() {
               <div className={styles.warningMessage}>{validation.warning}</div>
             )}
 
-            <hr style={{ border: 'none', borderTop: '1px solid var(--color-card-border)' }} />
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)' }} />
 
             <div className={styles.twoCols}>
               <Field label="Bar Width">
@@ -255,7 +255,7 @@ export default function BarcodeGeneratorTool() {
               {validation.valid ? (
                 <svg ref={svgRef} className={styles.previewSvg} />
               ) : (
-                <div style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem' }}>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
                   Enter a valid barcode to view preview
                 </div>
               )}

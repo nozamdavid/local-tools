@@ -171,7 +171,7 @@ export default function TrimTool() {
         <FileDrop
           accept="video/*"
           label="Choose a video or drag it here"
-          hint="Supports MP4, MOV, WebM, MKV, AVI and more. 100% on-device."
+          hint="Supports MP4, MOV, WebM, MKV, AVI and more."
           onFiles={handleFiles}
         />
       ) : (
@@ -296,7 +296,7 @@ export default function TrimTool() {
                           onChange={(e) => handleStartChange(parseFloat(e.target.value) || 0)}
                           aria-label="Start time in seconds"
                         />
-                        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>sec</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>sec</span>
                       </div>
                     </div>
 
@@ -323,7 +323,7 @@ export default function TrimTool() {
                           onChange={(e) => handleEndChange(parseFloat(e.target.value) || 0)}
                           aria-label="End time in seconds"
                         />
-                        <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>sec</span>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>sec</span>
                       </div>
                     </div>
                   </div>

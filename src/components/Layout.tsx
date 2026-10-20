@@ -1,147 +1,261 @@
-import { useState, useRef, useEffect, useId, type KeyboardEvent } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
-import { categories, toolsByCategory, type Media } from '../tools/registry';
+import { useEffect, useId, useRef, useState } from 'react';
+import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
+import { ChevronDown, ChevronRight, Menu, Search, ShieldCheck, X } from 'lucide-react';
+import { categories, toolsByCategory, toolsByMedia, TOOL_METAS, type Media } from '../tools/registry';
+import { MEDIA_INFO, MEDIA_LIST } from '../design/media';
+import { CommandPalette, openCommandPalette } from './CommandPalette';
+import { Kbd, MediaTile } from './Controls';
+import { LogoMark } from './Logo';
+import { ThemeToggle } from './ThemeToggle';
 
-const MENUS: { media: Media; label: string }[] = [
-  { media: 'file', label: 'File' },
-  { media: 'video', label: 'Video' },
-  { media: 'image', label: 'Image' },
-  { media: 'pdf', label: 'PDF' },
-];
+const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
-interface NavMenuProps {
-  media: Media;
-  label: string;
-  open: boolean;
-  onToggle: () => void;
-  onClose: () => void;
-}
-
-function NavMenu({ media, label, open, onToggle, onClose }: NavMenuProps) {
-  const triggerRef = useRef<HTMLButtonElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const menuId = useId();
-
-  function focusItem(step: 1 | -1 | 'first') {
-    const items = Array.from(menuRef.current?.querySelectorAll<HTMLAnchorElement>('a') ?? []);
-    if (items.length === 0) return;
-    const index = items.indexOf(document.activeElement as HTMLAnchorElement);
-    const next = step === 'first' ? 0 : (index + step + items.length) % items.length;
-    items[next].focus();
-  }
-
-  function handleKeyDown(event: KeyboardEvent) {
-    if (event.key === 'Escape' && open) {
-      event.preventDefault();
-      onClose();
-      triggerRef.current?.focus();
-    } else if (event.key === 'ArrowDown') {
-      event.preventDefault();
-      if (!open) onToggle();
-      // Wait for the menu to mount before moving focus into it.
-      if (!open) setTimeout(() => focusItem('first'), 0);
-      else focusItem(document.activeElement === triggerRef.current ? 'first' : 1);
-    } else if (event.key === 'ArrowUp' && open) {
-      event.preventDefault();
-      focusItem(-1);
-    }
-  }
+function MegaMenu({ media, id, onClose }: { media: Media; id: string; onClose: () => void }) {
+  const info = MEDIA_INFO[media];
+  const Icon = info.icon;
+  const count = toolsByMedia(media).length;
 
   return (
-    <div className="dropdown" onKeyDown={handleKeyDown}>
-      <button
-        ref={triggerRef}
-        type="button"
-        className="dropdown-trigger"
-        onClick={onToggle}
-        aria-expanded={open}
-        aria-haspopup="true"
-        aria-controls={open ? menuId : undefined}
-      >
-        <span>{label}</span>
-        <span style={{ fontSize: '0.75rem', marginLeft: '0.2rem' }}>▾</span>
-      </button>
-
-      {open && (
-        <div id={menuId} className="dropdown-menu" ref={menuRef} aria-label={`${label} tools`}>
-          <Link to={`/${media}`} className="dropdown-item dropdown-item-all" onClick={onClose}>
-            <span>All {label.toLowerCase()} tools</span>
+    <div className="mega" id={id} role="region" aria-label={`${info.label} tools`}>
+      <div className="container mega-inner">
+        <div className="mega-intro" data-media={media}>
+          <MediaTile media={media} size="lg">
+            <Icon />
+          </MediaTile>
+          <div className="mega-intro-title">{info.title}</div>
+          <p className="mega-intro-desc">{info.description}</p>
+          <Link to={info.path} className="section-link" onClick={onClose}>
+            Browse all {count}
+            <ChevronRight aria-hidden="true" />
           </Link>
+        </div>
+        <div className="mega-columns">
           {categories
             .filter((c) => c.media === media)
             .map((category) => (
-              <div key={category.id} className="dropdown-group" role="group" aria-label={category.title}>
-                <div className="dropdown-group-title">{category.title}</div>
+              <div key={category.id} className="mega-col">
+                <Link to={`${info.path}#${category.id}`} className="mega-col-title" onClick={onClose}>
+                  {category.title}
+                </Link>
+                <ul>
+                  {toolsByCategory(category.id).map((tool) => (
+                    <li key={tool.id}>
+                      <Link to={tool.path} className="mega-link" onClick={onClose}>
+                        <span className="mega-link-icon" aria-hidden="true">
+                          {tool.icon}
+                        </span>
+                        {tool.title}
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MobileNav({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="mobile-nav" role="dialog" aria-modal="true" aria-label="Menu">
+      <button
+        type="button"
+        className="search-trigger search-trigger-block"
+        onClick={() => {
+          onClose();
+          openCommandPalette();
+        }}
+      >
+        <Search aria-hidden="true" />
+        <span>Search {TOOL_METAS.length} tools</span>
+      </button>
+      {MEDIA_LIST.map((info) => (
+        <details key={info.media} className="mobile-nav-group">
+          <summary>
+            <MediaTile media={info.media} size="sm">
+              <info.icon />
+            </MediaTile>
+            {info.title}
+            <ChevronDown className="mobile-nav-chevron" aria-hidden="true" />
+          </summary>
+          <Link to={info.path} className="mobile-nav-all" onClick={onClose}>
+            All {info.label.toLowerCase()} tools
+          </Link>
+          {categories
+            .filter((c) => c.media === info.media)
+            .map((category) => (
+              <div key={category.id} className="mobile-nav-category">
+                <div className="mobile-nav-category-title">{category.title}</div>
                 {toolsByCategory(category.id).map((tool) => (
-                  <Link key={tool.id} to={tool.path} className="dropdown-item" onClick={onClose}>
-                    <span className="dropdown-item-icon">{tool.icon}</span>
-                    <span>{tool.title}</span>
+                  <Link key={tool.id} to={tool.path} className="mega-link" onClick={onClose}>
+                    <span className="mega-link-icon" aria-hidden="true">
+                      {tool.icon}
+                    </span>
+                    {tool.title}
                   </Link>
                 ))}
               </div>
             ))}
-        </div>
-      )}
+        </details>
+      ))}
     </div>
   );
 }
 
 export function Layout() {
   const [openMenu, setOpenMenu] = useState<Media | null>(null);
-  const navRef = useRef<HTMLElement>(null);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
   const location = useLocation();
+  const megaId = useId();
 
   useEffect(() => {
     setOpenMenu(null);
-  }, [location.pathname]);
+    setMobileOpen(false);
+  }, [location.pathname, location.hash]);
 
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (navRef.current && !navRef.current.contains(event.target as Node)) {
+    if (!openMenu && !mobileOpen) return;
+    function handlePointer(event: MouseEvent) {
+      if (headerRef.current && !headerRef.current.contains(event.target as Node)) {
         setOpenMenu(null);
+        setMobileOpen(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
+    function handleKey(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setOpenMenu(null);
+        setMobileOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
     };
-  }, []);
+  }, [openMenu, mobileOpen]);
+
+  const activeMedia = MEDIA_LIST.find(
+    (m) => location.pathname === m.path || TOOL_METAS.some((t) => t.media === m.media && t.path === location.pathname),
+  )?.media;
 
   return (
     <div className="layout">
-      <header className="header">
-        <div className="header-container">
-          <Link to="/" className="brand-link">
-            <img src="/assets/icon.svg" alt="Loconvert Logo" className="brand-logo" />
-            <span>Loconvert</span>
+      <a href="#main" className="skip-link">
+        Skip to content
+      </a>
+
+      <header className="site-header" ref={headerRef}>
+        <div className="container header-inner">
+          <Link to="/" className="brand" aria-label="Loconvert home">
+            <LogoMark />
+            <span className="brand-name">Loconvert</span>
           </Link>
 
-          <nav className="nav-actions" ref={navRef}>
-            <Link to="/file-converter" className="dropdown-trigger" style={{ textDecoration: 'none' }}>
-              <span>🔄 Convert any file</span>
-            </Link>
-            {MENUS.map(({ media, label }) => (
-              <NavMenu
-                key={media}
-                media={media}
-                label={label}
-                open={openMenu === media}
-                onToggle={() => setOpenMenu((prev) => (prev === media ? null : media))}
-                onClose={() => setOpenMenu(null)}
-              />
-            ))}
+          <nav className="primary-nav" aria-label="Tool categories">
+            {MEDIA_LIST.map(({ media, label }) => {
+              const open = openMenu === media;
+              return (
+                <button
+                  key={media}
+                  type="button"
+                  className={`nav-trigger ${open ? 'is-open' : ''} ${activeMedia === media ? 'is-active' : ''}`}
+                  aria-expanded={open}
+                  aria-controls={open ? megaId : undefined}
+                  onClick={() => setOpenMenu(open ? null : media)}
+                >
+                  {label}
+                  <ChevronDown aria-hidden="true" />
+                </button>
+              );
+            })}
+            <NavLink to="/file-converter" className={({ isActive }) => `nav-trigger ${isActive ? 'is-active' : ''}`}>
+              Convert any file
+            </NavLink>
           </nav>
+
+          <div className="header-actions">
+            <button type="button" className="search-trigger" onClick={() => openCommandPalette()}>
+              <Search aria-hidden="true" />
+              <span className="search-trigger-label">Search tools</span>
+              <span className="search-trigger-keys" aria-hidden="true">
+                <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd>
+                <Kbd>K</Kbd>
+              </span>
+            </button>
+            <ThemeToggle />
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon menu-toggle"
+              aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileOpen}
+              onClick={() => setMobileOpen((v) => !v)}
+            >
+              {mobileOpen ? <X /> : <Menu />}
+            </button>
+          </div>
         </div>
+
+        {openMenu && <MegaMenu media={openMenu} id={megaId} onClose={() => setOpenMenu(null)} />}
+        {mobileOpen && <MobileNav onClose={() => setMobileOpen(false)} />}
       </header>
 
-      <main className="main-content">
+      {(openMenu || mobileOpen) && <div className="nav-scrim" aria-hidden="true" />}
+
+      <main id="main" className="main-content">
         <Outlet />
       </main>
 
-      <footer className="footer">
-        <div className="footer-badge">🔒 Private &amp; Secure</div>
-        <p>100% on-device. Your files never leave your browser.</p>
+      <footer className="site-footer">
+        <div className="container footer-inner">
+          <div className="footer-brand">
+            <Link to="/" className="brand">
+              <LogoMark size={26} />
+              <span className="brand-name">Loconvert</span>
+            </Link>
+            <p>
+              Private file tools that run entirely in your browser. Your files are processed on your device and never uploaded.
+            </p>
+            <span className="badge badge-success">
+              <ShieldCheck />
+              No uploads · No accounts · No tracking
+            </span>
+          </div>
+
+          <div className="footer-col">
+            <div className="footer-col-title">Tools</div>
+            {MEDIA_LIST.map((m) => (
+              <Link key={m.media} to={m.path}>
+                {m.title}
+              </Link>
+            ))}
+          </div>
+
+          <div className="footer-col">
+            <div className="footer-col-title">Popular</div>
+            <Link to="/file-converter">File converter</Link>
+            <Link to="/image/compress">Compress image</Link>
+            <Link to="/pdf/merge">Merge PDF</Link>
+            <Link to="/video/trim">Trim video</Link>
+          </div>
+
+          <div className="footer-col">
+            <div className="footer-col-title">Project</div>
+            <Link to="/design">Design system</Link>
+          </div>
+        </div>
+        <div className="container footer-bottom">
+          <span>Powered by WebAssembly, WebCodecs and WebGPU.</span>
+          <span>
+            Press <Kbd>/</Kbd> to search
+          </span>
+        </div>
       </footer>
+
+      <CommandPalette />
     </div>
   );
 }

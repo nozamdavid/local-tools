@@ -198,7 +198,7 @@ export default function Base64Tool() {
               <FileDrop
                 accept="image/*"
                 label="Drop an image here to encode as Base64"
-                hint="Supports JPG, PNG, WEBP, SVG, GIF and more. 100% on-device."
+                hint="Supports JPG, PNG, WEBP, SVG, GIF and more."
                 onFiles={handleFiles}
               />
             ) : (

@@ -25,7 +25,7 @@
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
-  border: 1px solid var(--color-card-border);
+  border: 1px solid var(--border);
 }
 
 .paletteBarSegment {
@@ -42,8 +42,8 @@
 }
 
 .swatchCard {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
@@ -86,7 +86,7 @@
 .codeText {
   font-family: monospace;
   font-size: 0.85rem;
-  color: var(--color-text);
+  color: var(--text);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -94,8 +94,8 @@
 }
 
 .exportSection {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 1.25rem;
   display: flex;
@@ -124,11 +124,11 @@
   height: 120px;
   font-family: monospace;
   font-size: 0.85rem;
-  background: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   padding: 0.75rem;
-  color: var(--color-text);
+  color: var(--text);
   resize: vertical;
 }
 

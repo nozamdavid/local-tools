@@ -162,7 +162,7 @@ export default function PageNumbersTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Add customizable page numbers to your PDF pages. 100% on-device."
+          hint="Add customizable page numbers to your PDF pages."
           onFiles={handleFiles}
         />
       ) : (
@@ -254,7 +254,7 @@ export default function PageNumbersTool() {
                     <Field label="Text Color">
                       <input
                         type="color"
-                        style={{ width: '100%', height: '42px', padding: '2px', borderRadius: '4px', border: '1px solid var(--color-input-border)', background: 'var(--color-input-bg)', cursor: 'pointer' }}
+                        style={{ width: '100%', height: '42px', padding: '2px', borderRadius: '4px', border: '1px solid var(--input-border)', background: 'var(--input-bg)', cursor: 'pointer' }}
                         value={color}
                         onChange={(e) => setColor(e.target.value)}
                       />

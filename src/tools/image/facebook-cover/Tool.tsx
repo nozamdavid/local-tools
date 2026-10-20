@@ -46,7 +46,7 @@ export default function FacebookCoverTool() {
           file={file}
           onReset={() => setFile(null)}
           additionalInfo={
-            <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Facebook displays cover photos at 820×312 px on computers. On smartphones, Facebook displays a centered 640×360 crop, clipping the left and right ~90 px. Center your text and subjects inside the 640 px mobile safe zone.
             </div>
           }

@@ -10,7 +10,7 @@ export default function Tool() {
         expectedLabel: 'SVG',
         hasScaleOption: true,
         dropLabel: 'Choose SVG files or drag them here',
-        dropHint: 'Rasterise vector SVGs to crisp PNGs at any scale. 100% private.',
+        dropHint: 'Rasterise vector SVGs to crisp PNGs at any scale.',
       }}
     />
   );

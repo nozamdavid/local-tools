@@ -169,7 +169,7 @@ export default function AddSoundtrackTool() {
           <FileDrop
             accept="video/*"
             label="Choose a video or drag it here"
-            hint="Supports MP4, WebM, MOV, and more. 100% on-device."
+            hint="Supports MP4, WebM, MOV, and more."
             onFiles={handleVideoFile}
           />
         </div>

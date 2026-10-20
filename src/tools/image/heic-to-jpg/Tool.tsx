@@ -10,7 +10,7 @@ export default function Tool() {
         expectedFormats: ['heic', 'heif'],
         expectedLabel: 'HEIC/HEIF',
         dropLabel: 'Choose HEIC photos or drag them here',
-        dropHint: 'Convert Apple iPhone HEIC and HEIF photos to JPG. 100% private.',
+        dropHint: 'Convert Apple iPhone HEIC and HEIF photos to JPG.',
       }}
     />
   );
