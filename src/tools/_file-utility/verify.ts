@@ -18,6 +18,15 @@ export interface VerifyResult {
   message?: string;
 }
 
+function makeMockFile(bytes: Uint8Array) {
+  return {
+    size: bytes.length,
+    slice: (s: number, e: number) => ({
+      arrayBuffer: async () => bytes.slice(s, e).buffer,
+    }),
+  };
+}
+
 export async function runAllUtilityTests(): Promise<{ allPassed: boolean; results: VerifyResult[] }> {
   const results: VerifyResult[] = [];
 
@@ -140,28 +149,117 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
   assert(renamedResolved[1].newName === 'same_name_2.jpg', 'rename-resolve-2', 'Second colliding item gets unique suffix');
   assert(!renamedResolved[0].hasCollision && !renamedResolved[1].hasCollision, 'rename-resolved-no-collision', 'Auto-resolved items must clear collision flag');
 
-  // ZIP Byte Preservation Verification
+  // Regression Target: photo.jpg, photo.jpg, photo_2.jpg with mode: 'original', autoResolve: true
+  const repeatedPhotoFiles = [
+    { id: 'p1', name: 'photo.jpg', size: 101 },
+    { id: 'p2', name: 'photo.jpg', size: 102 },
+    { id: 'p3', name: 'photo_2.jpg', size: 103 },
+  ];
+  const resolvedRepeatedPhotos = computeBatchRename(repeatedPhotoFiles, {
+    mode: 'original',
+    baseName: '',
+    enableNumbering: false,
+    numberStart: 1,
+    numberPadding: 1,
+    numberPosition: 'suffix',
+    separator: '_',
+    preserveExtension: true,
+    caseTransform: 'none',
+    autoResolveCollisions: true,
+  });
+
+  const photoNewNames = resolvedRepeatedPhotos.map((r) => r.newName);
+  assert(photoNewNames[0] === 'photo.jpg', 'rename-repeated-1', `Expected photo.jpg, got ${photoNewNames[0]}`);
+  assert(photoNewNames[1] === 'photo_3.jpg', 'rename-repeated-2', `Expected photo_3.jpg to avoid photo_2 collision, got ${photoNewNames[1]}`);
+  assert(photoNewNames[2] === 'photo_2.jpg', 'rename-repeated-3', `Expected photo_2.jpg, got ${photoNewNames[2]}`);
+  const uniqueNamesSet = new Set(photoNewNames.map((n) => n.toLowerCase()));
+  assert(uniqueNamesSet.size === 3, 'rename-unique-all', 'All auto-resolved names must be unique');
+  assert(resolvedRepeatedPhotos.every((r) => !r.hasCollision), 'rename-repeated-no-collision', 'Collisions resolved');
+
+  // Case collision handling: photo.jpg vs PHOTO.jpg
+  const caseFiles = [
+    { id: 'c1', name: 'photo.jpg', size: 10 },
+    { id: 'c2', name: 'PHOTO.jpg', size: 20 },
+  ];
+  const caseColliding = computeBatchRename(caseFiles, {
+    mode: 'original',
+    baseName: '',
+    enableNumbering: false,
+    numberStart: 1,
+    numberPadding: 1,
+    numberPosition: 'suffix',
+    separator: '_',
+    preserveExtension: true,
+    caseTransform: 'none',
+    autoResolveCollisions: false,
+  });
+  assert(caseColliding[0].hasCollision && caseColliding[1].hasCollision, 'rename-case-collision-detected', 'Case-insensitive collision must be detected');
+
+  const caseResolved = computeBatchRename(caseFiles, {
+    mode: 'original',
+    baseName: '',
+    enableNumbering: false,
+    numberStart: 1,
+    numberPadding: 1,
+    numberPosition: 'suffix',
+    separator: '_',
+    preserveExtension: true,
+    caseTransform: 'none',
+    autoResolveCollisions: true,
+  });
+  assert(
+    caseResolved[0].newName.toLowerCase() !== caseResolved[1].newName.toLowerCase(),
+    'rename-case-resolved-unique',
+    `Case collision must resolve to distinct names: got ${caseResolved[0].newName} and ${caseResolved[1].newName}`
+  );
+
+  // Compound extensions collision handling: archive.tar.gz vs archive.tar.gz
+  const compoundFiles = [
+    { id: 't1', name: 'archive.tar.gz', size: 1000 },
+    { id: 't2', name: 'archive.tar.gz', size: 1000 },
+  ];
+  const compoundResolved = computeBatchRename(compoundFiles, {
+    mode: 'original',
+    baseName: '',
+    enableNumbering: false,
+    numberStart: 1,
+    numberPadding: 1,
+    numberPosition: 'suffix',
+    separator: '_',
+    preserveExtension: true,
+    caseTransform: 'none',
+    autoResolveCollisions: true,
+  });
+  assert(compoundResolved[0].newName === 'archive.tar.gz', 'rename-compound-1', 'First compound file keeps name');
+  assert(compoundResolved[1].newName === 'archive_2.tar.gz', 'rename-compound-2', `Expected archive_2.tar.gz, got ${compoundResolved[1].newName}`);
+
+  // ZIP Byte Preservation and Entry Count Verification
   const originalBytes1 = new Uint8Array([1, 2, 3, 4, 5, 42, 99]);
   const originalBytes2 = new Uint8Array([255, 254, 253, 200, 100]);
+  const originalBytes3 = new Uint8Array([7, 14, 21, 28, 35, 42]);
+  const batchBytes = [originalBytes1, originalBytes2, originalBytes3];
+
   const zip = new JSZip();
-  zip.file('renamed_1.bin', originalBytes1);
-  zip.file('renamed_2.bin', originalBytes2);
+  for (let i = 0; i < resolvedRepeatedPhotos.length; i++) {
+    zip.file(resolvedRepeatedPhotos[i].newName, batchBytes[i]);
+  }
   const zipBlob = await zip.generateAsync({ type: 'uint8array' });
 
   const readZip = await JSZip.loadAsync(zipBlob);
-  const extracted1 = await readZip.file('renamed_1.bin')?.async('uint8array');
-  const extracted2 = await readZip.file('renamed_2.bin')?.async('uint8array');
-  assert(Boolean(extracted1 && extracted2), 'zip-extraction', 'Files must be extracted from generated ZIP');
-  assert(
-    extracted1!.length === originalBytes1.length && extracted1!.every((b, i) => b === originalBytes1[i]),
-    'zip-byte-preservation-1',
-    'Zipped bytes for file 1 must match original byte-for-byte'
-  );
-  assert(
-    extracted2!.length === originalBytes2.length && extracted2!.every((b, i) => b === originalBytes2[i]),
-    'zip-byte-preservation-2',
-    'Zipped bytes for file 2 must match original byte-for-byte'
-  );
+  const zipEntries = Object.keys(readZip.files).filter((name) => !readZip.files[name].dir);
+  assert(zipEntries.length === 3, 'zip-entry-count', `Expected 3 entries in ZIP, got ${zipEntries.length}`);
+
+  for (let i = 0; i < resolvedRepeatedPhotos.length; i++) {
+    const entryName = resolvedRepeatedPhotos[i].newName;
+    const extracted = await readZip.file(entryName)?.async('uint8array');
+    assert(Boolean(extracted), `zip-entry-exists-${i}`, `Entry ${entryName} must exist in generated ZIP`);
+    const expectedBytes = batchBytes[i];
+    assert(
+      extracted!.length === expectedBytes.length && extracted!.every((b, idx) => b === expectedBytes[idx]),
+      `zip-byte-match-${i}`,
+      `Entry ${entryName} byte content must match verbatim`
+    );
+  }
 
   // -------------------------------------------------------------
   // 4. Valid vs Truncated minimal BMFF, RIFF, and EBML fixtures
@@ -176,13 +274,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
   bmffView.setUint32(32, 16, false);
   validBmff.set(new TextEncoder().encode('mdat'), 36);
 
-  const mockBmffFile = {
-    size: validBmff.length,
-    slice: (s: number, e: number) => ({
-      arrayBuffer: async () => validBmff.buffer.slice(s, e),
-    }),
-  };
-
+  const mockBmffFile = makeMockFile(validBmff);
   const bmffValidResult = await inspectBmff(mockBmffFile as any);
   assert(bmffValidResult.isValidContainer, 'bmff-valid-fixture', `Valid BMFF fixture must pass with 0 issues, got: ${bmffValidResult.issues.join(', ')}`);
   assert(Boolean(bmffValidResult.hasMoov && bmffValidResult.hasMdat), 'bmff-has-moov-mdat', 'Valid BMFF must find moov and mdat atoms');
@@ -192,12 +284,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
   truncBmffView.setUint32(0, 100, false);
   truncatedBmff.set(new TextEncoder().encode('ftyp'), 4);
 
-  const mockTruncBmffFile = {
-    size: truncatedBmff.length,
-    slice: (s: number, e: number) => ({
-      arrayBuffer: async () => truncatedBmff.buffer.slice(s, e),
-    }),
-  };
+  const mockTruncBmffFile = makeMockFile(truncatedBmff);
   const bmffTruncResult = await inspectBmff(mockTruncBmffFile as any);
   assert(!bmffTruncResult.isValidContainer, 'bmff-truncated-fixture', 'Truncated BMFF fixture must be flagged invalid');
   assert(bmffTruncResult.issues.some((iss) => iss.includes('exceeds total file size')), 'bmff-truncation-detected', 'Truncation message must be present');
@@ -208,12 +295,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
   new DataView(validRiff.buffer).setUint32(4, 4, true);
   validRiff.set(new TextEncoder().encode('AVI '), 8);
 
-  const mockRiffFile = {
-    size: validRiff.length,
-    slice: (s: number, e: number) => ({
-      arrayBuffer: async () => validRiff.buffer.slice(s, e),
-    }),
-  };
+  const mockRiffFile = makeMockFile(validRiff);
   const riffValidResult = await inspectRiff(mockRiffFile as any);
   assert(riffValidResult.isValidContainer, 'riff-valid-fixture', 'Valid minimal RIFF fixture must pass');
 
@@ -222,44 +304,88 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
   new DataView(truncRiff.buffer).setUint32(4, 1000, true);
   truncRiff.set(new TextEncoder().encode('AVI '), 8);
 
-  const mockTruncRiffFile = {
-    size: truncRiff.length,
-    slice: (s: number, e: number) => ({
-      arrayBuffer: async () => truncRiff.buffer.slice(s, e),
-    }),
-  };
+  const mockTruncRiffFile = makeMockFile(truncRiff);
   const riffTruncResult = await inspectRiff(mockTruncRiffFile as any);
   assert(!riffTruncResult.isValidContainer, 'riff-truncated-fixture', 'Truncated RIFF fixture must be flagged invalid');
   assert(riffTruncResult.issues.some((iss) => iss.includes('File truncated')), 'riff-truncation-detected', 'RIFF truncation issue must be reported');
 
-  // EBML
+  // EBML Tests with bytes.slice(s, e).buffer fixtures
+  // 4a. Minimal valid Segment
   const validEbml = new Uint8Array([
-    0x1a, 0x45, 0xdf, 0xa3,
-    0x82, 0x42, 0x86,
-    0x18, 0x53, 0x80, 0x67,
-    0x84, 0x01, 0x02, 0x03, 0x04,
+    0x1a, 0x45, 0xdf, 0xa3, // EBML Header ID
+    0x82, 0x42, 0x86,       // Header size VINT = 2, body = 0x42 0x86
+    0x18, 0x53, 0x80, 0x67, // Segment ID
+    0x84, 0x01, 0x02, 0x03, 0x04, // Segment size VINT = 4, body = 4 bytes
   ]);
-  const mockEbmlFile = {
-    size: validEbml.length,
-    slice: (s: number, e: number) => ({
-      arrayBuffer: async () => validEbml.buffer.slice(s, e),
-    }),
-  };
+  const mockEbmlFile = makeMockFile(validEbml);
   const ebmlValidResult = await inspectEbml(mockEbmlFile as any);
   assert(ebmlValidResult.isValidContainer, 'ebml-valid-fixture', `Valid EBML fixture must pass, got: ${ebmlValidResult.issues.join(', ')}`);
 
+  // 4b. Allowed EBML Void before Segment (bounded skip)
+  const validEbmlWithVoid = new Uint8Array([
+    0x1a, 0x45, 0xdf, 0xa3, // EBML Header ID
+    0x82, 0x42, 0x86,       // Header size VINT = 2, body = 2 bytes
+    0xec, 0x82, 0x00, 0x00, // EBML Void ID (0xec), size VINT = 2, payload = 2 bytes
+    0x18, 0x53, 0x80, 0x67, // Segment ID
+    0x84, 0x01, 0x02, 0x03, 0x04, // Segment size VINT = 4, body = 4 bytes
+  ]);
+  const mockEbmlVoidFile = makeMockFile(validEbmlWithVoid);
+  const ebmlVoidResult = await inspectEbml(mockEbmlVoidFile as any);
+  assert(ebmlVoidResult.isValidContainer, 'ebml-allowed-void', `EBML with allowed Void before Segment must pass, got: ${ebmlVoidResult.issues.join(', ')}`);
+  assert(ebmlVoidResult.atoms.some((a) => a.type === 'Void') && ebmlVoidResult.atoms.some((a) => a.type === 'Segment'), 'ebml-void-atoms', 'Both Void and Segment atoms must be scanned');
+
+  // 4c. Absent Segment ID (file truncated after EBML header)
+  const absentSegEbml = new Uint8Array([
+    0x1a, 0x45, 0xdf, 0xa3,
+    0x82, 0x42, 0x86,
+  ]);
+  const mockAbsentSeg = makeMockFile(absentSegEbml);
+  const ebmlAbsentResult = await inspectEbml(mockAbsentSeg as any);
+  assert(!ebmlAbsentResult.isValidContainer, 'ebml-absent-seg', 'File truncated before Segment ID must be flagged invalid');
+  assert(ebmlAbsentResult.issues.length > 0, 'ebml-absent-seg-issues', 'Must emit issue on missing Segment');
+
+  // 4d. Truncated Segment ID (only 2 bytes of ID)
+  const truncIdEbml = new Uint8Array([
+    0x1a, 0x45, 0xdf, 0xa3,
+    0x82, 0x42, 0x86,
+    0x18, 0x53, // Only 2 bytes of Segment ID
+  ]);
+  const mockTruncId = makeMockFile(truncIdEbml);
+  const ebmlTruncIdResult = await inspectEbml(mockTruncId as any);
+  assert(!ebmlTruncIdResult.isValidContainer, 'ebml-truncated-id', 'Truncated 4-byte Segment ID must be flagged invalid');
+  assert(ebmlTruncIdResult.issues.some((iss) => iss.includes('Segment ID')), 'ebml-truncated-id-issue', 'Must emit concrete issue on truncated Segment ID');
+
+  // 4e. Invalid Segment ID (wrong 4-byte ID)
+  const wrongIdEbml = new Uint8Array([
+    0x1a, 0x45, 0xdf, 0xa3,
+    0x82, 0x42, 0x86,
+    0x11, 0x22, 0x33, 0x44, // Wrong ID
+    0x84, 0x01, 0x02, 0x03, 0x04,
+  ]);
+  const mockWrongId = makeMockFile(wrongIdEbml);
+  const ebmlWrongIdResult = await inspectEbml(mockWrongId as any);
+  assert(!ebmlWrongIdResult.isValidContainer, 'ebml-wrong-id', 'Wrong Segment ID must be flagged invalid');
+  assert(ebmlWrongIdResult.issues.some((iss) => iss.includes('Expected Segment ID')), 'ebml-wrong-id-issue', 'Must emit concrete issue on wrong Segment ID');
+
+  // 4f. Missing Segment size VINT
+  const noVintEbml = new Uint8Array([
+    0x1a, 0x45, 0xdf, 0xa3,
+    0x82, 0x42, 0x86,
+    0x18, 0x53, 0x80, 0x67, // Segment ID with NO following size VINT
+  ]);
+  const mockNoVint = makeMockFile(noVintEbml);
+  const ebmlNoVintResult = await inspectEbml(mockNoVint as any);
+  assert(!ebmlNoVintResult.isValidContainer, 'ebml-no-vint', 'Missing Segment size VINT must be flagged invalid');
+  assert(ebmlNoVintResult.issues.some((iss) => iss.includes('size field') || iss.includes('Segment')), 'ebml-no-vint-issue', 'Must emit concrete issue on missing size VINT');
+
+  // 4g. Declared Segment size exceeds file size
   const truncEbml = new Uint8Array([
     0x1a, 0x45, 0xdf, 0xa3,
     0x82, 0x42, 0x86,
     0x18, 0x53, 0x80, 0x67,
     0xe4, 0x01, 0x02,
   ]);
-  const mockTruncEbmlFile = {
-    size: truncEbml.length,
-    slice: (s: number, e: number) => ({
-      arrayBuffer: async () => truncEbml.buffer.slice(s, e),
-    }),
-  };
+  const mockTruncEbmlFile = makeMockFile(truncEbml);
   const ebmlTruncResult = await inspectEbml(mockTruncEbmlFile as any);
   assert(!ebmlTruncResult.isValidContainer, 'ebml-truncated-fixture', 'Truncated EBML fixture must be flagged invalid');
   assert(ebmlTruncResult.issues.some((iss) => iss.includes('exceeds total file size')), 'ebml-truncation-detected', 'EBML truncation detected');

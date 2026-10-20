@@ -261,7 +261,12 @@ export async function inspectEbml(
 
   const ebmlHeaderSize = ebmlHeaderSizeVint.value;
   offset += ebmlHeaderSizeVint.length;
-  atoms.push({ type: 'EBML_HEADER', offset: 0, size: 4 + ebmlHeaderSizeVint.length + ebmlHeaderSize, headerSize: 4 + ebmlHeaderSizeVint.length });
+  atoms.push({
+    type: 'EBML_HEADER',
+    offset: 0,
+    size: 4 + ebmlHeaderSizeVint.length + ebmlHeaderSize,
+    headerSize: 4 + ebmlHeaderSizeVint.length,
+  });
 
   // Move past EBML header to Segment
   const segmentStart = offset + ebmlHeaderSize;
@@ -277,35 +282,115 @@ export async function inspectEbml(
     };
   }
 
-  // Read Segment ID and Size
-  const segmentSlice = file.slice(segmentStart, Math.min(segmentStart + 64, fileSize));
-  const segmentBuf = await segmentSlice.arrayBuffer();
-  const segBytes = new Uint8Array(segmentBuf);
+  let currentOffset = segmentStart;
+  let foundSegment = false;
+  let skips = 0;
+  const maxSkips = 50;
 
-  if (segBytes.length >= 4) {
-    // Segment ID is 0x18 0x53 0x80 0x67
-    if (segBytes[0] === 0x18 && segBytes[1] === 0x53 && segBytes[2] === 0x80 && segBytes[3] === 0x67) {
-      const segSizeVint = readEbmlVint(segBytes, 4);
-      if (segSizeVint) {
-        atoms.push({
-          type: 'Segment',
-          offset: segmentStart,
-          size: segSizeVint.isUnknown ? fileSize - segmentStart : segSizeVint.value,
-          headerSize: 4 + segSizeVint.length,
-        });
+  while (currentOffset < fileSize && skips < maxSkips) {
+    skips++;
+    const slice = file.slice(currentOffset, Math.min(currentOffset + 64, fileSize));
+    const buf = await slice.arrayBuffer();
+    const sliceBytes = new Uint8Array(buf);
 
-        if (!segSizeVint.isUnknown) {
-          const totalDeclaredSegmentEnd = segmentStart + 4 + segSizeVint.length + segSizeVint.value;
-          if (totalDeclaredSegmentEnd > fileSize) {
-            issues.push(
-              `Declared EBML Segment end (${totalDeclaredSegmentEnd} bytes) exceeds total file size (${fileSize} bytes). File is truncated by ${totalDeclaredSegmentEnd - fileSize} bytes!`
-            );
-          }
+    if (sliceBytes.length === 0) {
+      issues.push(`Unexpected end of file at offset ${currentOffset}.`);
+      break;
+    }
+
+    // Bounded skip for legitimately allowed EBML Void (0xEC)
+    if (sliceBytes[0] === 0xec) {
+      const voidSizeVint = readEbmlVint(sliceBytes, 1);
+      if (!voidSizeVint) {
+        issues.push(`Truncated EBML Void element size at offset ${currentOffset}.`);
+        break;
+      }
+      const totalVoidSize = 1 + voidSizeVint.length + voidSizeVint.value;
+      if (currentOffset + totalVoidSize > fileSize) {
+        issues.push(`EBML Void element at offset ${currentOffset} declares size ${voidSizeVint.value} bytes extending past file end (${fileSize} bytes).`);
+        break;
+      }
+      atoms.push({
+        type: 'Void',
+        offset: currentOffset,
+        size: totalVoidSize,
+        headerSize: 1 + voidSizeVint.length,
+      });
+      currentOffset += totalVoidSize;
+      continue;
+    }
+
+    // Bounded skip for legitimately allowed EBML CRC-32 (0xBF)
+    if (sliceBytes[0] === 0xbf) {
+      const crcSizeVint = readEbmlVint(sliceBytes, 1);
+      if (!crcSizeVint) {
+        issues.push(`Truncated EBML CRC-32 element size at offset ${currentOffset}.`);
+        break;
+      }
+      const totalCrcSize = 1 + crcSizeVint.length + crcSizeVint.value;
+      if (currentOffset + totalCrcSize > fileSize) {
+        issues.push(`EBML CRC-32 element at offset ${currentOffset} declares size ${crcSizeVint.value} bytes extending past file end (${fileSize} bytes).`);
+        break;
+      }
+      atoms.push({
+        type: 'CRC-32',
+        offset: currentOffset,
+        size: totalCrcSize,
+        headerSize: 1 + crcSizeVint.length,
+      });
+      currentOffset += totalCrcSize;
+      continue;
+    }
+
+    // Must be Segment element (0x18 0x53 0x80 0x67)
+    if (sliceBytes.length < 4) {
+      issues.push(
+        `Incomplete Segment ID at byte offset ${currentOffset}: expected 4 bytes (0x18538067), only ${sliceBytes.length} available.`
+      );
+      break;
+    }
+
+    if (
+      sliceBytes[0] === 0x18 &&
+      sliceBytes[1] === 0x53 &&
+      sliceBytes[2] === 0x80 &&
+      sliceBytes[3] === 0x67
+    ) {
+      foundSegment = true;
+      const segSizeVint = readEbmlVint(sliceBytes, 4);
+      if (!segSizeVint) {
+        issues.push(`Missing or truncated Segment size field at offset ${currentOffset + 4}.`);
+        break;
+      }
+
+      atoms.push({
+        type: 'Segment',
+        offset: currentOffset,
+        size: segSizeVint.isUnknown ? fileSize - currentOffset : segSizeVint.value,
+        headerSize: 4 + segSizeVint.length,
+      });
+
+      if (!segSizeVint.isUnknown) {
+        const totalDeclaredSegmentEnd = currentOffset + 4 + segSizeVint.length + segSizeVint.value;
+        if (totalDeclaredSegmentEnd > fileSize) {
+          issues.push(
+            `Declared EBML Segment end (${totalDeclaredSegmentEnd} bytes) exceeds total file size (${fileSize} bytes). File is truncated by ${totalDeclaredSegmentEnd - fileSize} bytes!`
+          );
         }
       }
+      break;
     } else {
-      warnings.push(`Expected Segment ID 0x18538067 at offset ${segmentStart}, found ${Array.from(segBytes.slice(0, 4)).map((b) => b.toString(16).padStart(2, '0')).join(' ')}.`);
+      issues.push(
+        `Expected Segment ID 0x18538067 at offset ${currentOffset}, found ${Array.from(sliceBytes.slice(0, Math.min(4, sliceBytes.length)))
+          .map((b) => b.toString(16).padStart(2, '0'))
+          .join(' ')}.`
+      );
+      break;
     }
+  }
+
+  if (!foundSegment && issues.length === 0) {
+    issues.push('No EBML Segment element found in file.');
   }
 
   return {

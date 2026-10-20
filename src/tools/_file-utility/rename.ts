@@ -85,7 +85,7 @@ export function parseFileName(filename: string): ParsedFileName {
 export function sanitizeFileName(name: string, fallback = 'file'): { name: string; changed: boolean } {
   let cleaned = name
     // Replace directory separators and null bytes
-    .replace(/[/\\]/g, '_')
+    .replace(/[/\\\\]/g, '_')
     // Remove control characters (0-31)
     .replace(/[\x00-\x1f\x7f]/g, '')
     // Replace illegal characters for cross-platform safety
@@ -201,24 +201,41 @@ export function computeBatchRename(
   const nameCounts = new Map<string, number>();
 
   for (const entry of preliminary) {
-    const count = (nameCounts.get(entry.preliminaryName.toLowerCase()) || 0) + 1;
-    nameCounts.set(entry.preliminaryName.toLowerCase(), count);
+    const lower = entry.preliminaryName.toLowerCase();
+    nameCounts.set(lower, (nameCounts.get(lower) || 0) + 1);
   }
 
-  const seenInResolution = new Map<string, number>();
+  // Reserve all preliminary names case-insensitively so that auto-resolution
+  // does not generate a suffix that collides with another preliminary item in the batch.
+  const reservedPreliminaryNames = new Set<string>();
+  for (const entry of preliminary) {
+    reservedPreliminaryNames.add(entry.preliminaryName.toLowerCase());
+  }
+
+  const assignedNames = new Set<string>();
 
   for (const entry of preliminary) {
     const rawLower = entry.preliminaryName.toLowerCase();
     const isColliding = (nameCounts.get(rawLower) || 0) > 1;
 
     let resolvedName = entry.preliminaryName;
-    if (isColliding && config.autoResolveCollisions) {
-      const idx = (seenInResolution.get(rawLower) || 0) + 1;
-      seenInResolution.set(rawLower, idx);
-
-      if (idx > 1) {
+    if (config.autoResolveCollisions) {
+      if (assignedNames.has(rawLower)) {
         const parsed = parseFileName(entry.preliminaryName);
-        resolvedName = `${parsed.base}_${idx}${parsed.ext}`;
+        let idx = 2;
+        let candidate = `${parsed.base}_${idx}${parsed.ext}`;
+        let candidateLower = candidate.toLowerCase();
+
+        while (assignedNames.has(candidateLower) || reservedPreliminaryNames.has(candidateLower)) {
+          idx++;
+          candidate = `${parsed.base}_${idx}${parsed.ext}`;
+          candidateLower = candidate.toLowerCase();
+        }
+
+        resolvedName = candidate;
+        assignedNames.add(candidateLower);
+      } else {
+        assignedNames.add(rawLower);
       }
     }
 

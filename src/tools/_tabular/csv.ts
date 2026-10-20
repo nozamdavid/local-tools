@@ -22,6 +22,9 @@ const COMMON_DELIMITERS = [',', '\t', ';', '|'] as const;
  * Analyzes non-empty lines outside quotes.
  */
 export function detectDelimiter(text: string, candidates: readonly string[] = COMMON_DELIMITERS): string {
+  if (text.charCodeAt(0) === 0xfeff) {
+    text = text.slice(1);
+  }
   if (!text.trim()) return ',';
 
   // Take up to 20 non-empty lines for sampling
@@ -75,6 +78,13 @@ export function detectDelimiter(text: string, candidates: readonly string[] = CO
  * Supports arbitrary delimiters, quoted fields, embedded newlines, and escaped quotes.
  */
 export function parseCsv(text: string, options: CsvParseOptions = {}): string[][] {
+  if (text.charCodeAt(0) === 0xfeff) {
+    text = text.slice(1);
+  }
+  if (text.length === 0) {
+    return [];
+  }
+
   const delimiter = options.delimiter && options.delimiter.length > 0 ? options.delimiter[0] : ',';
   const trimFields = options.trimFields ?? false;
 
@@ -82,6 +92,8 @@ export function parseCsv(text: string, options: CsvParseOptions = {}): string[][
   let currentRow: string[] = [];
   let currentField = '';
   let inQuotes = false;
+  let fieldQuoted = false;
+  let rowStarted = false;
   let i = 0;
   const len = text.length;
 
@@ -112,55 +124,65 @@ export function parseCsv(text: string, options: CsvParseOptions = {}): string[][
     // Outside quotes
     if (char === '"') {
       inQuotes = true;
+      fieldQuoted = true;
+      rowStarted = true;
       i++;
       continue;
     }
 
     if (char === delimiter) {
-      currentRow.push(trimFields ? currentField.trim() : currentField);
+      currentRow.push(trimFields && !fieldQuoted ? currentField.trim() : currentField);
       currentField = '';
+      fieldQuoted = false;
+      rowStarted = true;
       i++;
       continue;
     }
 
     if (char === '\r') {
-      // Check for \r\n
       if (i + 1 < len && text[i + 1] === '\n') {
         i++;
       }
-      currentRow.push(trimFields ? currentField.trim() : currentField);
-      currentField = '';
-      rows.push(currentRow);
+      if (rowStarted || currentRow.length > 0) {
+        currentRow.push(trimFields && !fieldQuoted ? currentField.trim() : currentField);
+        rows.push(currentRow);
+      } else {
+        // Blank line: retain intended blank-line policy
+        rows.push(['']);
+      }
       currentRow = [];
+      currentField = '';
+      fieldQuoted = false;
+      rowStarted = false;
       i++;
       continue;
     }
 
     if (char === '\n') {
-      currentRow.push(trimFields ? currentField.trim() : currentField);
-      currentField = '';
-      rows.push(currentRow);
+      if (rowStarted || currentRow.length > 0) {
+        currentRow.push(trimFields && !fieldQuoted ? currentField.trim() : currentField);
+        rows.push(currentRow);
+      } else {
+        // Blank line: retain intended blank-line policy
+        rows.push(['']);
+      }
       currentRow = [];
+      currentField = '';
+      fieldQuoted = false;
+      rowStarted = false;
       i++;
       continue;
     }
 
     currentField += char;
+    rowStarted = true;
     i++;
   }
 
   // Push last field and row if there's remaining content or an open row
-  if (currentField.length > 0 || currentRow.length > 0) {
-    currentRow.push(trimFields ? currentField.trim() : currentField);
+  if (rowStarted || currentRow.length > 0 || currentField.length > 0 || fieldQuoted) {
+    currentRow.push(trimFields && !fieldQuoted ? currentField.trim() : currentField);
     rows.push(currentRow);
-  }
-
-  // If the last row is entirely a single empty string caused by a trailing newline, drop it
-  if (rows.length > 0) {
-    const lastRow = rows[rows.length - 1];
-    if (lastRow.length === 1 && lastRow[0] === '' && text.endsWith('\n')) {
-      rows.pop();
-    }
   }
 
   return rows;
@@ -226,38 +248,42 @@ export function csvToRecords(rows: string[][], options: CsvToRecordsOptions = {}
       const colName = headers[c];
       const cellVal = c < row.length ? row[c] : '';
 
+      let value: unknown;
       if (cellVal === '') {
-        record[colName] = '';
-        continue;
-      }
-
-      if (!parseNumbersAndBooleans) {
+        value = '';
+      } else if (!parseNumbersAndBooleans) {
         // Keep string verbatim
-        record[colName] = cellVal;
-        continue;
-      }
-
-      // If user enabled parseNumbersAndBooleans:
-      // Check for leading zero: e.g. "0123", "007", "00"
-      const hasLeadingZero = preserveLeadingZeros && /^0\d+/.test(cellVal);
-
-      if (hasLeadingZero) {
-        // Always preserve strings with leading zeros (postal codes, phone numbers, IDs)
-        record[colName] = cellVal;
-      } else if (cellVal.toLowerCase() === 'true') {
-        record[colName] = true;
-      } else if (cellVal.toLowerCase() === 'false') {
-        record[colName] = false;
-      } else if (cellVal.toLowerCase() === 'null') {
-        record[colName] = null;
+        value = cellVal;
       } else {
-        const num = Number(cellVal);
-        if (!isNaN(num) && cellVal.trim() !== '') {
-          record[colName] = num;
+        // If user enabled parseNumbersAndBooleans:
+        // Check for leading zero: e.g. "0123", "007", "00"
+        const hasLeadingZero = preserveLeadingZeros && /^0\d+/.test(cellVal);
+
+        if (hasLeadingZero) {
+          // Always preserve strings with leading zeros (postal codes, phone numbers, IDs)
+          value = cellVal;
+        } else if (cellVal.toLowerCase() === 'true') {
+          value = true;
+        } else if (cellVal.toLowerCase() === 'false') {
+          value = false;
+        } else if (cellVal.toLowerCase() === 'null') {
+          value = null;
         } else {
-          record[colName] = cellVal;
+          const num = Number(cellVal);
+          if (!isNaN(num) && cellVal.trim() !== '') {
+            value = num;
+          } else {
+            value = cellVal;
+          }
         }
       }
+
+      Object.defineProperty(record, colName, {
+        value,
+        writable: true,
+        enumerable: true,
+        configurable: true,
+      });
     }
     return record;
   });
