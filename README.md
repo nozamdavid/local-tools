@@ -18,7 +18,7 @@
   - **Web & Geo Formats:** MHTML to HTML unpacker, GPX ↔ KML GPS track converter.
 - **🖼️ Image Tools & Modern Codecs:**
   - **JPEG XL (JXL):** Lossless and quality-controlled lossy encode/decode in a dedicated Web Worker with in-browser preview fallback.
-  - **AVIF ↔ PNG / JPG / WebP:** On-device image conversion, resizing, and compression (AVIF encoding is browser-dependent, requiring native canvas support).
+  - **AVIF ↔ PNG / JPG / WebP:** On-device image conversion, resizing, and compression with native canvas encoding and lazy bundled local `@jsquash/avif` WASM fallback.
   - **Vector & Icons:** Image to SVG (embedded raster and pixel-vector shapes), Icon Converter (multi-resolution `.ico` bundles and frame extraction).
   - **Editing & Privacy:** Signature Cleaner (transparent ink extraction with threshold/detail controls and stamp color protection), Blur & Solid Redaction (permanent irreversible blackout).
 - **📄 PDF & Office Suite:**
@@ -38,11 +38,11 @@
 - **Codecs & Runtimes:**
   - FFmpeg WASM (`@ffmpeg/ffmpeg`)
   - JPEG XL (`@jsquash/jxl`)
+  - AVIF (`@jsquash/avif`)
   - QPDF WASM (`@neslinesli93/qpdf-wasm`)
   - PDF manipulation (`pdf-lib`, `pdfjs-dist`)
   - On-device AI (`@huggingface/transformers` ONNX WASM & WebGPU)
-  - OCR (`tesseract.js`)
-  - Office formats (`docx`, `docx-preview`, `exceljs`, `pptx-preview`)
+  - OCR (`tesseract.js`)\n  - Office formats (`docx`, `docx-preview`, `exceljs`, `pptx-preview`)
 
 ---
 
@@ -68,5 +68,6 @@ npx tsc -b
 
 - [Tool Coverage & Source Mapping](docs/tool-coverage.md)
 - [Final Integration & Verification Report](docs/final-verification.md)
+- [AVIF Fallback Verification Report](docs/avif-verification.md)
 - [PDF Security & Sandbox Verification](docs/pdf-verification.md)
 - [Architecture & Development Guidelines](CONTEXT.md)

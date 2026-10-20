@@ -11,17 +11,34 @@ import type { ConvertOptions, SvgScale } from './types';
 
 let avifSupportPromise: Promise<boolean> | null = null;
 
-/** Tests if the current browser can encode 1x1 canvas to AVIF */
+async function checkNativeAvifSupport(): Promise<boolean> {
+  if (typeof document === 'undefined') return false;
+  try {
+    const canvas = document.createElement('canvas');
+    canvas.width = 1;
+    canvas.height = 1;
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/avif')
+    );
+    return !!blob && blob.type === 'image/avif' && blob.size > 0;
+  } catch {
+    return false;
+  }
+}
+
+/** Tests if AVIF encoding is available via native browser support or local WASM fallback */
 export function checkAvifSupport(): Promise<boolean> {
   if (!avifSupportPromise) {
     avifSupportPromise = (async () => {
       if (typeof document === 'undefined') return false;
       try {
-        const canvas = document.createElement('canvas');
-        canvas.width = 1;
-        canvas.height = 1;
-        const blob = await canvasToBlob(canvas, 'image/avif');
-        return blob.type === 'image/avif';
+        const native = await checkNativeAvifSupport();
+        if (native) return true;
+        // Fallback: bundled WASM encoder is available if WebAssembly is supported
+        return (
+          typeof WebAssembly === 'object' &&
+          typeof WebAssembly.compile === 'function'
+        );
       } catch {
         return false;
       }
@@ -132,8 +149,13 @@ export async function convertSingleImage(options: ConvertOptions): Promise<Blob>
       return await canvasToBlob(renderCanvas, 'image/png');
     case 'webp':
       return await canvasToBlob(renderCanvas, 'image/webp', clampedQuality);
-    case 'avif':
+    case 'avif': {
+      if (lossless) {
+        const { encodeAvifCanvas } = await import('../../../lib/avif');
+        return await encodeAvifCanvas(renderCanvas, { lossless: true, quality: 100 });
+      }
       return await canvasToBlob(renderCanvas, 'image/avif', clampedQuality);
+    }
     case 'bmp':
       return encodeBmp(renderCanvas);
     case 'gif':

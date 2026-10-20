@@ -92,7 +92,7 @@ export function imageToCanvas(
 
 /**
  * Encodes a canvas. JPEG has no alpha, so transparent pixels are flattened onto white first.
- * Rejects when the browser cannot encode the requested type (for example AVIF).
+ * Rejects when the browser cannot encode the requested type. Falls back to lazy WASM worker for AVIF.
  */
 export async function canvasToBlob(canvas: HTMLCanvasElement, mime: EncodableMime, quality?: number): Promise<Blob> {
   let source = canvas;
@@ -107,8 +107,19 @@ export async function canvasToBlob(canvas: HTMLCanvasElement, mime: EncodableMim
     ctx.drawImage(canvas, 0, 0);
   }
 
-  const blob = await new Promise<Blob | null>((resolve) => source.toBlob(resolve, mime, quality));
-  if (!blob || blob.type !== mime) {
+  let blob: Blob | null = null;
+  try {
+    blob = await new Promise<Blob | null>((resolve) => source.toBlob(resolve, mime, quality));
+  } catch {
+    blob = null;
+  }
+
+  if (!blob || blob.type !== mime || blob.size === 0) {
+    if (mime === 'image/avif') {
+      const { encodeAvifCanvas } = await import('./avif');
+      const q = quality !== undefined ? Math.max(1, Math.min(100, Math.round(quality * 100))) : 90;
+      return encodeAvifCanvas(canvas, { quality: q });
+    }
     const name = mime.replace('image/', '').toUpperCase();
     throw new Error(`This browser cannot encode ${name} images. Try a different output format or browser.`);
   }

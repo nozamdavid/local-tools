@@ -14,7 +14,7 @@ Loconvert processes supported files locally in the user's web browser using clie
 | # | Source Tool | Loconvert Tool ID | Route | Registration / Status | Verified Behavior | Limitations & Technical Details |
 |---|---|---|---|---|---|---|
 | 1 | **Video to MP3** | `audio-extract` | `/video/audio-extract` | Existing tool in `video-audio` category (`video('audio-extract', 'Video to MP3 & Audio Extract', ...)`) | Extracts audio tracks from MP4, WebM, MOV, MKV, AVI files into MP3, AAC, or WAV using FFmpeg WASM. | Requires browser WebAssembly support. Bitrate selection up to 320 kbps. |
-| 2 | **AVIF ↔ PNG** | `img-convert` & `file-converter` | `/image/convert`, `/file-converter` | Existing tool in `image-convert` category and promoted `file-converter` | Bidirectional conversion between supported formats (AVIF, PNG, JPG, WebP, JXL, BMP, GIF) via Canvas API and local codecs (WASM for JXL). | AVIF encoding relies on browser native canvas `toBlob('image/avif')` support across both dedicated and universal converter tools; browsers without native AVIF canvas encoding cannot export AVIF (no standalone WASM fallback). |
+| 2 | **AVIF ↔ PNG** | `img-convert` & `file-converter` | `/image/convert`, `/file-converter` | Existing tool in `image-convert` category and promoted `file-converter` | Bidirectional conversion between supported formats (AVIF, PNG, JPG, WebP, JXL, BMP, GIF) via Canvas API, native encoder, and local WASM codecs (WASM fallback for AVIF, WASM for JXL). | AVIF encoding prioritizes browser native canvas `toBlob('image/avif')` with an automatic lazy bundled local `@jsquash/avif` WASM worker fallback. Decoding utilizes the browser native image engine. |
 | 3 | **MHTML to HTML** | `mhtml-to-html` | `/mhtml-to-html` | Registered in `file-convert` (`fileTool('mhtml-to-html', ...)`) | Parses RFC 2557 / MIME multipart web archives (`.mhtml`, `.mht`), extracts HTML and embedded assets (images, CSS, fonts), and repacks into a standalone self-contained HTML file. | Embedded active scripts are neutralized to maintain client-side security. |
 | 4 | **GPX ↔ KML** | `gpx-kml` | `/gpx-kml` | Registered in `file-convert` (`fileTool('gpx-kml', ...)`) | Bidirectional conversion between GPS Exchange Format (`.gpx`) and Keyhole Markup Language (`.kml`). Parses waypoints, tracks (`<trk>`), and routes (`<rte>`). | Supports standard GPS coordinates (WGS84). 3D altitude preserved when available. |
 | 5 | **Image to SVG** | `img-image-to-svg` | `/image/image-to-svg` | Registered in `image-convert` (`image('image-to-svg', ...)`) | Converts raster images (PNG, JPG, WebP) into vector SVG either via clean base64 data raster encapsulation or pixel geometric vector shape generation (`<rect>` runs). | Pixel vector mode optimized for pixel art and icons up to 128×128 px to avoid oversized SVG DOM. |
@@ -44,7 +44,7 @@ Loconvert processes supported files locally in the user's web browser using clie
 - **Supported Families:** Images, Videos, Audio, Documents (DOCX, PDF), Data & Text (JSON, CSV, TSV).
 - **Format Detection:** Inspects true binary magic bytes independently of file extensions via `src/tools/file-converter/detect.ts`.
 - **Office Document Limitations:** Document conversions (such as DOCX to PDF/images) render client-side via DOM and canvas elements (`docx-preview`), which has inherent layout and font rendering constraints compared to native desktop office applications.
-- **AVIF Encoding Support:** Encoding to AVIF relies entirely on native browser canvas `toBlob('image/avif')` support without a standalone WASM encoder fallback.
+- **AVIF Encoding Support:** Prioritizes native browser canvas `toBlob('image/avif')` encoding and transparently falls back to the lazy bundled local `@jsquash/avif` WebAssembly worker (`src/lib/avif.worker.ts`) when native encoding is unavailable or unsupported.
 
 ---
 
@@ -57,8 +57,17 @@ Loconvert processes supported files locally in the user's web browser using clie
 
 ---
 
+## AVIF Implementation Notes
+- **Local WASM Stack:** Uses `@jsquash/avif` with dedicated `avif_enc.wasm` compiled binary.
+- **Worker Isolation:** Encapsulated inside `src/lib/avif.worker.ts` with serialized job queue (`AvifClient`) to prevent UI thread blocking and memory spikes.
+- **Native-First with WASM Fallback:** Native browser canvas `toBlob('image/avif')` is tried first. If unavailable, rejected, or producing null/invalid MIME, `canvasToBlob` in `src/lib/image.ts` lazily invokes `encodeAvifCanvas`.
+- **Zero Eager Overhead:** Codec availability checks in `convert.ts` verify capabilities without eagerly downloading the WASM binary on unrelated file tools.
+
+---
+
 ## Verification Evidence
 - **Browser Module Test Suites:**
+  - `src/lib/avif.verify.ts`: 6/6 tests passed (WASM asset loading, signature detection, 2x2 RGBA roundtrip with alpha preservation, forced native failure fallback, worker pipeline, universal converter matrix).
   - `src/lib/jxl.verify.ts`: 8/8 tests passed (WASM asset loading, signature detection, lossless & lossy roundtrip, container format, worker pipeline).
   - `src/tools/image/_utility/verify.ts`: 24/24 tests passed (SVG embedding, pixel SVG runs, ICO frames & masks, signature cleaning, solid redaction).
   - `src/tools/_tabular/verify.ts`: Passed (CSV parsing, quoted multiline cells, delimiter detection, JSON conversion).
