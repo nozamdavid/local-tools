@@ -1,0 +1,90 @@
+import type { AiModelInfo, TranslationPair } from './types';
+
+export const SUMMARIZE_MODELS: AiModelInfo[] = [
+  {
+    id: 'Xenova/distilbart-cnn-6-6',
+    name: 'DistilBART CNN 6-6',
+    sizeEstimate: '~284 MB',
+    sizeBytes: 284 * 1024 * 1024,
+    description: 'High-quality abstractive summarization. Recommended for most documents.',
+    task: 'summarization',
+    maxTokens: 1024,
+    recommended: true,
+  },
+  {
+    id: 'Xenova/t5-small',
+    name: 'T5 Small',
+    sizeEstimate: '~78 MB',
+    sizeBytes: 78 * 1024 * 1024,
+    description: 'Fast, compact model with lower memory and bandwidth usage.',
+    task: 'summarization',
+    maxTokens: 512,
+  },
+];
+
+export const TRANSLATION_PAIRS: TranslationPair[] = [
+  {
+    id: 'en-es',
+    sourceLang: 'en',
+    targetLang: 'es',
+    label: 'English → Spanish (Español)',
+    modelId: 'Xenova/opus-mt-en-es',
+    sizeEstimate: '~113 MB',
+  },
+  {
+    id: 'es-en',
+    sourceLang: 'es',
+    targetLang: 'en',
+    label: 'Spanish (Español) → English',
+    modelId: 'Xenova/opus-mt-es-en',
+    sizeEstimate: '~113 MB',
+  },
+  {
+    id: 'en-fr',
+    sourceLang: 'en',
+    targetLang: 'fr',
+    label: 'English → French (Français)',
+    modelId: 'Xenova/opus-mt-en-fr',
+    sizeEstimate: '~113 MB',
+  },
+  {
+    id: 'fr-en',
+    sourceLang: 'fr',
+    targetLang: 'en',
+    label: 'French (Français) → English',
+    modelId: 'Xenova/opus-mt-fr-en',
+    sizeEstimate: '~113 MB',
+  },
+  {
+    id: 'en-de',
+    sourceLang: 'en',
+    targetLang: 'de',
+    label: 'English → German (Deutsch)',
+    modelId: 'Xenova/opus-mt-en-de',
+    sizeEstimate: '~113 MB',
+  },
+  {
+    id: 'de-en',
+    sourceLang: 'de',
+    targetLang: 'en',
+    label: 'German (Deutsch) → English',
+    modelId: 'Xenova/opus-mt-de-en',
+    sizeEstimate: '~113 MB',
+  },
+  {
+    id: 'en-it',
+    sourceLang: 'en',
+    targetLang: 'it',
+    label: 'English → Italian (Italiano)',
+    modelId: 'Xenova/opus-mt-en-it',
+    sizeEstimate: '~113 MB',
+  },
+  {
+    id: 'it-en',
+    sourceLang: 'it',
+    targetLang: 'en',
+    label: 'Italian (Italiano) → English',
+    modelId: 'Xenova/opus-mt-it-en',
+    sizeEstimate: '~113 MB',
+  },
+];

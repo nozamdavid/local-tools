@@ -1,0 +1,37 @@
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.status {
+  margin: 2rem 0;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.output {
+  margin-top: 1.25rem;
+}
+
+.preview {
+  width: 100%;
+  min-height: 420px;
+  padding: 1rem;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: inherit;
+  background: var(--color-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  box-sizing: border-box;
+}
+
+.preview:focus {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 1px;
+}

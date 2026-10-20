@@ -1,0 +1,190 @@
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.status {
+  margin: 2rem 0;
+  text-align: center;
+  color: var(--color-text-muted);
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+  margin-top: 1.25rem;
+}
+
+.tabGroup {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.tabBtn {
+  flex: 1;
+  padding: 0.6rem;
+  font-weight: 600;
+  font-size: 0.9rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-input-border);
+  background: var(--color-card-bg);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tabBtnActive {
+  background: var(--color-brand);
+  color: #fff;
+  border-color: var(--color-brand);
+}
+
+.textInput {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-input-border);
+  background-color: var(--color-input-bg);
+  color: var(--color-text);
+  font-size: 0.95rem;
+  outline: none;
+}
+
+.textInput:focus {
+  border-color: var(--color-brand);
+}
+
+.scope {
+  display: flex;
+  gap: 1.25rem;
+  flex-wrap: wrap;
+  padding: 0.35rem 0;
+}
+
+.scope label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.quickAngles {
+  display: flex;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+}
+
+.angleBtn {
+  padding: 0.3rem 0.6rem;
+  font-size: 0.8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-input-border);
+  background: var(--color-card-bg);
+  color: var(--color-text);
+  cursor: pointer;
+}
+
+.angleBtn:hover {
+  border-color: var(--color-brand);
+}
+
+.imageDropArea {
+  border: 2px dashed var(--color-input-border);
+  border-radius: var(--radius-sm);
+  padding: 1.25rem;
+  text-align: center;
+  cursor: pointer;
+  background: var(--color-bg);
+  transition: border-color 0.15s ease;
+}
+
+.imageDropArea:hover {
+  border-color: var(--color-brand);
+}
+
+.imagePreviewWrapper {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.imagePreviewThumb {
+  max-width: 80px;
+  max-height: 80px;
+  object-fit: contain;
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-sm);
+}
+
+.selectRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.selectCount {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin-right: auto;
+}
+
+.pageGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0;
+  max-height: 480px;
+  overflow-y: auto;
+  padding: 0.75rem;
+  background: var(--color-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+}
+
+.pageCard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.5rem 0.5rem;
+  background: var(--color-card-bg);
+  border: 2px solid var(--color-card-border);
+  border-radius: var(--radius-sm);
+  user-select: none;
+}
+
+.pageCardClickable {
+  cursor: pointer;
+}
+
+.pageCardSelected {
+  border-color: var(--color-brand);
+  background: var(--color-brand-light);
+}
+
+.pageCheckbox {
+  position: absolute;
+  top: 0.4rem;
+  left: 0.4rem;
+  z-index: 1;
+  width: 1.1rem;
+  height: 1.1rem;
+  cursor: pointer;
+  accent-color: var(--color-brand);
+}
+
+.pageLabel {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--color-text);
+}

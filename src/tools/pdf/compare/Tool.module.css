@@ -1,0 +1,221 @@
+.uploadGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1.5rem;
+  margin-top: 1rem;
+}
+
+.uploadCard {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+
+.cardTitle {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.sampleBtnRow {
+  display: flex;
+  justify-content: center;
+  margin-top: 1.5rem;
+}
+
+.topRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.tabBar {
+  display: flex;
+  gap: 0.5rem;
+  border-bottom: 1px solid var(--color-card-border);
+  margin-bottom: 1.25rem;
+  padding-bottom: 0.25rem;
+}
+
+.tabBtn {
+  background: none;
+  border: none;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+}
+
+.tabBtnActive {
+  color: var(--color-brand);
+  border-bottom-color: var(--color-brand);
+}
+
+.pageStrip {
+  display: flex;
+  gap: 0.75rem;
+  overflow-x: auto;
+  padding: 0.5rem 0.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.pageThumbCard {
+  flex: 0 0 110px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem;
+  background: var(--color-card-bg);
+  border: 2px solid var(--color-card-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: border-color 0.2s;
+}
+
+.pageThumbCardActive {
+  border-color: var(--color-brand);
+}
+
+.pageBadge {
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  margin-top: 0.35rem;
+}
+
+.badgeDeleted {
+  background-color: var(--color-danger-bg);
+  color: var(--color-danger);
+}
+
+.badgeInserted {
+  background-color: var(--color-success-bg);
+  color: var(--color-success);
+}
+
+.badgeNormal {
+  background-color: var(--color-bg);
+  color: var(--color-text-muted);
+}
+
+.visualCompareBox {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  margin-top: 1rem;
+}
+
+.sliderBar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.sliderInput {
+  flex: 1;
+  min-width: 180px;
+  accent-color: var(--color-brand);
+  cursor: pointer;
+}
+
+.visualStageContainer {
+  position: relative;
+  width: 100%;
+  max-width: 650px;
+  margin: 0 auto;
+  min-height: 380px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #f0f0f2;
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+
+.visualLayer {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  max-width: 95%;
+  max-height: 95%;
+  object-fit: contain;
+  transition: opacity 0.1s linear;
+}
+
+.diffTextContainer {
+  background: var(--color-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  max-height: 480px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.diffLineAdd {
+  background-color: rgba(34, 197, 94, 0.15);
+  color: #15803d;
+  padding: 0.15rem 0.4rem;
+  border-left: 3px solid #22c55e;
+  margin: 0.1rem 0;
+}
+
+.diffLineDel {
+  background-color: rgba(239, 68, 68, 0.15);
+  color: #b91c1c;
+  padding: 0.15rem 0.4rem;
+  border-left: 3px solid #ef4444;
+  margin: 0.1rem 0;
+}
+
+.diffLineSame {
+  color: var(--color-text);
+  padding: 0.15rem 0.4rem;
+  margin: 0.1rem 0;
+}
+
+.exportTextarea {
+  width: 100%;
+  min-height: 300px;
+  font-family: monospace;
+  font-size: 0.85rem;
+  line-height: 1.5;
+  color: var(--color-text);
+  background: var(--color-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-sm);
+  padding: 0.85rem;
+  resize: vertical;
+  box-sizing: border-box;
+}
+
+.exportTextarea:focus {
+  outline: none;
+  border-color: var(--color-brand);
+}

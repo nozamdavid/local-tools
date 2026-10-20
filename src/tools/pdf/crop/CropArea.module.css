@@ -1,0 +1,68 @@
+.box {
+  position: relative;
+  width: 100%;
+  max-width: 640px;
+  margin: 0 auto;
+  background: #ffffff;
+  border: 1px solid var(--color-card-border);
+  box-shadow: var(--shadow-md);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+}
+
+/* Everything outside the crop rectangle is dimmed with a large outer shadow, clipped to the page. */
+.dim {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hole {
+  position: absolute;
+  box-shadow: 0 0 0 9999px rgba(15, 23, 42, 0.5);
+}
+
+.rect {
+  position: absolute;
+  border: 2px solid var(--color-brand);
+  cursor: move;
+  box-sizing: border-box;
+}
+
+.handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background: #ffffff;
+  border: 2px solid var(--color-brand);
+  border-radius: 3px;
+  box-sizing: border-box;
+}
+
+.h_nw { left: -8px; top: -8px; cursor: nwse-resize; }
+.h_n { left: calc(50% - 7px); top: -8px; cursor: ns-resize; }
+.h_ne { right: -8px; top: -8px; cursor: nesw-resize; }
+.h_e { right: -8px; top: calc(50% - 7px); cursor: ew-resize; }
+.h_se { right: -8px; bottom: -8px; cursor: nwse-resize; }
+.h_s { left: calc(50% - 7px); bottom: -8px; cursor: ns-resize; }
+.h_sw { left: -8px; bottom: -8px; cursor: nesw-resize; }
+.h_w { left: -8px; top: calc(50% - 7px); cursor: ew-resize; }
