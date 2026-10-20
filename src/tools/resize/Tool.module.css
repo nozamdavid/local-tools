@@ -1,0 +1,47 @@
+.row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+}
+
+.dimensionInput {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+  background-color: var(--color-input-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+
+.dimensionInput:focus {
+  border-color: var(--color-brand);
+}
+
+.targetBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.targetLabel {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 600;
+}
+
+.targetDimensions {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}

@@ -1,0 +1,61 @@
+.checkerboardPreview {
+  background-color: #1a1a1a;
+  background-image:
+    linear-gradient(45deg, #2e2e2e 25%, transparent 25%),
+    linear-gradient(-45deg, #2e2e2e 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #2e2e2e 75%),
+    linear-gradient(-45deg, transparent 75%, #2e2e2e 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+  border-radius: 8px;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid var(--border, #333);
+}
+
+.checkerboardPreview video {
+  max-width: 100%;
+  max-height: 420px;
+  display: block;
+  border-radius: 4px;
+}
+
+.colorPickerRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.colorInput {
+  width: 48px;
+  height: 38px;
+  padding: 2px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.hexInput {
+  width: 120px;
+  padding: 8px 12px;
+  border: 1px solid var(--border, #ccc);
+  border-radius: 6px;
+  background: var(--bg-card, #222);
+  color: var(--text, #fff);
+  font-family: monospace;
+}
+
+.progressContainer {
+  margin-top: 1.5rem;
+}
+
+.cancelRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}

@@ -1,0 +1,95 @@
+.editorLayout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+  margin-top: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .editorLayout {
+    grid-template-columns: 3fr 2fr;
+  }
+}
+
+.canvasWrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--bg-card, #1c1c1f);
+  border: 1px solid var(--border, #333);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow: hidden;
+}
+
+.canvasHint {
+  font-size: 0.8rem;
+  color: var(--text-muted, #888);
+  margin-bottom: 0.75rem;
+  text-align: center;
+}
+
+.canvas {
+  max-width: 100%;
+  max-height: 500px;
+  width: auto;
+  height: auto;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.controlsPanel {
+  background: var(--bg-card, #1c1c1f);
+  border: 1px solid var(--border, #333);
+  border-radius: 8px;
+  padding: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.rowInputs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.colorPickerRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.colorInput {
+  width: 44px;
+  height: 38px;
+  padding: 2px;
+  border: 1px solid var(--border, #444);
+  border-radius: 6px;
+  cursor: pointer;
+  background: transparent;
+}
+
+.hexInput {
+  width: 100px;
+  padding: 8px 10px;
+  border: 1px solid var(--border, #444);
+  border-radius: 6px;
+  background: var(--bg-card, #222);
+  color: var(--text, #fff);
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.progressContainer {
+  margin-top: 1.5rem;
+}
+
+.cancelRow {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}

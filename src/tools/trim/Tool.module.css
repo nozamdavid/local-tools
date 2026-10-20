@@ -1,0 +1,132 @@
+.timelineContainer {
+  position: relative;
+  width: 100%;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  margin: 1rem 0;
+  touch-action: none;
+}
+
+.timelineTrack {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 8px;
+  background-color: var(--color-card-border);
+  border-radius: 4px;
+}
+
+.timelineProgress {
+  position: absolute;
+  height: 8px;
+  background-color: var(--color-brand);
+  border-radius: 4px;
+}
+
+.rangeInput {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 40px;
+  margin: 0;
+  background: transparent;
+  pointer-events: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.rangeInput::-webkit-slider-thumb {
+  pointer-events: auto;
+  -webkit-appearance: none;
+  appearance: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  border: 2px solid #ffffff;
+  cursor: ew-resize;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s ease;
+}
+
+.rangeInput::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+}
+
+.rangeInput::-moz-range-thumb {
+  pointer-events: auto;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  border: 2px solid #ffffff;
+  cursor: ew-resize;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+}
+
+.timeControls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.timeBox {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.timeHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.timeInputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.numInput {
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.95rem;
+  background-color: var(--color-input-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  outline: none;
+}
+
+.numInput:focus {
+  border-color: var(--color-brand);
+}
+
+.durationBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--color-brand-light);
+  color: var(--color-brand);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.videoContainer {
+  margin: 1.5rem 0;
+  text-align: center;
+}

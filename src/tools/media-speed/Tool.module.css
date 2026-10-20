@@ -1,0 +1,207 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card {
+  background-color: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.cardTitle {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin-top: 0;
+  margin-bottom: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.durationGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.inputGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.inputLabel {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.numberInput {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  background-color: var(--color-input-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.numberInput:focus {
+  border-color: var(--color-brand);
+}
+
+.pasteRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.pasteInput {
+  width: 100%;
+  padding: 0.65rem 0.85rem;
+  font-size: 0.95rem;
+  background-color: var(--color-input-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  outline: none;
+  transition: border-color 0.15s ease;
+  box-sizing: border-box;
+}
+
+.pasteInput:focus {
+  border-color: var(--color-brand);
+}
+
+.speedRow {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 1rem;
+  align-items: center;
+  margin-top: 0.5rem;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-card-border);
+}
+
+.speedTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+  text-align: left;
+}
+
+.speedTable th {
+  background-color: var(--color-bg);
+  color: var(--color-text-muted);
+  font-weight: 600;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-card-border);
+}
+
+.speedTable td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--color-card-border);
+  color: var(--color-text);
+}
+
+.speedTable tr:last-child td {
+  border-bottom: none;
+}
+
+.speedTable tr:hover td {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+.customRow td {
+  background-color: rgba(192, 38, 211, 0.06);
+  font-weight: 600;
+}
+
+.badgeCustom {
+  display: inline-block;
+  background-color: var(--color-brand-light);
+  color: var(--color-brand);
+  font-size: 0.7rem;
+  font-weight: 700;
+  padding: 0.15rem 0.45rem;
+  border-radius: 9999px;
+  margin-left: 0.5rem;
+  text-transform: uppercase;
+}
+
+.savedBadge {
+  color: var(--color-success);
+  font-weight: 500;
+}
+
+.extraBadge {
+  color: var(--color-danger);
+  font-weight: 500;
+}
+
+.normalBadge {
+  color: var(--color-text-muted);
+}
+
+.reverseResult {
+  margin-top: 1.25rem;
+  padding: 1.25rem;
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.reverseHighlight {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--color-brand);
+}
+
+.reverseDesc {
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  margin: 0;
+}
+
+.fileDropWrapper {
+  margin-top: 1rem;
+}
+
+.fileLoadedBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.75rem 1rem;
+  background-color: var(--color-success-bg);
+  border: 1px solid var(--color-card-border);
+  color: var(--color-success);
+  border-radius: var(--radius-md);
+  font-size: 0.9rem;
+}
+
+@media (max-width: 640px) {
+  .durationGrid {
+    grid-template-columns: 1fr;
+  }
+  .speedRow {
+    grid-template-columns: 1fr;
+  }
+}

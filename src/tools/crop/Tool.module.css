@@ -1,0 +1,133 @@
+.stageContainer {
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.stage {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  line-height: 0;
+  user-select: none;
+  touch-action: none;
+}
+
+.stage video {
+  display: block;
+  pointer-events: none;
+}
+
+.cropBox {
+  position: absolute;
+  box-sizing: border-box;
+  border: 2px solid var(--color-brand);
+  background-color: rgba(192, 38, 211, 0.15);
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
+  cursor: move;
+  z-index: 10;
+  touch-action: none;
+}
+
+.gridOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, rgba(255, 255, 255, 0.25) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
+  background-size: 33.333% 33.333%;
+}
+
+.handle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  background-color: #ffffff;
+  border: 2px solid var(--color-brand);
+  border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  touch-action: none;
+  z-index: 20;
+}
+
+.handleNW {
+  top: -7px;
+  left: -7px;
+  cursor: nwse-resize;
+}
+
+.handleNE {
+  top: -7px;
+  right: -7px;
+  cursor: nesw-resize;
+}
+
+.handleSE {
+  bottom: -7px;
+  right: -7px;
+  cursor: nwse-resize;
+}
+
+.handleSW {
+  bottom: -7px;
+  left: -7px;
+  cursor: nesw-resize;
+}
+
+.inputsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 600px) {
+  .inputsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.inputCard {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 0.6rem 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.inputLabel {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.numInput {
+  width: 100%;
+  padding: 0.45rem 0.6rem;
+  font-size: 0.95rem;
+  background-color: var(--color-input-bg);
+  color: var(--color-text);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-md);
+  outline: none;
+}
+
+.numInput:focus {
+  border-color: var(--color-brand);
+}
+
+.infoBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  padding: 0.5rem 0.75rem;
+  background-color: var(--color-brand-light);
+  color: var(--color-brand);
+  border-radius: var(--radius-md);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
