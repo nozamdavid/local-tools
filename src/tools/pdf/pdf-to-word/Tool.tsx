@@ -55,7 +55,7 @@ export default function PdfToWordTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Paragraphs, headings and tables become an editable DOCX. 100% on-device."
+          hint="Paragraphs, headings and tables become an editable DOCX."
           onFiles={handleFiles}
         />
       ) : (

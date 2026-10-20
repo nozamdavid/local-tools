@@ -171,7 +171,7 @@ export default function SignatureCleanerTool() {
             {/* Controls */}
             <div
               style={{
-                background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+                background: 'var(--surface)',
                 padding: '1.25rem',
                 borderRadius: '12px',
                 display: 'flex',
@@ -259,7 +259,7 @@ export default function SignatureCleanerTool() {
               {/* Original Preview */}
               <div
                 style={{
-                  background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+                  background: 'var(--surface)',
                   borderRadius: '12px',
                   padding: '1rem',
                   display: 'flex',
@@ -299,7 +299,7 @@ export default function SignatureCleanerTool() {
               {/* Cleaned Result Preview */}
               <div
                 style={{
-                  background: 'var(--color-bg-card, rgba(255, 255, 255, 0.05))',
+                  background: 'var(--surface)',
                   borderRadius: '12px',
                   padding: '1rem',
                   display: 'flex',

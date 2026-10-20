@@ -176,7 +176,7 @@ export default function VideoInfoTool() {
         <FileDrop
           accept="video/*,audio/*"
           label="Choose a video or audio file to inspect"
-          hint="Inspect codecs, bitrates, audio tracks, and metadata. 100% private in-browser."
+          hint="Inspect codecs, bitrates, audio tracks, and metadata."
           onFiles={handleFiles}
         />
       )}

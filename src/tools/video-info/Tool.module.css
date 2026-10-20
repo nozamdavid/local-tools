@@ -11,8 +11,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 1rem 1.25rem;
-  background-color: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background-color: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
 
@@ -23,8 +23,8 @@
 }
 
 .tableGroup {
-  background-color: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background-color: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   overflow: hidden;
   box-shadow: var(--shadow-sm);
@@ -35,14 +35,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 0.85rem 1.25rem;
-  background-color: var(--color-bg);
-  border-bottom: 1px solid var(--color-card-border);
+  background-color: var(--bg);
+  border-bottom: 1px solid var(--border);
 }
 
 .groupTitle {
   font-size: 1rem;
   font-weight: 600;
-  color: var(--color-text);
+  color: var(--text);
   margin: 0;
   display: flex;
   align-items: center;
@@ -60,23 +60,23 @@
 }
 
 .badgeVideo {
-  background-color: rgba(59, 130, 246, 0.15);
-  color: #3b82f6;
+  background-color: var(--info-soft);
+  color: var(--info);
 }
 
 .badgeAudio {
-  background-color: rgba(16, 185, 129, 0.15);
-  color: #10b981;
+  background-color: var(--success-soft);
+  color: var(--success);
 }
 
 .badgeSubtitle {
-  background-color: rgba(245, 158, 11, 0.15);
-  color: #f59e0b;
+  background-color: var(--warning-soft);
+  color: var(--warning);
 }
 
 .badgeOther {
-  background-color: rgba(100, 116, 139, 0.15);
-  color: #64748b;
+  background-color: var(--surface-hover);
+  color: var(--text-muted);
 }
 
 .tableWrapper {
@@ -93,7 +93,7 @@
 .infoTable th,
 .infoTable td {
   padding: 0.65rem 1.25rem;
-  border-bottom: 1px solid var(--color-card-border);
+  border-bottom: 1px solid var(--border);
 }
 
 .infoTable tr:last-child td {
@@ -106,19 +106,19 @@
 
 .propKey {
   width: 240px;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-weight: 500;
 }
 
 .propVal {
-  color: var(--color-text);
+  color: var(--text);
   word-break: break-word;
 }
 
 .rawDetails {
-  border: 1px solid var(--color-card-border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
-  background-color: var(--color-bg);
+  background-color: var(--bg);
   overflow: hidden;
 }
 
@@ -127,7 +127,7 @@
   font-weight: 600;
   font-size: 0.95rem;
   cursor: pointer;
-  color: var(--color-text);
+  color: var(--text);
   user-select: none;
 }
 
@@ -138,12 +138,12 @@
 .rawPre {
   margin: 0;
   padding: 1rem 1.25rem;
-  background-color: var(--color-input-bg);
-  border-top: 1px solid var(--color-card-border);
+  background-color: var(--input-bg);
+  border-top: 1px solid var(--border);
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.8rem;
   line-height: 1.5;
-  color: var(--color-text);
+  color: var(--text);
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 400px;
@@ -163,8 +163,8 @@
 .loadingSpinner {
   width: 36px;
   height: 36px;
-  border: 3px solid var(--color-card-border);
-  border-top-color: var(--color-brand);
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }

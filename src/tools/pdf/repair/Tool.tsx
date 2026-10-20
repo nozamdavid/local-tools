@@ -108,7 +108,6 @@ export default function RepairPdfTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a damaged PDF or drag it here"
-          hint="Your PDF stays in this browser tab. Nothing is uploaded."
           onFiles={(files) => setFile(files[0] ?? null)}
         />
       ) : job.status === 'done' && job.result ? (

@@ -10,9 +10,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  background: var(--color-bg-subtle, #1e2029);
+  background: var(--surface-sunken);
   border-radius: 12px;
-  border: 1px solid var(--color-border, #2d3139);
+  border: 1px solid var(--border);
   padding: 1.5rem;
   overflow: hidden;
   user-select: none;
@@ -123,26 +123,26 @@
   font-size: 0.875rem;
   font-weight: 500;
   border-radius: 6px;
-  border: 1px solid var(--color-border, #374151);
-  background: var(--color-bg, #111827);
-  color: var(--color-text-muted, #9ca3af);
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .toggleBtn:hover {
-  background: var(--color-bg-hover, #1f2937);
-  color: var(--color-text, #f3f4f6);
+  background: var(--surface-hover);
+  color: var(--text);
 }
 
 .toggleBtnActive {
-  background: var(--color-primary, #3b82f6);
-  border-color: var(--color-primary, #3b82f6);
+  background: var(--accent);
+  border-color: var(--accent);
   color: #ffffff;
 }
 
 .toggleBtnActive:hover {
-  background: var(--color-primary-hover, #2563eb);
+  background: var(--accent-hover);
 }
 
 .colorInputRow {
@@ -155,7 +155,7 @@
   width: 38px;
   height: 38px;
   border-radius: 6px;
-  border: 1px solid var(--color-border, #374151);
+  border: 1px solid var(--border);
   cursor: pointer;
   background: transparent;
   padding: 0;

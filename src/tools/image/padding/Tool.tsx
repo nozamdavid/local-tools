@@ -190,7 +190,7 @@ export default function PaddingTool() {
             </div>
 
             {options.preset === 'none' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid var(--color-border, rgba(255, 255, 255, 0.1))', paddingTop: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
                 <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                     <input
@@ -273,7 +273,7 @@ export default function PaddingTool() {
               </div>
             )}
 
-            <div style={{ borderTop: '1px solid var(--color-border, rgba(255, 255, 255, 0.1))', paddingTop: '1rem' }}>
+            <div style={{ borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer' }}>
                   <input

@@ -578,7 +578,7 @@ export default function OverlayTool() {
         <FileDrop
           accept="video/*"
           label="Choose a video or drag it here"
-          hint="Supports MP4, MOV, WebM, MKV, AVI and more. 100% on-device."
+          hint="Supports MP4, MOV, WebM, MKV, AVI and more."
           onFiles={handleVideoFiles}
         />
       ) : (
@@ -810,7 +810,7 @@ export default function OverlayTool() {
                           </div>
 
                           {hasBgBox && (
-                            <div style={{ paddingLeft: '1rem', borderLeft: '2px solid var(--color-brand)', marginTop: '0.5rem' }}>
+                            <div style={{ paddingLeft: '1rem', borderLeft: '2px solid var(--accent)', marginTop: '0.5rem' }}>
                               <div className="field">
                                 <label className="field-label">Box color</label>
                                 <div className={styles.colorRow}>

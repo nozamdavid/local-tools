@@ -69,7 +69,7 @@ export default function ProtectPdfTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Your PDF and passwords stay in this browser tab. Nothing is uploaded."
+          hint="Passwords are only used in this tab and are never stored."
           onFiles={(files) => setFile(files[0] ?? null)}
         />
       ) : job.status === 'done' && job.result ? (

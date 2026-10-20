@@ -212,7 +212,7 @@ export default function FormsTool() {
                           <label className={styles.fieldLabel}>
                             {field.name}
                             {field.isReadOnly && (
-                              <span style={{ fontWeight: 'normal', color: 'var(--color-text-muted)' }}>
+                              <span style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}>
                                 {' '}(read-only)
                               </span>
                             )}

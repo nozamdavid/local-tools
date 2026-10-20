@@ -9,7 +9,7 @@ export default function Tool() {
         expectedFormats: ['jpg', 'jpeg'],
         expectedLabel: 'JPG',
         dropLabel: 'Choose JPG images or drag them here',
-        dropHint: 'Convert JPG images to lossless PNG format. 100% private.',
+        dropHint: 'Convert JPG images to lossless PNG format.',
       }}
     />
   );

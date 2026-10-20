@@ -52,7 +52,7 @@ export default function DocxToJpgTool() {
         <FileDrop
           accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
           label="Choose a Word (.docx) document or drag it here"
-          hint="Renders Word documents into high-resolution JPG images. 100% on-device."
+          hint="Renders Word documents into high-resolution JPG images."
           onFiles={handleFiles}
         />
       ) : (
@@ -84,8 +84,8 @@ export default function DocxToJpgTool() {
 
               <div
                 style={{
-                  backgroundColor: 'var(--color-bg)',
-                  border: '1px solid var(--color-card-border)',
+                  backgroundColor: 'var(--bg)',
+                  border: '1px solid var(--border)',
                   borderRadius: 'var(--radius-md)',
                   padding: '1rem 1.25rem',
                   margin: '1.25rem 0',
@@ -94,7 +94,7 @@ export default function DocxToJpgTool() {
                 <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.35rem' }}>
                   ℹ️ Conversion details & limitations
                 </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                   Documents are rendered client-side at 2× retina scale for crisp text. Fonts not
                   installed on your device will fall back to standard system fonts. Complex Word
                   macros or external links are ignored for security and privacy.

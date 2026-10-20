@@ -180,7 +180,7 @@ export default function PdfToImageTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Supports multi-page and password-protected PDFs. 100% on-device."
+          hint="Supports multi-page and password-protected PDFs."
           onFiles={handleFiles}
         />
       ) : (

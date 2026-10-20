@@ -5,8 +5,8 @@
 }
 
 .card {
-  background: var(--surface-bg, #1a1a20);
-  border: 1px solid var(--border-color, #2d2d38);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1.25rem 1.5rem;
   display: flex;
@@ -25,14 +25,14 @@
 .fileNameTitle {
   font-size: 1.15rem;
   font-weight: 700;
-  color: var(--text-color, #f9fafb);
+  color: var(--text);
   margin: 0;
   word-break: break-all;
 }
 
 .badgeMatch {
-  background: rgba(16, 185, 129, 0.15);
-  color: #34d399;
+  background: var(--success-soft);
+  color: var(--success);
   padding: 0.25rem 0.6rem;
   border-radius: 9999px;
   font-weight: 600;
@@ -40,8 +40,8 @@
 }
 
 .badgeMismatch {
-  background: rgba(239, 68, 68, 0.15);
-  color: #f87171;
+  background: var(--danger-soft);
+  color: var(--danger);
   padding: 0.25rem 0.6rem;
   border-radius: 9999px;
   font-weight: 600;
@@ -55,15 +55,15 @@
 }
 
 .statItem {
-  background: #111116;
+  background: var(--surface-sunken);
   padding: 0.75rem 1rem;
   border-radius: 6px;
-  border: 1px solid #22222b;
+  border: 1px solid var(--border);
 }
 
 .statLabel {
   font-size: 0.75rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -71,7 +71,7 @@
 .statValue {
   font-size: 0.95rem;
   font-weight: 600;
-  color: #e5e7eb;
+  color: var(--text);
   margin-top: 0.2rem;
   word-break: break-word;
 }
@@ -86,8 +86,8 @@
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
-  background: #111116;
-  border: 1px solid #23232e;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.65rem 0.85rem;
 }
@@ -101,7 +101,7 @@
 .hashName {
   font-size: 0.8rem;
   font-weight: 700;
-  color: #9ca3af;
+  color: var(--text-muted);
   letter-spacing: 0.05em;
 }
 
@@ -116,14 +116,14 @@
 .hashValue {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 0.82rem;
-  color: #60a5fa;
+  color: var(--info);
   word-break: break-all;
 }
 
 .hashCopyBtn {
-  background: #1f1f28;
-  border: 1px solid #363647;
-  color: #e2e8f0;
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  color: var(--text);
   font-size: 0.75rem;
   padding: 0.2rem 0.5rem;
   border-radius: 4px;
@@ -132,56 +132,56 @@
 }
 
 .hashCopyBtn:hover {
-  background: #2a2a38;
+  background: var(--surface-active);
 }
 
 .compareInput {
   width: 100%;
   box-sizing: border-box;
-  background: #111116;
-  border: 1px solid #2e2e3e;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.6rem 0.85rem;
-  color: #f3f4f6;
+  color: var(--text);
   font-family: monospace;
   font-size: 0.85rem;
 }
 
 .compareInput:focus {
   outline: none;
-  border-color: #3b82f6;
+  border-color: var(--accent);
 }
 
 .compareStatusMatch {
   font-size: 0.82rem;
-  color: #34d399;
+  color: var(--success);
   font-weight: 600;
 }
 
 .compareStatusMismatch {
   font-size: 0.82rem;
-  color: #f87171;
+  color: var(--danger);
   font-weight: 600;
 }
 
 .hexViewer {
-  background: #0d0d12;
-  border: 1px solid #262633;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 0.75rem 1rem;
   overflow-x: auto;
   font-family: ui-monospace, monospace;
   font-size: 0.8rem;
   line-height: 1.5;
-  color: #94a3b8;
+  color: var(--text-muted);
   white-space: pre;
 }
 
 .previewContainer {
   display: flex;
   justify-content: center;
-  background: #0f0f14;
-  border: 1px solid #262633;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
   border-radius: 6px;
   padding: 1rem;
 }
@@ -195,11 +195,11 @@
 
 .inertDocNotice {
   font-size: 0.85rem;
-  color: #9ca3af;
+  color: var(--text-muted);
   padding: 0.75rem;
-  background: #15151c;
+  background: var(--surface-sunken);
   border-radius: 6px;
-  border: 1px solid #23232e;
+  border: 1px solid var(--border);
 }
 
 .btnGroup {
@@ -211,9 +211,9 @@
 
 .disclaimer {
   font-size: 0.8rem;
-  color: #9ca3af;
-  background: rgba(234, 179, 8, 0.08);
-  border: 1px solid rgba(234, 179, 8, 0.25);
+  color: var(--text-muted);
+  background: var(--warning-soft);
+  border: 1px solid var(--warning-border);
   padding: 0.75rem 1rem;
   border-radius: 6px;
   line-height: 1.45;

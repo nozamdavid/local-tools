@@ -387,11 +387,11 @@ export default function JsonCsvTool() {
                   <div>
                     <div className={styles.batchName}>{item.originalName} → {item.outputName}</div>
                     {item.error ? (
-                      <span style={{ color: 'var(--color-danger)', fontSize: '0.85rem' }}>
+                      <span style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>
                         Error: {item.error}
                       </span>
                     ) : (
-                      <span style={{ color: 'var(--color-text-muted)', fontSize: '0.8rem' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                         Ready ({item.blob.size} bytes)
                       </span>
                     )}

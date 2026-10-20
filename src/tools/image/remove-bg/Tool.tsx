@@ -386,7 +386,7 @@ export default function RemoveBgTool() {
                   )}
 
                   {aiError && (
-                    <div style={{ color: 'var(--color-danger)', fontSize: '0.875rem' }}>
+                    <div style={{ color: 'var(--danger)', fontSize: '0.875rem' }}>
                       {aiError}
                       <Button
                         variant="secondary"
@@ -434,7 +434,7 @@ export default function RemoveBgTool() {
                 </>
               )}
 
-              <hr style={{ border: 'none', borderTop: '1px solid var(--color-card-border)' }} />
+              <hr style={{ border: 'none', borderTop: '1px solid var(--border)' }} />
 
               {/* Background Replacement Options */}
               <Field label="Background Output">

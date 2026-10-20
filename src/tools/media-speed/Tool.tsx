@@ -137,7 +137,7 @@ export default function MediaSpeedTool() {
         <div className={styles.card}>
           <div className={styles.cardTitle}>
             <span>1. Media Duration</span>
-            <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--color-brand)' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--accent)' }}>
               Total: {formatTime(totalDurationSeconds)}
             </span>
           </div>
@@ -229,7 +229,7 @@ export default function MediaSpeedTool() {
         <div className={styles.card}>
           <div className={styles.cardTitle}>
             <span>2. Custom Playback Speed</span>
-            <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--color-brand)' }}>
+            <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent)' }}>
               {customSpeed}x
             </span>
           </div>

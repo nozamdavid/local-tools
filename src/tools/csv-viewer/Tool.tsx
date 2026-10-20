@@ -230,7 +230,7 @@ export default function CsvViewerTool() {
               <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th style={{ width: '48px', color: 'var(--color-text-muted)' }}>#</th>
+                    <th style={{ width: '48px', color: 'var(--text-muted)' }}>#</th>
                     {headers.map((h, i) => (
                       <th key={i}>{h}</th>
                     ))}
@@ -241,7 +241,7 @@ export default function CsvViewerTool() {
                     const rowNumber = (safePage - 1) * pageSize + rIdx + 1;
                     return (
                       <tr key={rIdx}>
-                        <td style={{ color: 'var(--color-text-muted)' }}>{rowNumber}</td>
+                        <td style={{ color: 'var(--text-muted)' }}>{rowNumber}</td>
                         {headers.map((_, cIdx) => (
                           <td key={cIdx}>{cIdx < row.length ? row[cIdx] : ''}</td>
                         ))}
@@ -252,7 +252,7 @@ export default function CsvViewerTool() {
                     <tr>
                       <td
                         colSpan={headers.length + 1}
-                        style={{ textAlign: 'center', padding: '2rem', color: 'var(--color-text-muted)' }}
+                        style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}
                       >
                         No rows match &quot;{searchQuery}&quot;
                       </td>
@@ -302,7 +302,7 @@ export default function CsvViewerTool() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Rows per page:</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Rows per page:</span>
                 <Select
                   value={String(pageSize)}
                   onChange={(e) => {

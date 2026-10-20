@@ -54,14 +54,14 @@ export function PdfPreview({
                 maxHeight: '420px',
                 objectFit: 'contain',
                 backgroundColor: '#ffffff',
-                border: '1px solid var(--color-card-border)',
+                border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-sm)',
                 display: 'block',
                 margin: '0 auto',
               }}
             />
           ) : (
-            <div style={{ padding: '3rem', color: 'var(--color-text-muted)' }}>
+            <div style={{ padding: '3rem', color: 'var(--text-muted)' }}>
               Rendering PDF preview…
             </div>
           )}

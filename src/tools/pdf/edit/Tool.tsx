@@ -434,7 +434,7 @@ export default function EditTool() {
                           </div>
                         </div>
                       ) : (
-                        <div style={{ color: 'var(--color-text-muted)' }}>
+                        <div style={{ color: 'var(--text-muted)' }}>
                           Loading page preview…
                         </div>
                       )}
@@ -720,7 +720,7 @@ export default function EditTool() {
                     {/* Tab: Draw */}
                     {activeTab === 'drawing' && (
                       <div className={styles.card}>
-                        <p style={{ fontSize: '0.88rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                        <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
                           Draw directly over the page preview on the left using your mouse or touch.
                         </p>
 
@@ -771,7 +771,7 @@ export default function EditTool() {
                       </div>
 
                       {annotations.length === 0 ? (
-                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
                           No annotations added yet. Use the tools above to place text, images,
                           rectangles, or drawings.
                         </p>

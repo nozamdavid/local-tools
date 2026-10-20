@@ -581,7 +581,7 @@ export default function LabelDesignerTool() {
                         <button
                           type="button"
                           className={styles.smallBtn}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-brand)' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)' }}
                           onClick={() => duplicateElement(selectedElement.id)}
                           title="Duplicate element"
                         >
@@ -590,7 +590,7 @@ export default function LabelDesignerTool() {
                         <button
                           type="button"
                           className={styles.smallBtn}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--color-danger)' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}
                           onClick={() => deleteElement(selectedElement.id)}
                           title="Delete element"
                         >

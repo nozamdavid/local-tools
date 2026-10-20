@@ -197,7 +197,7 @@ export default function CropTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Crop pages without re-rendering them. 100% on-device."
+          hint="Crop pages without re-rendering them."
           onFiles={handleFiles}
         />
       ) : (

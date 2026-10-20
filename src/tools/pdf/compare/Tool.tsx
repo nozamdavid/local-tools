@@ -282,7 +282,7 @@ export default function CompareTool() {
                 Doc B: <strong>{sourceB.file?.name}</strong> ({sourceB.pages.length} p)
               </span>
               <span className="badge badge-success">+{diffStats.added} lines</span>
-              <span className="badge badge-danger" style={{ backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
+              <span className="badge badge-danger" style={{ backgroundColor: 'var(--danger-soft)', color: 'var(--danger)' }}>
                 -{diffStats.removed} lines
               </span>
             </div>
@@ -448,7 +448,7 @@ export default function CompareTool() {
                 </h4>
                 <div className="meta-chips">
                   <span className="badge badge-success">+{textDiffPage.filter((p) => p.added).length} added</span>
-                  <span className="badge badge-danger" style={{ backgroundColor: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
+                  <span className="badge badge-danger" style={{ backgroundColor: 'var(--danger-soft)', color: 'var(--danger)' }}>
                     -{textDiffPage.filter((p) => p.removed).length} removed
                   </span>
                 </div>

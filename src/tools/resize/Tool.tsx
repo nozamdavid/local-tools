@@ -169,7 +169,7 @@ export default function ResizeTool() {
         <FileDrop
           accept="video/*"
           label="Choose a video or drag it here"
-          hint="Resize to standard presets or custom dimensions. 100% on-device."
+          hint="Resize to standard presets or custom dimensions."
           onFiles={handleFiles}
         />
       ) : (

@@ -302,7 +302,7 @@ export default function Tool() {
                   className={styles.iconBtn}
                   title="Delete layer (Del)"
                   onClick={() => deleteLayer(selectedLayerId)}
-                  style={{ color: 'var(--color-danger)' }}
+                  style={{ color: 'var(--danger)' }}
                 >
                   🗑
                 </button>
@@ -388,7 +388,7 @@ export default function Tool() {
 
             {/* Selected Layer Properties */}
             {selectedLayer && selectedLayer.type === 'text' && (
-              <div style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--color-card-border)' }}>
+              <div style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
                 <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>
                   Selected Text Style ({selectedLayer.id})
                 </div>

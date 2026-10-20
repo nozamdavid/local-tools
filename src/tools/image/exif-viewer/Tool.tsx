@@ -324,7 +324,7 @@ export default function ExifViewerTool() {
           <FileDrop
             accept="image/jpeg,image/heic,image/heif,image/png,image/webp,image/tiff,.jpg,.jpeg,.heic,.heif,.png,.webp,.tiff,.tif"
             label="Drop a photo here to inspect its EXIF data"
-            hint="Supports JPG, HEIC, PNG, WEBP, TIFF. 100% private in-browser analysis."
+            hint="Supports JPG, HEIC, PNG, WEBP, TIFF."
             onFiles={handleFiles}
           />
         ) : (
@@ -348,7 +348,7 @@ export default function ExifViewerTool() {
                     <strong style={{ display: 'block', marginBottom: '0.25rem' }}>
                       Embedded EXIF Thumbnail
                     </strong>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                       A low-resolution preview image stored directly inside the metadata header.
                     </span>
                   </div>
@@ -364,7 +364,7 @@ export default function ExifViewerTool() {
                       <span className={styles.groupBadge}>{grouped.gps.length} tags</span>
                     </div>
                     {coords && (
-                      <div style={{ padding: '0.75rem 1.25rem', background: 'var(--color-bg)', borderBottom: '1px solid var(--color-card-border)' }}>
+                      <div style={{ padding: '0.75rem 1.25rem', background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
                         <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
                           Decimal Coordinates: {coords.lat.toFixed(6)}, {coords.lon.toFixed(6)}
                         </div>

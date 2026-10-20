@@ -287,7 +287,7 @@ export default function RedactTool() {
                           </div>
                         </div>
                       ) : (
-                        <div style={{ color: 'var(--color-text-muted)' }}>
+                        <div style={{ color: 'var(--text-muted)' }}>
                           Loading page preview…
                         </div>
                       )}
@@ -298,7 +298,7 @@ export default function RedactTool() {
                   <div className={styles.controlsColumn}>
                     <div className={styles.card}>
                       <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Redaction Tools</h3>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
                         Click and drag across sensitive text or images on the page preview to mark
                         an opaque redaction area.
                       </p>
@@ -359,7 +359,7 @@ export default function RedactTool() {
                       </div>
 
                       {redactions.length === 0 ? (
-                        <p style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)', margin: 0 }}>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
                           No redactions marked. Drag across the preview to create one.
                         </p>
                       ) : (

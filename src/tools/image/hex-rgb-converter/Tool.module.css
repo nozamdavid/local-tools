@@ -8,8 +8,8 @@
   display: grid;
   grid-template-columns: 240px 1fr;
   gap: 1.5rem;
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 1.5rem;
 }
@@ -31,7 +31,7 @@
   width: 100%;
   height: 140px;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-card-border);
+  border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);
   background: repeating-conic-gradient(#f1f5f9 0% 25%, #ffffff 0% 50%) 50% / 16px 16px;
   overflow: hidden;
@@ -91,7 +91,7 @@
 .formatLabel {
   font-weight: 600;
   font-size: 0.85rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .formatInput {
@@ -99,20 +99,20 @@
   font-size: 0.95rem;
   padding: 0.5rem 0.75rem;
   border-radius: var(--radius-sm);
-  border: 1px solid var(--color-input-border);
-  background: var(--color-input-bg);
-  color: var(--color-text);
+  border: 1px solid var(--input-border);
+  background: var(--input-bg);
+  color: var(--text);
   width: 100%;
 }
 
 .formatInput:focus {
-  border-color: var(--color-brand);
+  border-color: var(--accent);
   outline: none;
 }
 
 .presetsSection {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   padding: 1.25rem;
   display: flex;
@@ -136,17 +136,17 @@
   align-items: center;
   gap: 0.5rem;
   padding: 0.35rem 0.65rem;
-  background: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   cursor: pointer;
   font-size: 0.85rem;
-  color: var(--color-text);
+  color: var(--text);
   transition: border-color 0.15s ease;
 }
 
 .presetButton:hover {
-  border-color: var(--color-brand);
+  border-color: var(--accent);
 }
 
 .presetDot {

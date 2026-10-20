@@ -302,7 +302,7 @@ export default function SubtitlesTool() {
         <FileDrop
           accept="video/*,audio/*"
           label="Choose a video or audio file"
-          hint="Supports MP4, MOV, WebM, MKV and more. 100% on-device AI transcription."
+          hint="Supports MP4, MOV, WebM, MKV and more. Transcribed with on-device AI."
           onFiles={handleFiles}
         />
       ) : (
@@ -381,7 +381,7 @@ export default function SubtitlesTool() {
                       />
                     )}
                   </video>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                  <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     Live preview: video displays cues updated in real time.
                   </span>
                 </div>

@@ -86,7 +86,7 @@ export default function ExifRemoverTool() {
                 <div key={`${r.filename}-${idx}`} className={styles.removedCard}>
                   <div>
                     <strong>{r.filename}</strong>{' '}
-                    <span style={{ color: 'var(--color-text-muted)', fontSize: '0.85rem' }}>
+                    <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                       ({formatBytes(r.originalSize)} → {formatBytes(r.blob.size)})
                     </span>
                     {r.lossless && (
@@ -94,8 +94,8 @@ export default function ExifRemoverTool() {
                         style={{
                           marginLeft: '0.5rem',
                           fontSize: '0.75rem',
-                          background: 'var(--color-success-bg)',
-                          color: 'var(--color-success)',
+                          background: 'var(--success-soft)',
+                          color: 'var(--success)',
                           padding: '2px 6px',
                           borderRadius: '4px',
                           fontWeight: 600,

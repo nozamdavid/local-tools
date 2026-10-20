@@ -7,7 +7,7 @@ export default function Tool() {
         toolId: 'img-convert',
         defaultFormat: 'jpg',
         dropLabel: 'Choose images or drag them here',
-        dropHint: 'Convert images to JPG, PNG, WEBP, GIF, BMP or AVIF. 100% private.',
+        dropHint: 'Convert images to JPG, PNG, WEBP, GIF, BMP or AVIF.',
       }}
     />
   );

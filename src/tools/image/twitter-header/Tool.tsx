@@ -45,7 +45,7 @@ export default function TwitterHeaderTool() {
           file={file}
           onReset={() => setFile(null)}
           additionalInfo={
-            <div style={{ fontSize: '0.875rem', color: 'var(--color-text-muted)' }}>
+            <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
               Twitter / X headers are 1500×500 px. Notice the avatar overlap area on the bottom-left; keep vital imagery or logos away from this corner.
             </div>
           }

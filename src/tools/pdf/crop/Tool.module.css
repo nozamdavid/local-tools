@@ -9,7 +9,7 @@
 .status {
   margin: 2rem 0;
   text-align: center;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .layout {
@@ -28,8 +28,8 @@
 
 .previewCol {
   padding: 1rem;
-  background: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
 }
 
@@ -44,7 +44,7 @@
 
 .hint {
   margin: 0.75rem 0 0;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
   font-size: 0.85rem;
   text-align: center;
 }
@@ -66,15 +66,15 @@
   flex-direction: column;
   gap: 0.25rem;
   font-size: 0.85rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .marginField input {
   width: 100%;
   padding: 0.5rem 0.65rem;
-  color: var(--color-text);
-  background: var(--color-input-bg);
-  border: 1px solid var(--color-input-border);
+  color: var(--text);
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
   border-radius: var(--radius-sm);
   font-size: 0.95rem;
 }

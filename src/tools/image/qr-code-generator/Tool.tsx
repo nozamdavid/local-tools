@@ -496,7 +496,7 @@ export default function QrCodeGeneratorTool() {
               </div>
             )}
 
-            <hr style={{ border: 'none', borderTop: '1px solid var(--color-card-border)' }} />
+            <hr style={{ border: 'none', borderTop: '1px solid var(--border)' }} />
 
             {/* Customization Options */}
             <div className={styles.twoCols}>

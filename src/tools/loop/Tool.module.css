@@ -9,8 +9,8 @@
   gap: 0.5rem;
   margin: 0.75rem 0;
   padding: 0.5rem 0.75rem;
-  background-color: var(--color-brand-light);
-  color: var(--color-brand);
+  background-color: var(--accent-soft);
+  color: var(--accent);
   border-radius: var(--radius-md);
   font-weight: 600;
   font-size: 0.9rem;

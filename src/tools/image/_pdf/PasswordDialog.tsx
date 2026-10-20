@@ -32,8 +32,8 @@ export function PasswordDialog({ reason, onSubmit, onCancel }: PasswordDialogPro
     >
       <div
         style={{
-          backgroundColor: 'var(--color-card-bg)',
-          border: '1px solid var(--color-card-border)',
+          backgroundColor: 'var(--surface)',
+          border: '1px solid var(--border)',
           borderRadius: 'var(--radius-md)',
           padding: '1.5rem',
           maxWidth: '420px',
@@ -44,7 +44,7 @@ export function PasswordDialog({ reason, onSubmit, onCancel }: PasswordDialogPro
         <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem', fontWeight: 600 }}>
           🔒 Password Protected PDF
         </h3>
-        <p style={{ color: 'var(--color-text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
           {reason === 2
             ? 'Incorrect password. Please try again.'
             : 'This PDF requires a password to open. Enter the password below.'}
@@ -62,9 +62,9 @@ export function PasswordDialog({ reason, onSubmit, onCancel }: PasswordDialogPro
                 width: '100%',
                 padding: '0.65rem 0.85rem',
                 borderRadius: 'var(--radius-sm)',
-                border: '1px solid var(--color-input-border)',
-                backgroundColor: 'var(--color-input-bg)',
-                color: 'var(--color-text)',
+                border: '1px solid var(--input-border)',
+                backgroundColor: 'var(--input-bg)',
+                color: 'var(--text)',
                 fontSize: '0.95rem',
                 outline: 'none',
               }}

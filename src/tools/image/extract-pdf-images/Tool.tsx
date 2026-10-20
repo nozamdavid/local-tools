@@ -116,7 +116,7 @@ export default function ExtractPdfImagesTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Extract photos, illustrations and page renders into a ZIP archive. 100% on-device."
+          hint="Extract photos, illustrations and page renders into a ZIP archive."
           onFiles={handleFiles}
         />
       ) : (
@@ -129,8 +129,8 @@ export default function ExtractPdfImagesTool() {
               {fallbackNote && (
                 <div
                   style={{
-                    backgroundColor: 'var(--color-brand-light)',
-                    border: '1px solid var(--color-brand)',
+                    backgroundColor: 'var(--accent-soft)',
+                    border: '1px solid var(--accent)',
                     borderRadius: 'var(--radius-sm)',
                     padding: '0.75rem 1rem',
                     marginBottom: '1rem',

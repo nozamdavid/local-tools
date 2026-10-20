@@ -160,7 +160,7 @@ export default function OrganizeTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Reorder, rotate, delete and insert blank pages. 100% on-device."
+          hint="Reorder, rotate, delete and insert blank pages."
           onFiles={handleFiles}
         />
       ) : (

@@ -63,7 +63,7 @@ export default function PdfToPowerpointTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Every page becomes a slide that matches the page shape. 100% on-device."
+          hint="Every page becomes a slide that matches the page shape."
           onFiles={handleFiles}
         />
       ) : (

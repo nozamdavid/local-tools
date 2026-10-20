@@ -97,7 +97,7 @@ export default function RotateTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           label="Choose a PDF file or drag it here"
-          hint="Rotate every page or just the ones you pick. 100% on-device."
+          hint="Rotate every page or just the ones you pick."
           onFiles={handleFiles}
         />
       ) : (

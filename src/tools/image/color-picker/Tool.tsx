@@ -268,7 +268,7 @@ export default function ColorPickerTool() {
           <FileDrop
             accept="image/*"
             label="Drop an image here to pick colours"
-            hint="Supports JPG, PNG, WEBP, SVG, HEIC and more. 100% on-device."
+            hint="Supports JPG, PNG, WEBP, SVG, HEIC and more."
             onFiles={handleFiles}
           />
         ) : (

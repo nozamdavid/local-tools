@@ -360,7 +360,7 @@ export default function FaviconGeneratorTool() {
                 <div className={styles.textDesignerCard}>
                   <div className={styles.previewCol}>
                     <canvas ref={previewCanvasRef} className={styles.designerPreviewCanvas} />
-                    <span style={{ fontSize: '0.8rem', color: 'var(--color-text-muted)' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                       Preview (128×128)
                     </span>
                   </div>

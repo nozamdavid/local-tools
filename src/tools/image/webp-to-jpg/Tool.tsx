@@ -9,7 +9,7 @@ export default function Tool() {
         expectedFormats: ['webp'],
         expectedLabel: 'WEBP',
         dropLabel: 'Choose WEBP images or drag them here',
-        dropHint: 'Convert WebP images to universal JPG format. 100% private.',
+        dropHint: 'Convert WebP images to universal JPG format.',
       }}
     />
   );

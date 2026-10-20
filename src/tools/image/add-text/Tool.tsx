@@ -210,7 +210,7 @@ export default function Tool() {
                   className={styles.iconBtn}
                   title="Delete layer (Del)"
                   onClick={() => deleteLayer(selectedLayerId)}
-                  style={{ color: 'var(--color-danger)' }}
+                  style={{ color: 'var(--danger)' }}
                 >
                   🗑
                 </button>
@@ -241,7 +241,7 @@ export default function Tool() {
           {/* Layers bar if multiple layers exist */}
           {doc.layers.length > 0 && (
             <div className={styles.layersBar}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>Layers:</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Layers:</span>
               {doc.layers.map((l, index) => (
                 <button
                   key={l.id}

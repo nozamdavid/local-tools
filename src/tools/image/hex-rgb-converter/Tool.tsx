@@ -218,7 +218,7 @@ export default function HexRgbConverterTool() {
                 onChange={handleNativePicker}
                 title="Open native color picker"
               />
-              <span style={{ fontSize: '0.85rem', color: 'var(--color-text-muted)' }}>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 Click to open colour picker
               </span>
             </div>

@@ -25,14 +25,14 @@
   align-items: center;
   gap: 0.85rem;
   padding: 0.6rem 0.75rem;
-  background: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   cursor: grab;
 }
 
 .row:hover {
-  border-color: var(--color-brand);
+  border-color: var(--accent);
 }
 
 .rowDragging {
@@ -44,7 +44,7 @@
   width: 1.6rem;
   text-align: center;
   font-weight: 700;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .thumb {
@@ -55,7 +55,7 @@
   align-items: center;
   justify-content: center;
   background: #ffffff;
-  border: 1px solid var(--color-card-border);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   overflow: hidden;
   font-size: 1.4rem;
@@ -82,11 +82,11 @@
 
 .meta {
   font-size: 0.8rem;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .rowError {
-  color: var(--color-danger);
+  color: var(--danger);
   font-size: 0.82rem;
   margin-top: 0.25rem;
 }
@@ -97,18 +97,18 @@
 }
 
 .iconBtn {
-  background: var(--color-card-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  color: var(--color-text);
+  color: var(--text);
   padding: 0.3rem 0.55rem;
   font-size: 0.8rem;
   cursor: pointer;
 }
 
 .iconBtn:hover:not(:disabled) {
-  background: var(--color-brand-light);
-  border-color: var(--color-brand);
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 .iconBtn:disabled {
@@ -117,5 +117,5 @@
 }
 
 .removeBtn {
-  color: var(--color-danger);
+  color: var(--danger);
 }

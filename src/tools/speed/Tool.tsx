@@ -121,7 +121,7 @@ export default function SpeedTool() {
         <FileDrop
           accept="video/*"
           label="Choose a video or drag it here"
-          hint="Supports MP4, MOV, WebM, MKV, AVI and more. 100% on-device."
+          hint="Supports MP4, MOV, WebM, MKV, AVI and more."
           onFiles={handleFiles}
         />
       ) : (

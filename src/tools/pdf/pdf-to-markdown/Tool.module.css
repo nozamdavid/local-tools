@@ -9,7 +9,7 @@
 .status {
   margin: 2rem 0;
   text-align: center;
-  color: var(--color-text-muted);
+  color: var(--text-muted);
 }
 
 .output {
@@ -25,13 +25,13 @@
   font-size: 0.9rem;
   line-height: 1.5;
   color: inherit;
-  background: var(--color-bg);
-  border: 1px solid var(--color-card-border);
+  background: var(--bg);
+  border: 1px solid var(--border);
   border-radius: var(--radius-md);
   box-sizing: border-box;
 }
 
 .preview:focus {
-  outline: 2px solid var(--color-brand);
+  outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
