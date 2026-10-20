@@ -1,0 +1,214 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.statusCard {
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  border: 1px solid var(--border-color, #2d2d38);
+  background: var(--surface-bg, #1a1a20);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.statusHealthy {
+  border-left: 5px solid #10b981;
+}
+
+.statusCorrupted {
+  border-left: 5px solid #ef4444;
+}
+
+.statusCodecUnsupported {
+  border-left: 5px solid #f59e0b;
+}
+
+.statusUnknown {
+  border-left: 5px solid #6b7280;
+}
+
+.statusTitleRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.statusHeader {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.statusIcon {
+  font-size: 1.5rem;
+}
+
+.statusTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-color, #f9fafb);
+}
+
+.statusSubtitle {
+  font-size: 0.88rem;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.badgeHealthy {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.badgeCorrupted {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.badgeCodec {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.badgeUnknown {
+  background: rgba(107, 114, 128, 0.15);
+  color: #9ca3af;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.gridStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.statItem {
+  background: #111116;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #22222b;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statVal {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #e5e7eb;
+  margin-top: 0.2rem;
+}
+
+.issuesList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.issueItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #fca5a5;
+  line-height: 1.4;
+}
+
+.warningItem {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.6rem 0.85rem;
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #fde68a;
+  line-height: 1.4;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid #2d2d38;
+  max-height: 320px;
+}
+
+.atomTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  font-family: ui-monospace, monospace;
+}
+
+.atomTable th {
+  background: #191922;
+  color: #9ca3af;
+  text-align: left;
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid #2d2d38;
+  position: sticky;
+  top: 0;
+}
+
+.atomTable td {
+  padding: 0.5rem 0.85rem;
+  border-bottom: 1px solid #22222c;
+  color: #d1d5db;
+}
+
+.atomTable tr:nth-child(even) {
+  background: #13131a;
+}
+
+.atomTable tr:hover {
+  background: #20202d;
+}
+
+.actionRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.disclaimerBanner {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  color: #d1d5db;
+  line-height: 1.45;
+}

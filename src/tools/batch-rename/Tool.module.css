@@ -1,0 +1,193 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.configCard {
+  background: var(--surface-bg, #1a1a20);
+  border: 1px solid var(--border-color, #2d2d38);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.configGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.inputField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.inputLabel {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.textInput {
+  background: #111116;
+  border: 1px solid #2e2e3e;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  color: #f3f4f6;
+  font-size: 0.9rem;
+}
+
+.textInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.selectInput {
+  background: #111116;
+  border: 1px solid #2e2e3e;
+  border-radius: 6px;
+  padding: 0.5rem 0.75rem;
+  color: #f3f4f6;
+  font-size: 0.9rem;
+}
+
+.checkboxRow {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.88rem;
+  color: #e5e7eb;
+  cursor: pointer;
+}
+
+.statsBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background: #15151c;
+  padding: 0.75rem 1.25rem;
+  border-radius: 6px;
+  border: 1px solid #252530;
+}
+
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid var(--border-color, #2d2d38);
+  background: var(--surface-bg, #1a1a20);
+}
+
+.fileTable {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+}
+
+.fileTable th {
+  background: #14141a;
+  color: #9ca3af;
+  text-align: left;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #2d2d38;
+}
+
+.fileTable td {
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid #22222b;
+  color: #e5e7eb;
+}
+
+.fileTable tr:hover {
+  background: #1e1e27;
+}
+
+.fileTable tr.collisionRow {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.badgeCollision {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badgeOk {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badgeSanitized {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.btnActionGroup {
+  display: flex;
+  gap: 0.25rem;
+}
+
+.btnMini {
+  background: #252530;
+  border: 1px solid #3d3d4d;
+  color: #eee;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: background 0.15s ease;
+}
+
+.btnMini:hover {
+  background: #363646;
+}
+
+.btnMini:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btnDelete {
+  color: #f87171;
+  border-color: #5c2020;
+}
+
+.btnDelete:hover {
+  background: #451515;
+}
+
+.memoryWarning {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #fde68a;
+}

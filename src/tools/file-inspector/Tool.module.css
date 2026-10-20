@@ -1,0 +1,220 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--surface-bg, #1a1a20);
+  border: 1px solid var(--border-color, #2d2d38);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.fileNameTitle {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text-color, #f9fafb);
+  margin: 0;
+  word-break: break-all;
+}
+
+.badgeMatch {
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.badgeMismatch {
+  background: rgba(239, 68, 68, 0.15);
+  color: #f87171;
+  padding: 0.25rem 0.6rem;
+  border-radius: 9999px;
+  font-weight: 600;
+  font-size: 0.8rem;
+}
+
+.gridStats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem;
+}
+
+.statItem {
+  background: #111116;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 1px solid #22222b;
+}
+
+.statLabel {
+  font-size: 0.75rem;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.statValue {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #e5e7eb;
+  margin-top: 0.2rem;
+  word-break: break-word;
+}
+
+.hashesList {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.hashRow {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  background: #111116;
+  border: 1px solid #23232e;
+  border-radius: 6px;
+  padding: 0.65rem 0.85rem;
+}
+
+.hashHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hashName {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: #9ca3af;
+  letter-spacing: 0.05em;
+}
+
+.hashValueRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.hashValue {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.82rem;
+  color: #60a5fa;
+  word-break: break-all;
+}
+
+.hashCopyBtn {
+  background: #1f1f28;
+  border: 1px solid #363647;
+  color: #e2e8f0;
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 4px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.hashCopyBtn:hover {
+  background: #2a2a38;
+}
+
+.compareInput {
+  width: 100%;
+  box-sizing: border-box;
+  background: #111116;
+  border: 1px solid #2e2e3e;
+  border-radius: 6px;
+  padding: 0.6rem 0.85rem;
+  color: #f3f4f6;
+  font-family: monospace;
+  font-size: 0.85rem;
+}
+
+.compareInput:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.compareStatusMatch {
+  font-size: 0.82rem;
+  color: #34d399;
+  font-weight: 600;
+}
+
+.compareStatusMismatch {
+  font-size: 0.82rem;
+  color: #f87171;
+  font-weight: 600;
+}
+
+.hexViewer {
+  background: #0d0d12;
+  border: 1px solid #262633;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: #94a3b8;
+  white-space: pre;
+}
+
+.previewContainer {
+  display: flex;
+  justify-content: center;
+  background: #0f0f14;
+  border: 1px solid #262633;
+  border-radius: 6px;
+  padding: 1rem;
+}
+
+.imagePreview {
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 4px;
+}
+
+.inertDocNotice {
+  font-size: 0.85rem;
+  color: #9ca3af;
+  padding: 0.75rem;
+  background: #15151c;
+  border-radius: 6px;
+  border: 1px solid #23232e;
+}
+
+.btnGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.disclaimer {
+  font-size: 0.8rem;
+  color: #9ca3af;
+  background: rgba(234, 179, 8, 0.08);
+  border: 1px solid rgba(234, 179, 8, 0.25);
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  line-height: 1.45;
+}
