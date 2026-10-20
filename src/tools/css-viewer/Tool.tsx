@@ -83,7 +83,7 @@ body {
 }
 `;
 
-const HTML_PRESETS: Record<string, { label: string; html: string }> = {
+export const HTML_PRESETS: Record<string, { label: string; html: string }> = {
   card: {
     label: 'Profile / Product Card',
     html: `<div class="card">
@@ -112,7 +112,7 @@ const HTML_PRESETS: Record<string, { label: string; html: string }> = {
   },
   form: {
     label: 'Interactive Form',
-    html: `<form class="card" onsubmit="return false;" style="display:flex; flex-direction:column; gap:0.75rem;">
+    html: `<div class="card" style="display:flex; flex-direction:column; gap:0.75rem;">
   <h2 class="title">Contact Support</h2>
   <div>
     <label style="display:block; font-size:0.85rem; font-weight:600; margin-bottom:0.25rem;">Email Address</label>
@@ -123,7 +123,7 @@ const HTML_PRESETS: Record<string, { label: string; html: string }> = {
     <textarea rows="3" placeholder="How can we help?" style="width:100%; box-sizing:border-box; padding:0.5rem; border:1px solid #cbd5e1; border-radius:6px;"></textarea>
   </div>
   <button class="btn-primary" type="button" style="margin-top:0.5rem;">Submit Inquiry</button>
-</form>`,
+</div>`,
   },
   typography: {
     label: 'Typography & Layout',
@@ -139,6 +139,53 @@ const HTML_PRESETS: Record<string, { label: string; html: string }> = {
 </div>`,
   },
 };
+
+/**
+ * Robustly neutralizes closing style tag variants in user CSS to prevent rawtext HTML breakout.
+ * Handles </style>, </style >, </style\t>, </style\n>, </style/x>, and </style attr="foo">.
+ * Turning </style into <\/style keeps the HTML parser inside RAWTEXT mode, while CSS parsers
+ * treat \/ as an escaped forward slash character.
+ */
+export function escapeStyleTagBreakout(css: string): string {
+  return css.replace(/<\s*\/\s*style\b/gi, '<\\/style');
+}
+
+/**
+ * Strips active scripts, meta-refresh, base elements, forms, frames, and outbound link navigation
+ * from editable sample HTML to prevent privacy leaks and unintended redirects.
+ */
+export function sanitizeSampleHtml(html: string): string {
+  let clean = html;
+
+  // 1. Strip script elements
+  clean = clean.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  clean = clean.replace(/<script\b[^>]*\/>/gi, '');
+
+  // 2. Strip base and meta refresh
+  clean = clean.replace(/<base\b[^>]*>/gi, '');
+  clean = clean.replace(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*>/gi, '');
+
+  // 3. Strip forms and frame/embedded elements
+  clean = clean.replace(/<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet|form)>/gis, '');
+  clean = clean.replace(/<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*\/?>/gi, '');
+
+  // 4. Strip inline event handlers
+  clean = clean.replace(/\s+on[a-zA-Z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+
+  // 5. Neutralize outbound navigation on links (preserve local hash anchors)
+  clean = clean.replace(/<a\b([^>]*)>/gi, (match, attrs) => {
+    const hrefMatch = attrs.match(/\bhref\s*=\s*(["'])(.*?)\1/i);
+    const href = hrefMatch ? hrefMatch[2] : '';
+    if (href.startsWith('#')) {
+      return match.replace(/\starget\s*=\s*(["']).*?\1/gi, '');
+    }
+    return match
+      .replace(/\bhref\s*=\s*(["']).*?\1/gi, 'href="#"')
+      .replace(/\starget\s*=\s*(["']).*?\1/gi, '');
+  });
+
+  return clean;
+}
 
 export default function CssViewerTool() {
   const meta = getToolMeta('css-viewer');
@@ -238,16 +285,15 @@ export default function CssViewerTool() {
 
   // Construct iframe srcDoc with strict CSP and sandboxing
   const iframeSrcDoc = useMemo(() => {
-    // Escape closing style/script tags inside user code
-    const safeCss = cssCode.replace(/<\/style>/gi, '<\\/style>');
-    const safeHtml = sampleHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+    const safeCss = escapeStyleTagBreakout(cssCode);
+    const safeHtml = sanitizeSampleHtml(sampleHtml);
 
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; connect-src 'none'; frame-src 'none';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src data:; script-src 'none'; object-src 'none'; frame-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none';">
   <style>
 ${safeCss}
   </style>
@@ -368,8 +414,7 @@ ${safeHtml}
               )}
             </div>
 
-            {activeTab === 'css' ? (
-              <textarea
+            {activeTab === 'css' ? (              <textarea
                 className={styles.codeArea}
                 value={cssCode}
                 onChange={(e) => setCssCode(e.target.value)}
@@ -428,8 +473,7 @@ ${safeHtml}
 
           {diagnostics.warnings.length > 0 && (
             <ul className={styles.diagWarnings}>
-              {diagnostics.warnings.map((w, idx) => (
-                <li key={idx} className={styles.diagWarningItem}>
+              {diagnostics.warnings.map((w, idx) => (                <li key={idx} className={styles.diagWarningItem}>
                   ⚠️ {w}
                 </li>
               ))}

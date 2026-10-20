@@ -1,3 +1,5 @@
+import { unescapeCss, sanitizeCssText } from '../../lib/inertMarkup';
+
 export interface MhtmlPart {
   headers: Record<string, string>;
   contentType: string;
@@ -50,10 +52,7 @@ export function decodeBase64(base64: string): Uint8Array {
  * Handles soft line breaks (=\r\n or =\n) and byte-level =XX hex decoding.
  */
 export function decodeQuotedPrintable(input: string): Uint8Array {
-  // 1. Remove soft line breaks
   const unfolded = input.replace(/=(?:\r\n|\n|\r)/g, '');
-
-  // 2. Decode =XX to raw bytes
   const bytes: number[] = [];
   let i = 0;
   const len = unfolded.length;
@@ -77,7 +76,6 @@ export function decodeQuotedPrintable(input: string): Uint8Array {
 
 /**
  * Unfolds MIME header lines according to RFC 2822.
- * Lines beginning with space or tab are continuation of previous line.
  */
 export function unfoldHeaders(headerText: string): string[] {
   const rawLines = headerText.split(/\r?\n/);
@@ -113,7 +111,6 @@ export function parseHeaderLines(lines: string[]): Record<string, string> {
 
 /**
  * Extracts boundary string from Content-Type header.
- * Handles both quoted (`boundary="..."`) and unquoted (`boundary=...`).
  */
 export function extractBoundary(contentType: string): string | null {
   const match = contentType.match(/boundary=(?:"([^"]+)"|([^\s;]+))/i);
@@ -124,7 +121,6 @@ export function extractBoundary(contentType: string): string | null {
  * Parses an entire MHTML document into its root HTML and referenced MIME parts.
  */
 export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
-  // Find top header and body boundary
   const splitIdx = mhtmlText.search(/\r?\n\r?\n/);
   if (splitIdx === -1) {
     throw new Error('Invalid MHTML: Missing MIME header separator.');
@@ -146,7 +142,6 @@ export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
   const subject = topHeaders['subject'];
   const startCid = (contentType.match(/start="?([^";]+)"?/i)?.[1] || '').replace(/[<>]/g, '');
 
-  // Split into parts by boundary
   const delimiter = `--${boundary}`;
   const rawParts = bodyText.split(delimiter);
 
@@ -170,14 +165,12 @@ export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
     const contentIdRaw = partHeaders['content-id'];
     const contentId = contentIdRaw ? contentIdRaw.replace(/[<>]/g, '').trim() : undefined;
 
-    // Parse MIME type and charset
     const mimeMatch = partContentType.match(/^([^;]+)/);
     const mimeType = mimeMatch ? mimeMatch[1].trim().toLowerCase() : 'text/plain';
 
     const charsetMatch = partContentType.match(/charset=(?:"([^"]+)"|([^\s;]+))/i);
     const charset = (charsetMatch ? charsetMatch[1] || charsetMatch[2] : 'utf-8').toLowerCase();
 
-    // Decode body data
     let data: Uint8Array;
     let text: string | undefined;
 
@@ -198,7 +191,6 @@ export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
         text = new TextDecoder('utf-8').decode(data);
       }
     } else {
-      // 7bit, 8bit, binary
       const encoder = new TextEncoder();
       data = encoder.encode(partBodyStr);
       text = partBodyStr;
@@ -218,7 +210,6 @@ export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
 
     parts.push(part);
 
-    // Identify root HTML part
     if (!rootHtmlPart) {
       if (startCid && contentId && contentId === startCid) {
         rootHtmlPart = part;
@@ -244,20 +235,16 @@ export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
  * Creates safe filenames for ZIP archive assets.
  */
 export function safeAssetFilename(name: string, index: number, mimeType: string): string {
-  // Strip url query parameters and hash
   let clean = name.split('?')[0].split('#')[0];
-  // Take basename
   const lastSlash = clean.lastIndexOf('/');
   if (lastSlash >= 0) {
     clean = clean.slice(lastSlash + 1);
   }
-  // Remove dangerous chars and path traversal
   clean = clean.replace(/[^a-zA-Z0-9._-]/g, '_');
   if (!clean || clean === '.' || clean === '..') {
     clean = `asset_${index}`;
   }
 
-  // Ensure extension
   if (!clean.includes('.')) {
     if (mimeType === 'image/png') clean += '.png';
     else if (mimeType === 'image/jpeg') clean += '.jpg';
@@ -288,8 +275,48 @@ export function bytesToBase64(bytes: Uint8Array): string {
 }
 
 /**
+ * Helper to resolve srcset candidate URLs.
+ */
+function resolveSrcset(srcset: string, resolveUrl: (url: string) => string): string {
+  return srcset
+    .split(',')
+    .map((candidate) => {
+      const trimmed = candidate.trim();
+      if (!trimmed) return '';
+      const parts = trimmed.split(/\s+/);
+      const url = parts[0];
+      const descriptor = parts.slice(1).join(' ');
+      const resolved = resolveUrl(url);
+      return descriptor ? `${resolved} ${descriptor}` : resolved;
+    })
+    .filter(Boolean)
+    .join(', ');
+}
+
+/**
+ * Injects a strict, mode-aware Content-Security-Policy meta tag as the very FIRST element in <head>.
+ */
+export function injectStrictCsp(html: string, mode: 'standalone' | 'zip'): string {
+  const cspContent =
+    mode === 'standalone'
+      ? "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline' data:; font-src data:; media-src data: blob:; script-src 'none'; object-src 'none'; frame-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none';"
+      : "default-src 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; media-src 'self' data: blob:; script-src 'none'; object-src 'none'; frame-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none';";
+
+  const metaTag = `<meta http-equiv="Content-Security-Policy" content="${cspContent}">`;
+
+  if (/<head\b[^>]*>/i.test(html)) {
+    return html.replace(/<head\b[^>]*>/i, (match) => `${match}\n  ${metaTag}`);
+  }
+  if (/<html\b[^>]*>/i.test(html)) {
+    return html.replace(/<html\b[^>]*>/i, (match) => `${match}\n<head>\n  ${metaTag}\n</head>`);
+  }
+  return `<head>\n  ${metaTag}\n</head>\n${html}`;
+}
+
+/**
  * Resolves references (Content-Location, CID, and CSS url(...)),
- * inlines or extracts assets, disables scripts and blocks external remote references.
+ * inlines or extracts assets, disables scripts, blocks external remote references,
+ * and injects authoritative mode-aware Content Security Policy.
  */
 export function convertMhtmlToHtml(
   mhtmlText: string,
@@ -307,13 +334,11 @@ export function convertMhtmlToHtml(
     }
     if (part.location) {
       resourceMap.set(part.location, part);
-      // Normalized relative path
       try {
         const u = new URL(part.location);
         resourceMap.set(u.pathname, part);
         resourceMap.set(u.pathname.replace(/^\//, ''), part);
       } catch {
-        // location was already relative
         resourceMap.set(part.location.replace(/^\//, ''), part);
       }
     }
@@ -334,9 +359,8 @@ export function convertMhtmlToHtml(
       assetTargets.set(part, dataUri);
     } else {
       const origName = part.location || part.contentId || `asset_${assetIndex}`;
-      let safeName = safeAssetFilename(origName, assetIndex, part.mimeType);
+      const safeName = safeAssetFilename(origName, assetIndex, part.mimeType);
 
-      // Ensure uniqueness
       let uniqueName = safeName;
       let counter = 2;
       while (usedNames.has(uniqueName)) {
@@ -356,30 +380,31 @@ export function convertMhtmlToHtml(
     }
   }
 
-  let processedHtml = rootHtml;
   let inlinedCount = 0;
   let blockedCount = 0;
 
-  // Helper to resolve an arbitrary URL against the resourceMap
+  // Authoritative resolver for arbitrary URLs
   const resolveUrl = (rawUrl: string): string => {
-    const cleanUrl = rawUrl.trim().replace(/^['"]|['"]$/g, '');
-    if (!cleanUrl) return rawUrl;
+    const unescaped = unescapeCss(rawUrl.trim().replace(/^['"]|['"]$/g, ''));
+    if (!unescaped) return rawUrl;
+
+    if (unescaped.startsWith('#') || unescaped.startsWith('mailto:')) {
+      return unescaped;
+    }
 
     // Direct match
-    let part = resourceMap.get(cleanUrl);
-    if (!part && cleanUrl.startsWith('cid:')) {
-      part = resourceMap.get(cleanUrl.slice(4));
+    let part = resourceMap.get(unescaped);
+    if (!part && unescaped.startsWith('cid:')) {
+      part = resourceMap.get(unescaped.slice(4));
     }
     if (!part) {
-      // Try stripped query
-      const noQuery = cleanUrl.split('?')[0].split('#')[0];
+      const noQuery = unescaped.split('?')[0].split('#')[0];
       part = resourceMap.get(noQuery);
     }
     if (!part) {
-      // Try basename
-      const lastSlash = cleanUrl.lastIndexOf('/');
+      const lastSlash = unescaped.lastIndexOf('/');
       if (lastSlash >= 0) {
-        part = resourceMap.get(cleanUrl.slice(lastSlash + 1));
+        part = resourceMap.get(unescaped.slice(lastSlash + 1));
       }
     }
 
@@ -388,44 +413,191 @@ export function convertMhtmlToHtml(
       return assetTargets.get(part)!;
     }
 
-    // Check if it's an unmapped remote URL
-    const isRemote = /^https?:\/\/|^\/\//i.test(cleanUrl);
-    if (isRemote && options.blockRemoteUrls) {
+    // Safe inline raster data URIs can be retained
+    if (/^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(unescaped)) {
+      return unescaped;
+    }
+
+    // Unmapped references: in both standalone and ZIP modes, block remote or relative leaks
+    if (options.blockRemoteUrls) {
       blockedCount++;
-      // Neutralize remote URL to prevent phoning home or fetching private data
       return 'about:blank#blocked-remote-ref';
     }
 
-    return cleanUrl;
+    return rawUrl;
   };
 
-  // 1. Resolve URLs inside CSS url(...) in <style> and inline styles
-  processedHtml = processedHtml.replace(/url\(\s*(['"]?)([^)'"]+)\1\s*\)/gi, (_match, _quote, urlInside) => {
-    const resolved = resolveUrl(urlInside);
-    return `url("${resolved}")`;
-  });
+  let processedHtml = rootHtml;
 
-  // 2. Resolve HTML src, href, poster attributes
-  processedHtml = processedHtml.replace(/\b(src|href|poster)\s*=\s*(["'])([^"']+)\2/gi, (_match, attr, quote, val) => {
-    // Avoid modifying fragment links (#section)
-    if (val.startsWith('#') || val.startsWith('mailto:')) {
-      return `${attr}=${quote}${val}${quote}`;
+  // 1. Process via inert DOMParser when available in browser
+  if (typeof DOMParser !== 'undefined') {
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(processedHtml, 'text/html');
+
+    // Remove active/navigating elements: base, meta-refresh, forms, frames, object, embed
+    doc.querySelectorAll('base, meta[http-equiv="refresh" i], iframe, frame, frameset, object, embed, applet, form, input[type="image"]').forEach((el) => el.remove());
+
+    if (options.stripScripts) {
+      doc.querySelectorAll('script, noscript').forEach((el) => el.remove());
     }
-    const resolved = resolveUrl(val);
-    return `${attr}=${quote}${resolved}${quote}`;
-  });
 
-  // 3. Security: Strip scripts and inline JS event handlers to keep output inert
-  if (options.stripScripts) {
-    // Remove script tags and contents
-    processedHtml = processedHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '<!-- script removed for security -->');
-    // Remove self-closing scripts
-    processedHtml = processedHtml.replace(/<script\b[^>]*\/>/gi, '<!-- script removed for security -->');
-    // Strip on* inline event handlers (e.g. onclick, onload, onerror)
-    processedHtml = processedHtml.replace(/\s+on[a-zA-Z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-    // Neutralize javascript: hrefs
-    processedHtml = processedHtml.replace(/\bhref\s*=\s*(["'])javascript:[^"']*\1/gi, 'href="javascript:void(0)"');
+    // Remove event handlers and clean style attributes
+    const all = doc.querySelectorAll('*');
+    for (const el of Array.from(all)) {
+      for (const attr of Array.from(el.attributes)) {
+        if (options.stripScripts && attr.name.toLowerCase().startsWith('on')) {
+          el.removeAttribute(attr.name);
+        }
+        if (attr.name.toLowerCase() === 'style') {
+          el.setAttribute('style', sanitizeCssText(attr.value, resolveUrl));
+        }
+      }
+    }
+
+    // Clean style elements
+    doc.querySelectorAll('style').forEach((styleEl) => {
+      styleEl.textContent = sanitizeCssText(styleEl.textContent || '', resolveUrl);
+    });
+
+    // Clean link tags: stylesheets and preloads
+    doc.querySelectorAll('link').forEach((link) => {
+      const href = link.getAttribute('href');
+      if (href) {
+        const resolved = resolveUrl(href);
+        if (resolved.startsWith('about:blank')) {
+          link.remove();
+        } else {
+          link.setAttribute('href', resolved);
+        }
+      }
+    });
+
+    // Clean img, video, audio, track
+    doc.querySelectorAll('img, video, audio, track').forEach((media) => {
+      const src = media.getAttribute('src');
+      if (src) {
+        media.setAttribute('src', resolveUrl(src));
+      }
+      const poster = media.getAttribute('poster');
+      if (poster) {
+        media.setAttribute('poster', resolveUrl(poster));
+      }
+      const srcset = media.getAttribute('srcset');
+      if (srcset) {
+        media.setAttribute('srcset', resolveSrcset(srcset, resolveUrl));
+      }
+    });
+
+    // Clean picture source tags
+    doc.querySelectorAll('picture source').forEach((source) => {
+      const src = source.getAttribute('src');
+      if (src) {
+        source.setAttribute('src', resolveUrl(src));
+      }
+      const srcset = source.getAttribute('srcset');
+      if (srcset) {
+        source.setAttribute('srcset', resolveSrcset(srcset, resolveUrl));
+      }
+    });
+
+    // Neutralize SVG use and feImage
+    doc.querySelectorAll('svg use').forEach((useEl) => {
+      const href = useEl.getAttribute('href') || useEl.getAttribute('xlink:href') || '';
+      if (!href.startsWith('#')) {
+        const resolved = resolveUrl(href);
+        if (resolved.startsWith('about:blank')) {
+          useEl.removeAttribute('href');
+          useEl.removeAttribute('xlink:href');
+        } else {
+          useEl.setAttribute('href', resolved);
+        }
+      }
+    });
+    doc.querySelectorAll('svg feImage, svg image').forEach((imgEl) => {
+      const href = imgEl.getAttribute('href') || imgEl.getAttribute('xlink:href') || '';
+      if (href) {
+        const resolved = resolveUrl(href);
+        if (resolved.startsWith('about:blank')) {
+          imgEl.removeAttribute('href');
+          imgEl.removeAttribute('xlink:href');
+        } else {
+          imgEl.setAttribute('href', resolved);
+        }
+      }
+    });
+
+    // Strip active navigation on <a> tags
+    doc.querySelectorAll('a').forEach((a) => {
+      const href = a.getAttribute('href') || '';
+      if (href.startsWith('#')) {
+        return;
+      }
+      if (href.toLowerCase().startsWith('javascript:')) {
+        a.setAttribute('href', 'javascript:void(0)');
+        return;
+      }
+      const resolved = resolveUrl(href);
+      if (resolved.startsWith('about:blank')) {
+        a.setAttribute('href', 'about:blank#blocked-link');
+      } else {
+        a.setAttribute('href', resolved);
+      }
+      a.removeAttribute('target');
+    });
+
+    processedHtml = doc.documentElement.outerHTML;
+  } else {
+    // 2. Headless / Node string processing fallback
+
+    // Strip base and meta refresh
+    processedHtml = processedHtml.replace(/<base\b[^>]*>/gi, '');
+    processedHtml = processedHtml.replace(/<meta\b[^>]*http-equiv\s*=\s*(["'])refresh\1[^>]*>/gi, '');
+
+    // Strip forms, frames, object, embed
+    processedHtml = processedHtml.replace(/<(?:iframe|frame|frameset|object|embed|applet)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet)>/gis, '');
+    processedHtml = processedHtml.replace(/<(?:iframe|frame|frameset|object|embed|applet)\b[^>]*\/?>/gi, '');
+    processedHtml = processedHtml.replace(/<form\b[^>]*>.*?<\/form>/gis, '');
+    processedHtml = processedHtml.replace(/<form\b[^>]*\/?>/gi, '');
+
+    // Resolve CSS in <style> blocks
+    processedHtml = processedHtml.replace(/<style\b[^>]*>([\s\S]*?)<\/style>/gi, (_match, css) => {
+      const sanitized = sanitizeCssText(css, resolveUrl);
+      return `<style>${sanitized}</style>`;
+    });
+
+    // Resolve inline style attributes
+    processedHtml = processedHtml.replace(/\bstyle\s*=\s*(["'])(.*?)\1/gi, (_match, quote, css) => {
+      const sanitized = sanitizeCssText(css, resolveUrl);
+      return `style=${quote}${sanitized}${quote}`;
+    });
+
+    // Resolve srcset attributes
+    processedHtml = processedHtml.replace(/\bsrcset\s*=\s*(["'])(.*?)\1/gi, (_match, quote, val) => {
+      return `srcset=${quote}${resolveSrcset(val, resolveUrl)}${quote}`;
+    });
+
+    // Resolve HTML src, href, poster, data attributes
+    processedHtml = processedHtml.replace(/\b(src|href|poster|data)\s*=\s*(["'])([^"']+)\2/gi, (_match, attr, quote, val) => {
+      if (val.startsWith('#') || val.startsWith('mailto:')) {
+        return `${attr}=${quote}${val}${quote}`;
+      }
+      if (options.stripScripts && val.toLowerCase().startsWith('javascript:')) {
+        return `${attr}=${quote}javascript:void(0)${quote}`;
+      }
+      const resolved = resolveUrl(val);
+      return `${attr}=${quote}${resolved}${quote}`;
+    });
+
+    // Strip scripts and event handlers
+    if (options.stripScripts) {
+      processedHtml = processedHtml.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '<!-- script removed for security -->');
+      processedHtml = processedHtml.replace(/<script\b[^>]*\/>/gi, '<!-- script removed for security -->');
+      processedHtml = processedHtml.replace(/\s+on[a-zA-Z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
+    }
   }
+
+  // 3. Inject authoritative mode-aware CSP at first head position
+  processedHtml = injectStrictCsp(processedHtml, options.mode);
 
   return {
     html: processedHtml,

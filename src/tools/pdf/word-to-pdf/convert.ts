@@ -9,6 +9,7 @@ import {
   sanitizeRenderedDom,
   type PageSetup,
 } from '../_render/render';
+import { neutralizeOfficeRels } from '../../../lib/inertMarkup';
 
 export const LEGACY_DOC_MESSAGE =
   'Legacy .doc files are not supported. Open the file in Word or LibreOffice, save it as .docx, and try again.';
@@ -32,22 +33,14 @@ interface RenderedPage {
 }
 
 /** Neutralizes external relationship targets in the DOCX archive to prevent remote fetches. */
-async function prepareDocxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+export async function prepareDocxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
   try {
     const JSZip = (await import('jszip')).default;
     const zip = await JSZip.loadAsync(buffer);
     for (const [filename, file] of Object.entries(zip.files)) {
       if (filename.endsWith('.rels')) {
-        let relsXml = await file.async('text');
-        relsXml = relsXml.replace(
-          /<Relationship\s+([^>]*TargetMode="External"[^>]*)\/>/gi,
-          (match) => match.replace(/Target="[^"]*"/i, 'Target="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA="')
-        );
-        relsXml = relsXml.replace(
-          /<Relationship\s+([^>]*Target="https?:\/\/[^"]*"[^>]*)\/>/gi,
-          (match) => match.replace(/Target="[^"]*"/i, 'Target="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA="')
-        );
-        zip.file(filename, relsXml);
+        const relsXml = await file.async('text');
+        zip.file(filename, neutralizeOfficeRels(relsXml));
       }
     }
     return await zip.generateAsync({ type: 'arraybuffer' });

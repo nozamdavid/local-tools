@@ -1,5 +1,6 @@
 import { toCanvas } from 'html-to-image';
 import { PDFDocument, type PDFImage } from 'pdf-lib';
+import { sanitizeCssText } from '../../../lib/inertMarkup';
 
 export type PageSizeId = 'a4' | 'letter' | 'match';
 export type Orientation = 'portrait' | 'landscape';
@@ -79,21 +80,13 @@ export function createStage(widthPx: number): { stage: HTMLDivElement; dispose: 
 
   const doc = iframe.contentDocument || iframe.contentWindow?.document;
   if (!doc) {
-    const stage = document.createElement('div');
-    stage.style.position = 'fixed';
-    stage.style.left = '-20000px';
-    stage.style.top = '0';
-    stage.style.width = `${widthPx}px`;
-    stage.style.background = '#ffffff';
-    stage.style.color = '#000000';
-    stage.style.pointerEvents = 'none';
-    document.body.appendChild(stage);
-    return { stage, dispose: () => stage.remove() };
+    iframe.remove();
+    throw new Error('Failed to establish isolated iframe stage: contentDocument is not accessible.');
   }
 
   doc.open();
   doc.write(`<!DOCTYPE html><html><head>
-    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; font-src data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data: blob:; style-src 'unsafe-inline'; font-src data:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';">
   </head><body style="margin:0;padding:0;background:#ffffff;color:#000000;width:${widthPx}px;">
     <div id="stage" style="width:${widthPx}px;background:#ffffff;color:#000000;"></div>
   </body></html>`);
@@ -108,15 +101,12 @@ export function createStage(widthPx: number): { stage: HTMLDivElement; dispose: 
 }
 
 /**
- * Strips active scripts, external image references, and outbound links from
+ * Strips active scripts, external image references, SVG references, and outbound links from
  * rendered DOM nodes to guarantee user privacy and prevent network leaks.
  */
 export function sanitizeRenderedDom(root: HTMLElement): void {
-  // Remove script and noscript elements
-  root.querySelectorAll('script, noscript').forEach((el) => el.remove());
-
-  // Remove base elements that could hijack relative URLs
-  root.querySelectorAll('base').forEach((el) => el.remove());
+  // Remove script, noscript, base, and meta-refresh elements
+  root.querySelectorAll('script, noscript, base, meta[http-equiv="refresh" i]').forEach((el) => el.remove());
 
   // Remove event handler attributes (onclick, onload, etc.) and external style urls
   const allElements = root.querySelectorAll('*');
@@ -126,14 +116,15 @@ export function sanitizeRenderedDom(root: HTMLElement): void {
         el.removeAttribute(attr.name);
       }
       if (attr.name.toLowerCase() === 'style') {
-        let val = attr.value;
-        if (/url\s*\(/i.test(val)) {
-          val = val.replace(/url\s*\(\s*['"]?(?!data:|blob:)[^'")]+['"]?\s*\)/gi, 'none');
-          el.setAttribute('style', val);
-        }
+        el.setAttribute('style', sanitizeCssText(attr.value));
       }
     }
   }
+
+  // Sanitize <style> blocks
+  root.querySelectorAll('style').forEach((styleEl) => {
+    styleEl.textContent = sanitizeCssText(styleEl.textContent || '');
+  });
 
   // Remove external stylesheets or preloads
   root.querySelectorAll('link').forEach((link) => {
@@ -153,7 +144,38 @@ export function sanitizeRenderedDom(root: HTMLElement): void {
     img.removeAttribute('srcset');
   });
 
-  // Neutralize SVG images
+  // Neutralize picture source elements
+  root.querySelectorAll('picture source, source').forEach((source) => {
+    const src = source.getAttribute('src') || '';
+    const srcset = source.getAttribute('srcset') || '';
+    const isSafe = (!src || src.startsWith('data:') || src.startsWith('blob:')) &&
+                   (!srcset || srcset.startsWith('data:') || srcset.startsWith('blob:'));
+    if (!isSafe) {
+      source.remove();
+    } else {
+      source.removeAttribute('srcset');
+    }
+  });
+
+  // Neutralize SVG use elements (preserve only local fragment #id references)
+  root.querySelectorAll('use').forEach((useEl) => {
+    const href = useEl.getAttribute('href') || useEl.getAttribute('xlink:href') || '';
+    if (href && !href.startsWith('#')) {
+      useEl.removeAttribute('href');
+      useEl.removeAttribute('xlink:href');
+    }
+  });
+
+  // Neutralize SVG feImage elements
+  root.querySelectorAll('feImage').forEach((feEl) => {
+    const href = feEl.getAttribute('href') || feEl.getAttribute('xlink:href') || '';
+    if (href && !href.startsWith('data:') && !href.startsWith('blob:')) {
+      feEl.removeAttribute('href');
+      feEl.removeAttribute('xlink:href');
+    }
+  });
+
+  // Neutralize SVG image elements
   root.querySelectorAll('image').forEach((img) => {
     const href = img.getAttribute('href') || img.getAttribute('xlink:href') || '';
     if (href && !href.startsWith('data:') && !href.startsWith('blob:')) {
@@ -162,14 +184,17 @@ export function sanitizeRenderedDom(root: HTMLElement): void {
     }
   });
 
-  // Remove outbound link targets
+  // Remove outbound link targets (preserve local fragments)
   root.querySelectorAll('a').forEach((a) => {
-    a.removeAttribute('href');
-    a.removeAttribute('target');
+    const href = a.getAttribute('href') || '';
+    if (!href.startsWith('#')) {
+      a.removeAttribute('href');
+      a.removeAttribute('target');
+    }
   });
 
   // Remove embedded iframes, media, or forms
-  root.querySelectorAll('iframe, object, embed, video, audio, form, input[type="image"]').forEach((el) => el.remove());
+  root.querySelectorAll('iframe, frame, frameset, object, embed, video, audio, form, input[type="image"]').forEach((el) => el.remove());
 }
 
 export function rasterize(
@@ -193,7 +218,6 @@ export function rasterize(
       ? {
           transform: `translateY(${-offsetY}px)`,
           transformOrigin: 'top left',
-          // The clone is shifted up, so its own box must not clip the rest of the content.
           overflow: 'visible',
           height: `${el.scrollHeight}px`,
         }
@@ -355,6 +379,6 @@ export function pxToPt(px: number): number {
 
 export function pdfFileName(file: File | null, fallback: string): string {
   if (!file) return fallback;
-  const base = file.name.replace(/\.[^.]+$/, '') || 'document';
+  const base = file.name.replace(/\\.[^.]+$/, '') || 'document';
   return `${base}.pdf`;
 }

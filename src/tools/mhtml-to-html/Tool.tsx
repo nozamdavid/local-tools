@@ -177,7 +177,7 @@ export default function MhtmlToHtmlTool() {
               </div>
             </div>
 
-            {/* Sandboxed iframe preview: scripts disabled, no same-origin escalation */}
+            {/* Sandboxed iframe preview: scripts disabled, no same-origin escalation, CSP enforced */}
             <div className={styles.iframeContainer}>
               <iframe
                 title="Converted HTML Preview"

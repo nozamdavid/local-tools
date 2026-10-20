@@ -8,6 +8,7 @@ import {
   sanitizeRenderedDom,
   type PageSetup,
 } from '../_render/render';
+import { neutralizeOfficeRels } from '../../../lib/inertMarkup';
 
 const SLIDE_WIDTH_PX = 960;
 
@@ -26,7 +27,7 @@ export async function checkPptx(file: File): Promise<string | null> {
 }
 
 /** Strips dangling content-type overrides and neutralizes external relationships. */
-async function preparePptxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+export async function preparePptxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
   try {
     const JSZip = (await import('jszip')).default;
     const zip = await JSZip.loadAsync(buffer);
@@ -44,16 +45,8 @@ async function preparePptxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
     }
     for (const [filename, file] of Object.entries(zip.files)) {
       if (filename.endsWith('.rels')) {
-        let relsXml = await file.async('text');
-        relsXml = relsXml.replace(
-          /<Relationship\s+([^>]*TargetMode="External"[^>]*)\/>/gi,
-          (match) => match.replace(/Target="[^"]*"/i, 'Target="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA="')
-        );
-        relsXml = relsXml.replace(
-          /<Relationship\s+([^>]*Target="https?:\/\/[^"]*"[^>]*)\/>/gi,
-          (match) => match.replace(/Target="[^"]*"/i, 'Target="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA="')
-        );
-        zip.file(filename, relsXml);
+        const relsXml = await file.async('text');
+        zip.file(filename, neutralizeOfficeRels(relsXml));
       }
     }
     return await zip.generateAsync({ type: 'arraybuffer' });

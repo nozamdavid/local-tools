@@ -176,3 +176,4 @@ Branches: ✅ Shipped (foundation, shared code, all tools), 📌 Next up, 🚢 R
 - Credentials: `~/.config/taproot/loconvert.env` (mode 600) exports `TAPROOT_MCP`, `TAPROOT_API`, `TAPROOT_PROJECT`, `TAPROOT_TOKEN`. Keep tokens out of the repo.
 - Upkeep rules: before starting/delegating work find or create matching task; update notes on starting, meaningful progress, blockers and scope changes; on completion mark done with evidence (file/report paths, checks, run/task id); preserve completed history; keep unfinished work open.
 - Collapse upkeep rule: after task status changes, recursively collapse every task or subtask with children when all its children and their descendants are done; apply at every depth; retain open branches and completed history.
+- Working rule: Design-system migration is deferred until the user explicitly requests it; continue functional fixes without visual redesign.
