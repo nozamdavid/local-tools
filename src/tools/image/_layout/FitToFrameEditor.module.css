@@ -1,0 +1,175 @@
+.editorWrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  width: 100%;
+}
+
+.canvasContainer {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: var(--color-bg-subtle, #1e2029);
+  border-radius: 12px;
+  border: 1px solid var(--color-border, #2d3139);
+  padding: 1.5rem;
+  overflow: hidden;
+  user-select: none;
+}
+
+.canvasInner {
+  position: relative;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.4), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+  line-height: 0;
+  cursor: grab;
+}
+
+.canvasInner:active {
+  cursor: grabbing;
+}
+
+.canvasInner.isCircle {
+  border-radius: 50%;
+}
+
+.previewCanvas {
+  display: block;
+  max-width: 100%;
+  max-height: 520px;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+}
+
+.guidesOverlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.guideEdge {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-style: dashed;
+  border-color: rgba(255, 75, 75, 0.85);
+  background: rgba(255, 75, 75, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff6b6b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.guideTop {
+  top: 0;
+  border-bottom-width: 2px;
+}
+
+.guideBottom {
+  bottom: 0;
+  border-top-width: 2px;
+}
+
+.guideBox {
+  position: absolute;
+  border: 2px dashed rgba(59, 130, 246, 0.9);
+  background: rgba(59, 130, 246, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #60a5fa;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.guideCircle {
+  position: absolute;
+  border-radius: 50%;
+  border: 2px dashed rgba(234, 179, 8, 0.9);
+  background: rgba(234, 179, 8, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #facc15;
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+
+.controlsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+
+.buttonGroup {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.toggleBtn {
+  flex: 1;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #374151);
+  background: var(--color-bg, #111827);
+  color: var(--color-text-muted, #9ca3af);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.toggleBtn:hover {
+  background: var(--color-bg-hover, #1f2937);
+  color: var(--color-text, #f3f4f6);
+}
+
+.toggleBtnActive {
+  background: var(--color-primary, #3b82f6);
+  border-color: var(--color-primary, #3b82f6);
+  color: #ffffff;
+}
+
+.toggleBtnActive:hover {
+  background: var(--color-primary-hover, #2563eb);
+}
+
+.colorInputRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.colorPicker {
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, #374151);
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+}
+
+.warningBox {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 8px;
+  color: #f59e0b;
+  font-size: 0.875rem;
+}

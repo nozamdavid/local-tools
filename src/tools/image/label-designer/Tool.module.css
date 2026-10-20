@@ -1,0 +1,221 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.topBar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  background-color: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.toolbarGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .layout {
+    grid-template-columns: 280px 1fr;
+    align-items: start;
+  }
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  background-color: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 1.25rem;
+  box-shadow: var(--shadow-sm);
+}
+
+.editorArea {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.tabButtons {
+  display: flex;
+  gap: 0.5rem;
+  background-color: var(--color-bg);
+  padding: 0.35rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-card-border);
+  align-self: flex-start;
+}
+
+.tabBtn {
+  padding: 0.4rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tabBtnActive {
+  background-color: var(--color-card-bg);
+  color: var(--color-brand);
+  font-weight: 600;
+  box-shadow: var(--shadow-sm);
+}
+
+.canvasStageWrapper {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 420px;
+  overflow: auto;
+  position: relative;
+  background-image: radial-gradient(var(--color-card-border) 1px, transparent 1px);
+  background-size: 16px 16px;
+}
+
+.labelCanvas {
+  background: white;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+  border-radius: 4px;
+  position: relative;
+  overflow: hidden;
+  user-select: none;
+}
+
+.element {
+  position: absolute;
+  cursor: move;
+  border: 1px dashed transparent;
+  transition: border-color 0.1s;
+  box-sizing: border-box;
+}
+
+.elementSelected {
+  border: 1.5px solid var(--color-brand) !important;
+  box-shadow: 0 0 0 1px rgba(192, 38, 211, 0.2);
+}
+
+.resizeHandle {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  background: var(--color-brand);
+  border: 2px solid white;
+  border-radius: 50%;
+  bottom: -5px;
+  right: -5px;
+  cursor: nwse-resize;
+  z-index: 10;
+}
+
+.sheetPreviewWrapper {
+  background-color: var(--color-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  display: flex;
+  justify-content: center;
+  overflow: auto;
+}
+
+.sheetPage {
+  background: white;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.15);
+  position: relative;
+  border: 1px solid #cbd5e1;
+}
+
+.tiledLabel {
+  position: absolute;
+  border: 1px dashed #cbd5e1;
+  background: white;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.twoCols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.btnGroup {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.smallBtn {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.8125rem;
+}
+
+.checkboxLabel {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  color: var(--color-text);
+}
+
+.propSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.propTitle {
+  font-size: 0.8125rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  font-weight: 600;
+}
+
+/* Print container */
+.printOnly {
+  display: none;
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .printOnly, .printOnly * {
+    visibility: visible;
+  }
+  .printOnly {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }
+}

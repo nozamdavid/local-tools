@@ -1,0 +1,60 @@
+.cropWrapper {
+  position: relative;
+  display: inline-block;
+  user-select: none;
+  touch-action: none;
+  max-width: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-input-border);
+  background: repeating-conic-gradient(#cbd5e1 0% 25%, #f1f5f9 0% 50%) 50% / 20px 20px;
+}
+
+.cropImage {
+  display: block;
+  max-width: 100%;
+  max-height: 480px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.cropBox {
+  position: absolute;
+  box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.5);
+  border: 2px solid #ffffff;
+  outline: 1px dashed rgba(0, 0, 0, 0.6);
+  cursor: move;
+  box-sizing: border-box;
+}
+
+.handle {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: #ffffff;
+  border: 1.5px solid #0f172a;
+  border-radius: 2px;
+  box-sizing: border-box;
+}
+
+.handleNw { top: -6px; left: -6px; cursor: nwse-resize; }
+.handleNe { top: -6px; right: -6px; cursor: nesw-resize; }
+.handleSw { bottom: -6px; left: -6px; cursor: nesw-resize; }
+.handleSe { bottom: -6px; right: -6px; cursor: nwse-resize; }
+.handleN  { top: -6px; left: calc(50% - 6px); cursor: ns-resize; }
+.handleS  { bottom: -6px; left: calc(50% - 6px); cursor: ns-resize; }
+.handleW  { top: calc(50% - 6px); left: -6px; cursor: ew-resize; }
+.handleE  { top: calc(50% - 6px); right: -6px; cursor: ew-resize; }
+
+.inputsGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+@media (max-width: 640px) {
+  .inputsGrid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

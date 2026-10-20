@@ -1,0 +1,146 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.topBar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.privacyBanner {
+  background: #fef3c7;
+  border: 1px solid #fde68a;
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #92400e;
+  font-size: 0.9rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .privacyBanner {
+    background: #451a03;
+    border-color: #78350f;
+    color: #fef3c7;
+  }
+}
+
+.thumbnailCard {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  padding: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.thumbImg {
+  max-width: 140px;
+  max-height: 140px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-card-border);
+  object-fit: contain;
+}
+
+.groupsContainer {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.groupCard {
+  background: var(--color-card-bg);
+  border: 1px solid var(--color-card-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.groupHeader {
+  background: var(--color-bg);
+  padding: 0.75rem 1.25rem;
+  font-weight: 600;
+  font-size: 1rem;
+  border-bottom: 1px solid var(--color-card-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.groupBadge {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.tableWrapper {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  padding: 0.6rem 1.25rem;
+  text-align: left;
+  border-bottom: 1px solid var(--color-card-border);
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.table th {
+  width: 35%;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.sensitiveRow {
+  background: rgba(245, 158, 11, 0.08);
+}
+
+.sensitiveTag {
+  display: inline-block;
+  background: #fef3c7;
+  color: #92400e;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sensitiveTag {
+    background: #78350f;
+    color: #fef3c7;
+  }
+}
+
+.outboundLink {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-brand);
+  text-decoration: underline;
+  font-weight: 500;
+  margin-top: 0.25rem;
+}
+
+.actionsRow {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
