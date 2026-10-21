@@ -9,6 +9,8 @@ import { downloadBlob } from '../../../lib/download';
 import { zipFiles } from '../../../lib/zip';
 import { formatBytes } from '../../../lib/format';
 import { useObjectUrl } from '../../../lib/useObjectUrl';
+import { peekPendingFiles } from '../../../lib/handoff';
+import { classifyFile } from '../../../lib/toolInputs';
 import { parseIcoDirectory, frameToPngBlob } from '../_utility/ico';
 
 type Mode = 'ico-to-png' | 'png-to-ico';
@@ -101,7 +103,15 @@ export default function IconConverterTool() {
     meta.description ||
     'Extract all frames from ICO files to PNG, or build multi-resolution Windows ICO icons (16 to 256 px).';
 
-  const [mode, setMode] = useState<Mode>('ico-to-png');
+  const [mode, setMode] = useState<Mode>(() => {
+    const pending = peekPendingFiles('/image/icon-converter');
+    if (pending && pending.length > 0) {
+      const c = classifyFile(pending[0]);
+      return c.format === 'ico' ? 'ico-to-png' : 'png-to-ico';
+    }
+    return 'ico-to-png';
+  });
+
   const [processing, setProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
@@ -117,11 +127,26 @@ export default function IconConverterTool() {
     async (files: File[]) => {
       if (!files || files.length === 0) return;
       setError(null);
+
+      const classes = files.map(classifyFile);
+      const hasIco = classes.some((c) => c.format === 'ico');
+      const hasRaster = classes.some((c) => ['jpg', 'png', 'webp'].includes(c.format));
+
+      if (hasIco && hasRaster) {
+        setError(
+          'Mixed input formats: cannot process ICO and raster images in the same batch. Please upload either ICO files or raster images.'
+        );
+        return;
+      }
+
+      const targetMode: Mode = hasIco ? 'ico-to-png' : (hasRaster ? 'png-to-ico' : mode);
+      setMode(targetMode);
+
       setProcessing(true);
       setProgress(0);
 
       try {
-        if (mode === 'ico-to-png') {
+        if (targetMode === 'ico-to-png') {
           const items: ExtractedFrameItem[] = [];
           const nameTracker = new Map<string, number>();
 
@@ -160,7 +185,7 @@ export default function IconConverterTool() {
           }
           setExtractedFrames(items);
         } else {
-          // PNG to Multi-resolution ICO
+          // Raster to Multi-resolution ICO
           const icoItems: GeneratedIcoItem[] = [];
 
           for (let fIdx = 0; fIdx < files.length; fIdx++) {
@@ -257,7 +282,7 @@ export default function IconConverterTool() {
         {/* Upload Zone */}
         {!hasResults && !processing && (
           <FileDrop
-            accept={mode === 'ico-to-png' ? 'image/x-icon,image/vnd.microsoft.icon,.ico' : IMAGE_ACCEPT}
+            accept={`${IMAGE_ACCEPT},.ico,image/x-icon,image/vnd.microsoft.icon`}
             multiple={true}
             label={
               mode === 'ico-to-png'

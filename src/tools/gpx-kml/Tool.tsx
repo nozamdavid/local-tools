@@ -4,6 +4,8 @@ import { FileDrop } from '../../components/FileDrop';
 import { Button, Field } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { downloadBlob } from '../../lib/download';
+import { peekPendingFiles } from '../../lib/handoff';
+import { classifyFile } from '../../lib/toolInputs';
 import {
   gpxToGeoData,
   kmlToGeoData,
@@ -20,7 +22,16 @@ export default function GpxKmlTool() {
     meta.description ||
     'Convert GPS tracks, routes, and waypoints between GPX and KML while preserving multi-segment boundaries and elevations.';
 
-  const [direction, setDirection] = useState<'gpx-to-kml' | 'kml-to-gpx'>('gpx-to-kml');
+  const [direction, setDirection] = useState<'gpx-to-kml' | 'kml-to-gpx'>(() => {
+    const pending = peekPendingFiles('/gpx-kml');
+    if (pending && pending.length > 0) {
+      const c = classifyFile(pending[0]);
+      if (c.isKml) return 'kml-to-gpx';
+      if (c.isGpx) return 'gpx-to-kml';
+    }
+    return 'gpx-to-kml';
+  });
+
   const [inputTab, setInputTab] = useState<'paste' | 'upload'>('upload');
   const [inputText, setInputText] = useState<string>('');
   const [sourceName, setSourceName] = useState<string>('converted');
@@ -32,13 +43,21 @@ export default function GpxKmlTool() {
     const base = file.name.replace(/\.[^/.]+$/, '');
     setSourceName(base);
 
-    if (file.name.toLowerCase().endsWith('.kml')) {
+    const c = classifyFile(file);
+    const text = await file.text();
+
+    if (c.isKml) {
       setDirection('kml-to-gpx');
-    } else if (file.name.toLowerCase().endsWith('.gpx')) {
+    } else if (c.isGpx) {
       setDirection('gpx-to-kml');
+    } else if (c.ext === 'xml' || c.mime === 'application/xml' || c.mime === 'text/xml') {
+      if (text.includes('<kml') || text.includes('<Document') || text.includes('<Placemark')) {
+        setDirection('kml-to-gpx');
+      } else if (text.includes('<gpx')) {
+        setDirection('gpx-to-kml');
+      }
     }
 
-    const text = await file.text();
     setInputText(text);
   };
 
@@ -49,11 +68,25 @@ export default function GpxKmlTool() {
 
     try {
       if (direction === 'gpx-to-kml') {
+        if (inputText.includes('<kml') || inputText.includes('<Document') || inputText.includes('<Placemark')) {
+          return {
+            outputText: '',
+            summary: null,
+            error: 'Input appears to be KML, but GPX → KML mode is selected. Please switch to KML → GPX.',
+          };
+        }
         const geoData = gpxToGeoData(inputText);
         const kml = geoDataToKml(geoData);
         const summary = getGeoSummary(geoData);
         return { outputText: kml, summary, error: null };
       } else {
+        if (inputText.includes('<gpx')) {
+          return {
+            outputText: '',
+            summary: null,
+            error: 'Input appears to be GPX, but KML → GPX mode is selected. Please switch to GPX → KML.',
+          };
+        }
         const geoData = kmlToGeoData(inputText);
         const gpx = geoDataToGpx(geoData);
         const summary = getGeoSummary(geoData);
@@ -133,7 +166,7 @@ export default function GpxKmlTool() {
 
           {inputTab === 'upload' ? (
             <FileDrop
-              accept={direction === 'gpx-to-kml' ? '.gpx,.xml' : '.kml,.xml'}
+              accept=".gpx,.kml,.xml,application/gpx+xml,application/vnd.google-earth.kml+xml"
               label={
                 direction === 'gpx-to-kml'
                   ? 'Choose or drag a GPX file'

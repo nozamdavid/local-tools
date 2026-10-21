@@ -5,6 +5,8 @@ import { Button, Field, Select } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { downloadBlob } from '../../lib/download';
 import { zipFiles } from '../../lib/zip';
+import { peekPendingFiles } from '../../lib/handoff';
+import { classifyFile } from '../../lib/toolInputs';
 import {
   parseCsv,
   csvToRecords,
@@ -30,10 +32,38 @@ export default function JsonCsvTool() {
     meta.description ||
     'Convert between JSON and CSV with batch processing, stable union headers, and leading zero preservation.';
 
-  const [direction, setDirection] = useState<'json-to-csv' | 'csv-to-json'>('json-to-csv');
-  const [inputTab, setInputTab] = useState<'paste' | 'upload'>('paste');
+  const [direction, setDirection] = useState<'json-to-csv' | 'csv-to-json'>(() => {
+    const pending = peekPendingFiles('/json-csv');
+    if (pending && pending.length > 0) {
+      const c = classifyFile(pending[0]);
+      if (c.isCsv || c.isTsv) {
+        return 'csv-to-json';
+      }
+      if (c.isJson) {
+        return 'json-to-csv';
+      }
+    }
+    return 'json-to-csv';
+  });
+
+  const [inputTab, setInputTab] = useState<'paste' | 'upload'>(() => {
+    const pending = peekPendingFiles('/json-csv');
+    return pending && pending.length > 0 ? 'upload' : 'paste';
+  });
+
   const [inputText, setInputText] = useState<string>('');
-  const [delimiter, setDelimiter] = useState<string>(',');
+
+  const [delimiter, setDelimiter] = useState<string>(() => {
+    const pending = peekPendingFiles('/json-csv');
+    if (pending && pending.length > 0) {
+      const c = classifyFile(pending[0]);
+      if (c.isTsv) {
+        return '\t';
+      }
+    }
+    return ',';
+  });
+
   const [hasHeader, setHasHeader] = useState<boolean>(true);
   const [preserveLeadingZeros, setPreserveLeadingZeros] = useState<boolean>(true);
   const [parseNumbers, setParseNumbers] = useState<boolean>(false);
@@ -44,6 +74,7 @@ export default function JsonCsvTool() {
   const [batchResults, setBatchResults] = useState<BatchResult[]>([]);
   const [isBatch, setIsBatch] = useState<boolean>(false);
 
+
   // Single conversion logic
   const conversion = useMemo(() => {
     if (!inputText.trim()) {
@@ -52,10 +83,25 @@ export default function JsonCsvTool() {
 
     try {
       if (direction === 'json-to-csv') {
+        try {
+          JSON.parse(inputText);
+        } catch (e: unknown) {
+          throw new Error('Invalid JSON format: ' + (e instanceof Error ? e.message : String(e)));
+        }
         const csv = jsonToCsv(inputText, { delimiter });
         return { outputText: csv, error: null };
       } else {
         // CSV to JSON
+        const trimmed = inputText.trim();
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+          try {
+            JSON.parse(trimmed);
+            throw new Error('Input is JSON, but CSV → JSON mode is active. Please switch to JSON → CSV.');
+          } catch (e: unknown) {
+            if (e instanceof Error && e.message.includes('Input is JSON')) throw e;
+          }
+        }
+
         const effectiveDelim = delimiter === 'auto' ? detectDelimiter(inputText) : delimiter;
         const rows = parseCsv(inputText, { delimiter: effectiveDelim });
         if (rows.length === 0) {
@@ -97,10 +143,14 @@ export default function JsonCsvTool() {
       const base = file.name.replace(/\.[^/.]+$/, '');
       setSourceName(base);
 
-      // Auto-detect direction if file extension matches
-      if (file.name.toLowerCase().endsWith('.csv') || file.name.toLowerCase().endsWith('.tsv')) {
+      const c = classifyFile(file);
+      if (c.isTsv) {
         setDirection('csv-to-json');
-      } else if (file.name.toLowerCase().endsWith('.json')) {
+        setDelimiter('\t');
+      } else if (c.isCsv) {
+        setDirection('csv-to-json');
+        if (delimiter === '\t') setDelimiter(',');
+      } else if (c.isJson) {
         setDirection('json-to-csv');
       }
 
@@ -115,20 +165,84 @@ export default function JsonCsvTool() {
     setInputTab('upload');
     const results: BatchResult[] = [];
 
+    const classes = files.map(classifyFile);
+    const hasJson = classes.some((c) => c.isJson);
+    const hasTabular = classes.some((c) => c.isCsv || c.isTsv);
+
+    let batchDirection = direction;
+    if (hasJson && !hasTabular) {
+      batchDirection = 'json-to-csv';
+      setDirection('json-to-csv');
+    } else if (hasTabular && !hasJson) {
+      batchDirection = 'csv-to-json';
+      setDirection('csv-to-json');
+    }
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
+      const c = classifyFile(file);
       const base = file.name.replace(/\.[^/.]+$/, '');
-      const outExt = direction === 'json-to-csv' ? '.csv' : '.json';
+      const isJsonFile = c.isJson;
+      const isTsvFile = c.isTsv;
+      const isCsvFile = c.isCsv;
+
+      if (batchDirection === 'json-to-csv' && (isCsvFile || isTsvFile)) {
+        results.push({
+          id: `batch-${i}`,
+          originalName: file.name,
+          outputName: `${base}.csv`,
+          blob: new Blob([]),
+          preview: '',
+          error: 'Cannot convert CSV/TSV file in JSON → CSV mode. Mixed input directions are not supported in a single batch.',
+        });
+        continue;
+      }
+
+      if (batchDirection === 'csv-to-json' && isJsonFile) {
+        results.push({
+          id: `batch-${i}`,
+          originalName: file.name,
+          outputName: `${base}.json`,
+          blob: new Blob([]),
+          preview: '',
+          error: 'Cannot convert JSON file in CSV → JSON mode. Mixed input directions are not supported in a single batch.',
+        });
+        continue;
+      }
+
+      const outExt = batchDirection === 'json-to-csv' ? '.csv' : '.json';
       const outName = `${base}${outExt}`;
 
       try {
         const text = await file.text();
         let outText = '';
 
-        if (direction === 'json-to-csv') {
+        if (batchDirection === 'json-to-csv') {
+          try {
+            JSON.parse(text);
+          } catch {
+            throw new Error('Invalid JSON format: file does not contain valid JSON');
+          }
           outText = jsonToCsv(text, { delimiter });
         } else {
-          const effectiveDelim = delimiter === 'auto' ? detectDelimiter(text) : delimiter;
+          const effectiveDelim = isTsvFile
+            ? '\t'
+            : (delimiter === '\t' || delimiter === 'auto')
+            ? detectDelimiter(text)
+            : delimiter;
+
+          const trimmed = text.trim();
+          if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+            try {
+              JSON.parse(trimmed);
+              throw new Error('File content is JSON, not CSV/TSV');
+            } catch (err: unknown) {
+              if (err instanceof Error && err.message.includes('File content is JSON')) {
+                throw err;
+              }
+            }
+          }
+
           const rows = parseCsv(text, { delimiter: effectiveDelim });
           if (hasHeader && rows.length > 0) {
             validateHeaders(rows[0].map((h) => h.trim()));
@@ -141,7 +255,7 @@ export default function JsonCsvTool() {
           outText = JSON.stringify(records, null, 2);
         }
 
-        const mime = direction === 'json-to-csv' ? 'text/csv;charset=utf-8' : 'application/json';
+        const mime = batchDirection === 'json-to-csv' ? 'text/csv;charset=utf-8' : 'application/json';
         const blob = new Blob([outText], { type: mime });
         results.push({
           id: `batch-${i}`,
@@ -215,6 +329,7 @@ export default function JsonCsvTool() {
             onClick={() => {
               setDirection('json-to-csv');
               setIsBatch(false);
+              if (delimiter === '\t') setDelimiter(',');
             }}
           >
             JSON → CSV
@@ -251,7 +366,7 @@ export default function JsonCsvTool() {
 
           {inputTab === 'upload' ? (
             <FileDrop
-              accept={direction === 'json-to-csv' ? '.json,application/json' : '.csv,.tsv,text/*'}
+              accept=".json,application/json,.csv,.tsv,text/csv,text/tab-separated-values,text/*"
               multiple
               label={
                 direction === 'json-to-csv'

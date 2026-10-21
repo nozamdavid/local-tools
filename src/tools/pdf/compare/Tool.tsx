@@ -6,6 +6,7 @@ import { Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { downloadBlob } from '../../../lib/download';
+import { takePendingFiles } from '../../../lib/handoff';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { usePdfSource } from '../_thumbs/usePdfSource';
 import { PageThumb } from '../_thumbs/PageThumb';
@@ -37,6 +38,19 @@ export default function CompareTool() {
   const [extractA, setExtractA] = useState<ExtractionResult | null>(null);
   const [extractB, setExtractB] = useState<ExtractionResult | null>(null);
   const [copied, setCopied] = useState<boolean>(false);
+
+  // Deliver handed pending PDF pair or single PDF from home page
+  useEffect(() => {
+    const handed = takePendingFiles(meta.path || '/pdf/compare', 'application/pdf,.pdf', true);
+    if (handed && handed.accepted.length > 0) {
+      if (handed.accepted[0]) {
+        sourceA.open(handed.accepted[0]);
+      }
+      if (handed.accepted[1]) {
+        sourceB.open(handed.accepted[1]);
+      }
+    }
+  }, []);
 
   // Extract text when docA is available
   useEffect(() => {
@@ -212,9 +226,13 @@ export default function CompareTool() {
               {!sourceA.file ? (
                 <FileDrop
                   accept="application/pdf,.pdf"
+                  multiple={true}
                   label="Drop Document A (Base PDF)"
                   hint="First document to compare against."
-                  onFiles={(files) => files[0] && sourceA.open(files[0])}
+                  onFiles={(files) => {
+                    if (files[0]) sourceA.open(files[0]);
+                    if (files[1] && !sourceB.file) sourceB.open(files[1]);
+                  }}
                 />
               ) : (
                 <div className="meta-chips">
