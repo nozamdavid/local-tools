@@ -4,12 +4,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { Field, Select, Button, Slider } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { downloadBlob } from '../../../lib/download';
-import {
-  type LabelElement,
-  type ImageElement,
-  LABEL_PRESETS,
-  renderLabelToCanvas,
-} from '../_generate/label';
+import { type LabelElement, type ImageElement, LABEL_PRESETS, renderLabelToCanvas } from '../_generate/label';
 import styles from './Tool.module.css';
 
 const DEFAULT_ELEMENTS: LabelElement[] = [
@@ -174,8 +169,7 @@ export default function LabelDesignerTool() {
 
   const handlePointerMove = (e: React.PointerEvent) => {
     if (!dragRef.current) return;
-    const { isDragging, isResizing, startX, startY, origX, origY, origW, origH, elementId } =
-      dragRef.current;
+    const { isDragging, isResizing, startX, startY, origX, origY, origW, origH, elementId } = dragRef.current;
 
     const dxMm = (e.clientX - startX) / canvasPxPerMm;
     const dyMm = (e.clientY - startY) / canvasPxPerMm;
@@ -465,6 +459,7 @@ export default function LabelDesignerTool() {
                   <Select
                     id={presetSelectId}
                     value={selectedPresetId}
+                    aria-label="Label Size Preset"
                     onChange={(e) => handlePresetChange(e.target.value)}
                     options={LABEL_PRESETS.map((p) => ({ value: p.id, label: p.name }))}
                   />
@@ -498,77 +493,36 @@ export default function LabelDesignerTool() {
                 <div className={styles.propSection}>
                   <span className={styles.propTitle}>Add Element</span>
                   <div className={styles.btnGroup} style={{ flexWrap: 'wrap' }}>
-                    <Button
-                      variant="secondary"
-                      className={styles.smallBtn}
-                      onClick={() => addElement('text')}
-                    >
+                    <Button variant="secondary" className={styles.smallBtn} onClick={() => addElement('text')}>
                       + Text
                     </Button>
-                    <Button
-                      variant="secondary"
-                      className={styles.smallBtn}
-                      onClick={() => addElement('barcode')}
-                    >
+                    <Button variant="secondary" className={styles.smallBtn} onClick={() => addElement('barcode')}>
                       + Barcode
                     </Button>
-                    <Button
-                      variant="secondary"
-                      className={styles.smallBtn}
-                      onClick={() => addElement('qr')}
-                    >
+                    <Button variant="secondary" className={styles.smallBtn} onClick={() => addElement('qr')}>
                       + QR Code
                     </Button>
-                    <Button
-                      variant="secondary"
-                      className={styles.smallBtn}
-                      onClick={() => addElement('rect')}
-                    >
+                    <Button variant="secondary" className={styles.smallBtn} onClick={() => addElement('rect')}>
                       + Box
                     </Button>
-                    <Button
-                      variant="secondary"
-                      className={styles.smallBtn}
-                      onClick={() => addElement('line')}
-                    >
+                    <Button variant="secondary" className={styles.smallBtn} onClick={() => addElement('line')}>
                       + Line
                     </Button>
-                    <Button
-                      variant="secondary"
-                      className={styles.smallBtn}
-                      onClick={() => fileInputRef.current?.click()}
-                    >
+                    <Button variant="secondary" className={styles.smallBtn} onClick={() => fileInputRef.current?.click()}>
                       + Image
                     </Button>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      style={{ display: 'none' }}
-                      onChange={handleImageUpload}
-                    />
+                    <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
                   </div>
                 </div>
 
                 <div className={styles.propSection}>
                   <span className={styles.propTitle}>Grid & Snapping</span>
                   <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      checked={snapToGrid}
-                      onChange={(e) => setSnapToGrid(e.target.checked)}
-                    />
+                    <input type="checkbox" checked={snapToGrid} onChange={(e) => setSnapToGrid(e.target.checked)} />
                     Snap to grid
                   </label>
                   {snapToGrid && (
-                    <Slider
-                      min={1}
-                      max={5}
-                      step={1}
-                      unit="mm"
-                      value={gridStep}
-                      onChange={setGridStep}
-                    />
+                    <Slider min={1} max={5} step={1} unit="mm" value={gridStep} onChange={setGridStep} aria-label="Grid size" />
                   )}
                 </div>
 
@@ -607,11 +561,7 @@ export default function LabelDesignerTool() {
                             rows={2}
                             value={selectedElement.text}
                             onChange={(e) =>
-                              setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id ? { ...el, text: e.target.value } : el,
-                                ),
-                              )
+                              setElements((prev) => prev.map((el) => (el.id === selectedElement.id ? { ...el, text: e.target.value } : el)))
                             }
                           />
                         </Field>
@@ -623,11 +573,7 @@ export default function LabelDesignerTool() {
                             unit="pt"
                             value={selectedElement.fontSize}
                             onChange={(v) =>
-                              setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id ? { ...el, fontSize: v } : el,
-                                ),
-                              )
+                              setElements((prev) => prev.map((el) => (el.id === selectedElement.id ? { ...el, fontSize: v } : el)))
                             }
                           />
                         </Field>
@@ -638,9 +584,7 @@ export default function LabelDesignerTool() {
                               checked={selectedElement.bold}
                               onChange={(e) =>
                                 setElements((prev) =>
-                                  prev.map((el) =>
-                                    el.id === selectedElement.id ? { ...el, bold: e.target.checked } : el,
-                                  ),
+                                  prev.map((el) => (el.id === selectedElement.id ? { ...el, bold: e.target.checked } : el)),
                                 )
                               }
                             />
@@ -652,9 +596,7 @@ export default function LabelDesignerTool() {
                               checked={selectedElement.italic}
                               onChange={(e) =>
                                 setElements((prev) =>
-                                  prev.map((el) =>
-                                    el.id === selectedElement.id ? { ...el, italic: e.target.checked } : el,
-                                  ),
+                                  prev.map((el) => (el.id === selectedElement.id ? { ...el, italic: e.target.checked } : el)),
                                 )
                               }
                             />
@@ -671,11 +613,7 @@ export default function LabelDesignerTool() {
                             value={selectedElement.format}
                             onChange={(e) =>
                               setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id
-                                    ? { ...el, format: e.target.value as any }
-                                    : el,
-                                ),
+                                prev.map((el) => (el.id === selectedElement.id ? { ...el, format: e.target.value as any } : el)),
                               )
                             }
                             options={[
@@ -693,9 +631,7 @@ export default function LabelDesignerTool() {
                             value={selectedElement.value}
                             onChange={(e) =>
                               setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id ? { ...el, value: e.target.value } : el,
-                                ),
+                                prev.map((el) => (el.id === selectedElement.id ? { ...el, value: e.target.value } : el)),
                               )
                             }
                           />
@@ -706,9 +642,7 @@ export default function LabelDesignerTool() {
                             checked={selectedElement.showText}
                             onChange={(e) =>
                               setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id ? { ...el, showText: e.target.checked } : el,
-                                ),
+                                prev.map((el) => (el.id === selectedElement.id ? { ...el, showText: e.target.checked } : el)),
                               )
                             }
                           />
@@ -725,11 +659,7 @@ export default function LabelDesignerTool() {
                             className="input"
                             value={selectedElement.text}
                             onChange={(e) =>
-                              setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id ? { ...el, text: e.target.value } : el,
-                                ),
-                              )
+                              setElements((prev) => prev.map((el) => (el.id === selectedElement.id ? { ...el, text: e.target.value } : el)))
                             }
                           />
                         </Field>
@@ -738,11 +668,7 @@ export default function LabelDesignerTool() {
                             value={selectedElement.ecLevel}
                             onChange={(e) =>
                               setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id
-                                    ? { ...el, ecLevel: e.target.value as any }
-                                    : el,
-                                ),
+                                prev.map((el) => (el.id === selectedElement.id ? { ...el, ecLevel: e.target.value as any } : el)),
                               )
                             }
                             options={[
@@ -764,11 +690,7 @@ export default function LabelDesignerTool() {
                             className="input"
                             value={selectedElement.fill}
                             onChange={(e) =>
-                              setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id ? { ...el, fill: e.target.value } : el,
-                                ),
-                              )
+                              setElements((prev) => prev.map((el) => (el.id === selectedElement.id ? { ...el, fill: e.target.value } : el)))
                             }
                           />
                         </Field>
@@ -776,11 +698,10 @@ export default function LabelDesignerTool() {
                           <input
                             type="color"
                             value={selectedElement.stroke}
+                            aria-label="Border Color"
                             onChange={(e) =>
                               setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id ? { ...el, stroke: e.target.value } : el,
-                                ),
+                                prev.map((el) => (el.id === selectedElement.id ? { ...el, stroke: e.target.value } : el)),
                               )
                             }
                           />
@@ -793,11 +714,7 @@ export default function LabelDesignerTool() {
                             unit="mm"
                             value={selectedElement.strokeWidth}
                             onChange={(v) =>
-                              setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id ? { ...el, strokeWidth: v } : el,
-                                ),
-                              )
+                              setElements((prev) => prev.map((el) => (el.id === selectedElement.id ? { ...el, strokeWidth: v } : el)))
                             }
                           />
                         </Field>
@@ -810,11 +727,10 @@ export default function LabelDesignerTool() {
                           <input
                             type="color"
                             value={selectedElement.color}
+                            aria-label="Line Color"
                             onChange={(e) =>
                               setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id ? { ...el, color: e.target.value } : el,
-                                ),
+                                prev.map((el) => (el.id === selectedElement.id ? { ...el, color: e.target.value } : el)),
                               )
                             }
                           />
@@ -827,11 +743,7 @@ export default function LabelDesignerTool() {
                             unit="mm"
                             value={selectedElement.lineWidth}
                             onChange={(v) =>
-                              setElements((prev) =>
-                                prev.map((el) =>
-                                  el.id === selectedElement.id ? { ...el, lineWidth: v } : el,
-                                ),
-                              )
+                              setElements((prev) => prev.map((el) => (el.id === selectedElement.id ? { ...el, lineWidth: v } : el)))
                             }
                           />
                         </Field>
@@ -848,6 +760,7 @@ export default function LabelDesignerTool() {
                   <Select
                     id={sheetSelectId}
                     value={sheetType}
+                    aria-label="Sheet Paper"
                     onChange={(e) => setSheetType(e.target.value as 'A4' | 'Letter')}
                     options={[
                       { value: 'A4', label: 'A4 (210 × 297 mm)' },
@@ -915,22 +828,10 @@ export default function LabelDesignerTool() {
                   <span className={styles.propTitle}>Spacing / Gaps (mm)</span>
                   <div className={styles.twoCols}>
                     <Field label="Horizontal">
-                      <input
-                        type="number"
-                        className="input"
-                        value={gapX}
-                        min={0}
-                        onChange={(e) => setGapX(Number(e.target.value) || 0)}
-                      />
+                      <input type="number" className="input" value={gapX} min={0} onChange={(e) => setGapX(Number(e.target.value) || 0)} />
                     </Field>
                     <Field label="Vertical">
-                      <input
-                        type="number"
-                        className="input"
-                        value={gapY}
-                        min={0}
-                        onChange={(e) => setGapY(Number(e.target.value) || 0)}
-                      />
+                      <input type="number" className="input" value={gapY} min={0} onChange={(e) => setGapY(Number(e.target.value) || 0)} />
                     </Field>
                   </div>
                 </div>
@@ -1027,6 +928,7 @@ export default function LabelDesignerTool() {
                               width: '100%',
                               height: '100%',
                               background: '#f1f5f9',
+                              color: 'var(--gray-900)',
                               display: 'flex',
                               flexDirection: 'column',
                               alignItems: 'center',
@@ -1036,7 +938,7 @@ export default function LabelDesignerTool() {
                             }}
                           >
                             <span>🔳 QR</span>
-                            <span style={{ fontSize: '8px', color: '#64748b' }}>{el.text.slice(0, 14)}</span>
+                            <span style={{ fontSize: '8px', color: 'var(--gray-600)' }}>{el.text.slice(0, 14)}</span>
                           </div>
                         )}
 
@@ -1046,6 +948,7 @@ export default function LabelDesignerTool() {
                               width: '100%',
                               height: '100%',
                               background: '#f1f5f9',
+                              color: 'var(--gray-900)',
                               display: 'flex',
                               flexDirection: 'column',
                               alignItems: 'center',
@@ -1055,7 +958,7 @@ export default function LabelDesignerTool() {
                             }}
                           >
                             <span>||| {el.value} |||</span>
-                            {el.showText && <span style={{ fontSize: '8px' }}>{el.format}</span>}
+                            {el.showText && <span style={{ fontSize: '8px', color: 'var(--gray-700)' }}>{el.format}</span>}
                           </div>
                         )}
 
@@ -1074,12 +977,7 @@ export default function LabelDesignerTool() {
                         )}
 
                         {/* Resize handle */}
-                        {isSel && (
-                          <div
-                            className={styles.resizeHandle}
-                            onPointerDown={(e) => handlePointerDown(e, el.id, true)}
-                          />
-                        )}
+                        {isSel && <div className={styles.resizeHandle} onPointerDown={(e) => handlePointerDown(e, el.id, true)} />}
                       </div>
                     );
                   })}

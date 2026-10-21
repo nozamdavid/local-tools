@@ -69,7 +69,11 @@ export function CommandPalette() {
     document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = overflow;
-      restoreFocus.current?.focus?.();
+      // Return focus to whatever opened the palette; if that element has since left the page, fall back to the header search button.
+      const opener = restoreFocus.current;
+      restoreFocus.current = null;
+      if (!opener) return;
+      (opener.isConnected ? opener : document.querySelector<HTMLElement>('.site-header .search-trigger'))?.focus?.();
     };
   }, [open]);
 
@@ -85,6 +89,8 @@ export function CommandPalette() {
 
   function choose(tool: ToolMeta | undefined) {
     if (!tool) return;
+    // Navigation moves focus to the new page, so skip the usual focus return.
+    restoreFocus.current = null;
     close();
     navigate(tool.path);
   }
@@ -129,9 +135,10 @@ export function CommandPalette() {
               setQuery(e.target.value);
               setActive(0);
             }}
+            aria-label="Search tools"
             role="combobox"
-            aria-expanded="true"
-            aria-controls={listId}
+            aria-expanded={results.length > 0}
+            aria-controls={results.length > 0 ? listId : undefined}
             aria-activedescendant={results[active] ? `${listId}-${results[active].id}` : undefined}
             aria-autocomplete="list"
             autoComplete="off"
@@ -140,10 +147,16 @@ export function CommandPalette() {
           <Kbd>Esc</Kbd>
         </div>
 
-        <div className="palette-body">
+        <div className="sr-only" role="status">
+          {query.trim() ? (results.length > 0 ? `${results.length} result${results.length === 1 ? '' : 's'}` : 'No tools match') : ''}
+        </div>
+
+        <div className="palette-body" tabIndex={0}>
           {results.length > 0 ? (
             <>
-              <div className="palette-group-label">{query.trim() ? `${results.length} result${results.length === 1 ? '' : 's'}` : 'Popular tools'}</div>
+              <div className="palette-group-label">
+                {query.trim() ? `${results.length} result${results.length === 1 ? '' : 's'}` : 'Popular tools'}
+              </div>
               <ul className="palette-list" id={listId} role="listbox" ref={listRef} aria-label="Tools">
                 {results.map((tool, index) => (
                   <li

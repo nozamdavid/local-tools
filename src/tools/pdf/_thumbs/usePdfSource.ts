@@ -135,8 +135,7 @@ export function usePdfSource(thumbSize = 200): PdfSource {
       return await PDFDocument.load(bytes, { updateMetadata: false });
     } catch (err) {
       // pdf-lib is compiled to ES5, so `instanceof` can miss its Error subclasses; match the message too.
-      const encrypted =
-        err instanceof EncryptedPDFError || (err instanceof Error && /is encrypted/i.test(err.message));
+      const encrypted = err instanceof EncryptedPDFError || (err instanceof Error && /is encrypted/i.test(err.message));
       if (!encrypted) throw err;
     }
 

@@ -30,6 +30,11 @@
   padding: var(--space-8) var(--gutter) var(--space-20);
 }
 
+/* Focus target for the skip link and in-app navigation; it is not in the Tab order. */
+.main-content:focus {
+  outline: none;
+}
+
 /* ================= Header ================= */
 
 .site-header {
@@ -393,6 +398,10 @@
   border-bottom: 1px solid var(--border);
 }
 
+.palette-search:focus-within {
+  box-shadow: inset 0 -2px 0 var(--accent);
+}
+
 .palette-search > svg {
   width: 18px;
   height: 18px;
@@ -622,7 +631,8 @@
 }
 
 .tool-card:focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
@@ -983,6 +993,8 @@
 
 .filter-input:focus-within {
   border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
@@ -1403,9 +1415,17 @@
   .search-trigger {
     min-width: 0;
   }
-  .search-trigger-label,
   .search-trigger-keys {
     display: none;
+  }
+  /* Keep the label for assistive tech when the button collapses to an icon. */
+  .search-trigger-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
   }
   .search-trigger {
     width: 36px;
@@ -1423,6 +1443,13 @@
   }
   .search-trigger {
     display: none;
+  }
+  /* The header search button is hidden here; the menu's own search button must stay visible and full width. */
+  .mobile-nav .search-trigger-block {
+    display: inline-flex;
+    width: 100%;
+    justify-content: flex-start;
+    padding: 0 var(--space-3);
   }
   .mega-inner {
     grid-template-columns: 1fr;
@@ -1492,4 +1519,9 @@
   .action-buttons > .btn {
     flex: 1 1 auto;
   }
+}
+
+/* Takes focus when files are chosen on the home page; not in the Tab order. */
+.quick-drop-result:focus {
+  outline: none;
 }

@@ -6,16 +6,7 @@ import { Button, Field, Slider, Select } from '../../../components/Controls';
 import { decodeImage, IMAGE_ACCEPT, EncodableMime } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
 import { withSuffix } from '../../../lib/format';
-import {
-  CanvasDocument,
-  ArrowLayer,
-  RectLayer,
-  EllipseLayer,
-  LineLayer,
-  BadgeLayer,
-  CalloutLayer,
-  RedactLayer,
-} from '../_canvas/types';
+import { CanvasDocument, ArrowLayer, RectLayer, EllipseLayer, LineLayer, BadgeLayer, CalloutLayer, RedactLayer } from '../_canvas/types';
 import { useCanvasHistory } from '../_canvas/useCanvasHistory';
 import { CanvasStage, StageMode, DrawConfig, ShapeConfig } from '../_canvas/CanvasStage';
 import { exportDocument } from '../_canvas/render';
@@ -31,16 +22,7 @@ const COLOR_PRESETS = [
   { name: 'Black', hex: '#000000' },
 ];
 
-type AnnotatorTool =
-  | 'select'
-  | 'arrow'
-  | 'rect'
-  | 'ellipse'
-  | 'line'
-  | 'badge'
-  | 'callout'
-  | 'highlighter'
-  | 'redact';
+type AnnotatorTool = 'select' | 'arrow' | 'rect' | 'ellipse' | 'line' | 'badge' | 'callout' | 'highlighter' | 'redact';
 
 export default function Tool() {
   const meta = getToolMeta('img-image-annotator');
@@ -260,7 +242,7 @@ export default function Tool() {
   // Determine stage mode and configs
   let stageMode: StageMode = 'select';
   let drawConfig: DrawConfig | undefined;
-  let shapeConfig: ShapeConfig | undefined;
+  const shapeConfig: ShapeConfig | undefined = undefined;
 
   if (activeTool === 'highlighter') {
     stageMode = 'draw';
@@ -427,9 +409,7 @@ export default function Tool() {
                     if (selectedLayerId) {
                       pushDoc({
                         ...doc,
-                        layers: doc.layers.map((l) =>
-                          l.id === selectedLayerId && 'strokeWidth' in l ? { ...l, strokeWidth: v } : l
-                        ),
+                        layers: doc.layers.map((l) => (l.id === selectedLayerId && 'strokeWidth' in l ? { ...l, strokeWidth: v } : l)),
                       });
                     }
                   }}
@@ -446,9 +426,7 @@ export default function Tool() {
                         pushDoc({
                           ...doc,
                           layers: doc.layers.map((l) =>
-                            l.id === selectedLayer.id && l.type === 'redact'
-                              ? { ...l, redactType: 'blur' }
-                              : l
+                            l.id === selectedLayer.id && l.type === 'redact' ? { ...l, redactType: 'blur' } : l,
                           ),
                         });
                       }
@@ -464,9 +442,7 @@ export default function Tool() {
                         pushDoc({
                           ...doc,
                           layers: doc.layers.map((l) =>
-                            l.id === selectedLayer.id && l.type === 'redact'
-                              ? { ...l, redactType: 'pixelate' }
-                              : l
+                            l.id === selectedLayer.id && l.type === 'redact' ? { ...l, redactType: 'pixelate' } : l,
                           ),
                         });
                       }
@@ -489,9 +465,7 @@ export default function Tool() {
                     const val = e.target.value;
                     pushDoc({
                       ...doc,
-                      layers: doc.layers.map((l) =>
-                        l.id === selectedLayer.id && l.type === 'callout' ? { ...l, text: val } : l
-                      ),
+                      layers: doc.layers.map((l) => (l.id === selectedLayer.id && l.type === 'callout' ? { ...l, text: val } : l)),
                     });
                   }}
                 />
@@ -509,9 +483,7 @@ export default function Tool() {
                     const num = parseInt(e.target.value, 10) || 1;
                     pushDoc({
                       ...doc,
-                      layers: doc.layers.map((l) =>
-                        l.id === selectedLayer.id && l.type === 'badge' ? { ...l, number: num } : l
-                      ),
+                      layers: doc.layers.map((l) => (l.id === selectedLayer.id && l.type === 'badge' ? { ...l, number: num } : l)),
                     });
                   }}
                 />
@@ -541,12 +513,7 @@ export default function Tool() {
               )}
             </div>
 
-            <Button
-              variant="primary"
-              data-testid="export-btn"
-              disabled={isExporting}
-              onClick={handleExport}
-            >
+            <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleExport}>
               {isExporting ? 'Exporting…' : 'Download Image'}
             </Button>
           </div>

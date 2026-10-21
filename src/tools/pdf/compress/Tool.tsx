@@ -21,12 +21,7 @@ const LEVELS = [
   { value: 'strong', label: 'Strong: render pages as images' },
 ];
 
-const LOSSLESS_ARGS = [
-  '--object-streams=generate',
-  '--compress-streams=y',
-  '--recompress-flate',
-  '--compression-level=9',
-];
+const LOSSLESS_ARGS = ['--object-streams=generate', '--compress-streams=y', '--recompress-flate', '--compression-level=9'];
 
 const LOCKED_MESSAGE = 'This PDF is password protected. Remove the password with the Unlock PDF tool first.';
 
@@ -60,7 +55,8 @@ export default function CompressPdfTool() {
           const output = await runQpdf(input, LOSSLESS_ARGS);
           return new Blob([output as BlobPart], { type: 'application/pdf' });
         } catch (err) {
-          if (err instanceof QpdfError) throw new Error(err.badPassword ? LOCKED_MESSAGE : `Could not compress this PDF: ${err.message}`);
+          if (err instanceof QpdfError)
+            throw new Error(err.badPassword ? LOCKED_MESSAGE : `Could not compress this PDF: ${err.message}`, { cause: err });
           throw err;
         }
       }
@@ -69,8 +65,8 @@ export default function CompressPdfTool() {
       try {
         doc = await loadPdfDocument(source);
       } catch (err) {
-        if (err instanceof Error && err.name === 'PasswordException') throw new Error(LOCKED_MESSAGE);
-        throw new Error(`Could not read this PDF: ${err instanceof Error ? err.message : 'the file may be damaged.'}`);
+        if (err instanceof Error && err.name === 'PasswordException') throw new Error(LOCKED_MESSAGE, { cause: err });
+        throw new Error(`Could not read this PDF: ${err instanceof Error ? err.message : 'the file may be damaged.'}`, { cause: err });
       }
 
       try {
@@ -93,11 +89,7 @@ export default function CompressPdfTool() {
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="pdf-compress">
       {!file ? (
-        <FileDrop
-          accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          onFiles={(files) => setFile(files[0] ?? null)}
-        />
+        <FileDrop accept="application/pdf,.pdf" label="Choose a PDF file or drag it here" onFiles={(files) => setFile(files[0] ?? null)} />
       ) : result ? (
         <div>
           <div className="meta-chips">
@@ -153,14 +145,14 @@ export default function CompressPdfTool() {
 
           {level === 'lossless' ? (
             <p className="field-hint">
-              Repacks the file structure and recompresses its streams at the highest level. Text stays selectable.
-              Savings are usually small unless the file was saved inefficiently.
+              Repacks the file structure and recompresses its streams at the highest level. Text stays selectable. Savings are usually small
+              unless the file was saved inefficiently.
             </p>
           ) : (
             <>
               <div className="error-banner" role="note">
-                Strong compression turns every page into a picture. Text can no longer be selected, searched or copied,
-                and links and form fields are lost.
+                Strong compression turns every page into a picture. Text can no longer be selected, searched or copied, and links and form
+                fields are lost.
               </div>
               <Field label="Resolution" hint="Lower values give smaller files. 110 DPI suits reading on screen.">
                 <Slider value={dpi} min={72} max={200} step={2} unit=" DPI" disabled={job.status === 'running'} onChange={setDpi} />

@@ -49,7 +49,10 @@ export function parseTimestamp(str: string): number {
   return Number.isFinite(direct) ? direct : 0;
 }
 
-export function extractCueTiming(item: WhisperChunk | SubtitleCue, fallbackDuration: number = 3): {
+export function extractCueTiming(
+  item: WhisperChunk | SubtitleCue,
+  fallbackDuration: number = 3,
+): {
   start: number;
   end: number;
   text: string;
@@ -61,13 +64,11 @@ export function extractCueTiming(item: WhisperChunk | SubtitleCue, fallbackDurat
   if ('timestamp' in item) {
     start = Number(item.timestamp[0]) || 0;
     const rawEnd = item.timestamp[1];
-    end = rawEnd !== null && rawEnd !== undefined && Number.isFinite(Number(rawEnd))
-      ? Number(rawEnd)
-      : start + fallbackDuration;
+    end = rawEnd !== null && rawEnd !== undefined && Number.isFinite(Number(rawEnd)) ? Number(rawEnd) : start + fallbackDuration;
     text = (item.text || '').trim();
   } else {
     start = Number(item.start) || 0;
-    end = Number(item.end) || (start + fallbackDuration);
+    end = Number(item.end) || start + fallbackDuration;
     text = (item.text || '').trim();
   }
 

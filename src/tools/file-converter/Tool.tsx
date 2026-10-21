@@ -80,13 +80,7 @@ export default function FileConverterTool() {
         setTargetFamilies(targets);
 
         // Pick first available target by default
-        const first =
-          targets.image[0] ||
-          targets.video[0] ||
-          targets.audio[0] ||
-          targets.document[0] ||
-          targets.text[0] ||
-          null;
+        const first = targets.image[0] || targets.video[0] || targets.audio[0] || targets.document[0] || targets.text[0] || null;
         setSelectedTarget(first);
       }
     } catch (err) {
@@ -203,7 +197,9 @@ export default function FileConverterTool() {
                       </span>
                     </div>
                     <div className={styles.detectedMeta}>
-                      <span>Original file: <strong>{file.name}</strong></span>
+                      <span>
+                        Original file: <strong>{file.name}</strong>
+                      </span>
                       <span>·</span>
                       <span>{formatBytes(file.size)}</span>
                       <span>·</span>
@@ -217,9 +213,8 @@ export default function FileConverterTool() {
                   <div className={styles.mismatchBanner}>
                     <span className={styles.mismatchIcon}>⚠️</span>
                     <div>
-                      <strong>File extension mismatch:</strong> This file is named{' '}
-                      <code>.{detected.actualExtension}</code>, but its content is actually{' '}
-                      <strong>{detected.label}</strong>. Loconvert will convert using its true detected format.
+                      <strong>File extension mismatch:</strong> This file is named <code>.{detected.actualExtension}</code>, but its content
+                      is actually <strong>{detected.label}</strong>. Loconvert will convert using its true detected format.
                     </div>
                   </div>
                 )}
@@ -231,16 +226,11 @@ export default function FileConverterTool() {
                   <div className={styles.unsupportedTitle}>Unsupported file format</div>
                   <p className={styles.unsupportedText}>
                     This file could not be recognized as a supported media or document type. Supported formats include:
-                    <br />
-                    • <strong>Images:</strong> PNG, JPG, WebP, GIF, BMP, TIFF, ICO, AVIF, HEIC, JXL, SVG
-                    <br />
-                    • <strong>Videos:</strong> MP4, WebM, MKV, AVI, MOV, FLV, MPEG-TS, 3GP, WMV, OGV
-                    <br />
-                    • <strong>Audio:</strong> MP3, WAV, M4A, FLAC, OGG, Opus, AIFF, WMA
-                    <br />
-                    • <strong>Documents:</strong> PDF, Word (DOCX)
-                    <br />
-                    • <strong>Text &amp; Data:</strong> JSON, CSV, TSV, Plain Text
+                    <br />• <strong>Images:</strong> PNG, JPG, WebP, GIF, BMP, TIFF, ICO, AVIF, HEIC, JXL, SVG
+                    <br />• <strong>Videos:</strong> MP4, WebM, MKV, AVI, MOV, FLV, MPEG-TS, 3GP, WMV, OGV
+                    <br />• <strong>Audio:</strong> MP3, WAV, M4A, FLAC, OGG, Opus, AIFF, WMA
+                    <br />• <strong>Documents:</strong> PDF, Word (DOCX)
+                    <br />• <strong>Text &amp; Data:</strong> JSON, CSV, TSV, Plain Text
                   </p>
                   <div>
                     <Button variant="secondary" onClick={handleReset}>
@@ -287,9 +277,7 @@ export default function FileConverterTool() {
                   {/* 5. Per-Target Options */}
                   {selectedTarget && (
                     <div className={styles.optionsCard}>
-                      <div className={styles.optionsTitle}>
-                        Conversion options for {selectedTarget.label}
-                      </div>
+                      <div className={styles.optionsTitle}>Conversion options for {selectedTarget.label}</div>
 
                       {/* Lossy image quality */}
                       {['jpg', 'webp', 'avif', 'jxl'].includes(selectedTarget.id) && (
@@ -330,16 +318,10 @@ export default function FileConverterTool() {
                               style={{ width: '40px', height: '36px', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                             />
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
-                              <Button
-                                variant={bgColor === '#ffffff' ? 'primary' : 'secondary'}
-                                onClick={() => setBgColor('#ffffff')}
-                              >
+                              <Button variant={bgColor === '#ffffff' ? 'primary' : 'secondary'} onClick={() => setBgColor('#ffffff')}>
                                 White
                               </Button>
-                              <Button
-                                variant={bgColor === '#000000' ? 'primary' : 'secondary'}
-                                onClick={() => setBgColor('#000000')}
-                              >
+                              <Button variant={bgColor === '#000000' ? 'primary' : 'secondary'} onClick={() => setBgColor('#000000')}>
                                 Black
                               </Button>
                             </div>

@@ -202,11 +202,7 @@ export function classifyFile(file: File): FileClassification {
   let format: CanonicalFormat = 'unknown';
 
   // 1. Audio first to prevent audio/webm or audio/mp4 being caught by video
-  if (
-    ext === 'weba' ||
-    mime === 'audio/webm' ||
-    (ext === 'webm' && mime.startsWith('audio/'))
-  ) {
+  if (ext === 'weba' || mime === 'audio/webm' || (ext === 'webm' && mime.startsWith('audio/'))) {
     format = 'webm-audio';
   } else if (ext === 'mp3' || mime === 'audio/mpeg' || mime === 'audio/mp3') {
     format = 'mp3';
@@ -214,13 +210,7 @@ export function classifyFile(file: File): FileClassification {
     format = 'wav';
   } else if (ext === 'ogg' || ext === 'oga' || mime === 'audio/ogg') {
     format = 'ogg';
-  } else if (
-    ext === 'm4a' ||
-    ext === 'aac' ||
-    mime === 'audio/aac' ||
-    mime === 'audio/x-m4a' ||
-    (mime === 'audio/mp4' && ext !== 'mp4')
-  ) {
+  } else if (ext === 'm4a' || ext === 'aac' || mime === 'audio/aac' || mime === 'audio/x-m4a' || (mime === 'audio/mp4' && ext !== 'mp4')) {
     format = 'm4a';
   } else if (ext === 'flac' || mime === 'audio/flac' || mime === 'audio/x-flac') {
     format = 'flac';
@@ -313,11 +303,7 @@ export function classifyFile(file: File): FileClassification {
     format = 'obj';
   } else if (ext === 'ply' || mime === 'model/ply') {
     format = 'ply';
-  } else if (
-    ext === '3mf' ||
-    mime === 'model/3mf' ||
-    mime === 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml'
-  ) {
+  } else if (ext === '3mf' || mime === 'model/3mf' || mime === 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml') {
     format = '3mf';
   } else if (
     ['step', 'stp'].includes(ext) ||
@@ -342,11 +328,7 @@ export function classifyFile(file: File): FileClassification {
   }
 
   // 6. Web, Data, Text
-  else if (
-    ['mhtml', 'mht', 'mime'].includes(ext) ||
-    mime === 'message/rfc822' ||
-    mime === 'multipart/related'
-  ) {
+  else if (['mhtml', 'mht', 'mime'].includes(ext) || mime === 'message/rfc822' || mime === 'multipart/related') {
     format = 'mhtml';
   } else if (['html', 'htm'].includes(ext) || mime === 'text/html') {
     format = 'html';
@@ -370,56 +352,15 @@ export function classifyFile(file: File): FileClassification {
     format = 'txt';
   }
 
-  const isStandardImage = [
-    'jpg',
-    'png',
-    'webp',
-    'gif',
-    'bmp',
-    'avif',
-    'heic',
-    'jxl',
-    'svg',
-  ].includes(format);
+  const isStandardImage = ['jpg', 'png', 'webp', 'gif', 'bmp', 'avif', 'heic', 'jxl', 'svg'].includes(format);
 
   const isAnyImage = isStandardImage || format === 'ico' || format === 'tiff' || format === 'image-other';
 
-  const isVideo = [
-    'mp4',
-    'webm-video',
-    'mov',
-    'mkv',
-    'avi',
-    'flv',
-    'ts',
-    '3gp',
-    'wmv',
-    'ogv',
-    'video-other',
-  ].includes(format);
+  const isVideo = ['mp4', 'webm-video', 'mov', 'mkv', 'avi', 'flv', 'ts', '3gp', 'wmv', 'ogv', 'video-other'].includes(format);
 
-  const isAudio = [
-    'mp3',
-    'wav',
-    'm4a',
-    'flac',
-    'ogg',
-    'opus',
-    'aiff',
-    'wma',
-    'webm-audio',
-    'audio-other',
-  ].includes(format);
+  const isAudio = ['mp3', 'wav', 'm4a', 'flac', 'ogg', 'opus', 'aiff', 'wma', 'webm-audio', 'audio-other'].includes(format);
 
-  const is3d = [
-    'stl',
-    'obj',
-    'ply',
-    '3mf',
-    'step',
-    'iges',
-    'brep',
-  ].includes(format);
+  const is3d = ['stl', 'obj', 'ply', '3mf', 'step', 'iges', 'brep'].includes(format);
 
   return {
     ext,

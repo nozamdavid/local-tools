@@ -120,18 +120,9 @@ export function CropArea({ src, aspect, frac, onChange }: CropAreaProps) {
             <div className={styles.hole} style={place} />
           </div>
 
-          <div
-            className={styles.rect}
-            data-testid="crop-rect"
-            style={place}
-            onPointerDown={(e) => begin(e, 'move')}
-          >
+          <div className={styles.rect} data-testid="crop-rect" style={place} onPointerDown={(e) => begin(e, 'move')}>
             {HANDLES.map((h) => (
-              <span
-                key={h}
-                className={`${styles.handle} ${styles[`h_${h}`]}`}
-                onPointerDown={(e) => begin(e, h)}
-              />
+              <span key={h} className={`${styles.handle} ${styles[`h_${h}`]}`} onPointerDown={(e) => begin(e, h)} />
             ))}
           </div>
         </>

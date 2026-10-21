@@ -89,9 +89,7 @@ export default function PageNumbersTool() {
         const currentNum = startNumber + countIndex;
         countIndex++;
 
-        const text = format
-          .replace('{n}', String(currentNum))
-          .replace('{total}', String(targetPages.length));
+        const text = format.replace('{n}', String(currentNum)).replace('{total}', String(targetPages.length));
 
         const textWidth = font.widthOfTextAtSize(text, fontSize);
 
@@ -150,13 +148,7 @@ export default function PageNumbersTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -171,12 +163,7 @@ export default function PageNumbersTool() {
           {job.error && <div className="error-banner">{job.error}</div>}
 
           {job.result ? (
-            <PdfPreview
-              blob={job.result}
-              filename={outName}
-              pageCount={total}
-              onReset={handleReset}
-            />
+            <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
           ) : (
             <div>
               <div className={styles.topRow}>
@@ -204,19 +191,11 @@ export default function PageNumbersTool() {
                 <>
                   <div className={styles.controls}>
                     <Field label="Position">
-                      <Select
-                        value={position}
-                        onChange={(e) => setPosition(e.target.value as Position)}
-                        options={POSITIONS}
-                      />
+                      <Select value={position} onChange={(e) => setPosition(e.target.value as Position)} options={POSITIONS} />
                     </Field>
 
                     <Field label="Format">
-                      <Select
-                        value={format}
-                        onChange={(e) => setFormat(e.target.value)}
-                        options={FORMATS}
-                      />
+                      <Select value={format} onChange={(e) => setFormat(e.target.value)} options={FORMATS} />
                     </Field>
 
                     <Field label="Start Number" hint="First page number to display">
@@ -254,7 +233,15 @@ export default function PageNumbersTool() {
                     <Field label="Text Color">
                       <input
                         type="color"
-                        style={{ width: '100%', height: '42px', padding: '2px', borderRadius: '4px', border: '1px solid var(--input-border)', background: 'var(--input-bg)', cursor: 'pointer' }}
+                        style={{
+                          width: '100%',
+                          height: '42px',
+                          padding: '2px',
+                          borderRadius: '4px',
+                          border: '1px solid var(--input-border)',
+                          background: 'var(--input-bg)',
+                          cursor: 'pointer',
+                        }}
                         value={color}
                         onChange={(e) => setColor(e.target.value)}
                       />
@@ -263,21 +250,11 @@ export default function PageNumbersTool() {
                     <Field label="Page Scope">
                       <div className={styles.scope} role="radiogroup" aria-label="Page scope">
                         <label>
-                          <input
-                            type="radio"
-                            name="scope"
-                            checked={scope === 'all'}
-                            onChange={() => setScope('all')}
-                          />
+                          <input type="radio" name="scope" checked={scope === 'all'} onChange={() => setScope('all')} />
                           All pages
                         </label>
                         <label>
-                          <input
-                            type="radio"
-                            name="scope"
-                            checked={scope === 'range'}
-                            onChange={() => setScope('range')}
-                          />
+                          <input type="radio" name="scope" checked={scope === 'range'} onChange={() => setScope('range')} />
                           Page range
                         </label>
                       </div>
@@ -294,11 +271,7 @@ export default function PageNumbersTool() {
                       )}
 
                       <label className={styles.checkboxRow}>
-                        <input
-                          type="checkbox"
-                          checked={excludeFirst}
-                          onChange={(e) => setExcludeFirst(e.target.checked)}
-                        />
+                        <input type="checkbox" checked={excludeFirst} onChange={(e) => setExcludeFirst(e.target.checked)} />
                         Skip first page (cover page)
                       </label>
                     </Field>
@@ -315,21 +288,9 @@ export default function PageNumbersTool() {
                       const previewNumber = isNumbered ? startNumber + targetIndex : null;
 
                       return (
-                        <div
-                          key={index}
-                          className={`${styles.pageCard} ${isNumbered ? styles.pageCardNumbered : ''}`}
-                        >
-                          {isNumbered && (
-                            <span className={styles.pageBadge}>
-                              #{previewNumber}
-                            </span>
-                          )}
-                          <PageThumb
-                            src={source.thumbs[index]}
-                            width={page.width}
-                            height={page.height}
-                            alt={`Page ${pNum}`}
-                          />
+                        <div key={index} className={`${styles.pageCard} ${isNumbered ? styles.pageCardNumbered : ''}`}>
+                          {isNumbered && <span className={styles.pageBadge}>#{previewNumber}</span>}
+                          <PageThumb src={source.thumbs[index]} width={page.width} height={page.height} alt={`Page ${pNum}`} />
                           <span className={styles.pageLabel}>Page {pNum}</span>
                         </div>
                       );
@@ -343,11 +304,7 @@ export default function PageNumbersTool() {
                       <Button variant="secondary" onClick={handleReset}>
                         Choose different file
                       </Button>
-                      <Button
-                        variant="primary"
-                        onClick={handleApply}
-                        disabled={targetPages.length === 0}
-                      >
+                      <Button variant="primary" onClick={handleApply} disabled={targetPages.length === 0}>
                         Add numbers to {targetPages.length} {targetPages.length === 1 ? 'page' : 'pages'}
                       </Button>
                     </div>

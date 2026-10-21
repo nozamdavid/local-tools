@@ -79,9 +79,7 @@ export default function ExifRemoverTool() {
         ) : results.length > 0 ? (
           <div>
             <div className={styles.removedSummaryList}>
-              <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.25rem' }}>
-                Metadata Removal Summary
-              </div>
+              <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.25rem' }}>Metadata Removal Summary</div>
               {results.map((r, idx) => (
                 <div key={`${r.filename}-${idx}`} className={styles.removedCard}>
                   <div>
@@ -122,13 +120,13 @@ export default function ExifRemoverTool() {
           <div>
             <div className="meta-chips">
               <span className="meta-chip">
-                Selected: <strong>{files.length} file{files.length > 1 ? 's' : ''}</strong>
+                Selected:{' '}
+                <strong>
+                  {files.length} file{files.length > 1 ? 's' : ''}
+                </strong>
               </span>
               <span className="meta-chip">
-                Total size:{' '}
-                <strong>
-                  {formatBytes(files.reduce((sum, f) => sum + f.size, 0))}
-                </strong>
+                Total size: <strong>{formatBytes(files.reduce((sum, f) => sum + f.size, 0))}</strong>
               </span>
             </div>
 
@@ -144,9 +142,7 @@ export default function ExifRemoverTool() {
                   />
                   <div className={styles.checkboxLabel}>
                     <span className={styles.checkboxTitle}>Keep ICC colour profile (APP2)</span>
-                    <span className={styles.checkboxHint}>
-                      Preserves wide gamut and color management profiles so colors do not shift.
-                    </span>
+                    <span className={styles.checkboxHint}>Preserves wide gamut and color management profiles so colors do not shift.</span>
                   </div>
                 </label>
 
@@ -158,12 +154,10 @@ export default function ExifRemoverTool() {
                     onChange={(e) => setApplyOrientation(e.target.checked)}
                   />
                   <div className={styles.checkboxLabel}>
-                    <span className={styles.checkboxTitle}>
-                      Apply orientation before stripping (re-encode)
-                    </span>
+                    <span className={styles.checkboxTitle}>Apply orientation before stripping (re-encode)</span>
                     <span className={styles.checkboxHint}>
-                      If photos have EXIF rotation tags, applies the rotation into the pixel data so
-                      they don&apos;t appear rotated after removing EXIF.
+                      If photos have EXIF rotation tags, applies the rotation into the pixel data so they don&apos;t appear rotated after
+                      removing EXIF.
                     </span>
                   </div>
                 </label>

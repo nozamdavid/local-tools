@@ -114,7 +114,7 @@ export function parseHeaderLines(lines: string[]): Record<string, string> {
  */
 export function extractBoundary(contentType: string): string | null {
   const match = contentType.match(/boundary=(?:"([^"]+)"|([^\s;]+))/i);
-  return match ? (match[1] || match[2] || null) : null;
+  return match ? match[1] || match[2] || null : null;
 }
 
 /**
@@ -320,7 +320,7 @@ export function injectStrictCsp(html: string, mode: 'standalone' | 'zip'): strin
  */
 export function convertMhtmlToHtml(
   mhtmlText: string,
-  options: ConvertMhtmlOptions = { mode: 'standalone', blockRemoteUrls: true, stripScripts: true }
+  options: ConvertMhtmlOptions = { mode: 'standalone', blockRemoteUrls: true, stripScripts: true },
 ): ConvertedMhtmlOutput {
   const { rootHtml, parts } = parseMhtml(mhtmlText);
 
@@ -435,7 +435,9 @@ export function convertMhtmlToHtml(
     const doc = parser.parseFromString(processedHtml, 'text/html');
 
     // Remove active/navigating elements: base, meta-refresh, forms, frames, object, embed
-    doc.querySelectorAll('base, meta[http-equiv="refresh" i], iframe, frame, frameset, object, embed, applet, form, input[type="image"]').forEach((el) => el.remove());
+    doc
+      .querySelectorAll('base, meta[http-equiv="refresh" i], iframe, frame, frameset, object, embed, applet, form, input[type="image"]')
+      .forEach((el) => el.remove());
 
     if (options.stripScripts) {
       doc.querySelectorAll('script, noscript').forEach((el) => el.remove());
@@ -554,7 +556,10 @@ export function convertMhtmlToHtml(
     processedHtml = processedHtml.replace(/<meta\b[^>]*http-equiv\s*=\s*(["'])refresh\1[^>]*>/gi, '');
 
     // Strip forms, frames, object, embed
-    processedHtml = processedHtml.replace(/<(?:iframe|frame|frameset|object|embed|applet)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet)>/gis, '');
+    processedHtml = processedHtml.replace(
+      /<(?:iframe|frame|frameset|object|embed|applet)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet)>/gis,
+      '',
+    );
     processedHtml = processedHtml.replace(/<(?:iframe|frame|frameset|object|embed|applet)\b[^>]*\/?>/gi, '');
     processedHtml = processedHtml.replace(/<form\b[^>]*>.*?<\/form>/gis, '');
     processedHtml = processedHtml.replace(/<form\b[^>]*\/?>/gi, '');

@@ -278,7 +278,7 @@ export function rgbToHsl(rgba: RGBA): HSLA {
 }
 
 export function hslToRgb(hsla: HSLA): RGBA {
-  const h = ((hsla.h % 360) + 360) % 360 / 360;
+  const h = (((hsla.h % 360) + 360) % 360) / 360;
   const s = clamp(hsla.s, 0, 100) / 100;
   const l = clamp(hsla.l, 0, 100) / 100;
 
@@ -343,7 +343,7 @@ export function rgbToHsv(rgba: RGBA): HSVA {
 }
 
 export function hsvToRgb(hsva: HSVA): RGBA {
-  const h = ((hsva.h % 360) + 360) % 360 / 60;
+  const h = (((hsva.h % 360) + 360) % 360) / 60;
   const s = clamp(hsva.s, 0, 100) / 100;
   const v = clamp(hsva.v, 0, 100) / 100;
 

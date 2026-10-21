@@ -1,0 +1,182 @@
+/*
+ * Error boundary & 404 Not Found styles
+ * Uses semantic tokens from tokens.css for light/dark theme support.
+ */
+
+.error-boundary-panel {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 50vh;
+  padding: var(--space-8) var(--space-4);
+}
+
+.error-boundary-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  max-width: 540px;
+  width: 100%;
+  padding: var(--space-8) var(--space-6);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+}
+
+.error-boundary-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  margin-bottom: var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--danger-soft);
+  color: var(--danger);
+  border: 1px solid var(--danger-border);
+}
+
+.error-boundary-icon {
+  width: 28px;
+  height: 28px;
+}
+
+.error-boundary-title {
+  font-size: var(--text-2xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  margin-bottom: var(--space-2);
+}
+
+.error-boundary-message {
+  font-size: var(--text-base);
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+  margin-bottom: var(--space-5);
+  max-width: 44ch;
+}
+
+.error-boundary-privacy-notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2-5) var(--space-4);
+  margin-bottom: var(--space-6);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  text-align: left;
+}
+
+.error-boundary-privacy-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  color: var(--success);
+}
+
+.error-boundary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  justify-content: center;
+  width: 100%;
+}
+
+/* 404 Not Found Page */
+.not-found-page {
+  max-width: var(--container-narrow);
+  margin: 0 auto;
+  padding: var(--space-10) var(--space-4) var(--space-16);
+  text-align: center;
+}
+
+.not-found-header {
+  margin-bottom: var(--space-8);
+}
+
+.not-found-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-3);
+  margin-bottom: var(--space-3);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-semibold);
+  font-family: var(--font-mono);
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-full);
+}
+
+.not-found-title {
+  font-size: var(--text-4xl);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-tight);
+  color: var(--text);
+  margin-bottom: var(--space-3);
+}
+
+.not-found-desc {
+  font-size: var(--text-lg);
+  color: var(--text-muted);
+  max-width: 52ch;
+  margin: 0 auto;
+  line-height: var(--leading-normal);
+}
+
+.not-found-categories {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--space-4);
+  margin: var(--space-8) 0;
+  text-align: left;
+}
+
+.not-found-card {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: var(--text);
+  transition:
+    border-color var(--duration-fast) var(--ease-out),
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.not-found-card:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-hover);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-sm);
+}
+
+.not-found-card-title {
+  font-weight: var(--weight-semibold);
+  font-size: var(--text-base);
+  color: var(--text);
+  margin-bottom: var(--space-0-5);
+}
+
+.not-found-card-desc {
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  line-height: var(--leading-normal);
+}
+
+.not-found-footer-actions {
+  display: flex;
+  justify-content: center;
+  gap: var(--space-3);
+  margin-top: var(--space-6);
+}

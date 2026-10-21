@@ -30,10 +30,7 @@ export interface JxlWorkerPingRequest {
   type: 'ping';
 }
 
-export type JxlWorkerRequest =
-  | JxlWorkerDecodeRequest
-  | JxlWorkerEncodeRequest
-  | JxlWorkerPingRequest;
+export type JxlWorkerRequest = JxlWorkerDecodeRequest | JxlWorkerEncodeRequest | JxlWorkerPingRequest;
 
 export type JxlWorkerResponse =
   | { id: number; ok: true; type: 'decode'; width: number; height: number; data: ArrayBuffer }
@@ -98,7 +95,7 @@ function validateJxlSignature(bytes: Uint8Array): void {
     bytes[8] === 0x0d && // '\r'
     bytes[9] === 0x0a && // '\n'
     bytes[10] === 0x87 &&
-    bytes[11] === 0x0a  // '\n'
+    bytes[11] === 0x0a // '\n'
   ) {
     return;
   }
@@ -133,23 +130,15 @@ self.onmessage = async (event: MessageEvent<JxlWorkerRequest>) => {
       try {
         result = await decode(req.buffer);
       } catch (err) {
-        throw new Error(
-          'Failed to decode JPEG XL image: corrupted or invalid codestream.'
-        );
+        throw new Error('Failed to decode JPEG XL image: corrupted or invalid codestream.', { cause: err });
       }
 
       if (!result || !result.data || result.width <= 0 || result.height <= 0) {
         throw new Error('Failed to decode JPEG XL image: output buffer is empty.');
       }
 
-      if (
-        result.width > MAX_DIMENSION ||
-        result.height > MAX_DIMENSION ||
-        result.width * result.height > MAX_PIXELS
-      ) {
-        throw new Error(
-          `Decoded image dimensions (${result.width}x${result.height}) exceed the maximum supported size (40 megapixels).`
-        );
+      if (result.width > MAX_DIMENSION || result.height > MAX_DIMENSION || result.width * result.height > MAX_PIXELS) {
+        throw new Error(`Decoded image dimensions (${result.width}x${result.height}) exceed the maximum supported size (40 megapixels).`);
       }
 
       // Transfer decoded pixel buffer
@@ -172,14 +161,8 @@ self.onmessage = async (event: MessageEvent<JxlWorkerRequest>) => {
         throw new Error('Invalid image dimensions for JPEG XL encoding.');
       }
 
-      if (
-        width > MAX_DIMENSION ||
-        height > MAX_DIMENSION ||
-        width * height > MAX_PIXELS
-      ) {
-        throw new Error(
-          `Image dimensions (${width}x${height}) exceed the maximum supported size (40 megapixels).`
-        );
+      if (width > MAX_DIMENSION || height > MAX_DIMENSION || width * height > MAX_PIXELS) {
+        throw new Error(`Image dimensions (${width}x${height}) exceed the maximum supported size (40 megapixels).`);
       }
 
       if (data.length !== width * height * 4) {
@@ -201,9 +184,7 @@ self.onmessage = async (event: MessageEvent<JxlWorkerRequest>) => {
           encodedBuffer = await encode(imgData, { lossless: false, quality: clampedQuality });
         }
       } catch (err) {
-        throw new Error(
-          `Failed to encode JPEG XL image: ${err instanceof Error ? err.message : 'Unknown encoding error'}`
-        );
+        throw new Error(`Failed to encode JPEG XL image: ${err instanceof Error ? err.message : 'Unknown encoding error'}`, { cause: err });
       }
 
       const res: JxlWorkerResponse = {

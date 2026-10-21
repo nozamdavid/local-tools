@@ -51,12 +51,7 @@ export function generatePixelSvg(
       if (groupConsecutive) {
         while (x + runLen < safeW) {
           const nextIdx = (y * safeW + (x + runLen)) * 4;
-          if (
-            pixels[nextIdx] === r &&
-            pixels[nextIdx + 1] === g &&
-            pixels[nextIdx + 2] === b &&
-            pixels[nextIdx + 3] === a
-          ) {
+          if (pixels[nextIdx] === r && pixels[nextIdx + 1] === g && pixels[nextIdx + 2] === b && pixels[nextIdx + 3] === a) {
             runLen++;
           } else {
             break;
@@ -66,9 +61,7 @@ export function generatePixelSvg(
 
       const hexColor = `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
       const opacityAttr = a < 255 ? ` fill-opacity="${(a / 255).toFixed(3)}"` : '';
-      rects.push(
-        `    <rect x="${x}" y="${y}" width="${runLen}" height="1" fill="${hexColor}"${opacityAttr} />`
-      );
+      rects.push(`    <rect x="${x}" y="${y}" width="${runLen}" height="1" fill="${hexColor}"${opacityAttr} />`);
 
       if (groupConsecutive && runLen > 1) {
         x += runLen - 1;

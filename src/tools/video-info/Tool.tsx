@@ -167,8 +167,7 @@ export default function VideoInfoTool() {
 
   const videoStreams = report?.ffmpegInfo.streams.filter((s) => s.type === 'video') || [];
   const audioStreams = report?.ffmpegInfo.streams.filter((s) => s.type === 'audio') || [];
-  const otherStreams =
-    report?.ffmpegInfo.streams.filter((s) => s.type !== 'video' && s.type !== 'audio') || [];
+  const otherStreams = report?.ffmpegInfo.streams.filter((s) => s.type !== 'video' && s.type !== 'audio') || [];
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="video-info">
@@ -245,21 +244,15 @@ export default function VideoInfoTool() {
                   </tr>
                   <tr>
                     <td className={styles.propKey}>Container / Format</td>
-                    <td className={styles.propVal}>
-                      {report.ffmpegInfo.container || 'Unknown'}
-                    </td>
+                    <td className={styles.propVal}>{report.ffmpegInfo.container || 'Unknown'}</td>
                   </tr>
                   <tr>
                     <td className={styles.propKey}>Duration (FFmpeg)</td>
-                    <td className={styles.propVal}>
-                      {report.ffmpegInfo.duration || 'N/A'}
-                    </td>
+                    <td className={styles.propVal}>{report.ffmpegInfo.duration || 'N/A'}</td>
                   </tr>
                   <tr>
                     <td className={styles.propKey}>Overall Bitrate</td>
-                    <td className={styles.propVal}>
-                      {report.ffmpegInfo.bitrate || 'N/A'}
-                    </td>
+                    <td className={styles.propVal}>{report.ffmpegInfo.bitrate || 'N/A'}</td>
                   </tr>
                   {report.ffmpegInfo.creationTime && (
                     <tr>
@@ -408,11 +401,7 @@ export default function VideoInfoTool() {
                 <h3 className={styles.groupTitle}>
                   {stream.type.charAt(0).toUpperCase() + stream.type.slice(1)} #{stream.index}
                 </h3>
-                <span
-                  className={`${styles.badge} ${
-                    stream.type === 'subtitle' ? styles.badgeSubtitle : styles.badgeOther
-                  }`}
-                >
+                <span className={`${styles.badge} ${stream.type === 'subtitle' ? styles.badgeSubtitle : styles.badgeOther}`}>
                   {stream.type}
                 </span>
               </div>
@@ -449,9 +438,7 @@ export default function VideoInfoTool() {
 
           {/* Collapsible raw ffmpeg output */}
           <details className={styles.rawDetails}>
-            <summary className={styles.rawSummary}>
-              Raw ffmpeg output ({report.rawLog.split('\n').length} lines)
-            </summary>
+            <summary className={styles.rawSummary}>Raw ffmpeg output ({report.rawLog.split('\n').length} lines)</summary>
             <pre className={styles.rawPre}>{report.rawLog}</pre>
           </details>
         </div>

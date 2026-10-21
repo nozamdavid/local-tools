@@ -90,8 +90,7 @@ function valueText(value: CellValue, numFmt: string): string {
 
 function toCellModel(cell: Cell): CellModel {
   const fill = cell.fill;
-  const bg =
-    fill && fill.type === 'pattern' && fill.pattern === 'solid' ? argbToCss(fill.fgColor) : undefined;
+  const bg = fill && fill.type === 'pattern' && fill.pattern === 'solid' ? argbToCss(fill.fgColor) : undefined;
   const border = cell.border;
   const bordered = !!(border && (border.top?.style || border.bottom?.style || border.left?.style || border.right?.style));
 
@@ -163,9 +162,7 @@ function sheetToModel(ws: Worksheet): SheetModel | null {
     const master = rows[top].cells[a.col - 1];
     if (!master) continue;
     master.colSpan = b.col - a.col + 1;
-    master.rowSpan = Array.from({ length: b.row - a.row + 1 }, (_, i) => rowIndex.get(a.row + i)).filter(
-      (v) => v !== undefined
-    ).length;
+    master.rowSpan = Array.from({ length: b.row - a.row + 1 }, (_, i) => rowIndex.get(a.row + i)).filter((v) => v !== undefined).length;
 
     for (let r = a.row; r <= b.row; r++) {
       const mr = rowIndex.get(r);

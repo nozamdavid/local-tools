@@ -2,14 +2,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Alert, Badge } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
-import {
-  MeshViewer,
-  use3DWorkbench,
-  WorkbenchHeader,
-  WorkbenchWarnings,
-  ExportCard,
-  ACCEPT_MESH_EXTENSIONS,
-} from '../_ui';
+import { MeshViewer, use3DWorkbench, WorkbenchHeader, WorkbenchWarnings, ExportCard, ACCEPT_MESH_EXTENSIONS } from '../_ui';
 import { processModel } from '../_mesh/client';
 import { RotateCcw, XCircle, ShieldAlert, ArrowLeftRight } from 'lucide-react';
 import styles from '../_ui/Workbench.module.css';
@@ -17,9 +10,7 @@ import styles from '../_ui/Workbench.module.css';
 export default function NormalsTool() {
   const meta = getToolMeta('three-normals');
   const title = meta.title !== 'three-normals' ? meta.title : '3D Face Winding & Normals Inverter';
-  const description =
-    meta.description ||
-    'Invert triangle face winding globally to fix inside-out geometry and slicing errors.';
+  const description = meta.description || 'Invert triangle face winding globally to fix inside-out geometry and slicing errors.';
 
   const {
     file,
@@ -42,11 +33,7 @@ export default function NormalsTool() {
     handleExport,
   } = use3DWorkbench({ multiple: false });
 
-  const isReversed = !!(
-    originalModel &&
-    currentModel &&
-    currentModel !== originalModel
-  );
+  const isReversed = !!(originalModel && currentModel && currentModel !== originalModel);
 
   const handleReverseWinding = async () => {
     if (!originalModel) return;
@@ -118,12 +105,7 @@ export default function NormalsTool() {
               onReset={reset}
               action={
                 isReversed ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<RotateCcw size={14} />}
-                    onClick={handleResetToOriginal}
-                  >
+                  <Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={handleResetToOriginal}>
                     Restore original
                   </Button>
                 ) : undefined
@@ -146,20 +128,18 @@ export default function NormalsTool() {
                 <div className={styles.card}>
                   <h3 className={styles.cardTitle}>
                     <span>Face Winding Reversal</span>
-                    <Badge tone={isReversed ? 'success' : 'neutral'}>
-                      {isReversed ? 'Face Winding Reversed' : 'Original Winding'}
-                    </Badge>
+                    <Badge tone={isReversed ? 'success' : 'neutral'}>{isReversed ? 'Face Winding Reversed' : 'Original Winding'}</Badge>
                   </h3>
 
                   <Alert tone="info">
                     <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
                       <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
                       <div>
-                        <strong>Notice:</strong> Triangle winding order defines which direction each face points.
-                        Reversing winding swaps vertex indices to flip outward surface normals.
-                        Surface normals are recalculated dynamically for viewport rendering and facet headers in binary STL.
-                        <strong> This operation does not automatically fix inconsistent faces</strong> (where adjacent faces have opposing orientation)
-                        and <strong>does not fill holes</strong> or repair open boundaries.
+                        <strong>Notice:</strong> Triangle winding order defines which direction each face points. Reversing winding swaps
+                        vertex indices to flip outward surface normals. Surface normals are recalculated dynamically for viewport rendering
+                        and facet headers in binary STL.
+                        <strong> This operation does not automatically fix inconsistent faces</strong> (where adjacent faces have opposing
+                        orientation) and <strong>does not fill holes</strong> or repair open boundaries.
                       </div>
                     </div>
                   </Alert>

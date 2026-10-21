@@ -10,11 +10,7 @@ export interface PptxOptions {
   renderPageImage?: (pageNumber: number) => Promise<string>;
 }
 
-export async function pdfToPptx(
-  doc: PDFDocumentProxy,
-  options?: PptxOptions,
-  onProgress?: (ratio: number) => void
-): Promise<Blob> {
+export async function pdfToPptx(doc: PDFDocumentProxy, options?: PptxOptions, onProgress?: (ratio: number) => void): Promise<Blob> {
   const numPages = doc.numPages;
   const pptx = new pptxgen();
 

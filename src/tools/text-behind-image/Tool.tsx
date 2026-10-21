@@ -62,6 +62,7 @@ export default function TextBehindImageTool() {
   const isDraggingRef = useRef<boolean>(false);
   const segmentClientRef = useRef<SegmentClient | null>(null);
 
+  const canvasHintId = useId();
   const fontId = useId();
   const weightId = useId();
 
@@ -69,9 +70,7 @@ export default function TextBehindImageTool() {
 
   const updateSelectedLayer = (patch: Partial<TextLayer>) => {
     if (!selectedLayer) return;
-    setLayers((prev) =>
-      prev.map((l) => (l.id === selectedLayer.id ? { ...l, ...patch } : l))
-    );
+    setLayers((prev) => prev.map((l) => (l.id === selectedLayer.id ? { ...l, ...patch } : l)));
   };
 
   const handleAddLayer = () => {
@@ -257,6 +256,20 @@ export default function TextBehindImageTool() {
     updateSelectedLayer({ x, y });
   };
 
+  // Keyboard equivalent of dragging: arrow keys nudge the selected layer by 1% of the image (5% with Shift).
+  const handleCanvasKeyDown = (e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    if (!selectedLayer) return;
+    const step = e.shiftKey ? 0.05 : 0.01;
+    const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
+    const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
+    if (!dx && !dy) return;
+    e.preventDefault();
+    updateSelectedLayer({
+      x: Math.max(0, Math.min(1, selectedLayer.x + dx)),
+      y: Math.max(0, Math.min(1, selectedLayer.y + dy)),
+    });
+  };
+
   // Full-resolution export
   const handleDownload = async () => {
     const img = imageEl;
@@ -332,7 +345,10 @@ export default function TextBehindImageTool() {
             </span>
             {imageEl && (
               <span className="meta-chip">
-                Resolution: <strong>{imageEl.naturalWidth}x{imageEl.naturalHeight}</strong>
+                Resolution:{' '}
+                <strong>
+                  {imageEl.naturalWidth}x{imageEl.naturalHeight}
+                </strong>
               </span>
             )}
           </div>
@@ -345,12 +361,18 @@ export default function TextBehindImageTool() {
             <div className={styles.editorLayout}>
               {/* Left / Top: Interactive Canvas Preview */}
               <div className={styles.canvasWrapper}>
-                <div className={styles.canvasHint}>
-                  Click & drag anywhere on the image to position the selected text
+                <div className={styles.canvasHint} id={canvasHintId}>
+                  Click & drag anywhere on the image to position the selected text. With the preview focused, use the arrow keys to move it
+                  (Shift for larger steps).
                 </div>
                 <canvas
                   ref={canvasRef}
                   className={styles.canvas}
+                  tabIndex={0}
+                  role="img"
+                  aria-label="Image preview with the selected text layer placed behind the subject"
+                  aria-describedby={canvasHintId}
+                  onKeyDown={handleCanvasKeyDown}
                   onPointerDown={handlePointerDown}
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
@@ -482,10 +504,7 @@ export default function TextBehindImageTool() {
                   </Field>
 
                   {layers.length > 1 && (
-                    <button
-                      className={styles.deleteLayerBtn}
-                      onClick={() => handleDeleteLayer(selectedLayer.id)}
-                    >
+                    <button className={styles.deleteLayerBtn} onClick={() => handleDeleteLayer(selectedLayer.id)}>
                       Delete this layer
                     </button>
                   )}

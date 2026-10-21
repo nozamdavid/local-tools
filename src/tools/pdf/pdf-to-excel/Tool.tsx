@@ -94,13 +94,7 @@ export default function PdfToExcelTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -154,19 +148,10 @@ export default function PdfToExcelTool() {
               <>
                 <div className={styles.controls}>
                   <Field label="Sheets">
-                    <Select
-                      id={modeId}
-                      value={mode}
-                      onChange={(e) => setMode(e.target.value as SheetMode)}
-                      options={MODES}
-                    />
+                    <Select id={modeId} value={mode} onChange={(e) => setMode(e.target.value as SheetMode)} options={MODES} />
                   </Field>
                   <label className={styles.check}>
-                    <input
-                      type="checkbox"
-                      checked={includeText}
-                      onChange={(e) => setIncludeText(e.target.checked)}
-                    />
+                    <input type="checkbox" checked={includeText} onChange={(e) => setIncludeText(e.target.checked)} />
                     <span>Include text outside tables</span>
                   </label>
                 </div>
@@ -190,9 +175,7 @@ export default function PdfToExcelTool() {
                                   {row.map((cell, c) => (
                                     <td
                                       key={c}
-                                      className={
-                                        grid.kind === 'table' && parseNumber(cell.text) ? styles.num : undefined
-                                      }
+                                      className={grid.kind === 'table' && parseNumber(cell.text) ? styles.num : undefined}
                                       style={cell.bold ? { fontWeight: 700 } : undefined}
                                     >
                                       {cell.text}
@@ -203,9 +186,7 @@ export default function PdfToExcelTool() {
                             </tbody>
                           </table>
                         </div>
-                        {grid.rows.length > PREVIEW_ROWS && (
-                          <p className={styles.more}>+ {grid.rows.length - PREVIEW_ROWS} more rows</p>
-                        )}
+                        {grid.rows.length > PREVIEW_ROWS && <p className={styles.more}>+ {grid.rows.length - PREVIEW_ROWS} more rows</p>}
                       </figure>
                     ))}
                     {grids.length > PREVIEW_GRIDS && (

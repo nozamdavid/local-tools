@@ -14,7 +14,11 @@ export function MediaIndex({ media }: { media: Media }) {
 
   const matches = useMemo(() => {
     if (!query.trim()) return null;
-    return new Set(searchTools(query, 500).filter((t) => t.media === media).map((t) => t.id));
+    return new Set(
+      searchTools(query, 500)
+        .filter((t) => t.media === media)
+        .map((t) => t.id),
+    );
   }, [query, media]);
 
   return (
@@ -47,6 +51,9 @@ export function MediaIndex({ media }: { media: Media }) {
             </button>
           )}
         </label>
+        <div className="sr-only" role="status">
+          {matches ? `${matches.size} ${matches.size === 1 ? 'tool matches' : 'tools match'} your filter` : ''}
+        </div>
         {!matches && (
           <nav className="category-chips" aria-label="Categories">
             {categories
@@ -63,7 +70,9 @@ export function MediaIndex({ media }: { media: Media }) {
       {matches && matches.size === 0 ? (
         <div className="empty-state">
           <Search aria-hidden="true" />
-          <div className="empty-state-title">No {info.label.toLowerCase()} tools match “{query}”</div>
+          <div className="empty-state-title">
+            No {info.label.toLowerCase()} tools match “{query}”
+          </div>
           <div>Try a file format or an action, like “png” or “compress”.</div>
         </div>
       ) : (

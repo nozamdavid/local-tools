@@ -1,14 +1,4 @@
-export type LayerType =
-  | 'text'
-  | 'image'
-  | 'rect'
-  | 'ellipse'
-  | 'arrow'
-  | 'line'
-  | 'path'
-  | 'badge'
-  | 'callout'
-  | 'redact';
+export type LayerType = 'text' | 'image' | 'rect' | 'ellipse' | 'arrow' | 'line' | 'path' | 'badge' | 'callout' | 'redact';
 
 export interface BaseLayer {
   id: string;
@@ -18,7 +8,7 @@ export interface BaseLayer {
   width: number;
   height: number;
   rotation?: number; // in degrees
-  opacity?: number;  // 0 to 1
+  opacity?: number; // 0 to 1
 }
 
 export interface TextLayer extends BaseLayer {
@@ -109,22 +99,13 @@ export interface RedactLayer extends BaseLayer {
 }
 
 export type Layer =
-  | TextLayer
-  | ImageLayer
-  | RectLayer
-  | EllipseLayer
-  | ArrowLayer
-  | LineLayer
-  | PathLayer
-  | BadgeLayer
-  | CalloutLayer
-  | RedactLayer;
+  TextLayer | ImageLayer | RectLayer | EllipseLayer | ArrowLayer | LineLayer | PathLayer | BadgeLayer | CalloutLayer | RedactLayer;
 
 export interface Adjustments {
   brightness: number; // 0 to 200 (100 = default)
-  contrast: number;   // 0 to 200 (100 = default)
+  contrast: number; // 0 to 200 (100 = default)
   saturation: number; // 0 to 200 (100 = default)
-  blur: number;       // 0 to 20 px (0 = default)
+  blur: number; // 0 to 20 px (0 = default)
   preset?: 'none' | 'vivid' | 'mono' | 'sepia' | 'vintage' | 'cool' | 'warm';
 }
 

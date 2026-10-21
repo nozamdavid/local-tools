@@ -43,13 +43,7 @@ export default function PdfToWordTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -115,9 +109,7 @@ export default function PdfToWordTool() {
                       />
                       <span>
                         Keep exact layout (page images)
-                        <small>
-                          Each page is embedded as a picture, so it looks identical but the text is not editable.
-                        </small>
+                        <small>Each page is embedded as a picture, so it looks identical but the text is not editable.</small>
                       </span>
                     </label>
                   </div>

@@ -73,8 +73,8 @@ export default function WordToPdfTool() {
         >
           <PageSetupFields value={setup} onChange={setSetup} allowMatch showOrientation={false} showMargin={false} />
           <p className={styles.note}>
-            Each page of the document becomes one PDF page. The result is rendered from the DOCX
-            layout in your browser, so text is stored as an image and fonts may differ from Word.
+            Each page of the document becomes one PDF page. The result is rendered from the DOCX layout in your browser, so text is stored
+            as an image and fonts may differ from Word.
           </p>
         </ConvertPanel>
       )}

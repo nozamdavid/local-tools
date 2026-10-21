@@ -1,12 +1,4 @@
-import {
-  PDFCheckBox,
-  PDFDocument,
-  PDFDropdown,
-  PDFOptionList,
-  PDFRadioGroup,
-  PDFTextField,
-  StandardFonts,
-} from 'pdf-lib';
+import { PDFCheckBox, PDFDocument, PDFDropdown, PDFOptionList, PDFRadioGroup, PDFTextField, StandardFonts } from 'pdf-lib';
 import type { FormFieldInfo } from './types';
 
 /**
@@ -77,7 +69,7 @@ export function extractFormFields(doc: PDFDocument): FormFieldInfo[] {
 export async function applyFormValues(
   doc: PDFDocument,
   values: Record<string, string | boolean | string[]>,
-  flatten = false
+  flatten = false,
 ): Promise<void> {
   const form = doc.getForm();
 

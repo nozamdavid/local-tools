@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { formatBytes } from '../lib/format';
 import { downloadBlob } from '../lib/download';
 import { useObjectUrl } from '../lib/useObjectUrl';
 import { decodeJxlToBlob, isJxlFile } from '../lib/jxl';
 import { CircleCheck, Download, RotateCcw } from 'lucide-react';
 import { Button } from './Controls';
+import { useFocusFallback } from './useFocusFallback';
 
 export interface ResultPanelProps {
   blob: Blob;
@@ -16,22 +17,26 @@ export interface ResultPanelProps {
   onReset: () => void;
 }
 
-export function ResultPanel({
-  blob,
-  filename,
-  kind,
-  originalSize,
-  beforePreview,
-  children,
-  onReset,
-}: ResultPanelProps) {
+export function ResultPanel({ blob, filename, kind, originalSize, beforePreview, children, onReset }: ResultPanelProps) {
   const url = useObjectUrl(blob);
   const [textContent, setTextContent] = useState<string>('');
   const [jxlPreviewUrl, setJxlPreviewUrl] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusFallback(panelRef);
+  const titleId = useId();
+  const subId = useId();
+
+  // The job button that started the work has just left the page; move focus to the result so it is announced.
+  useEffect(() => {
+    panelRef.current?.focus({ preventScroll: true });
+  }, []);
 
   useEffect(() => {
     if (kind === 'text') {
-      blob.text().then(setTextContent).catch(() => setTextContent('(Failed to read text)'));
+      blob
+        .text()
+        .then(setTextContent)
+        .catch(() => setTextContent('(Failed to read text)'));
     }
   }, [blob, kind]);
 
@@ -85,14 +90,18 @@ export function ResultPanel({
   };
 
   return (
-    <div className="result-panel">
+    <div className="result-panel" ref={panelRef} tabIndex={-1} role="region" aria-labelledby={titleId} aria-describedby={subId}>
       <div className="result-header">
         <span className="result-header-icon" aria-hidden="true">
           <CircleCheck />
         </span>
         <div>
-          <div className="result-header-title">Done</div>
-          <div className="result-header-sub">Processed on this device. Review it, then download.</div>
+          <div className="result-header-title" id={titleId}>
+            Done
+          </div>
+          <div className="result-header-sub" id={subId}>
+            Processed on this device. Review it, then download.
+          </div>
         </div>
       </div>
 

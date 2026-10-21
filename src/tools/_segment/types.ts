@@ -27,9 +27,7 @@ export interface SegmentWorkerSegmentMessage {
   height: number;
 }
 
-export type SegmentWorkerInMessage =
-  | SegmentWorkerInitMessage
-  | SegmentWorkerSegmentMessage;
+export type SegmentWorkerInMessage = SegmentWorkerInitMessage | SegmentWorkerSegmentMessage;
 
 export interface SegmentWorkerProgressMessage {
   type: 'progress';
@@ -63,10 +61,7 @@ export interface SegmentWorkerResultMessage {
 }
 
 export type SegmentWorkerOutMessage =
-  | SegmentWorkerProgressMessage
-  | SegmentWorkerReadyMessage
-  | SegmentWorkerErrorMessage
-  | SegmentWorkerResultMessage;
+  SegmentWorkerProgressMessage | SegmentWorkerReadyMessage | SegmentWorkerErrorMessage | SegmentWorkerResultMessage;
 
 export interface FrameProcessingProgress {
   currentFrame: number;

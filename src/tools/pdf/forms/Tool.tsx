@@ -122,13 +122,7 @@ export default function FormsTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -143,12 +137,7 @@ export default function FormsTool() {
           {job.error && <div className="error-banner">{job.error}</div>}
 
           {job.result ? (
-            <PdfPreview
-              blob={job.result}
-              filename={outName}
-              pageCount={total}
-              onReset={handleReset}
-            />
+            <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
           ) : (
             <div>
               <div className={styles.topRow}>
@@ -171,13 +160,11 @@ export default function FormsTool() {
               </div>
 
               <div className={styles.noticeBanner}>
-                <strong>AcroForm field editor:</strong> Edit fillable PDF form fields directly in your
-                browser. Choose whether to keep fields editable or flatten them permanently.
+                <strong>AcroForm field editor:</strong> Edit fillable PDF form fields directly in your browser. Choose whether to keep
+                fields editable or flatten them permanently.
               </div>
 
-              {(source.loading || loadingFields) && (
-                <p className={styles.status}>Scanning PDF for interactive form fields…</p>
-              )}
+              {(source.loading || loadingFields) && <p className={styles.status}>Scanning PDF for interactive form fields…</p>}
 
               {/* No Form Fields Found Screen */}
               {!loadingFields && fields && fields.length === 0 && (
@@ -185,12 +172,12 @@ export default function FormsTool() {
                   <div className={styles.noFieldsIcon}>🧾</div>
                   <h3 className={styles.noFieldsTitle}>No Interactive Form Fields Found</h3>
                   <p className={styles.noFieldsDesc}>
-                    This document does not contain fillable AcroForm fields. It may be a scanned
-                    document, a flat static form, or an XML-based XFA form.
+                    This document does not contain fillable AcroForm fields. It may be a scanned document, a flat static form, or an
+                    XML-based XFA form.
                   </p>
                   <p className={styles.noFieldsDesc}>
-                    If you need to fill out this document, you can use the <strong>Edit PDF</strong>{' '}
-                    tool to place text and checkmark annotations directly onto the pages.
+                    If you need to fill out this document, you can use the <strong>Edit PDF</strong> tool to place text and checkmark
+                    annotations directly onto the pages.
                   </p>
                   <Button onClick={() => navigate('/pdf/edit')}>Go to Edit PDF Tool</Button>
                 </div>
@@ -200,9 +187,7 @@ export default function FormsTool() {
               {!loadingFields && fields && fields.length > 0 && (
                 <div className={styles.formsContainer}>
                   <div className={styles.fieldsCard}>
-                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem' }}>
-                      Form Fields ({fields.length})
-                    </h3>
+                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem' }}>Form Fields ({fields.length})</h3>
 
                     {fields.map((field) => {
                       const val = formValues[field.name];
@@ -211,15 +196,11 @@ export default function FormsTool() {
                         <div key={field.name} className={styles.fieldItem}>
                           <label className={styles.fieldLabel}>
                             {field.name}
-                            {field.isReadOnly && (
-                              <span style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}>
-                                {' '}(read-only)
-                              </span>
-                            )}
+                            {field.isReadOnly && <span style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}> (read-only)</span>}
                           </label>
 
-                          {field.type === 'text' && (
-                            field.isMultiline ? (
+                          {field.type === 'text' &&
+                            (field.isMultiline ? (
                               <textarea
                                 className={styles.textarea}
                                 value={typeof val === 'string' ? val : ''}
@@ -234,8 +215,7 @@ export default function FormsTool() {
                                 onChange={(e) => handleTextChange(field.name, e.target.value)}
                                 disabled={field.isReadOnly}
                               />
-                            )
-                          )}
+                            ))}
 
                           {field.type === 'checkbox' && (
                             <label className={styles.checkboxRow}>
@@ -313,8 +293,8 @@ export default function FormsTool() {
                       <div className={styles.flattenText}>
                         <span className={styles.flattenTitle}>Flatten form fields</span>
                         <span className={styles.flattenDesc}>
-                          Recommended for finalized forms. Bakes the entered values directly into
-                          the page content and prevents further editing or tampering.
+                          Recommended for finalized forms. Bakes the entered values directly into the page content and prevents further
+                          editing or tampering.
                         </span>
                       </div>
                     </label>

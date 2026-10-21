@@ -1,11 +1,4 @@
-import {
-  parseCsv,
-  serializeCsv,
-  csvToRecords,
-  jsonToCsv,
-  validateHeaders,
-  detectDelimiter,
-} from './csv';
+import { parseCsv, serializeCsv, csvToRecords, jsonToCsv, validateHeaders, detectDelimiter } from './csv';
 
 export async function runVerification(): Promise<void> {
   console.log('--- Starting _tabular Verification ---');
@@ -31,7 +24,7 @@ export async function runVerification(): Promise<void> {
     for (let c = 0; c < originalRows[r].length; c++) {
       if (parsed[r][c] !== originalRows[r][c]) {
         throw new Error(
-          `Cell [${r}, ${c}] mismatch:\nExpected: ${JSON.stringify(originalRows[r][c])}\nGot:      ${JSON.stringify(parsed[r][c])}`
+          `Cell [${r}, ${c}] mismatch:\nExpected: ${JSON.stringify(originalRows[r][c])}\nGot:      ${JSON.stringify(parsed[r][c])}`,
         );
       }
     }
@@ -49,7 +42,7 @@ export async function runVerification(): Promise<void> {
     if (msg.includes('Duplicate header column detected: "name"')) {
       duplicateRejected = true;
     } else {
-      throw new Error(`Unexpected error message for duplicate headers: ${msg}`);
+      throw new Error(`Unexpected error message for duplicate headers: ${msg}`, { cause: err });
     }
   }
   if (!duplicateRejected) {
@@ -68,7 +61,7 @@ export async function runVerification(): Promise<void> {
     if (msg.includes('Malformed header: column 2 is empty')) {
       emptyRejected = true;
     } else {
-      throw new Error(`Unexpected error message for empty header: ${msg}`);
+      throw new Error(`Unexpected error message for empty header: ${msg}`, { cause: err });
     }
   }
   if (!emptyRejected) {
@@ -155,11 +148,7 @@ export async function runVerification(): Promise<void> {
   }
 
   const headerQuotedEmpty = parseCsv('header\n""');
-  if (
-    headerQuotedEmpty.length !== 2 ||
-    headerQuotedEmpty[0][0] !== 'header' ||
-    headerQuotedEmpty[1][0] !== ''
-  ) {
+  if (headerQuotedEmpty.length !== 2 || headerQuotedEmpty[0][0] !== 'header' || headerQuotedEmpty[1][0] !== '') {
     throw new Error(`Expected [["header"], [""]] for parseCsv('header\\n""'), got: ${JSON.stringify(headerQuotedEmpty)}`);
   }
 
@@ -170,7 +159,7 @@ export async function runVerification(): Promise<void> {
     headerQuotedEmptyWithTrailingNewline[1][0] !== ''
   ) {
     throw new Error(
-      `Expected [["header"], [""]] for parseCsv('header\\n""\\n'), got: ${JSON.stringify(headerQuotedEmptyWithTrailingNewline)}`
+      `Expected [["header"], [""]] for parseCsv('header\\n""\\n'), got: ${JSON.stringify(headerQuotedEmptyWithTrailingNewline)}`,
     );
   }
 

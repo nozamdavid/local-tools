@@ -244,9 +244,21 @@ export default function ProfileResizerTool() {
                   onPointerMove={handlePointerMove}
                   onPointerUp={handlePointerUp}
                   onWheel={handleWheel}
+                  onKeyDown={(e) => {
+                    // Keyboard equivalent of dragging: arrows move the photo (Shift for larger steps).
+                    const step = e.shiftKey ? 50 : 10;
+                    const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
+                    const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
+                    if (!dx && !dy) return;
+                    e.preventDefault();
+                    setPan((prev) => ({ x: prev.x + dx, y: prev.y + dy }));
+                  }}
+                  tabIndex={0}
+                  role="group"
+                  aria-label="Photo position. Arrow keys move the photo (Shift for larger steps). Use the Zoom slider to zoom."
                   title="Drag to position photo, mouse wheel to zoom"
                 >
-                  <canvas ref={canvasRef} className={styles.canvas} />
+                  <canvas ref={canvasRef} className={styles.canvas} role="img" aria-label="Preview of the cropped profile picture" />
                   {previewShape === 'square' && <div className={styles.circleOverlay} />}
                 </div>
               </div>
@@ -254,14 +266,7 @@ export default function ProfileResizerTool() {
               {/* Controls */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
                 <Field label="Zoom" hint="Drag avatar to center; slide to zoom.">
-                  <Slider
-                    value={zoom}
-                    min={0.5}
-                    max={3.0}
-                    step={0.05}
-                    unit="x"
-                    onChange={setZoom}
-                  />
+                  <Slider value={zoom} min={0.5} max={3.0} step={0.05} unit="x" onChange={setZoom} />
                   <div style={{ marginTop: '0.5rem' }}>
                     <Button
                       type="button"

@@ -6,16 +6,14 @@ import { weldExactVertices } from '../topology';
  * Parses binary or ASCII PLY into an indexed MeshModel.
  */
 export function parsePLY(buffer: ArrayBuffer, name = 'model'): MeshModel {
-  const warnings: string[] = [
-    'PLY files are unitless; coordinates assumed to be in millimeters (mm).',
-  ];
+  const warnings: string[] = ['PLY files are unitless; coordinates assumed to be in millimeters (mm).'];
 
   const loader = new PLYLoader();
   let geom;
   try {
     geom = loader.parse(buffer);
   } catch (err) {
-    throw new Error(`Failed to parse PLY file: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`Failed to parse PLY file: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
   }
 
   const posAttr = geom.getAttribute('position');
@@ -59,18 +57,19 @@ export function exportPLY(model: MeshModel): string {
   const vertexCount = positions.length / 3;
   const triangleCount = indices.length / 3;
 
-  const header = [
-    'ply',
-    'format ascii 1.0',
-    'comment Loconvert PLY Export - Local Browser Processing',
-    `element vertex ${vertexCount}`,
-    'property float x',
-    'property float y',
-    'property float z',
-    `element face ${triangleCount}`,
-    'property list uchar uint vertex_indices',
-    'end_header',
-  ].join('\n') + '\n';
+  const header =
+    [
+      'ply',
+      'format ascii 1.0',
+      'comment Loconvert PLY Export - Local Browser Processing',
+      `element vertex ${vertexCount}`,
+      'property float x',
+      'property float y',
+      'property float z',
+      `element face ${triangleCount}`,
+      'property list uchar uint vertex_indices',
+      'end_header',
+    ].join('\n') + '\n';
 
   let body = '';
   for (let i = 0; i < positions.length; i += 3) {

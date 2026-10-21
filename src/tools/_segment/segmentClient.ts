@@ -20,10 +20,7 @@ export class SegmentClient {
   }
 
   private spawnWorker() {
-    this.worker = new Worker(
-      new URL('./segmentWorker.ts', import.meta.url),
-      { type: 'module' }
-    );
+    this.worker = new Worker(new URL('./segmentWorker.ts', import.meta.url), { type: 'module' });
 
     this.worker.onmessage = (e: MessageEvent<SegmentWorkerOutMessage>) => {
       const msg = e.data;
@@ -79,10 +76,7 @@ export class SegmentClient {
     };
   }
 
-  public async init(
-    onProgress?: (progress: any) => void,
-    modelId?: string
-  ): Promise<{ device: string; model: string }> {
+  public async init(onProgress?: (progress: any) => void, modelId?: string): Promise<{ device: string; model: string }> {
     if (this.initPromise) {
       this.onProgressCallback = onProgress;
       return this.initPromise;
@@ -101,7 +95,7 @@ export class SegmentClient {
   public async segmentFrame(
     data: Uint8ClampedArray,
     width: number,
-    height: number
+    height: number,
   ): Promise<{ mask: Uint8ClampedArray; width: number; height: number }> {
     if (!this.worker) {
       throw new Error('Worker is not running');
@@ -122,7 +116,7 @@ export class SegmentClient {
           width,
           height,
         },
-        [transferableData.buffer]
+        [transferableData.buffer],
       );
     });
   }

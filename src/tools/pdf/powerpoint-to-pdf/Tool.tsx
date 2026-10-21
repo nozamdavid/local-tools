@@ -77,8 +77,8 @@ export default function PowerpointToPdfTool() {
         >
           <PageSetupFields value={setup} onChange={setSetup} allowMatch showOrientation={false} />
           <p className={styles.note}>
-            Each slide becomes one landscape page at the slide aspect ratio. Complex charts,
-            SmartArt, animations and some effects may not render exactly as in PowerPoint.
+            Each slide becomes one landscape page at the slide aspect ratio. Complex charts, SmartArt, animations and some effects may not
+            render exactly as in PowerPoint.
           </p>
         </ConvertPanel>
       )}

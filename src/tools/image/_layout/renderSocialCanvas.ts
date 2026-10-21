@@ -10,10 +10,7 @@ export interface RenderOptions {
   circularClip?: boolean;
 }
 
-export function renderFrameCanvas(
-  img: HTMLImageElement,
-  options: RenderOptions,
-): HTMLCanvasElement {
+export function renderFrameCanvas(img: HTMLImageElement, options: RenderOptions): HTMLCanvasElement {
   const { width, height, fitMode, bgType, bgColor, transform, circularClip } = options;
 
   const canvas = document.createElement('canvas');
@@ -51,12 +48,7 @@ export function renderFrameCanvas(
   const imgW = img.naturalWidth || img.width || 1;
   const imgH = img.naturalHeight || img.height || 1;
 
-  let baseScale = 1;
-  if (fitMode === 'cover') {
-    baseScale = Math.max(width / imgW, height / imgH);
-  } else {
-    baseScale = Math.min(width / imgW, height / imgH);
-  }
+  const baseScale = fitMode === 'cover' ? Math.max(width / imgW, height / imgH) : Math.min(width / imgW, height / imgH);
 
   const finalScale = baseScale * Math.max(0.1, transform.zoom);
   const drawW = imgW * finalScale;

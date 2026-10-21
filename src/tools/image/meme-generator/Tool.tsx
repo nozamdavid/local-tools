@@ -238,11 +238,7 @@ export default function Tool() {
               <Field label="Aspect Ratio">
                 <div className={styles.btnGroup}>
                   {(['1:1', '4:5', '16:9'] as AspectRatio[]).map((asp) => (
-                    <Button
-                      key={asp}
-                      variant={blankAspect === asp ? 'primary' : 'secondary'}
-                      onClick={() => setBlankAspect(asp)}
-                    >
+                    <Button key={asp} variant={blankAspect === asp ? 'primary' : 'secondary'} onClick={() => setBlankAspect(asp)}>
                       {asp === '1:1' && '1:1 Square'}
                       {asp === '4:5' && '4:5 Portrait'}
                       {asp === '16:9' && '16:9 Landscape'}
@@ -257,6 +253,7 @@ export default function Tool() {
                     type="color"
                     className={styles.colorInput}
                     value={blankColor}
+                    aria-label="Background colour"
                     onChange={(e) => setBlankColor(e.target.value)}
                   />
                   <span>{blankColor}</span>
@@ -280,6 +277,7 @@ export default function Tool() {
                 type="button"
                 className={styles.iconBtn}
                 title="Undo (Ctrl+Z)"
+                aria-label="Undo"
                 data-testid="undo-btn"
                 disabled={!canUndo}
                 onClick={undo}
@@ -290,6 +288,7 @@ export default function Tool() {
                 type="button"
                 className={styles.iconBtn}
                 title="Redo (Ctrl+Shift+Z)"
+                aria-label="Redo"
                 data-testid="redo-btn"
                 disabled={!canRedo}
                 onClick={redo}
@@ -301,6 +300,7 @@ export default function Tool() {
                   type="button"
                   className={styles.iconBtn}
                   title="Delete layer (Del)"
+                  aria-label="Delete layer"
                   onClick={() => deleteLayer(selectedLayerId)}
                   style={{ color: 'var(--danger)' }}
                 >
@@ -337,7 +337,9 @@ export default function Tool() {
               {topLayer && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label className="field-label" style={{ fontWeight: 600 }}>Top Caption</label>
+                    <label className="field-label" style={{ fontWeight: 600 }}>
+                      Top Caption
+                    </label>
                     <label className="checkbox-label" style={{ fontSize: '0.8rem' }}>
                       <input
                         type="checkbox"
@@ -354,6 +356,7 @@ export default function Tool() {
                     type="text"
                     className="input"
                     value={topLayer.text}
+                    aria-label="Top caption"
                     onChange={(e) => updateTextLayer('meme-top', (l) => ({ ...l, text: e.target.value }))}
                   />
                 </div>
@@ -363,7 +366,9 @@ export default function Tool() {
               {bottomLayer && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <label className="field-label" style={{ fontWeight: 600 }}>Bottom Caption</label>
+                    <label className="field-label" style={{ fontWeight: 600 }}>
+                      Bottom Caption
+                    </label>
                     <label className="checkbox-label" style={{ fontSize: '0.8rem' }}>
                       <input
                         type="checkbox"
@@ -380,6 +385,7 @@ export default function Tool() {
                     type="text"
                     className="input"
                     value={bottomLayer.text}
+                    aria-label="Bottom caption"
                     onChange={(e) => updateTextLayer('meme-bottom', (l) => ({ ...l, text: e.target.value }))}
                   />
                 </div>
@@ -389,9 +395,7 @@ export default function Tool() {
             {/* Selected Layer Properties */}
             {selectedLayer && selectedLayer.type === 'text' && (
               <div style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-                  Selected Text Style ({selectedLayer.id})
-                </div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>Selected Text Style ({selectedLayer.id})</div>
                 <div className={styles.grid}>
                   <Field label="Font Size">
                     <Slider
@@ -409,6 +413,7 @@ export default function Tool() {
                         type="color"
                         className={styles.colorInput}
                         value={selectedLayer.fill}
+                        aria-label="Text colour"
                         onChange={(e) => updateTextLayer(selectedLayer.id, (l) => ({ ...l, fill: e.target.value }))}
                       />
                       <span>{selectedLayer.fill}</span>
@@ -421,6 +426,7 @@ export default function Tool() {
                         type="color"
                         className={styles.colorInput}
                         value={selectedLayer.stroke || '#000000'}
+                        aria-label="Outline stroke colour"
                         onChange={(e) => updateTextLayer(selectedLayer.id, (l) => ({ ...l, stroke: e.target.value }))}
                       />
                       <span>{selectedLayer.stroke}</span>
@@ -458,17 +464,13 @@ export default function Tool() {
 
               {exportMime !== 'image/png' && (
                 <Field label="Quality">
-                  <Slider value={quality} min={10} max={100} unit="%" onChange={setQuality} />
+                  {' '}
+                  <Slider value={quality} min={10} max={100} unit="%" onChange={setQuality} />{' '}
                 </Field>
               )}
             </div>
 
-            <Button
-              variant="primary"
-              data-testid="export-btn"
-              disabled={isExporting}
-              onClick={handleExport}
-            >
+            <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleExport}>
               {isExporting ? 'Exporting…' : 'Download Meme'}
             </Button>
           </div>

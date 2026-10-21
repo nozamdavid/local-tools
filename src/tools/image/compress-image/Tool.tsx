@@ -105,11 +105,7 @@ export default function CompressImageTool() {
               filename={resultInfo.filename}
               kind="image"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <img src={originalUrl} alt={file.name} className="preview-media" />
-                ) : null
-              }
+              beforePreview={originalUrl ? <img src={originalUrl} alt={file.name} className="preview-media" /> : null}
               onReset={handleReset}
             >
               <div className="meta-chips" style={{ marginBottom: '1rem' }}>
@@ -123,7 +119,10 @@ export default function CompressImageTool() {
                   Target reached: <strong>{resultInfo.achievedBytes <= targetBytes ? 'Yes (≤ Target)' : 'Closest match'}</strong>
                 </span>
                 <span className="meta-chip">
-                  Output resolution: <strong>{resultInfo.width}×{resultInfo.height} px</strong>
+                  Output resolution:{' '}
+                  <strong>
+                    {resultInfo.width}×{resultInfo.height} px
+                  </strong>
                 </span>
               </div>
             </ResultPanel>
@@ -138,7 +137,10 @@ export default function CompressImageTool() {
                 </span>
                 {imgMeta && (
                   <span className="meta-chip">
-                    Dimensions: <strong>{imgMeta.width}×{imgMeta.height} px</strong>
+                    Dimensions:{' '}
+                    <strong>
+                      {imgMeta.width}×{imgMeta.height} px
+                    </strong>
                   </span>
                 )}
               </div>

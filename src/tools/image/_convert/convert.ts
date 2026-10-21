@@ -1,11 +1,4 @@
-import {
-  decodeImage,
-  imageToCanvas,
-  canvasToBlob,
-  encodeBmp,
-  encodeGif,
-  loadImage,
-} from '../../../lib/image';
+import { decodeImage, imageToCanvas, canvasToBlob, encodeBmp, encodeGif, loadImage } from '../../../lib/image';
 import { encodeJxlCanvas } from '../../../lib/jxl';
 import type { ConvertOptions, SvgScale } from './types';
 
@@ -17,9 +10,7 @@ async function checkNativeAvifSupport(): Promise<boolean> {
     const canvas = document.createElement('canvas');
     canvas.width = 1;
     canvas.height = 1;
-    const blob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, 'image/avif')
-    );
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/avif'));
     return !!blob && blob.type === 'image/avif' && blob.size > 0;
   } catch {
     return false;
@@ -35,10 +26,7 @@ export function checkAvifSupport(): Promise<boolean> {
         const native = await checkNativeAvifSupport();
         if (native) return true;
         // Fallback: bundled WASM encoder is available if WebAssembly is supported
-        return (
-          typeof WebAssembly === 'object' &&
-          typeof WebAssembly.compile === 'function'
-        );
+        return typeof WebAssembly === 'object' && typeof WebAssembly.compile === 'function';
       } catch {
         return false;
       }
@@ -51,11 +39,7 @@ function isSvgFile(file: File): boolean {
   return file.type === 'image/svg+xml' || /\.svg$/i.test(file.name);
 }
 
-async function loadSvgImage(
-  file: File,
-  scale: SvgScale,
-  customWidth?: number,
-): Promise<HTMLImageElement> {
+async function loadSvgImage(file: File, scale: SvgScale, customWidth?: number): Promise<HTMLImageElement> {
   const text = await file.text();
   const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
   const root = doc.documentElement;
@@ -66,7 +50,11 @@ async function loadSvgImage(
   let w = parseFloat(root.getAttribute('width') || '');
   let h = parseFloat(root.getAttribute('height') || '');
   if (!w || !h || isNaN(w) || isNaN(h)) {
-    const viewBox = root.getAttribute('viewBox')?.trim().split(/[\s,]+/).map(Number);
+    const viewBox = root
+      .getAttribute('viewBox')
+      ?.trim()
+      .split(/[\s,]+/)
+      .map(Number);
     if (viewBox && viewBox.length === 4 && viewBox[2] > 0 && viewBox[3] > 0) {
       w = viewBox[2];
       h = viewBox[3];
@@ -161,7 +149,7 @@ export async function convertSingleImage(options: ConvertOptions): Promise<Blob>
     case 'gif':
       return await encodeGif(renderCanvas);
     case 'jxl': {
-      const isLossless = lossless ?? (quality === 100);
+      const isLossless = lossless ?? quality === 100;
       return await encodeJxlCanvas(renderCanvas, {
         quality: quality || 90,
         lossless: isLossless,

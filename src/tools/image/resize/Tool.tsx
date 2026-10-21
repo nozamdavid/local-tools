@@ -77,17 +77,9 @@ export default function ResizeTool() {
     }
   };
 
-  const targetW = imgMeta
-    ? mode === 'percent'
-      ? Math.max(1, Math.round(imgMeta.width * (percent / 100)))
-      : Math.max(1, pixelWidth)
-    : 0;
+  const targetW = imgMeta ? (mode === 'percent' ? Math.max(1, Math.round(imgMeta.width * (percent / 100))) : Math.max(1, pixelWidth)) : 0;
 
-  const targetH = imgMeta
-    ? mode === 'percent'
-      ? Math.max(1, Math.round(imgMeta.height * (percent / 100)))
-      : Math.max(1, pixelHeight)
-    : 0;
+  const targetH = imgMeta ? (mode === 'percent' ? Math.max(1, Math.round(imgMeta.height * (percent / 100))) : Math.max(1, pixelHeight)) : 0;
 
   const handleResize = () => {
     if (!file || !imgMeta || targetW <= 0 || targetH <= 0) return;
@@ -126,16 +118,15 @@ export default function ResizeTool() {
               filename={resultInfo.filename}
               kind="image"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <img src={originalUrl} alt={file.name} className="preview-media" />
-                ) : null
-              }
+              beforePreview={originalUrl ? <img src={originalUrl} alt={file.name} className="preview-media" /> : null}
               onReset={handleReset}
             >
               <div className="meta-chips" style={{ marginBottom: '1rem' }}>
                 <span className="meta-chip">
-                  Dimensions: <strong>{imgMeta ? `${imgMeta.width}×${imgMeta.height}` : ''} → {resultInfo.width}×{resultInfo.height} px</strong>
+                  Dimensions:{' '}
+                  <strong>
+                    {imgMeta ? `${imgMeta.width}×${imgMeta.height}` : ''} → {resultInfo.width}×{resultInfo.height} px
+                  </strong>
                 </span>
               </div>
             </ResultPanel>
@@ -150,7 +141,10 @@ export default function ResizeTool() {
                 </span>
                 {imgMeta && (
                   <span className="meta-chip">
-                    Original dimensions: <strong>{imgMeta.width}×{imgMeta.height} px</strong>
+                    Original dimensions:{' '}
+                    <strong>
+                      {imgMeta.width}×{imgMeta.height} px
+                    </strong>
                   </span>
                 )}
               </div>
@@ -173,14 +167,7 @@ export default function ResizeTool() {
 
                   {mode === 'percent' ? (
                     <Field label="Scale percentage" hint="Choose percentage of original size">
-                      <Slider
-                        value={percent}
-                        min={5}
-                        max={300}
-                        step={5}
-                        unit="%"
-                        onChange={setPercent}
-                      />
+                      <Slider value={percent} min={5} max={300} step={5} unit="%" onChange={setPercent} />
                       <div className={styles.presetChips}>
                         {[25, 50, 75, 100, 150, 200].map((p) => (
                           <button
@@ -198,7 +185,9 @@ export default function ResizeTool() {
                     <Field label="Dimensions (pixels)" hint="Enter target width and height in pixels">
                       <div className={styles.dimensionGrid}>
                         <div>
-                          <label className="field-label" style={{ fontSize: '0.85rem' }}>Width</label>
+                          <label className="field-label" style={{ fontSize: '0.85rem' }}>
+                            Width
+                          </label>
                           <input
                             type="number"
                             min={1}
@@ -217,7 +206,9 @@ export default function ResizeTool() {
                           {lockAspect ? '🔒' : '🔓'}
                         </button>
                         <div>
-                          <label className="field-label" style={{ fontSize: '0.85rem' }}>Height</label>
+                          <label className="field-label" style={{ fontSize: '0.85rem' }}>
+                            Height
+                          </label>
                           <input
                             type="number"
                             min={1}
@@ -233,9 +224,19 @@ export default function ResizeTool() {
 
                   {imgMeta && (
                     <div className={styles.sizeComparison}>
-                      <span>Source: <strong>{imgMeta.width}×{imgMeta.height}</strong></span>
+                      <span>
+                        Source:{' '}
+                        <strong>
+                          {imgMeta.width}×{imgMeta.height}
+                        </strong>
+                      </span>
                       <span className={styles.sizeArrow}>→</span>
-                      <span>Target: <strong>{targetW}×{targetH} px</strong></span>
+                      <span>
+                        Target:{' '}
+                        <strong>
+                          {targetW}×{targetH} px
+                        </strong>
+                      </span>
                     </div>
                   )}
 
@@ -256,14 +257,7 @@ export default function ResizeTool() {
 
                   {format !== 'image/png' && (
                     <Field label="Quality" hint="Higher quality results in larger file size">
-                      <Slider
-                        value={quality}
-                        min={10}
-                        max={100}
-                        step={1}
-                        unit="%"
-                        onChange={setQuality}
-                      />
+                      <Slider value={quality} min={10} max={100} step={1} unit="%" onChange={setQuality} />
                     </Field>
                   )}
 

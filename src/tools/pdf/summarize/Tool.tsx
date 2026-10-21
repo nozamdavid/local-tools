@@ -8,13 +8,7 @@ import { formatBytes } from '../../../lib/format';
 import { downloadBlob } from '../../../lib/download';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { usePdfSource } from '../_thumbs/usePdfSource';
-import {
-  extractPdfText,
-  chunkTextForInference,
-  SUMMARIZE_MODELS,
-  AiJob,
-  type ExtractionResult,
-} from '../_ai';
+import { extractPdfText, chunkTextForInference, SUMMARIZE_MODELS, AiJob, type ExtractionResult } from '../_ai';
 import styles from './Tool.module.css';
 
 export default function SummarizeTool() {
@@ -93,8 +87,7 @@ export default function SummarizeTool() {
     setProgressLabel('Preparing model...');
 
     try {
-      const maxPages =
-        pageScope === '3' ? 3 : pageScope === '5' ? 5 : pageScope === '10' ? 10 : undefined;
+      const maxPages = pageScope === '3' ? 3 : pageScope === '5' ? 5 : pageScope === '10' ? 10 : undefined;
 
       const pagesToUse = maxPages ? extractionResult.pages.slice(0, maxPages) : extractionResult.pages;
       const chunks = chunkTextForInference(pagesToUse, {
@@ -189,19 +182,11 @@ export default function SummarizeTool() {
   const originalWords = extractionResult?.totalWords ?? 0;
   const summaryWords = summary ? summary.split(/\s+/).filter(Boolean).length : 0;
   const reductionPct =
-    originalWords > 0 && summaryWords > 0
-      ? Math.max(0, Math.round(((originalWords - summaryWords) / originalWords) * 100))
-      : 0;
+    originalWords > 0 && summaryWords > 0 ? Math.max(0, Math.round(((originalWords - summaryWords) / originalWords) * 100)) : 0;
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -240,18 +225,15 @@ export default function SummarizeTool() {
           </div>
 
           {(source.loading || extracting) && (
-            <p className="status-text">
-              {source.loading ? 'Opening PDF document...' : 'Extracting document text...'}
-            </p>
+            <p className="status-text">{source.loading ? 'Opening PDF document...' : 'Extracting document text...'}</p>
           )}
 
           {extractionResult && !extractionResult.hasText && !extracting && (
             <div className={styles.ocrNotice}>
               <div className={styles.ocrNoticeTitle}>No Selectable Text Found</div>
               <p className={styles.ocrNoticeDesc}>
-                This PDF appears to be a scanned document or contains only images with no embedded text
-                layer. Local summarization requires machine-readable text. Please process this PDF with the
-                OCR PDF tool first to recognize and extract its text.
+                This PDF appears to be a scanned document or contains only images with no embedded text layer. Local summarization requires
+                machine-readable text. Please process this PDF with the OCR PDF tool first to recognize and extract its text.
               </p>
               <div className="action-buttons" style={{ justifyContent: 'center' }}>
                 <a href="/pdf/ocr" className="btn btn-primary" style={{ textDecoration: 'none' }}>
@@ -264,10 +246,7 @@ export default function SummarizeTool() {
           {extractionResult && extractionResult.hasText && !summary && !running && (
             <div>
               <div className={styles.controls}>
-                <Field
-                  label="Summarization model"
-                  hint={`Download size: ${currentModel.sizeEstimate}. Stored in browser cache.`}
-                >
+                <Field label="Summarization model" hint={`Download size: ${currentModel.sizeEstimate}. Stored in browser cache.`}>
                   <Select
                     id={modelSelectId}
                     value={selectedModel}
@@ -287,20 +266,14 @@ export default function SummarizeTool() {
 
                 {source.pages.length > 3 && (
                   <Field label="Page scope" hint="Select how many pages to include in the summary.">
-                    <Select
-                      id={scopeSelectId}
-                      value={pageScope}
-                      onChange={(e) => setPageScope(e.target.value)}
-                      options={scopeOptions}
-                    />
+                    <Select id={scopeSelectId} value={pageScope} onChange={(e) => setPageScope(e.target.value)} options={scopeOptions} />
                   </Field>
                 )}
               </div>
 
               <div className={styles.noticeBox}>
-                🔒 <strong>100% Private & In-Browser:</strong> The AI model runs directly in your browser
-                via WebAssembly. Model weights are downloaded directly from Hugging Face and cached locally.
-                Your PDF contents never leave your device.
+                🔒 <strong>100% Private & In-Browser:</strong> The AI model runs directly in your browser via WebAssembly. Model weights are
+                downloaded directly from Hugging Face and cached locally. Your PDF contents never leave your device.
               </div>
 
               <div className="action-buttons" style={{ marginTop: '1.5rem' }}>

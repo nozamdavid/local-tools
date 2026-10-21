@@ -116,11 +116,7 @@ export default function RemoveBgTool() {
       });
 
       setAiProgress({ text: 'Segmenting subject from background...', percent: 90 });
-      const { mask } = await segmentClientRef.current.segmentFrame(
-        sourceData.data,
-        sourceData.width,
-        sourceData.height,
-      );
+      const { mask } = await segmentClientRef.current.segmentFrame(sourceData.data, sourceData.width, sourceData.height);
 
       setAiMask(mask);
       setAiProgress(null);
@@ -259,8 +255,7 @@ export default function RemoveBgTool() {
       const blob = await canvasToBlob(exportCanvas, mime);
       const originalName = file?.name || 'image.png';
       const ext = format === 'png' ? '.png' : '.webp';
-      const outName = withSuffix(originalName, '-nobg')
-        .replace(/\.[^.]+$/, ext);
+      const outName = withSuffix(originalName, '-nobg').replace(/\.[^.]+$/, ext);
       downloadBlob(blob, outName);
     } catch (err: any) {
       console.error('Failed to download image:', err);
@@ -310,10 +305,7 @@ export default function RemoveBgTool() {
               {/* Solid Mode Controls */}
               {mode === 'solid' && (
                 <>
-                  <Field
-                    label="Background Colour"
-                    hint="Click anywhere on the preview image to pick colour"
-                  >
+                  <Field label="Background Colour" hint="Click anywhere on the preview image to pick colour">
                     <div className={styles.colorPickerRow}>
                       <input
                         type="color"
@@ -322,54 +314,28 @@ export default function RemoveBgTool() {
                         onChange={(e) => setBgColorHex(e.target.value)}
                       />
                       <span>{bgColorHex}</span>
-                      <Button
-                        variant="secondary"
-                        className={styles.smallBtn}
-                        onClick={handleAutoDetectColor}
-                      >
+                      <Button variant="secondary" className={styles.smallBtn} onClick={handleAutoDetectColor}>
                         Auto-Detect
                       </Button>
                     </div>
                   </Field>
 
                   <Field label="Tolerance">
-                    <Slider
-                      min={0}
-                      max={60}
-                      step={1}
-                      unit="%"
-                      value={tolerance}
-                      onChange={setTolerance}
-                    />
+                    <Slider min={0} max={60} step={1} unit="%" value={tolerance} onChange={setTolerance} />
                   </Field>
 
                   <Field label="Edge Softness">
-                    <Slider
-                      min={0}
-                      max={20}
-                      step={1}
-                      unit="px"
-                      value={softness}
-                      onChange={setSoftness}
-                    />
+                    <Slider min={0} max={20} step={1} unit="px" value={softness} onChange={setSoftness} />
                   </Field>
 
                   <div className={styles.twoCols}>
                     <label className={styles.checkboxLabel}>
-                      <input
-                        type="checkbox"
-                        checked={contiguous}
-                        onChange={(e) => setContiguous(e.target.checked)}
-                      />
+                      <input type="checkbox" checked={contiguous} onChange={(e) => setContiguous(e.target.checked)} />
                       Flood fill from edges
                     </label>
 
                     <label className={styles.checkboxLabel}>
-                      <input
-                        type="checkbox"
-                        checked={despill}
-                        onChange={(e) => setDespill(e.target.checked)}
-                      />
+                      <input type="checkbox" checked={despill} onChange={(e) => setDespill(e.target.checked)} />
                       Edge despill
                     </label>
                   </div>
@@ -388,12 +354,7 @@ export default function RemoveBgTool() {
                   {aiError && (
                     <div style={{ color: 'var(--danger)', fontSize: '0.875rem' }}>
                       {aiError}
-                      <Button
-                        variant="secondary"
-                        className={styles.smallBtn}
-                        style={{ marginTop: '0.5rem' }}
-                        onClick={runAiSegmentation}
-                      >
+                      <Button variant="secondary" className={styles.smallBtn} style={{ marginTop: '0.5rem' }} onClick={runAiSegmentation}>
                         Retry AI Detection
                       </Button>
                     </div>
@@ -402,31 +363,14 @@ export default function RemoveBgTool() {
                   {aiMask && (
                     <>
                       <Field label="Detection Threshold">
-                        <Slider
-                          min={20}
-                          max={240}
-                          step={2}
-                          value={aiThreshold}
-                          onChange={setAiThreshold}
-                        />
+                        <Slider min={20} max={240} step={2} value={aiThreshold} onChange={setAiThreshold} />
                       </Field>
 
                       <Field label="Edge Feathering">
-                        <Slider
-                          min={0}
-                          max={15}
-                          step={1}
-                          unit="px"
-                          value={aiFeather}
-                          onChange={setAiFeather}
-                        />
+                        <Slider min={0} max={15} step={1} unit="px" value={aiFeather} onChange={setAiFeather} />
                       </Field>
 
-                      <Button
-                        variant="secondary"
-                        className={styles.smallBtn}
-                        onClick={runAiSegmentation}
-                      >
+                      <Button variant="secondary" className={styles.smallBtn} onClick={runAiSegmentation}>
                         Re-run AI Detection
                       </Button>
                     </>
@@ -506,15 +450,15 @@ export default function RemoveBgTool() {
                   <canvas
                     ref={previewCanvasRef}
                     className={styles.canvas}
+                    role="img"
+                    aria-label="Result with the background removed. Use the colour field in the controls to choose a solid background."
                     onClick={handleCanvasClick}
                     title={mode === 'solid' ? 'Click to pick background color' : undefined}
                     style={{ cursor: mode === 'solid' ? 'crosshair' : 'default' }}
                   />
                 )}
 
-                {viewMode === 'original' && sourceImg && (
-                  <img src={sourceImg.src} alt="Original" className={styles.canvas} />
-                )}
+                {viewMode === 'original' && sourceImg && <img src={sourceImg.src} alt="Original" className={styles.canvas} />}
 
                 {viewMode === 'compare' && sourceImg && (
                   <div
@@ -526,7 +470,12 @@ export default function RemoveBgTool() {
                     }}
                   >
                     {/* Underlying Result Canvas */}
-                    <canvas ref={compareCanvasRef} className={styles.canvas} />
+                    <canvas
+                      ref={compareCanvasRef}
+                      className={styles.canvas}
+                      role="img"
+                      aria-label="Before and after comparison. The divider follows the pointer; switch to Original or Result for keyboard use."
+                    />
 
                     {/* Top Clipped Original Image */}
                     <div
@@ -552,10 +501,7 @@ export default function RemoveBgTool() {
                     </div>
 
                     {/* Slider separator bar */}
-                    <div
-                      className={styles.compareSliderLine}
-                      style={{ left: `${compareSplit}%` }}
-                    >
+                    <div className={styles.compareSliderLine} style={{ left: `${compareSplit}%` }}>
                       <div className={styles.compareHandle}>⇄</div>
                     </div>
                   </div>
@@ -567,11 +513,7 @@ export default function RemoveBgTool() {
                 <Button className={styles.actionBtn} onClick={() => handleDownload('png')}>
                   Download PNG
                 </Button>
-                <Button
-                  variant="secondary"
-                  className={styles.actionBtn}
-                  onClick={() => handleDownload('webp')}
-                >
+                <Button variant="secondary" className={styles.actionBtn} onClick={() => handleDownload('webp')}>
                   Download WEBP
                 </Button>
               </div>

@@ -190,9 +190,7 @@ export default function CollageTool() {
   const [exportLongSide, setExportLongSide] = useState<number>(2048);
   const [exportFormat, setExportFormat] = useState<'png' | 'jpg'>('jpg');
 
-  const [cellStates, setCellStates] = useState<CellState[]>(() =>
-    new Array(10).fill(null).map(() => ({ zoom: 1.0, panX: 0, panY: 0 })),
-  );
+  const [cellStates, setCellStates] = useState<CellState[]>(() => new Array(10).fill(null).map(() => ({ zoom: 1.0, panX: 0, panY: 0 })));
   const [activeCellIndex, setActiveCellIndex] = useState<number>(0);
 
   const [exporting, setExporting] = useState<boolean>(false);
@@ -255,9 +253,7 @@ export default function CollageTool() {
     const photo = photos.find((p) => p.id === photoId);
     if (photo) URL.revokeObjectURL(photo.thumbUrl);
     setPhotos((prev) => prev.filter((p) => p.id !== photoId));
-    setCellStates((prev) =>
-      prev.map((c) => (c.photoId === photoId ? { ...c, photoId: undefined } : c)),
-    );
+    setCellStates((prev) => prev.map((c) => (c.photoId === photoId ? { ...c, photoId: undefined } : c)));
   };
 
   const assignPhotoToCell = (cellIdx: number, photoId: string) => {
@@ -449,12 +445,7 @@ export default function CollageTool() {
   if (result) {
     return (
       <ToolPage title={meta.title} description={meta.description} currentId="img-collage">
-        <ResultPanel
-          blob={result.blob}
-          filename={result.filename}
-          kind="image"
-          onReset={() => setResult(null)}
-        />
+        <ResultPanel blob={result.blob} filename={result.filename} kind="image" onReset={() => setResult(null)} />
       </ToolPage>
     );
   }
@@ -476,9 +467,7 @@ export default function CollageTool() {
           {/* Photo Tray */}
           <div className={styles.traySection}>
             <div className={styles.trayHeader}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 600 }}>
-                Photo Tray ({photos.length}) — Drag photos onto cells below:
-              </h3>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 600 }}>Photo Tray ({photos.length}) — Drag photos onto cells below:</h3>
               <input
                 ref={addFilesInputRef}
                 type="file"
@@ -510,12 +499,7 @@ export default function CollageTool() {
                   title="Drag this photo onto any cell below"
                 >
                   <img src={p.thumbUrl} alt="" className={styles.trayPhotoImg} />
-                  <button
-                    type="button"
-                    className={styles.trayRemoveBtn}
-                    onClick={() => removePhoto(p.id)}
-                    title="Remove from tray"
-                  >
+                  <button type="button" className={styles.trayRemoveBtn} onClick={() => removePhoto(p.id)} title="Remove from tray">
                     ✕
                   </button>
                 </div>
@@ -526,10 +510,7 @@ export default function CollageTool() {
           {/* Stage Area */}
           <div className={styles.editorArea}>
             <div className={styles.stageBox}>
-              <div
-                className={styles.stageCanvasWrapper}
-                style={{ aspectRatio: `${ASPECT_RATIOS[aspect]}` }}
-              >
+              <div className={styles.stageCanvasWrapper} style={{ aspectRatio: `${ASPECT_RATIOS[aspect]}` }}>
                 <canvas ref={previewCanvasRef} className={styles.previewCanvas} />
 
                 {/* Interactive Cell Overlay for dragging and cell selection */}
@@ -559,9 +540,7 @@ export default function CollageTool() {
                         }}
                         title={hasPhoto ? 'Drag to pan, mouse wheel to zoom' : 'Drop photo here'}
                       >
-                        {!hasPhoto && (
-                          <div className={styles.emptyCellBadge}>+ Drop photo</div>
-                        )}
+                        {!hasPhoto && <div className={styles.emptyCellBadge}>+ Drop photo</div>}
                       </div>
                     );
                   })}
@@ -572,9 +551,7 @@ export default function CollageTool() {
             {/* Active Cell Pan/Zoom Controls */}
             {cellStates[activeCellIndex]?.photoId && (
               <div style={{ width: '100%', maxWidth: '650px', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#60a5fa' }}>
-                  Cell {activeCellIndex + 1} zoom:
-                </span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#60a5fa' }}>Cell {activeCellIndex + 1} zoom:</span>
                 <div style={{ flex: 1 }}>
                   <Slider
                     value={cellStates[activeCellIndex]?.zoom || 1.0}
@@ -615,9 +592,7 @@ export default function CollageTool() {
 
           {/* Templates Selection (12 templates) */}
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>
-              Choose Template (12 options):
-            </h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Choose Template (12 options):</h3>
             <div className={styles.templateGrid}>
               {TEMPLATES.map((tpl) => (
                 <button

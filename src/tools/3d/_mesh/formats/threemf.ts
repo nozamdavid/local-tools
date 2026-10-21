@@ -1,39 +1,20 @@
 import JSZip from 'jszip';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
 import type { MeshModel } from '../types';
-import {
-  MAX_TRIANGLE_COUNT,
-  MAX_VERTEX_COUNT,
-  MAX_ZIP_ENTRY_COUNT,
-  MAX_ZIP_UNCOMPRESSED_BYTES,
-} from '../validation';
+import { MAX_TRIANGLE_COUNT, MAX_VERTEX_COUNT, MAX_ZIP_ENTRY_COUNT, MAX_ZIP_UNCOMPRESSED_BYTES } from '../validation';
 
-type Matrix3x4 = [
-  number, number, number,
-  number, number, number,
-  number, number, number,
-  number, number, number
-];
+type Matrix3x4 = [number, number, number, number, number, number, number, number, number, number, number, number];
 
-const IDENTITY_MATRIX: Matrix3x4 = [
-  1, 0, 0,
-  0, 1, 0,
-  0, 0, 1,
-  0, 0, 0,
-];
+const IDENTITY_MATRIX: Matrix3x4 = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
 
 function matrixDeterminant(M: Matrix3x4): number {
-  return (
-    M[0] * (M[4] * M[8] - M[5] * M[7]) -
-    M[1] * (M[3] * M[8] - M[5] * M[6]) +
-    M[2] * (M[3] * M[7] - M[4] * M[6])
-  );
+  return M[0] * (M[4] * M[8] - M[5] * M[7]) - M[1] * (M[3] * M[8] - M[5] * M[6]) + M[2] * (M[3] * M[7] - M[4] * M[6]);
 }
 
 function parse3MFMatrix(str?: string): Matrix3x4 {
   if (!str) return [...IDENTITY_MATRIX];
   const parts = str.trim().split(/\s+/).map(Number);
-  if (parts.length !== 12 || parts.some(n => !Number.isFinite(n))) {
+  if (parts.length !== 12 || parts.some((n) => !Number.isFinite(n))) {
     throw new Error('Invalid 3MF transform matrix: matrix must contain 12 finite numbers.');
   }
 
@@ -77,11 +58,7 @@ function multiply3MFMatrices(A: Matrix3x4, B: Matrix3x4): Matrix3x4 {
  * z' = x*M2 + y*M5 + z*M8 + M11
  */
 function transformPoint(M: Matrix3x4, x: number, y: number, z: number): [number, number, number] {
-  return [
-    x * M[0] + y * M[3] + z * M[6] + M[9],
-    x * M[1] + y * M[4] + z * M[7] + M[10],
-    x * M[2] + y * M[5] + z * M[8] + M[11],
-  ];
+  return [x * M[0] + y * M[3] + z * M[6] + M[9], x * M[1] + y * M[4] + z * M[7] + M[10], x * M[2] + y * M[5] + z * M[8] + M[11]];
 }
 
 interface RawObject {
@@ -106,7 +83,7 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
   try {
     zip = await JSZip.loadAsync(buffer);
   } catch (err) {
-    throw new Error(`Failed to read 3MF archive: ${err instanceof Error ? err.message : String(err)}`);
+    throw new Error(`Failed to read 3MF archive: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
   }
 
   // 1. Zip bomb & security inspection
@@ -128,7 +105,7 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
   if (totalDeclaredBytes > MAX_ZIP_UNCOMPRESSED_BYTES) {
     const maxMb = (MAX_ZIP_UNCOMPRESSED_BYTES / (1024 * 1024)).toFixed(0);
     throw new Error(
-      `3MF archive declared uncompressed size (${(totalDeclaredBytes / (1024 * 1024)).toFixed(1)} MB) exceeds maximum limit of ${maxMb} MB.`
+      `3MF archive declared uncompressed size (${(totalDeclaredBytes / (1024 * 1024)).toFixed(1)} MB) exceeds maximum limit of ${maxMb} MB.`,
     );
   }
 
@@ -150,7 +127,7 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
 
   // 2. Inspect relationships in _rels/.rels
   let modelPath = '3D/3dmodel.model';
-  let modelEntry: JSZip.JSZipObject | null = null;
+  let modelEntry: JSZip.JSZipObject | null;
   const relsEntry = zip.file('_rels/.rels');
 
   if (relsEntry) {
@@ -184,15 +161,13 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
 
     if (!foundModelRel) {
       throw new Error(
-        'Invalid 3MF: relationships document _rels/.rels does not specify a 3D model relationship (http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel).'
+        'Invalid 3MF: relationships document _rels/.rels does not specify a 3D model relationship (http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel).',
       );
     }
 
     modelEntry = zip.file(modelPath);
     if (!modelEntry) {
-      throw new Error(
-        `3MF archive declared root model at "${modelPath}" in _rels/.rels, but the file was not found in the archive.`
-      );
+      throw new Error(`3MF archive declared root model at "${modelPath}" in _rels/.rels, but the file was not found in the archive.`);
     }
   } else {
     // Missing _rels/.rels: only permit if archive contains exactly ONE .model file
@@ -202,7 +177,7 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
       modelEntry = zip.file(modelPath);
     } else if (modelCandidates.length > 1) {
       throw new Error(
-        `Invalid 3MF: multiple .model files found (${modelCandidates.join(', ')}) but _rels/.rels is missing to determine the primary model.`
+        `Invalid 3MF: multiple .model files found (${modelCandidates.join(', ')}) but _rels/.rels is missing to determine the primary model.`,
       );
     } else {
       throw new Error('Invalid 3MF: archive contains no .model document.');
@@ -236,7 +211,10 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
 
   // Check required extensions (case-insensitive and prefix-tolerant)
   const reqExtKey = Object.keys(modelNode).find((k) =>
-    k.toLowerCase().replace(/^@_.*:/, '@_').endsWith('requiredextensions')
+    k
+      .toLowerCase()
+      .replace(/^@_.*:/, '@_')
+      .endsWith('requiredextensions'),
   );
   const requiredExts = reqExtKey ? modelNode[reqExtKey] : undefined;
   if (requiredExts && String(requiredExts).trim().length > 0) {
@@ -365,7 +343,7 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
 
       if (expectedTriangles > MAX_TRIANGLE_COUNT) {
         throw new Error(
-          `3MF model exceeds maximum allowed triangles (${expectedTriangles.toLocaleString()} > ${MAX_TRIANGLE_COUNT.toLocaleString()}).`
+          `3MF model exceeds maximum allowed triangles (${expectedTriangles.toLocaleString()} > ${MAX_TRIANGLE_COUNT.toLocaleString()}).`,
         );
       }
       if (expectedVertices > MAX_VERTEX_COUNT) {
@@ -403,11 +381,7 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
   let currentVertexOffset = 0;
   let hasTransformsOrInstances = false;
 
-  function instantiateObject(
-    objectId: string,
-    currentTransform: Matrix3x4,
-    visited: Set<string>
-  ): void {
+  function instantiateObject(objectId: string, currentTransform: Matrix3x4, visited: Set<string>): void {
     if (visited.has(objectId)) {
       throw new Error(`Circular component reference detected in 3MF object "${objectId}".`);
     }
@@ -439,13 +413,13 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
           accumulatedIndices.push(
             indices[t] + currentVertexOffset,
             indices[t + 2] + currentVertexOffset,
-            indices[t + 1] + currentVertexOffset
+            indices[t + 1] + currentVertexOffset,
           );
         } else {
           accumulatedIndices.push(
             indices[t] + currentVertexOffset,
             indices[t + 1] + currentVertexOffset,
-            indices[t + 2] + currentVertexOffset
+            indices[t + 2] + currentVertexOffset,
           );
         }
       }
@@ -486,9 +460,7 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
   }
 
   if (buildItems.length > 1 || hasTransformsOrInstances) {
-    warnings.push(
-      '3MF build transforms, component instances, and object hierarchy were flattened into a single geometry.'
-    );
+    warnings.push('3MF build transforms, component instances, and object hierarchy were flattened into a single geometry.');
   }
 
   if (accumulatedPositions.length === 0 || accumulatedIndices.length === 0) {
@@ -516,7 +488,7 @@ export async function export3MF(model: MeshModel): Promise<Blob> {
 <Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
   <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml" />
   <Default Extension="model" ContentType="application/vnd.ms-package.3dmanufacturing-3dmodel+xml" />
-</Types>`
+</Types>`,
   );
 
   // 2. _rels/.rels
@@ -525,7 +497,7 @@ export async function export3MF(model: MeshModel): Promise<Blob> {
     `<?xml version="1.0" encoding="UTF-8"?>
 <Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
   <Relationship Id="rel1" Type="http://schemas.microsoft.com/3dmanufacturing/2013/01/3dmodel" Target="/3D/3dmodel.model" />
-</Relationships>`
+</Relationships>`,
   );
 
   // 3. Build 3D/3dmodel.model

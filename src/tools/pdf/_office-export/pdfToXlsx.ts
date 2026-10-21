@@ -24,7 +24,7 @@ interface RowCell {
 }
 
 function sanitizeSheetName(name: string): string {
-  const cleaned = name.replace(/[*?:/\\\[\]]/g, '').trim();
+  const cleaned = name.replace(/[*?:/\\[\]]/g, '').trim();
   return cleaned.slice(0, 31) || 'Sheet';
 }
 
@@ -57,8 +57,7 @@ function extractRowsFromPageItems(items: RawRun[]): string[][] {
         const gap = run.x - current.right;
         const isClose = gap <= Math.max(run.height * 0.35, 5);
         if (isClose) {
-          const needsSpace =
-            !current.text.endsWith(' ') && !run.str.startsWith(' ') && gap > 0.5;
+          const needsSpace = !current.text.endsWith(' ') && !run.str.startsWith(' ') && gap > 0.5;
           current.text += (needsSpace ? ' ' : '') + run.str;
           current.right = run.x + run.width;
           current.width = current.right - current.x;
@@ -142,16 +141,12 @@ function parseCellValue(text: string): string | number {
   return trimmed;
 }
 
-export async function pdfToXlsx(
-  doc: PDFDocumentProxy,
-  options?: XlsxExportOptions,
-  onProgress?: (ratio: number) => void
-): Promise<Blob> {
+export async function pdfToXlsx(doc: PDFDocumentProxy, options?: XlsxExportOptions, onProgress?: (ratio: number) => void): Promise<Blob> {
   const numPages = doc.numPages;
   const sheetMode = options?.sheetMode ?? 'per-page';
 
-  const targetPages = (options?.pages && options.pages.length > 0 ? options.pages : undefined) ??
-    Array.from({ length: numPages }, (_, i) => i + 1);
+  const targetPages =
+    (options?.pages && options.pages.length > 0 ? options.pages : undefined) ?? Array.from({ length: numPages }, (_, i) => i + 1);
 
   const validPages = targetPages.filter((p) => p >= 1 && p <= numPages);
   if (validPages.length === 0) {
@@ -187,9 +182,7 @@ export async function pdfToXlsx(
     totalRowsFound += rows.length;
 
     if (sheetMode === 'per-page') {
-      const sheetName = sanitizeSheetName(
-        validPages.length === 1 ? 'Sheet 1' : `Page ${pageNum}`
-      );
+      const sheetName = sanitizeSheetName(validPages.length === 1 ? 'Sheet 1' : `Page ${pageNum}`);
       const ws = workbook.addWorksheet(sheetName);
       for (const row of rows) {
         ws.addRow(row.map(parseCellValue));
@@ -223,7 +216,7 @@ export async function pdfToXlsx(
 
   if (totalRowsFound === 0) {
     throw new Error(
-      'No tabular or text data was found in this PDF. It appears to be a scanned document or image-only PDF. To extract tables from scans, run it through OCR PDF first.'
+      'No tabular or text data was found in this PDF. It appears to be a scanned document or image-only PDF. To extract tables from scans, run it through OCR PDF first.',
     );
   }
 

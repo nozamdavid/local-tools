@@ -140,7 +140,7 @@ function buildParagraph(docx: Docx, para: Para, margins: { left: number; right: 
         size: Math.round(span.size * 2),
         font: FONTS[span.family],
         color: heading ? '000000' : undefined,
-      })
+      }),
   );
 
   const first = para.lines[0];
@@ -201,9 +201,9 @@ function buildTable(docx: Docx, table: Table, maxWidth: number): DocxTable {
                     ],
                   }),
                 ],
-              })
+              }),
           ),
-        })
+        }),
     ),
   });
 }
@@ -221,11 +221,7 @@ async function pageImageRun(docx: Docx, doc: PDFDocumentProxy, pageNumber: numbe
 }
 
 /** Rebuilds a PDF as an editable DOCX (paragraphs, headings, tables) or as one image per page. */
-export async function buildDocx(
-  source: PDFDocumentProxy,
-  file: File,
-  options: DocxOptions
-): Promise<Blob> {
+export async function buildDocx(source: PDFDocumentProxy, file: File, options: DocxOptions): Promise<Blob> {
   const fonts = options.exactLayout ? { doc: source, close: () => {} } : await openWithFontInfo(file, source);
   try {
     return await convert(source, fonts.doc, options);

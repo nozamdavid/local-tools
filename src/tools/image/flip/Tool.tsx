@@ -105,11 +105,7 @@ export default function FlipTool() {
               filename={resultInfo.filename}
               kind="image"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <img src={originalUrl} alt={file.name} className="preview-media" />
-                ) : null
-              }
+              beforePreview={originalUrl ? <img src={originalUrl} alt={file.name} className="preview-media" /> : null}
               onReset={handleReset}
             />
           ) : (

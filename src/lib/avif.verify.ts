@@ -23,10 +23,7 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
   console.log('--- Running AVIF Verification Tests ---');
   const results: TestResult[] = [];
 
-  async function runTest(
-    name: string,
-    fn: () => Promise<string | void> | string | void
-  ) {
+  async function runTest(name: string, fn: () => Promise<string | void> | string | void) {
     try {
       const details = await fn();
       results.push({ name, passed: true, details: details || undefined });
@@ -40,24 +37,15 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
 
   // 1. Production WASM asset loading & compilation
   await runTest('Production WASM asset loading & compilation', async () => {
-    assert(
-      typeof avifEncWasmUrl === 'string' && avifEncWasmUrl.length > 0,
-      'AVIF encoder WASM URL must be defined'
-    );
+    assert(typeof avifEncWasmUrl === 'string' && avifEncWasmUrl.length > 0, 'AVIF encoder WASM URL must be defined');
 
     const encRes = await fetch(avifEncWasmUrl);
     assert(encRes.ok, `Encoder WASM fetch failed with status ${encRes.status}`);
     const encBytes = await encRes.arrayBuffer();
-    assert(
-      encBytes.byteLength > 100000,
-      `Encoder WASM must be > 100KB, got ${encBytes.byteLength}`
-    );
+    assert(encBytes.byteLength > 100000, `Encoder WASM must be > 100KB, got ${encBytes.byteLength}`);
 
     const encModule = await WebAssembly.compile(encBytes);
-    assert(
-      encModule instanceof WebAssembly.Module,
-      'Encoder WASM must compile into WebAssembly.Module'
-    );
+    assert(encModule instanceof WebAssembly.Module, 'Encoder WASM must compile into WebAssembly.Module');
 
     await initEncode(encModule);
     return `WASM binary loaded and compiled successfully (${(encBytes.byteLength / 1024 / 1024).toFixed(2)} MB)`;
@@ -67,25 +55,67 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
   await runTest('Signature detection: ISOBMFF ftyp box and avif brand', async () => {
     // Standard AVIF header: length 0x1c (28), 'ftyp', major brand 'avif', minor 0, compatible 'avif', 'mif1'
     const standardAvifHeader = new Uint8Array([
-      0x00, 0x00, 0x00, 0x1c, // box length: 28
-      0x66, 0x74, 0x79, 0x70, // 'ftyp'
-      0x61, 0x76, 0x69, 0x66, // 'avif'
-      0x00, 0x00, 0x00, 0x00, // minor_version: 0
-      0x61, 0x76, 0x69, 0x66, // compatible brand 1: 'avif'
-      0x6d, 0x69, 0x66, 0x31, // compatible brand 2: 'mif1'
-      0x6d, 0x69, 0x61, 0x66, // compatible brand 3: 'miaf'
+      0x00,
+      0x00,
+      0x00,
+      0x1c, // box length: 28
+      0x66,
+      0x74,
+      0x79,
+      0x70, // 'ftyp'
+      0x61,
+      0x76,
+      0x69,
+      0x66, // 'avif'
+      0x00,
+      0x00,
+      0x00,
+      0x00, // minor_version: 0
+      0x61,
+      0x76,
+      0x69,
+      0x66, // compatible brand 1: 'avif'
+      0x6d,
+      0x69,
+      0x66,
+      0x31, // compatible brand 2: 'mif1'
+      0x6d,
+      0x69,
+      0x61,
+      0x66, // compatible brand 3: 'miaf'
     ]);
     assert(isAvifSignature(standardAvifHeader), 'Must recognize standard ftypavif signature');
 
     // AV1 Image Sequence brand 'avis'
     const avisHeader = new Uint8Array([
-      0x00, 0x00, 0x00, 0x1c,
-      0x66, 0x74, 0x79, 0x70, // 'ftyp'
-      0x61, 0x76, 0x69, 0x73, // 'avis'
-      0x00, 0x00, 0x00, 0x00,
-      0x61, 0x76, 0x69, 0x73,
-      0x6d, 0x69, 0x66, 0x31,
-      0x6d, 0x69, 0x61, 0x66,
+      0x00,
+      0x00,
+      0x00,
+      0x1c,
+      0x66,
+      0x74,
+      0x79,
+      0x70, // 'ftyp'
+      0x61,
+      0x76,
+      0x69,
+      0x73, // 'avis'
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x61,
+      0x76,
+      0x69,
+      0x73,
+      0x6d,
+      0x69,
+      0x66,
+      0x31,
+      0x6d,
+      0x69,
+      0x61,
+      0x66,
     ]);
     assert(isAvifSignature(avisHeader), 'Must recognize avis signature');
 
@@ -114,10 +144,22 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
     const height = 2;
     // 2x2 RGBA fixture with varying colors and alpha transparency
     const originalPixels = [
-      255, 0, 0, 255,      // Pixel 0: Red opaque
-      0, 255, 0, 255,      // Pixel 1: Green opaque
-      0, 0, 255, 255,      // Pixel 2: Blue opaque
-      255, 255, 0, 128,    // Pixel 3: Yellow semi-transparent (alpha = 128)
+      255,
+      0,
+      0,
+      255, // Pixel 0: Red opaque
+      0,
+      255,
+      0,
+      255, // Pixel 1: Green opaque
+      0,
+      0,
+      255,
+      255, // Pixel 2: Blue opaque
+      255,
+      255,
+      0,
+      128, // Pixel 3: Yellow semi-transparent (alpha = 128)
     ];
     const data = new Uint8ClampedArray(originalPixels);
 
@@ -134,9 +176,9 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
     const blob = new Blob([encodedBuffer], { type: 'image/avif' });
 
     // Decode with native browser engine (loadImage or createImageBitmap)
-    let decodedWidth = 0;
-    let decodedHeight = 0;
-    let semiAlpha = 0;
+    let decodedWidth: number;
+    let decodedHeight: number;
+    let semiAlpha: number;
 
     if (typeof createImageBitmap === 'function') {
       const bmp = await createImageBitmap(blob);
@@ -164,10 +206,7 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
 
     assert(decodedWidth === width, `Decoded width must be ${width}, got ${decodedWidth}`);
     assert(decodedHeight === height, `Decoded height must be ${height}, got ${decodedHeight}`);
-    assert(
-      semiAlpha > 60 && semiAlpha < 190,
-      `Pixel 3 alpha must be preserved around 128 under compression, got ${semiAlpha}`
-    );
+    assert(semiAlpha > 60 && semiAlpha < 190, `Pixel 3 alpha must be preserved around 128 under compression, got ${semiAlpha}`);
 
     return `WASM encoded 2x2 AVIF (${encodedBuffer.byteLength} bytes); decoded dimensions ${decodedWidth}x${decodedHeight}, alpha preserved (${semiAlpha}). Native decode used; decode limits: browser native image engine.`;
   });
@@ -179,18 +218,14 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
 
     try {
       // Mock toBlob to simulate browsers lacking native AVIF encoding support
-      HTMLCanvasElement.prototype.toBlob = function (
-        callback: BlobCallback,
-        type?: string,
-        _quality?: any
-      ) {
-        if (type === 'image/avif') {
+      HTMLCanvasElement.prototype.toBlob = function (this: HTMLCanvasElement, ...args: Parameters<typeof originalToBlob>) {
+        if (args[1] === 'image/avif') {
           mockedFallbackTriggered = true;
           // Return null or wrong type (as Safari/Firefox do for unsupported MIME)
-          callback(null);
+          args[0](null);
           return;
         }
-        originalToBlob.apply(this, arguments as any);
+        originalToBlob.apply(this, args);
       };
 
       const canvas = document.createElement('canvas');
@@ -204,10 +239,7 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
       const avifBlob = await canvasToBlob(canvas, 'image/avif', 0.85);
 
       assert(mockedFallbackTriggered, 'Mocked native toBlob must have been called');
-      assert(
-        avifBlob.type === 'image/avif',
-        `Fallback must produce 'image/avif' MIME, got '${avifBlob.type}'`
-      );
+      assert(avifBlob.type === 'image/avif', `Fallback must produce 'image/avif' MIME, got '${avifBlob.type}'`);
       assert(avifBlob.size > 0, 'Fallback AVIF Blob must have size > 0');
 
       const isAvif = await isAvifFile(avifBlob);
@@ -217,7 +249,7 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
       const img = await decodeImage(new File([avifBlob], 'fallback.avif', { type: 'image/avif' }));
       assert(
         img.naturalWidth === 2 && img.naturalHeight === 2,
-        `Fallback decoded dimensions must be 2x2, got ${img.naturalWidth}x${img.naturalHeight}`
+        `Fallback decoded dimensions must be 2x2, got ${img.naturalWidth}x${img.naturalHeight}`,
       );
 
       return `Mocked native failure successfully triggered WASM fallback; emitted ${avifBlob.size} bytes valid AVIF`;
@@ -251,23 +283,41 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
     assert(imgElement.naturalHeight === 4, `naturalHeight must be 4, got ${imgElement.naturalHeight}`);
 
     const roundtripCanvas = imageToCanvas(imgElement);
-    assert(
-      roundtripCanvas.width === 4 && roundtripCanvas.height === 4,
-      'imageToCanvas must create matching canvas'
-    );
+    assert(roundtripCanvas.width === 4 && roundtripCanvas.height === 4, 'imageToCanvas must create matching canvas');
   });
 
   // 6. Universal converter & single/bulk format matrix integration
   await runTest('Universal converter: detection, selectable target formats, and convertSingleImage', async () => {
     // 1. Synthetic AVIF file
     const sampleAvifHeader = new Uint8Array([
-      0x00, 0x00, 0x00, 0x1c,
-      0x66, 0x74, 0x79, 0x70, // 'ftyp'
-      0x61, 0x76, 0x69, 0x66, // 'avif'
-      0x00, 0x00, 0x00, 0x00,
-      0x61, 0x76, 0x69, 0x66,
-      0x6d, 0x69, 0x66, 0x31,
-      0x6d, 0x69, 0x61, 0x66,
+      0x00,
+      0x00,
+      0x00,
+      0x1c,
+      0x66,
+      0x74,
+      0x79,
+      0x70, // 'ftyp'
+      0x61,
+      0x76,
+      0x69,
+      0x66, // 'avif'
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x61,
+      0x76,
+      0x69,
+      0x66,
+      0x6d,
+      0x69,
+      0x66,
+      0x31,
+      0x6d,
+      0x69,
+      0x61,
+      0x66,
     ]);
     const avifFile = new File([sampleAvifHeader], 'scenery.avif', { type: 'image/avif' });
     const detected = await detectFormat(avifFile);
@@ -292,25 +342,29 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
     const dummyPngCanvas = document.createElement('canvas');
     dummyPngCanvas.width = 1;
     dummyPngCanvas.height = 1;
-    const realPngBlob = await new Promise<Blob>((res) =>
-      dummyPngCanvas.toBlob((b) => res(b!), 'image/png')
-    );
+    const realPngBlob = await new Promise<Blob>((res) => dummyPngCanvas.toBlob((b) => res(b!), 'image/png'));
     const pngFile = new File([realPngBlob], 'input.png', { type: 'image/png' });
     const detectedPng = await detectFormat(pngFile);
     assert(detectedPng.id === 'png', 'Detected format must be png');
 
     const pngTargets = await getTargetFormats(detectedPng, pngFile);
     const hasAvifTarget = pngTargets.image.some((t) => t.id === 'avif');
-    assert(
-      hasAvifTarget,
-      'PNG input must offer AVIF as a selectable output format in Universal File Converter'
-    );
+    assert(hasAvifTarget, 'PNG input must offer AVIF as a selectable output format in Universal File Converter');
 
     // 5. Input AVIF must offer standard image targets (PNG, JPG, WEBP)
     const avifTargets = await getTargetFormats(detected, avifFile);
-    assert(avifTargets.image.some((t) => t.id === 'png'), 'AVIF input must offer PNG target');
-    assert(avifTargets.image.some((t) => t.id === 'jpg'), 'AVIF input must offer JPG target');
-    assert(avifTargets.image.some((t) => t.id === 'webp'), 'AVIF input must offer WEBP target');
+    assert(
+      avifTargets.image.some((t) => t.id === 'png'),
+      'AVIF input must offer PNG target',
+    );
+    assert(
+      avifTargets.image.some((t) => t.id === 'jpg'),
+      'AVIF input must offer JPG target',
+    );
+    assert(
+      avifTargets.image.some((t) => t.id === 'webp'),
+      'AVIF input must offer WEBP target',
+    );
 
     // 6. Test convertSingleImage with format: 'avif'
     const convertedAvifBlob = await convertSingleImage({
@@ -319,21 +373,13 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
       quality: 80,
       bgColor: '#ffffff',
     });
-    assert(
-      convertedAvifBlob.type === 'image/avif',
-      `convertSingleImage must return 'image/avif', got '${convertedAvifBlob.type}'`
-    );
-    assert(
-      await isAvifFile(convertedAvifBlob),
-      'convertSingleImage output must pass isAvifFile signature verification'
-    );
+    assert(convertedAvifBlob.type === 'image/avif', `convertSingleImage must return 'image/avif', got '${convertedAvifBlob.type}'`);
+    assert(await isAvifFile(convertedAvifBlob), 'convertSingleImage output must pass isAvifFile signature verification');
 
     return 'AVIF detection, renamed mismatch, target format matrix, and convertSingleImage verified';
   });
 
   const allPassed = results.every((r) => r.passed);
-  console.log(
-    `\nAVIF Verification complete: ${results.filter((r) => r.passed).length}/${results.length} passed.`
-  );
+  console.log(`\nAVIF Verification complete: ${results.filter((r) => r.passed).length}/${results.length} passed.`);
   return { passed: allPassed, results };
 }

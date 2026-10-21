@@ -1,5 +1,4 @@
 import { useRef, useState } from 'react';
-import { PDFDocument } from 'pdf-lib';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { ProgressBar } from '../../../components/ProgressBar';
@@ -10,14 +9,7 @@ import { useJob } from '../../../lib/useJob';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { loadPdfDocument, renderPdfThumbnail } from '../../image/_pdf/pdfRenderer';
-import {
-  copyPagesToPdf,
-  expandRange,
-  openPdf,
-  pdfToBlob,
-  PasswordRequiredError,
-  IncorrectPasswordError,
-} from '../_pages/pdfPages';
+import { copyPagesToPdf, expandRange, openPdf, pdfToBlob, PasswordRequiredError, IncorrectPasswordError } from '../_pages/pdfPages';
 import styles from './Tool.module.css';
 
 interface Entry {
@@ -45,8 +37,7 @@ export default function MergePdfTool() {
   const inputRef = useRef<HTMLInputElement>(null);
   const job = useJob();
 
-  const patch = (id: number, change: Partial<Entry>) =>
-    setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...change } : e)));
+  const patch = (id: number, change: Partial<Entry>) => setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...change } : e)));
 
   const inspect = async (entry: Entry, password?: string): Promise<boolean> => {
     try {
@@ -134,6 +125,7 @@ export default function MergePdfTool() {
 
   const run = () => {
     job.run(async (setProgress) => {
+      const { PDFDocument } = await import('pdf-lib');
       const out = await PDFDocument.create();
       for (let i = 0; i < entries.length; i++) {
         setProgress(i / entries.length);
@@ -149,11 +141,7 @@ export default function MergePdfTool() {
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="pdf-merge">
       {pendingPassword && (
-        <PasswordDialog
-          reason={pendingPassword.reason}
-          onSubmit={handlePasswordSubmit}
-          onCancel={handlePasswordCancel}
-        />
+        <PasswordDialog reason={pendingPassword.reason} onSubmit={handlePasswordSubmit} onCancel={handlePasswordCancel} />
       )}
 
       {entries.length === 0 ? (
@@ -165,13 +153,7 @@ export default function MergePdfTool() {
           onFiles={addFiles}
         />
       ) : job.status === 'done' && job.result ? (
-        <PdfPreview
-          blob={job.result}
-          filename="merged.pdf"
-          pageCount={mergedPages}
-          originalSize={totalSize}
-          onReset={reset}
-        />
+        <PdfPreview blob={job.result} filename="merged.pdf" pageCount={mergedPages} originalSize={totalSize} onReset={reset} />
       ) : (
         <div>
           {job.error && <div className="error-banner">{job.error}</div>}
@@ -227,9 +209,7 @@ export default function MergePdfTool() {
                 }}
               >
                 <span className={styles.index}>{index + 1}</span>
-                <div className={styles.thumb}>
-                  {entry.thumb ? <img src={entry.thumb} alt="" draggable={false} /> : <span>📄</span>}
-                </div>
+                <div className={styles.thumb}>{entry.thumb ? <img src={entry.thumb} alt="" draggable={false} /> : <span>📄</span>}</div>
                 <div className={styles.info}>
                   <div className={styles.name} title={entry.file.name}>
                     {entry.file.name}

@@ -1,11 +1,5 @@
-import ExcelJS from 'exceljs';
-import { PDFDocument } from 'pdf-lib';
-import {
-  addElementPages,
-  createStage,
-  pageGeometry,
-  type PageSetup,
-} from '../_render/render';
+import type ExcelJS from 'exceljs';
+import { addElementPages, createStage, pageGeometry, type PageSetup } from '../_render/render';
 
 export const LEGACY_XLS_MESSAGE =
   'Legacy .xls files are not supported. Open the file in Excel or LibreOffice, save it as .xlsx, and try again.';
@@ -220,10 +214,12 @@ function renderSheetToElement(ws: ExcelJS.Worksheet): HTMLElement | null {
 export async function excelToPdf(
   file: File,
   setup: PageSetup,
-  onProgress: (ratio: number) => void
+  onProgress: (ratio: number) => void,
 ): Promise<{ blob: Blob; pages: number }> {
   const problem = await checkXlsx(file);
   if (problem) throw new Error(problem);
+
+  const [{ default: ExcelJS }, { PDFDocument }] = await Promise.all([import('exceljs'), import('pdf-lib')]);
 
   const workbook = new ExcelJS.Workbook();
   try {
@@ -232,9 +228,7 @@ export async function excelToPdf(
     throw new Error('Could not read the spreadsheet. The file may be corrupt.');
   }
 
-  const sheetsWithData = workbook.worksheets.filter(
-    (ws) => ws.state !== 'hidden' && ws.state !== 'veryHidden' && ws.actualRowCount > 0
-  );
+  const sheetsWithData = workbook.worksheets.filter((ws) => ws.state !== 'hidden' && ws.state !== 'veryHidden' && ws.actualRowCount > 0);
 
   if (sheetsWithData.length === 0) {
     throw new Error('The spreadsheet contains no data to convert.');
@@ -242,11 +236,7 @@ export async function excelToPdf(
 
   onProgress(0.2);
 
-  const geo = pageGeometry(
-    setup.size === 'letter' ? 'letter' : 'a4',
-    setup.orientation,
-    setup.marginMm
-  );
+  const geo = pageGeometry(setup.size === 'letter' ? 'letter' : 'a4', setup.orientation, setup.marginMm);
 
   const { stage, dispose } = createStage(geo.contentWpx);
   const pdf = await PDFDocument.create();

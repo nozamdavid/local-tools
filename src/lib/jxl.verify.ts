@@ -66,8 +66,22 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
 
     // 12-byte container signature: 00 00 00 0C 4A 58 4C 20 0D 0A 87 0A
     const containerSig = new Uint8Array([
-      0x00, 0x00, 0x00, 0x0c, 0x4a, 0x58, 0x4c, 0x20, 0x0d, 0x0a, 0x87, 0x0a,
-      0x00, 0x00, 0x00, 0x14, // followed by additional box data
+      0x00,
+      0x00,
+      0x00,
+      0x0c,
+      0x4a,
+      0x58,
+      0x4c,
+      0x20,
+      0x0d,
+      0x0a,
+      0x87,
+      0x0a,
+      0x00,
+      0x00,
+      0x00,
+      0x14, // followed by additional box data
     ]);
     assert(isJxlSignature(containerSig), 'Must recognize 12-byte container signature');
 
@@ -93,10 +107,22 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
     const height = 2;
     // 2x2 RGBA fixture with varying colors and alpha transparency
     const originalPixels = [
-      255, 0, 0, 255,      // Red opaque
-      0, 255, 0, 255,      // Green opaque
-      0, 0, 255, 255,      // Blue opaque
-      255, 255, 0, 128,    // Yellow semi-transparent (alpha = 128)
+      255,
+      0,
+      0,
+      255, // Red opaque
+      0,
+      255,
+      0,
+      255, // Green opaque
+      0,
+      0,
+      255,
+      255, // Blue opaque
+      255,
+      255,
+      0,
+      128, // Yellow semi-transparent (alpha = 128)
     ];
     const data = new Uint8ClampedArray(originalPixels);
     const imgData = { data, width, height } as unknown as ImageData;
@@ -116,7 +142,7 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
     for (let i = 0; i < originalPixels.length; i++) {
       assert(
         decoded.data[i] === originalPixels[i],
-        `Pixel byte ${i} mismatch in lossless mode: expected ${originalPixels[i]}, got ${decoded.data[i]}`
+        `Pixel byte ${i} mismatch in lossless mode: expected ${originalPixels[i]}, got ${decoded.data[i]}`,
       );
     }
   });
@@ -150,11 +176,26 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
     // Synthesize 12-byte container header + ftyp box + jxlc box wrapping the raw codestream
     const sigBox = [0x00, 0x00, 0x00, 0x0c, 0x4a, 0x58, 0x4c, 0x20, 0x0d, 0x0a, 0x87, 0x0a];
     const ftypBox = [
-      0x00, 0x00, 0x00, 0x14, // length: 20
-      0x66, 0x74, 0x79, 0x70, // 'ftyp'
-      0x6a, 0x78, 0x6c, 0x20, // 'jxl '
-      0x00, 0x00, 0x00, 0x00,
-      0x6a, 0x78, 0x6c, 0x20,
+      0x00,
+      0x00,
+      0x00,
+      0x14, // length: 20
+      0x66,
+      0x74,
+      0x79,
+      0x70, // 'ftyp'
+      0x6a,
+      0x78,
+      0x6c,
+      0x20, // 'jxl '
+      0x00,
+      0x00,
+      0x00,
+      0x00,
+      0x6a,
+      0x78,
+      0x6c,
+      0x20,
     ];
     const jxlcBoxLen = rawCodestream.length + 8;
     const jxlcHeader = [
@@ -162,7 +203,10 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
       (jxlcBoxLen >> 16) & 0xff,
       (jxlcBoxLen >> 8) & 0xff,
       jxlcBoxLen & 0xff,
-      0x6a, 0x78, 0x6c, 0x63, // 'jxlc'
+      0x6a,
+      0x78,
+      0x6c,
+      0x63, // 'jxlc'
     ];
 
     const container = new Uint8Array(sigBox.length + ftypBox.length + jxlcHeader.length + rawCodestream.length);

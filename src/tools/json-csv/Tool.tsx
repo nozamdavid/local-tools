@@ -7,13 +7,7 @@ import { downloadBlob } from '../../lib/download';
 import { zipFiles } from '../../lib/zip';
 import { peekPendingFiles } from '../../lib/handoff';
 import { classifyFile } from '../../lib/toolInputs';
-import {
-  parseCsv,
-  csvToRecords,
-  jsonToCsv,
-  detectDelimiter,
-  validateHeaders,
-} from '../_tabular/csv';
+import { parseCsv, csvToRecords, jsonToCsv, detectDelimiter, validateHeaders } from '../_tabular/csv';
 import styles from './Tool.module.css';
 
 interface BatchResult {
@@ -29,8 +23,7 @@ export default function JsonCsvTool() {
   const meta = getToolMeta('json-csv');
   const title = meta.title !== 'json-csv' ? meta.title : 'JSON ↔ CSV Converter';
   const description =
-    meta.description ||
-    'Convert between JSON and CSV with batch processing, stable union headers, and leading zero preservation.';
+    meta.description || 'Convert between JSON and CSV with batch processing, stable union headers, and leading zero preservation.';
 
   const [direction, setDirection] = useState<'json-to-csv' | 'csv-to-json'>(() => {
     const pending = peekPendingFiles('/json-csv');
@@ -74,7 +67,6 @@ export default function JsonCsvTool() {
   const [batchResults, setBatchResults] = useState<BatchResult[]>([]);
   const [isBatch, setIsBatch] = useState<boolean>(false);
 
-
   // Single conversion logic
   const conversion = useMemo(() => {
     if (!inputText.trim()) {
@@ -86,7 +78,7 @@ export default function JsonCsvTool() {
         try {
           JSON.parse(inputText);
         } catch (e: unknown) {
-          throw new Error('Invalid JSON format: ' + (e instanceof Error ? e.message : String(e)));
+          throw new Error('Invalid JSON format: ' + (e instanceof Error ? e.message : String(e)), { cause: e });
         }
         const csv = jsonToCsv(inputText, { delimiter });
         return { outputText: csv, error: null };
@@ -225,11 +217,7 @@ export default function JsonCsvTool() {
           }
           outText = jsonToCsv(text, { delimiter });
         } else {
-          const effectiveDelim = isTsvFile
-            ? '\t'
-            : (delimiter === '\t' || delimiter === 'auto')
-            ? detectDelimiter(text)
-            : delimiter;
+          const effectiveDelim = isTsvFile ? '\t' : delimiter === '\t' || delimiter === 'auto' ? detectDelimiter(text) : delimiter;
 
           const trimmed = text.trim();
           if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
@@ -295,7 +283,7 @@ export default function JsonCsvTool() {
       valid.map((r) => ({
         name: r.outputName,
         blob: r.blob,
-      }))
+      })),
     );
     downloadBlob(zipBlob, `converted-files-${Date.now()}.zip`);
   };
@@ -368,22 +356,14 @@ export default function JsonCsvTool() {
             <FileDrop
               accept=".json,application/json,.csv,.tsv,text/csv,text/tab-separated-values,text/*"
               multiple
-              label={
-                direction === 'json-to-csv'
-                  ? 'Choose or drag JSON file(s)'
-                  : 'Choose or drag CSV/TSV file(s)'
-              }
+              label={direction === 'json-to-csv' ? 'Choose or drag JSON file(s)' : 'Choose or drag CSV/TSV file(s)'}
               hint="Multiple files are automatically processed in batch."
               onFiles={handleFiles}
             />
           ) : (
             <Field
               label={direction === 'json-to-csv' ? 'Input JSON' : 'Input CSV'}
-              hint={
-                direction === 'json-to-csv'
-                  ? 'Array of objects, array of arrays, or single object'
-                  : 'Delimited text with headers'
-              }
+              hint={direction === 'json-to-csv' ? 'Array of objects, array of arrays, or single object' : 'Delimited text with headers'}
             >
               <textarea
                 className={styles.textarea}
@@ -420,29 +400,17 @@ export default function JsonCsvTool() {
             {direction === 'csv-to-json' && (
               <>
                 <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={hasHeader}
-                    onChange={(e) => setHasHeader(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} />
                   First row is header
                 </label>
 
                 <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={preserveLeadingZeros}
-                    onChange={(e) => setPreserveLeadingZeros(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={preserveLeadingZeros} onChange={(e) => setPreserveLeadingZeros(e.target.checked)} />
                   Preserve leading zeros & string IDs
                 </label>
 
                 <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={parseNumbers}
-                    onChange={(e) => setParseNumbers(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={parseNumbers} onChange={(e) => setParseNumbers(e.target.checked)} />
                   Parse numbers & booleans
                 </label>
               </>
@@ -488,9 +456,7 @@ export default function JsonCsvTool() {
         {isBatch && batchResults.length > 0 && (
           <div className={styles.resultCard}>
             <div className={styles.resultHeader}>
-              <div className={styles.resultTitle}>
-                Batch Conversion Results ({batchResults.length} files)
-              </div>
+              <div className={styles.resultTitle}>Batch Conversion Results ({batchResults.length} files)</div>
               <Button variant="primary" onClick={handleDownloadZip}>
                 Download All as ZIP
               </Button>
@@ -500,22 +466,17 @@ export default function JsonCsvTool() {
               {batchResults.map((item) => (
                 <div key={item.id} className={styles.batchItem}>
                   <div>
-                    <div className={styles.batchName}>{item.originalName} → {item.outputName}</div>
+                    <div className={styles.batchName}>
+                      {item.originalName} → {item.outputName}
+                    </div>
                     {item.error ? (
-                      <span style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>
-                        Error: {item.error}
-                      </span>
+                      <span style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>Error: {item.error}</span>
                     ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                        Ready ({item.blob.size} bytes)
-                      </span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Ready ({item.blob.size} bytes)</span>
                     )}
                   </div>
                   {!item.error && (
-                    <Button
-                      variant="secondary"
-                      onClick={() => downloadBlob(item.blob, item.outputName)}
-                    >
+                    <Button variant="secondary" onClick={() => downloadBlob(item.blob, item.outputName)}>
                       Download
                     </Button>
                   )}

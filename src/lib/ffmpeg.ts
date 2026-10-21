@@ -55,10 +55,7 @@ export async function getFFmpeg(): Promise<FFmpeg> {
   if (!loadPromise) {
     loadPromise = (async () => {
       const ffmpeg = new FFmpeg();
-      const [blobCoreURL, blobWasmURL] = await Promise.all([
-        toBlobURL(coreURL, 'text/javascript'),
-        toBlobURL(wasmURL, 'application/wasm'),
-      ]);
+      const [blobCoreURL, blobWasmURL] = await Promise.all([toBlobURL(coreURL, 'text/javascript'), toBlobURL(wasmURL, 'application/wasm')]);
       await ffmpeg.load({
         coreURL: blobCoreURL,
         wasmURL: blobWasmURL,
@@ -140,9 +137,7 @@ export function runFFmpeg(opts: RunFFmpegOptions): Promise<Blob> {
 
       if (exitCode !== 0) {
         const recentLogs = logLines.slice(-20).join('\n');
-        throw new Error(
-          `FFmpeg exited with code ${exitCode}${recentLogs ? `:\n${recentLogs}` : ''}`
-        );
+        throw new Error(`FFmpeg exited with code ${exitCode}${recentLogs ? `:\n${recentLogs}` : ''}`);
       }
 
       const outData = await ffmpeg.readFile(opts.output);

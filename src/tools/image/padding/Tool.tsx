@@ -37,11 +37,7 @@ const PRESET_RATIOS: Record<Exclude<AspectRatioPreset, 'none'>, number> = {
   '9:16': 9 / 16,
 };
 
-function renderPadding(
-  source: HTMLCanvasElement,
-  options: PaddingOptions,
-  isPreview: boolean
-): HTMLCanvasElement {
+function renderPadding(source: HTMLCanvasElement, options: PaddingOptions, isPreview: boolean): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) return source;
@@ -49,10 +45,10 @@ function renderPadding(
   const w = source.width;
   const h = source.height;
 
-  let padTop = 0;
-  let padBottom = 0;
-  let padLeft = 0;
-  let padRight = 0;
+  let padTop: number;
+  let padBottom: number;
+  let padLeft: number;
+  let padRight: number;
 
   if (options.preset !== 'none') {
     const targetRatio = PRESET_RATIOS[options.preset];
@@ -178,11 +174,7 @@ export default function PaddingTool() {
                   9:16 Story
                 </Button>
                 {options.preset !== 'none' && (
-                  <Button
-                    variant="secondary"
-                    type="button"
-                    onClick={() => setPreset('none')}
-                  >
+                  <Button variant="secondary" type="button" onClick={() => setPreset('none')}>
                     Custom padding
                   </Button>
                 )}
@@ -190,14 +182,12 @@ export default function PaddingTool() {
             </div>
 
             {options.preset === 'none' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}>
+              <div
+                style={{ display: 'flex', flexDirection: 'column', gap: '1rem', borderTop: '1px solid var(--border)', paddingTop: '1rem' }}
+              >
                 <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
-                    <input
-                      type="checkbox"
-                      checked={options.uniform}
-                      onChange={(e) => updateCustom({ uniform: e.target.checked })}
-                    />
+                    <input type="checkbox" checked={options.uniform} onChange={(e) => updateCustom({ uniform: e.target.checked })} />
                     <span>Uniform padding (all sides equal)</span>
                   </label>
 

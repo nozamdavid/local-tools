@@ -16,10 +16,7 @@ export interface Grid {
   rows: { text: string; bold: boolean }[][];
 }
 
-export async function analyzePdf(
-  doc: PDFDocumentProxy,
-  onProgress?: (ratio: number) => void
-): Promise<PageBlocks[]> {
+export async function analyzePdf(doc: PDFDocumentProxy, onProgress?: (ratio: number) => void): Promise<PageBlocks[]> {
   const pages: PageBlocks[] = [];
   for (let p = 1; p <= doc.numPages; p++) {
     const text = await readPageText(doc, p);

@@ -56,7 +56,9 @@
   color: var(--text-muted);
   cursor: pointer;
   user-select: none;
-  transition: background var(--duration-fast) var(--ease-out), color var(--duration-fast) var(--ease-out);
+  transition:
+    background var(--duration-fast) var(--ease-out),
+    color var(--duration-fast) var(--ease-out);
 }
 
 .toolbarBtn:hover {

@@ -12,10 +12,7 @@ export interface DetectedFormat {
   actualExtension: string;
 }
 
-const FORMAT_METAS: Record<
-  string,
-  { label: string; family: FormatFamily; mime: string; ext: string; aliases: string[] }
-> = {
+const FORMAT_METAS: Record<string, { label: string; family: FormatFamily; mime: string; ext: string; aliases: string[] }> = {
   // Images
   png: { label: 'PNG Image', family: 'image', mime: 'image/png', ext: 'png', aliases: ['png'] },
   jpg: { label: 'JPEG Image', family: 'image', mime: 'image/jpeg', ext: 'jpg', aliases: ['jpg', 'jpeg', 'jpe', 'jif', 'jfif'] },
@@ -93,7 +90,7 @@ function isJxlHeader(uint8: Uint8Array): boolean {
     uint8[8] === 0x0d && // '\r'
     uint8[9] === 0x0a && // '\n'
     uint8[10] === 0x87 &&
-    uint8[11] === 0x0a  // '\n'
+    uint8[11] === 0x0a // '\n'
   ) {
     return true;
   }
@@ -103,11 +100,7 @@ function isJxlHeader(uint8: Uint8Array): boolean {
 function checkFtypBrand(uint8: Uint8Array): 'avif' | 'heic' | null {
   if (uint8.length < 16) return null;
   // bytes 4..7 must be 'ftyp'
-  const isFtyp =
-    uint8[4] === 0x66 &&
-    uint8[5] === 0x74 &&
-    uint8[6] === 0x79 &&
-    uint8[7] === 0x70;
+  const isFtyp = uint8[4] === 0x66 && uint8[5] === 0x74 && uint8[6] === 0x79 && uint8[7] === 0x70;
   if (!isFtyp) return null;
 
   const headerSlice = new TextDecoder('ascii').decode(uint8.slice(8, Math.min(uint8.length, 64)));
@@ -136,16 +129,15 @@ function checkSvg(text: string): boolean {
     if (root && root.nodeName.toLowerCase() === 'svg' && !doc.querySelector('parsererror')) {
       return true;
     }
-  } catch {}
+  } catch {
+    /* ignore */
+  }
   return false;
 }
 
 function checkJson(text: string): boolean {
   const trimmed = text.trim();
-  if (
-    (!trimmed.startsWith('{') && !trimmed.startsWith('[')) ||
-    (!trimmed.endsWith('}') && !trimmed.endsWith(']'))
-  ) {
+  if ((!trimmed.startsWith('{') && !trimmed.startsWith('[')) || (!trimmed.endsWith('}') && !trimmed.endsWith(']'))) {
     return false;
   }
   try {
@@ -229,7 +221,9 @@ async function probeStreamsWithFFmpeg(file: File): Promise<{ hasVideo: boolean; 
     } finally {
       try {
         await ffmpeg.deleteFile(inputName);
-      } catch {}
+      } catch {
+        /* ignore */
+      }
       ffmpeg.off('log', handleLog);
     }
     const hasVideo = logLines.some((l) => /Stream #.*:\s*Video:/i.test(l) && !/attached pic/i.test(l));
@@ -309,7 +303,9 @@ export async function detectFormat(file: File): Promise<DetectedFormat> {
       let headText = '';
       try {
         headText = new TextDecoder('utf-8', { fatal: false }).decode(uint8);
-      } catch {}
+      } catch {
+        /* ignore */
+      }
 
       if (headText) {
         if (checkSvg(headText)) {
@@ -336,12 +332,7 @@ export async function detectFormat(file: File): Promise<DetectedFormat> {
   const meta = rawId && FORMAT_METAS[rawId] ? FORMAT_METAS[rawId] : null;
 
   if (!meta) {
-    const isMismatch = Boolean(
-      rawId &&
-      rawId !== 'unknown' &&
-      actualExt.length > 0 &&
-      actualExt !== rawId
-    );
+    const isMismatch = Boolean(rawId && rawId !== 'unknown' && actualExt.length > 0 && actualExt !== rawId);
     return {
       id: rawId || 'unknown',
       label: rawId ? `${rawId.toUpperCase()} File` : 'Unknown Format',

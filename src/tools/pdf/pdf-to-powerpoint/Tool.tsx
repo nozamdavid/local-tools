@@ -51,13 +51,7 @@ export default function PdfToPowerpointTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -133,10 +127,7 @@ export default function PdfToPowerpointTool() {
                       />
                       <span>
                         Add editable text boxes
-                        <small>
-                          Each line of text becomes a text box and is cleared from the slide image so it does not
-                          show twice.
-                        </small>
+                        <small>Each line of text becomes a text box and is cleared from the slide image so it does not show twice.</small>
                       </span>
                     </label>
                   </div>

@@ -236,17 +236,12 @@ export default function FaviconGeneratorTool() {
                 marginBottom: '1.5rem',
               }}
             >
-              <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                Favicon package ready ({generatedFiles.length + 2} files)
-              </div>
+              <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Favicon package ready ({generatedFiles.length + 2} files)</div>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
                   Create new favicon
                 </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => downloadBlob(zipBlob, 'favicon_package.zip')}
-                >
+                <Button variant="primary" onClick={() => downloadBlob(zipBlob, 'favicon_package.zip')}>
                   Download all (.zip)
                 </Button>
               </div>
@@ -300,11 +295,7 @@ export default function FaviconGeneratorTool() {
             <div className={styles.codeBox} style={{ marginTop: '1.5rem' }}>
               <div className={styles.codeHeader}>
                 <span className={styles.codeTitle}>HTML &lt;head&gt; code</span>
-                <Button
-                  variant="secondary"
-                  onClick={copyHtml}
-                  style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
-                >
+                <Button variant="secondary" onClick={copyHtml} style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}>
                   {copiedSnippet ? 'Copied HTML!' : 'Copy HTML'}
                 </Button>
               </div>
@@ -314,16 +305,10 @@ export default function FaviconGeneratorTool() {
         ) : (
           <div>
             <div className={styles.modeTabs}>
-              <Button
-                variant={mode === 'upload' ? 'primary' : 'secondary'}
-                onClick={() => setMode('upload')}
-              >
+              <Button variant={mode === 'upload' ? 'primary' : 'secondary'} onClick={() => setMode('upload')}>
                 Upload image
               </Button>
-              <Button
-                variant={mode === 'text' ? 'primary' : 'secondary'}
-                onClick={() => setMode('text')}
-              >
+              <Button variant={mode === 'text' ? 'primary' : 'secondary'} onClick={() => setMode('text')}>
                 Text / Emoji icon
               </Button>
             </div>
@@ -359,10 +344,13 @@ export default function FaviconGeneratorTool() {
               ) : (
                 <div className={styles.textDesignerCard}>
                   <div className={styles.previewCol}>
-                    <canvas ref={previewCanvasRef} className={styles.designerPreviewCanvas} />
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                      Preview (128×128)
-                    </span>
+                    <canvas
+                      ref={previewCanvasRef}
+                      className={styles.designerPreviewCanvas}
+                      role="img"
+                      aria-label="Favicon preview, 128 by 128 pixels"
+                    />
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Preview (128×128)</span>
                   </div>
 
                   <div className={styles.designerControls}>
@@ -438,12 +426,7 @@ export default function FaviconGeneratorTool() {
                     </Field>
 
                     <div style={{ display: 'flex', alignItems: 'flex-end' }}>
-                      <Button
-                        variant="primary"
-                        onClick={handleGenerate}
-                        disabled={generating}
-                        style={{ width: '100%', height: '42px' }}
-                      >
+                      <Button variant="primary" onClick={handleGenerate} disabled={generating} style={{ width: '100%', height: '42px' }}>
                         Generate favicon package
                       </Button>
                     </div>

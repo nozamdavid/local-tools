@@ -133,22 +133,19 @@ export default function RedactTool() {
   const currentPageBoxes = redactions.filter((b) => b.pageNum === previewPage);
 
   // Live drag rect calculations
-  const dragRect = dragStart && dragCurrent ? {
-    left: Math.min(dragStart.x, dragCurrent.x),
-    top: Math.min(dragStart.y, dragCurrent.y),
-    width: Math.abs(dragCurrent.x - dragStart.x),
-    height: Math.abs(dragCurrent.y - dragStart.y),
-  } : null;
+  const dragRect =
+    dragStart && dragCurrent
+      ? {
+          left: Math.min(dragStart.x, dragCurrent.x),
+          top: Math.min(dragStart.y, dragCurrent.y),
+          width: Math.abs(dragCurrent.x - dragStart.x),
+          height: Math.abs(dragCurrent.y - dragStart.y),
+        }
+      : null;
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -163,12 +160,7 @@ export default function RedactTool() {
           {job.error && <div className="error-banner">{job.error}</div>}
 
           {job.result ? (
-            <PdfPreview
-              blob={job.result}
-              filename={outName}
-              pageCount={total}
-              onReset={handleReset}
-            />
+            <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
           ) : (
             <div>
               <div className={styles.topRow}>
@@ -192,12 +184,10 @@ export default function RedactTool() {
 
               {/* Prominent Permanent Redaction & Rasterization Disclosure */}
               <div className={styles.warningBanner}>
-                <strong>⚠️ Permanent Redaction &amp; Rasterization Disclosure:</strong> Redaction
-                permanently removes underlying sensitive data by rasterizing pages into
-                high-resolution images, burning opaque rectangles directly into the pixel data, and
-                generating an entirely new PDF with zero source objects, metadata, or attachments.
-                Because pages are rasterized to ensure unrecoverable deletion, selectable text on
-                those pages will be converted to page imagery.
+                <strong>⚠️ Permanent Redaction &amp; Rasterization Disclosure:</strong> Redaction permanently removes underlying sensitive
+                data by rasterizing pages into high-resolution images, burning opaque rectangles directly into the pixel data, and
+                generating an entirely new PDF with zero source objects, metadata, or attachments. Because pages are rasterized to ensure
+                unrecoverable deletion, selectable text on those pages will be converted to page imagery.
               </div>
 
               {source.loading && <p className={styles.status}>Opening PDF document…</p>}
@@ -211,11 +201,7 @@ export default function RedactTool() {
                         Page {previewPage} of {total} ({currentPageBoxes.length} redactions)
                       </span>
                       <div className={styles.pageNavButtons}>
-                        <Button
-                          variant="secondary"
-                          disabled={previewPage <= 1}
-                          onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
-                        >
+                        <Button variant="secondary" disabled={previewPage <= 1} onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}>
                           Prev
                         </Button>
                         <Button
@@ -231,11 +217,7 @@ export default function RedactTool() {
                     <div className={styles.previewContainer}>
                       {previewThumb ? (
                         <div className={styles.pageImgWrapper}>
-                          <img
-                            src={previewThumb}
-                            alt={`Page ${previewPage}`}
-                            className={styles.pageImg}
-                          />
+                          <img src={previewThumb} alt={`Page ${previewPage}`} className={styles.pageImg} />
 
                           {/* Interactive selection overlay for drawing redactions */}
                           <div
@@ -287,9 +269,7 @@ export default function RedactTool() {
                           </div>
                         </div>
                       ) : (
-                        <div style={{ color: 'var(--text-muted)' }}>
-                          Loading page preview…
-                        </div>
+                        <div style={{ color: 'var(--text-muted)' }}>Loading page preview…</div>
                       )}
                     </div>
                   </div>
@@ -299,8 +279,7 @@ export default function RedactTool() {
                     <div className={styles.card}>
                       <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Redaction Tools</h3>
                       <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
-                        Click and drag across sensitive text or images on the page preview to mark
-                        an opaque redaction area.
+                        Click and drag across sensitive text or images on the page preview to mark an opaque redaction area.
                       </p>
 
                       <Field label="Redaction Fill Color">
@@ -348,11 +327,13 @@ export default function RedactTool() {
 
                     <div className={styles.card}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>
-                          Marked Redactions ({redactions.length})
-                        </span>
+                        <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>Marked Redactions ({redactions.length})</span>
                         {redactions.length > 0 && (
-                          <Button variant="secondary" onClick={() => setRedactions([])} style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}>
+                          <Button
+                            variant="secondary"
+                            onClick={() => setRedactions([])}
+                            style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
+                          >
                             Clear All
                           </Button>
                         )}
@@ -367,13 +348,10 @@ export default function RedactTool() {
                           {redactions.map((box, idx) => (
                             <div key={box.id} className={styles.boxListItem}>
                               <span>
-                                <strong>#{idx + 1}</strong> Page {box.pageNum} — {Math.round(box.widthPercent)}% × {Math.round(box.heightPercent)}%
+                                <strong>#{idx + 1}</strong> Page {box.pageNum} — {Math.round(box.widthPercent)}% ×{' '}
+                                {Math.round(box.heightPercent)}%
                               </span>
-                              <button
-                                className={styles.deleteListBtn}
-                                onClick={() => removeBox(box.id)}
-                                title="Remove"
-                              >
+                              <button className={styles.deleteListBtn} onClick={() => removeBox(box.id)} title="Remove">
                                 ✕
                               </button>
                             </div>
@@ -385,11 +363,7 @@ export default function RedactTool() {
                     {job.status === 'running' ? (
                       <ProgressBar value={job.progress} label="Redacting and rasterizing PDF..." />
                     ) : (
-                      <Button
-                        variant="primary"
-                        disabled={redactions.length === 0}
-                        onClick={handleRedact}
-                      >
+                      <Button variant="primary" disabled={redactions.length === 0} onClick={handleRedact}>
                         Permanently Redact PDF ({redactions.length} marked)
                       </Button>
                     )}

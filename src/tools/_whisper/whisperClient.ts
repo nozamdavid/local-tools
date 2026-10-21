@@ -1,14 +1,6 @@
 import { extractAudioPCM } from './extractAudio';
 import { chunksToCues } from './formats';
-import type {
-  ProgressState,
-  SubtitleCue,
-  WhisperChunk,
-  WhisperModel,
-  WhisperTask,
-  WorkerInMessage,
-  WorkerOutMessage,
-} from './types';
+import type { ProgressState, SubtitleCue, WhisperChunk, WhisperModel, WhisperTask, WorkerInMessage, WorkerOutMessage } from './types';
 
 export interface TranscribeOptions {
   model: WhisperModel;

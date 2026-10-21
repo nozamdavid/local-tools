@@ -24,10 +24,12 @@ export function unescapeCss(str: string): string {
  */
 export function isSafeDataOrBlobUrl(url: string): boolean {
   const clean = unescapeCss(url.trim());
-  return /^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(clean) ||
+  return (
+    /^data:image\/(?:png|jpeg|webp|gif);base64,/i.test(clean) ||
     /^data:(?:text\/css|font\/[^;]+);base64,/i.test(clean) ||
     clean.startsWith('blob:') ||
-    clean.startsWith('#');
+    clean.startsWith('#')
+  );
 }
 
 /**
@@ -56,7 +58,10 @@ export function sanitizeSampleHtml(html: string): string {
   clean = clean.replace(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*>/gi, '');
 
   // 3. Strip forms and frame/embedded elements
-  clean = clean.replace(/<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet|form)>/gis, '');
+  clean = clean.replace(
+    /<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet|form)>/gis,
+    '',
+  );
   clean = clean.replace(/<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*\/>/gi, '');
 
   // 4. Strip inline event handlers
@@ -69,9 +74,7 @@ export function sanitizeSampleHtml(html: string): string {
     if (href.startsWith('#')) {
       return match.replace(/\starget\s*=\s*(["']).*?\1/gi, '');
     }
-    return match
-      .replace(/\bhref\s*=\s*(["']).*?\1/gi, 'href="#"')
-      .replace(/\starget\s*=\s*(["']).*?\1/gi, '');
+    return match.replace(/\bhref\s*=\s*(["']).*?\1/gi, 'href="#"').replace(/\starget\s*=\s*(["']).*?\1/gi, '');
   });
 
   return clean;
@@ -80,10 +83,7 @@ export function sanitizeSampleHtml(html: string): string {
 /**
  * Neutralizes external @import rules and external url(...) references in CSS text.
  */
-export function sanitizeCssText(
-  cssText: string,
-  resolveUrl?: (url: string) => string
-): string {
+export function sanitizeCssText(cssText: string, resolveUrl?: (url: string) => string): string {
   // 1. Process @import (with url(...) or quoted string, optional semicolon, media query)
   let result = cssText.replace(
     /@import\s+(?:url\s*\(\s*(['"]?)([^)'"]+)\1\s*\)|(['"])([^'"]+)\3)[^\S\r\n]*([^;\r\n{}]*);?/gi,
@@ -98,7 +98,7 @@ export function sanitizeCssText(
         }
       }
       return '/* @import blocked */';
-    }
+    },
   );
 
   // 2. Process url(...) references
@@ -129,7 +129,7 @@ export function sanitizeCssText(
 export function neutralizeOfficeRels(relsXml: string): string {
   // Strip external DTD and entity declarations
   const cleanXml = relsXml
-    .replace(/<!DOCTYPE\s+[^>\[]+(?:\[[\s\S]*?\])?\s*>/gi, '')
+    .replace(/<!DOCTYPE\s+[^>[]+(?:\[[\s\S]*?\])?\s*>/gi, '')
     .replace(/<!DOCTYPE[\s\S]*?>/gi, '')
     .replace(/<!ENTITY[\s\S]*?>/gi, '');
 
@@ -154,7 +154,7 @@ export function neutralizeOfficeRels(relsXml: string): string {
             if (type.includes('image')) {
               rel.setAttribute(
                 'Target',
-                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA='
+                'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA=',
               );
               rel.removeAttribute('TargetMode');
             } else if (type.includes('hyperlink')) {
@@ -175,45 +175,40 @@ export function neutralizeOfficeRels(relsXml: string): string {
 
   // 2. Regex fallback for Node/headless verification, handling single/double quotes,
   // non-self-closing tags, protocol-relative URLs, and XML entities.
-  return cleanXml.replace(
-    /<Relationship\b([^>]*?)(?:\/>|>(.*?)<\/Relationship>)/gi,
-    (fullMatch, attrs, innerContent) => {
-      const targetModeMatch = attrs.match(/TargetMode\s*=\s*(["'])(.*?)\1/i);
-      const targetMode = targetModeMatch ? targetModeMatch[2].toLowerCase() : '';
+  return cleanXml.replace(/<Relationship\b([^>]*?)(?:\/>|>(.*?)<\/Relationship>)/gi, (fullMatch, attrs, innerContent) => {
+    const targetModeMatch = attrs.match(/TargetMode\s*=\s*(["'])(.*?)\1/i);
+    const targetMode = targetModeMatch ? targetModeMatch[2].toLowerCase() : '';
 
-      const targetMatch = attrs.match(/Target\s*=\s*(["'])(.*?)\1/i);
-      const rawTarget = targetMatch ? targetMatch[2] : '';
-      const decodedTarget = rawTarget.replace(/&amp;/g, '&');
+    const targetMatch = attrs.match(/Target\s*=\s*(["'])(.*?)\1/i);
+    const rawTarget = targetMatch ? targetMatch[2] : '';
+    const decodedTarget = rawTarget.replace(/&amp;/g, '&');
 
-      const typeMatch = attrs.match(/Type\s*=\s*(["'])(.*?)\1/i);
-      const typeVal = typeMatch ? typeMatch[2].toLowerCase() : '';
+    const typeMatch = attrs.match(/Type\s*=\s*(["'])(.*?)\1/i);
+    const typeVal = typeMatch ? typeMatch[2].toLowerCase() : '';
 
-      const isRemote = /^https?:|^\/\/|^ftp:|^javascript:/i.test(decodedTarget.trim());
-      const isExternal = targetMode === 'external' || isRemote;
+    const isRemote = /^https?:|^\/\/|^ftp:|^javascript:/i.test(decodedTarget.trim());
+    const isExternal = targetMode === 'external' || isRemote;
 
-      if (!isExternal) {
-        return fullMatch;
-      }
-
-      let newTarget = 'about:blank#blocked-rel';
-      if (typeVal.includes('image')) {
-        newTarget = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA=';
-      } else if (typeVal.includes('hyperlink')) {
-        newTarget = '#';
-      }
-
-      let newAttrs = attrs
-        .replace(/\s*TargetMode\s*=\s*(["']).*?\1/gi, '')
-        .replace(/Target\s*=\s*(["']).*?\1/gi, `Target="${newTarget}"`);
-
-      if (!/Target\s*=/i.test(newAttrs)) {
-        newAttrs += ` Target="${newTarget}"`;
-      }
-
-      if (innerContent !== undefined) {
-        return `<Relationship ${newAttrs.trim()}>${innerContent}</Relationship>`;
-      }
-      return `<Relationship ${newAttrs.trim()}/>`;
+    if (!isExternal) {
+      return fullMatch;
     }
-  );
+
+    let newTarget = 'about:blank#blocked-rel';
+    if (typeVal.includes('image')) {
+      newTarget = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA=';
+    } else if (typeVal.includes('hyperlink')) {
+      newTarget = '#';
+    }
+
+    let newAttrs = attrs.replace(/\s*TargetMode\s*=\s*(["']).*?\1/gi, '').replace(/Target\s*=\s*(["']).*?\1/gi, `Target="${newTarget}"`);
+
+    if (!/Target\s*=/i.test(newAttrs)) {
+      newAttrs += ` Target="${newTarget}"`;
+    }
+
+    if (innerContent !== undefined) {
+      return `<Relationship ${newAttrs.trim()}>${innerContent}</Relationship>`;
+    }
+    return `<Relationship ${newAttrs.trim()}/>`;
+  });
 }

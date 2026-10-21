@@ -16,13 +16,7 @@ export interface WorkerMessageResponse {
 }
 
 // 1D Box blur horizontally
-function boxBlurH(
-  scl: Uint8ClampedArray,
-  tcl: Uint8ClampedArray,
-  w: number,
-  h: number,
-  r: number
-) {
+function boxBlurH(scl: Uint8ClampedArray, tcl: Uint8ClampedArray, w: number, h: number, r: number) {
   if (r <= 0) {
     tcl.set(scl);
     return;
@@ -87,13 +81,7 @@ function boxBlurH(
 }
 
 // 1D Box blur vertically
-function boxBlurV(
-  scl: Uint8ClampedArray,
-  tcl: Uint8ClampedArray,
-  w: number,
-  h: number,
-  r: number
-) {
+function boxBlurV(scl: Uint8ClampedArray, tcl: Uint8ClampedArray, w: number, h: number, r: number) {
   if (r <= 0) {
     tcl.set(scl);
     return;
@@ -159,15 +147,10 @@ function boxBlurV(
 }
 
 // 3-pass fast Gaussian blur approximation
-function fastGaussianBlur(
-  src: Uint8ClampedArray,
-  w: number,
-  h: number,
-  radius: number
-): Uint8ClampedArray {
+function fastGaussianBlur(src: Uint8ClampedArray, w: number, h: number, radius: number): Uint8ClampedArray {
   const r = Math.max(1, Math.round(radius));
-  let bufA = new Uint8ClampedArray(src);
-  let bufB = new Uint8ClampedArray(src.length);
+  const bufA = new Uint8ClampedArray(src);
+  const bufB = new Uint8ClampedArray(src.length);
 
   for (let pass = 0; pass < 3; pass++) {
     boxBlurH(bufA, bufB, w, h, r);
@@ -180,7 +163,7 @@ function processSharpen(
   data: Uint8ClampedArray,
   w: number,
   h: number,
-  opts: { amount: number; radius: number; threshold: number }
+  opts: { amount: number; radius: number; threshold: number },
 ): Uint8ClampedArray {
   const { amount = 1.0, radius = 2.0, threshold = 0 } = opts;
   const blurred = fastGaussianBlur(data, w, h, radius);
@@ -204,12 +187,7 @@ function processSharpen(
   return out;
 }
 
-function processSketch(
-  data: Uint8ClampedArray,
-  w: number,
-  h: number,
-  opts: { style: string; intensity: number }
-): Uint8ClampedArray {
+function processSketch(data: Uint8ClampedArray, w: number, h: number, opts: { style: string; intensity: number }): Uint8ClampedArray {
   const { style = 'pencil', intensity = 80 } = opts;
   const factor = intensity / 100;
   const len = data.length;
@@ -359,8 +337,12 @@ function processSketch(
 
         for (const q of quadrants) {
           let count = 0;
-          let sumR = 0, sumG = 0, sumB = 0;
-          let sumSqR = 0, sumSqG = 0, sumSqB = 0;
+          let sumR = 0,
+            sumG = 0,
+            sumB = 0;
+          let sumSqR = 0,
+            sumSqG = 0,
+            sumSqB = 0;
 
           for (let qy = q.y0; qy <= q.y1; qy++) {
             for (let qx = q.x0; qx <= q.x1; qx++) {
@@ -368,8 +350,12 @@ function processSketch(
               const r = data[qIdx];
               const g = data[qIdx + 1];
               const b = data[qIdx + 2];
-              sumR += r; sumG += g; sumB += b;
-              sumSqR += r * r; sumSqG += g * g; sumSqB += b * b;
+              sumR += r;
+              sumG += g;
+              sumB += b;
+              sumSqR += r * r;
+              sumSqG += g * g;
+              sumSqB += b * b;
               count++;
             }
           }
@@ -378,9 +364,9 @@ function processSketch(
             const mR = sumR / count;
             const mG = sumG / count;
             const mB = sumB / count;
-            const varR = (sumSqR / count) - mR * mR;
-            const varG = (sumSqG / count) - mG * mG;
-            const varB = (sumSqB / count) - mB * mB;
+            const varR = sumSqR / count - mR * mR;
+            const varG = sumSqG / count - mG * mG;
+            const varB = sumSqB / count - mB * mB;
             const totalVar = varR + varG + varB;
 
             if (totalVar < minVariance) {

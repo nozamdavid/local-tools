@@ -10,8 +10,7 @@ import styles from './Tool.module.css';
 export default function CsvViewerTool() {
   const meta = getToolMeta('csv-viewer');
   const title = meta.title !== 'csv-viewer' ? meta.title : 'CSV Viewer';
-  const description =
-    meta.description || 'View, search, paginate, and inspect CSV/TSV tables safely in your browser.';
+  const description = meta.description || 'View, search, paginate, and inspect CSV/TSV tables safely in your browser.';
 
   const [inputTab, setInputTab] = useState<'paste' | 'upload'>('paste');
   const [inputText, setInputText] = useState<string>('');
@@ -79,9 +78,7 @@ export default function CsvViewerTool() {
   const filteredRows = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
     if (!q) return dataRows;
-    return dataRows.filter((row) =>
-      row.some((cell) => cell.toLowerCase().includes(q))
-    );
+    return dataRows.filter((row) => row.some((cell) => cell.toLowerCase().includes(q)));
   }, [dataRows, searchQuery]);
 
   // Pagination
@@ -191,11 +188,7 @@ export default function CsvViewerTool() {
             </Field>
 
             <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
-              <input
-                type="checkbox"
-                checked={hasHeader}
-                onChange={(e) => setHasHeader(e.target.checked)}
-              />
+              <input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} />
               First row is header
             </label>
           </div>
@@ -219,9 +212,7 @@ export default function CsvViewerTool() {
 
               <div className={styles.statsBar}>
                 <span className={styles.badge}>{dataRows.length} total rows</span>
-                {searchQuery && (
-                  <span className={styles.badge}>{filteredRows.length} filtered rows</span>
-                )}
+                {searchQuery && <span className={styles.badge}>{filteredRows.length} filtered rows</span>}
                 <span className={styles.badge}>{maxCols} columns</span>
               </div>
             </div>
@@ -250,10 +241,7 @@ export default function CsvViewerTool() {
                   })}
                   {visibleRows.length === 0 && (
                     <tr>
-                      <td
-                        colSpan={headers.length + 1}
-                        style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}
-                      >
+                      <td colSpan={headers.length + 1} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
                         No rows match &quot;{searchQuery}&quot;
                       </td>
                     </tr>
@@ -264,12 +252,7 @@ export default function CsvViewerTool() {
 
             <div className={styles.pagination}>
               <div className={styles.pageControls}>
-                <button
-                  type="button"
-                  className={styles.pageBtn}
-                  onClick={() => setCurrentPage(1)}
-                  disabled={safePage <= 1}
-                >
+                <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(1)} disabled={safePage <= 1}>
                   « First
                 </button>
                 <button

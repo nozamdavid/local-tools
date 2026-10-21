@@ -5,10 +5,7 @@ import { validateMeshModel } from './validation';
  * Welds coincident vertices within a tolerance (default 1e-5 mm = 10 nm)
  * to convert triangle soups (like unindexed STLs) into manifold-ready indexed geometry.
  */
-export function weldExactVertices(
-  unindexedPositions: Float32Array,
-  tolerance = 1e-5
-): { positions: Float32Array; indices: Uint32Array } {
+export function weldExactVertices(unindexedPositions: Float32Array, tolerance = 1e-5): { positions: Float32Array; indices: Uint32Array } {
   const factor = 1 / Math.max(tolerance, 1e-9);
   const vertexCount = unindexedPositions.length / 3;
   const indices = new Uint32Array(vertexCount);
@@ -52,7 +49,7 @@ export function weldExactVertices(
 export function weldIndexedVertices(
   positions: Float32Array,
   indices: Uint32Array,
-  tolerance = 1e-5
+  tolerance = 1e-5,
 ): { positions: Float32Array; indices: Uint32Array } {
   const factor = 1 / Math.max(tolerance, 1e-9);
   const vertexCount = positions.length / 3;
@@ -104,8 +101,12 @@ export function analyzeMesh(model: MeshModel): MeshStats {
   const vertexCount = positions.length / 3;
   const triangleCount = indices.length / 3;
 
-  let minX = Infinity, minY = Infinity, minZ = Infinity;
-  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    minZ = Infinity;
+  let maxX = -Infinity,
+    maxY = -Infinity,
+    maxZ = -Infinity;
 
   for (let i = 0; i < positions.length; i += 3) {
     const x = positions[i];
@@ -126,11 +127,7 @@ export function analyzeMesh(model: MeshModel): MeshStats {
   const bounds = {
     min: [minX, minY, minZ] as [number, number, number],
     max: [maxX, maxY, maxZ] as [number, number, number],
-    size: [
-      Math.max(0, maxX - minX),
-      Math.max(0, maxY - minY),
-      Math.max(0, maxZ - minZ),
-    ] as [number, number, number],
+    size: [Math.max(0, maxX - minX), Math.max(0, maxY - minY), Math.max(0, maxZ - minZ)] as [number, number, number],
   };
 
   let surfaceArea = 0;
@@ -215,11 +212,7 @@ export function analyzeMesh(model: MeshModel): MeshStats {
     surfaceArea += triArea;
 
     // Divergence theorem for closed polyhedron signed volume
-    signedVolumeSum +=
-      (x0 * (y1 * z2 - y2 * z1) +
-        y0 * (z1 * x2 - z2 * x1) +
-        z0 * (x1 * y2 - x2 * y1)) /
-      6;
+    signedVolumeSum += (x0 * (y1 * z2 - y2 * z1) + y0 * (z1 * x2 - z2 * x1) + z0 * (x1 * y2 - x2 * y1)) / 6;
 
     // Connect vertices for component tracking
     union(i0, i1);
@@ -271,21 +264,15 @@ export function analyzeMesh(model: MeshModel): MeshStats {
   }
 
   // Count connected components
-  let components = 0;
   const rootSet = new Set<number>();
   for (let i = 0; i < vertexCount; i++) {
     if (referencedVertices[i]) {
       rootSet.add(find(i));
     }
   }
-  components = rootSet.size;
+  const components = rootSet.size;
 
-  const isWatertight =
-    vertexCount >= 3 &&
-    triangleCount >= 1 &&
-    boundaryEdges === 0 &&
-    nonManifoldEdges === 0 &&
-    degenerateTriangles === 0;
+  const isWatertight = vertexCount >= 3 && triangleCount >= 1 && boundaryEdges === 0 && nonManifoldEdges === 0 && degenerateTriangles === 0;
 
   const volume = isWatertight ? Math.abs(signedVolumeSum) : null;
 
@@ -376,11 +363,7 @@ export function splitComponents(model: MeshModel): MeshModel[] {
       if (newIdx === -1) {
         newIdx = nextIdx++;
         oldToNew[oldIdx] = newIdx;
-        newPositions.push(
-          positions[oldIdx * 3],
-          positions[oldIdx * 3 + 1],
-          positions[oldIdx * 3 + 2]
-        );
+        newPositions.push(positions[oldIdx * 3], positions[oldIdx * 3 + 1], positions[oldIdx * 3 + 2]);
       }
       newIndices[i] = newIdx;
     }

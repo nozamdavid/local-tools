@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight, CloudOff, Cpu, Search, ShieldCheck, Sparkles, X } from 'lucide-react';
 import { FileDrop } from '../components/FileDrop';
 import { ToolGrid } from '../components/ToolGrid';
 import { Button, Kbd, MediaTile } from '../components/Controls';
 import { openCommandPalette } from '../components/CommandPalette';
-import { categories, TOOL_METAS, toolsByMedia } from '../tools/registry';
+import { categories, TOOL_METAS, toolsByMedia, type ToolMeta } from '../tools/registry';
 import { MEDIA_LIST } from '../design/media';
 import { clearPendingFiles, setPendingFiles, suggestToolsForFiles } from '../lib/handoff';
 import { formatBytes } from '../lib/format';
@@ -29,22 +29,60 @@ const POPULAR = POPULAR_IDS.map((id) => TOOL_METAS.find((t) => t.id === id)).fil
 
 function QuickDrop() {
   const [files, setFiles] = useState<File[]>([]);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  const hadFiles = useRef(false);
   const suggestions = suggestToolsForFiles(files).slice(0, 12);
 
-  if (files.length === 0) {
-    return (
-      <FileDrop
-        multiple
-        label="Drop any file to see what you can do with it"
-        hint="Images, PDFs, videos, Office documents, spreadsheets and more. We'll suggest the right tools and open the file in the one you pick."
-        onFiles={setFiles}
-      />
-    );
-  }
+  // Swapping the drop zone for the result list unmounts the focused control, so hand focus to whatever replaces it.
+  useEffect(() => {
+    const has = files.length > 0;
+    if (has !== hadFiles.current) {
+      const next = has
+        ? wrapperRef.current?.querySelector<HTMLElement>('.quick-drop-result')
+        : wrapperRef.current?.querySelector<HTMLElement>('.file-drop button');
+      next?.focus({ preventScroll: true });
+    }
+    hadFiles.current = has;
+  }, [files.length]);
 
   const first = files[0];
   return (
-    <div className="quick-drop-result">
+    <div ref={wrapperRef}>
+      {files.length === 0 ? (
+        <FileDrop
+          multiple
+          label="Drop any file to see what you can do with it"
+          hint="Images, PDFs, videos, Office documents, spreadsheets and more. We'll suggest the right tools and open the file in the one you pick."
+          onFiles={setFiles}
+        />
+      ) : (
+        <QuickDropResult
+          files={files}
+          first={first}
+          suggestions={suggestions}
+          onClear={() => {
+            setFiles([]);
+            clearPendingFiles();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function QuickDropResult({
+  files,
+  first,
+  suggestions,
+  onClear,
+}: {
+  files: File[];
+  first: File;
+  suggestions: ToolMeta[];
+  onClear: () => void;
+}) {
+  return (
+    <div className="quick-drop-result" tabIndex={-1} role="region" aria-label="Files ready">
       <div className="quick-drop-file">
         <div>
           <div className="quick-drop-label">{files.length > 1 ? `${files.length} files ready` : 'Ready to open'}</div>
@@ -54,14 +92,7 @@ function QuickDrop() {
           </div>
           <div className="quick-drop-meta">{formatBytes(files.reduce((sum, f) => sum + f.size, 0))} · still only on your device</div>
         </div>
-        <Button
-          variant="ghost"
-          icon={<X />}
-          onClick={() => {
-            setFiles([]);
-            clearPendingFiles();
-          }}
-        >
+        <Button variant="ghost" icon={<X />} onClick={onClear}>
           Clear
         </Button>
       </div>
@@ -85,8 +116,8 @@ export function Home() {
           <span className="hero-accent">None of the uploads.</span>
         </h1>
         <p className="hero-description">
-          {TOOL_METAS.length} free tools for images, PDFs, video and documents. They run in your browser with WebAssembly, so
-          there's nothing to upload and no account to create.
+          {TOOL_METAS.length} free tools for images, PDFs, video and documents. They run in your browser with WebAssembly, so there's
+          nothing to upload and no account to create.
         </p>
         <button type="button" className="hero-search" onClick={() => openCommandPalette()}>
           <Search aria-hidden="true" />

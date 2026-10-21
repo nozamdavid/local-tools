@@ -30,7 +30,7 @@ export class AiJob {
       maxLength?: number;
       minLength?: number;
       onProgress?: (p: AiProgress) => void;
-    } = {}
+    } = {},
   ): Promise<string> {
     const { maxLength, minLength, onProgress } = options;
     this.aborted = false;
@@ -43,7 +43,7 @@ export class AiJob {
         maxLength,
         minLength,
       },
-      onProgress
+      onProgress,
     );
   }
 
@@ -52,7 +52,7 @@ export class AiJob {
     modelId: string,
     options: {
       onProgress?: (p: AiProgress) => void;
-    } = {}
+    } = {},
   ): Promise<string> {
     const { onProgress } = options;
     this.aborted = false;
@@ -63,14 +63,11 @@ export class AiJob {
         chunks,
         modelId,
       },
-      onProgress
+      onProgress,
     );
   }
 
-  private runWorker(
-    inMsg: AiWorkerInMessage,
-    onProgress?: (p: AiProgress) => void
-  ): Promise<string> {
+  private runWorker(inMsg: AiWorkerInMessage, onProgress?: (p: AiProgress) => void): Promise<string> {
     return new Promise<string>((resolve, reject) => {
       try {
         const worker = new Worker(new URL('./aiWorker.ts', import.meta.url), {
@@ -78,7 +75,7 @@ export class AiJob {
         });
         this.worker = worker;
 
-        let startTime = Date.now();
+        const startTime = Date.now();
         let timer: ReturnType<typeof setInterval> | null = setInterval(() => {
           const elapsed = Math.round((Date.now() - startTime) / 1000);
           onProgress?.({
@@ -127,8 +124,7 @@ export class AiJob {
 
             case 'status': {
               if (data.phase === 'inferring') {
-                const itemInfo =
-                  data.total && data.total > 1 ? ` (chunk ${data.current} of ${data.total})` : '';
+                const itemInfo = data.total && data.total > 1 ? ` (chunk ${data.current} of ${data.total})` : '';
                 onProgress?.({
                   phase: 'inferring',
                   progress: data.total ? (data.current ?? 1) / data.total : 1,

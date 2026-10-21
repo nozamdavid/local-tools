@@ -135,7 +135,7 @@
 .badgeCustom {
   display: inline-block;
   background-color: var(--accent-soft);
-  color: var(--accent);
+  color: var(--accent-text);
   font-size: 0.7rem;
   font-weight: 700;
   padding: 0.15rem 0.45rem;
@@ -172,7 +172,7 @@
 .reverseHighlight {
   font-size: 1.75rem;
   font-weight: 700;
-  color: var(--accent);
+  color: var(--accent-text);
 }
 
 .reverseDesc {

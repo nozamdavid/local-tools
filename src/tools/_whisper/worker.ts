@@ -8,10 +8,7 @@ env.useBrowserCache = true;
 let cachedPipeline: any = null;
 let cachedModelKey = '';
 
-async function getTranscriber(
-  model: string,
-  onProgress: (info: ProgressInfo) => void
-): Promise<any> {
+async function getTranscriber(model: string, onProgress: (info: ProgressInfo) => void): Promise<any> {
   let isWebGpu = false;
   if (typeof navigator !== 'undefined' && 'gpu' in navigator && Boolean(navigator.gpu)) {
     try {
@@ -168,7 +165,6 @@ self.onmessage = async (e: MessageEvent<WorkerInMessage>) => {
   } catch (err: unknown) {
     if (timerId !== null) {
       clearInterval(timerId);
-      timerId = null;
     }
     const errorMsg: WorkerOutMessage = {
       type: 'error',

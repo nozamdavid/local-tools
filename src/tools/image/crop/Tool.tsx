@@ -314,16 +314,15 @@ export default function CropTool() {
               filename={resultInfo.filename}
               kind="image"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <img src={originalUrl} alt={file.name} className="preview-media" />
-                ) : null
-              }
+              beforePreview={originalUrl ? <img src={originalUrl} alt={file.name} className="preview-media" /> : null}
               onReset={handleReset}
             >
               <div className="meta-chips" style={{ marginBottom: '1rem' }}>
                 <span className="meta-chip">
-                  Cropped dimensions: <strong>{resultInfo.width}×{resultInfo.height} px</strong>
+                  Cropped dimensions:{' '}
+                  <strong>
+                    {resultInfo.width}×{resultInfo.height} px
+                  </strong>
                 </span>
               </div>
             </ResultPanel>
@@ -338,7 +337,10 @@ export default function CropTool() {
                 </span>
                 {decodedImg && (
                   <span className="meta-chip">
-                    Dimensions: <strong>{decodedImg.width}×{decodedImg.height} px</strong>
+                    Dimensions:{' '}
+                    <strong>
+                      {decodedImg.width}×{decodedImg.height} px
+                    </strong>
                   </span>
                 )}
               </div>
@@ -406,7 +408,9 @@ export default function CropTool() {
                   <Field label="Crop coordinates (source pixels)">
                     <div className={cropStyles.inputsGrid}>
                       <div>
-                        <label className="field-label" style={{ fontSize: '0.8rem' }}>X (px)</label>
+                        <label className="field-label" style={{ fontSize: '0.8rem' }}>
+                          X (px)
+                        </label>
                         <input
                           type="number"
                           min={0}
@@ -417,7 +421,9 @@ export default function CropTool() {
                         />
                       </div>
                       <div>
-                        <label className="field-label" style={{ fontSize: '0.8rem' }}>Y (px)</label>
+                        <label className="field-label" style={{ fontSize: '0.8rem' }}>
+                          Y (px)
+                        </label>
                         <input
                           type="number"
                           min={0}
@@ -428,7 +434,9 @@ export default function CropTool() {
                         />
                       </div>
                       <div>
-                        <label className="field-label" style={{ fontSize: '0.8rem' }}>Width (px)</label>
+                        <label className="field-label" style={{ fontSize: '0.8rem' }}>
+                          Width (px)
+                        </label>
                         <input
                           type="number"
                           min={10}
@@ -439,7 +447,9 @@ export default function CropTool() {
                         />
                       </div>
                       <div>
-                        <label className="field-label" style={{ fontSize: '0.8rem' }}>Height (px)</label>
+                        <label className="field-label" style={{ fontSize: '0.8rem' }}>
+                          Height (px)
+                        </label>
                         <input
                           type="number"
                           min={10}

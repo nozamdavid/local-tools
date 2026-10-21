@@ -251,16 +251,9 @@ export default function SubtitlesTool() {
         position,
       };
 
-      const burnedBlob = await burnSubtitlesIntoVideo(
-        file,
-        cues,
-        style,
-        videoMeta?.width || 1280,
-        videoMeta?.height || 720,
-        (ratio) => {
-          setExportRatio(ratio);
-        }
-      );
+      const burnedBlob = await burnSubtitlesIntoVideo(file, cues, style, videoMeta?.width || 1280, videoMeta?.height || 720, (ratio) => {
+        setExportRatio(ratio);
+      });
 
       setExportedResult({
         blob: burnedBlob,
@@ -325,7 +318,10 @@ export default function SubtitlesTool() {
             )}
             {videoMeta && videoMeta.width > 0 && (
               <span className="meta-chip">
-                Resolution: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                Resolution:{' '}
+                <strong>
+                  {videoMeta.width}x{videoMeta.height}
+                </strong>
               </span>
             )}
           </div>
@@ -333,11 +329,7 @@ export default function SubtitlesTool() {
           {isTranscribing ? (
             <div style={{ marginTop: '1rem' }}>
               <ProgressBar
-                value={
-                  progressState.phase === 'transcribing'
-                    ? 0.95
-                    : progressState.ratio
-                }
+                value={progressState.phase === 'transcribing' ? 0.95 : progressState.ratio}
                 label={progressState.label || 'Transcribing...'}
               />
             </div>
@@ -351,11 +343,7 @@ export default function SubtitlesTool() {
               filename={exportedResult.filename}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={() => setExportedResult(null)}
             />
           ) : cues ? (
@@ -363,23 +351,8 @@ export default function SubtitlesTool() {
               {/* Video preview with live track */}
               {originalUrl && (
                 <div className={styles.videoSection}>
-                  <video
-                    ref={videoRef}
-                    controls
-                    playsInline
-                    src={originalUrl}
-                    className={styles.videoPreview}
-                  >
-                    {vttBlobUrl && (
-                      <track
-                        key={vttBlobUrl}
-                        kind="subtitles"
-                        src={vttBlobUrl}
-                        srcLang="en"
-                        label="Subtitles"
-                        default
-                      />
-                    )}
+                  <video ref={videoRef} controls playsInline src={originalUrl} className={styles.videoPreview}>
+                    {vttBlobUrl && <track key={vttBlobUrl} kind="subtitles" src={vttBlobUrl} srcLang="en" label="Subtitles" default />}
                   </video>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                     Live preview: video displays cues updated in real time.
@@ -491,12 +464,7 @@ export default function SubtitlesTool() {
 
                   <div className="field">
                     <label className="checkbox-label" htmlFor={bgBoxId}>
-                      <input
-                        id={bgBoxId}
-                        type="checkbox"
-                        checked={backgroundBox}
-                        onChange={(e) => setBackgroundBox(e.target.checked)}
-                      />
+                      <input id={bgBoxId} type="checkbox" checked={backgroundBox} onChange={(e) => setBackgroundBox(e.target.checked)} />
                       <span>Background box</span>
                     </label>
                   </div>
@@ -530,10 +498,7 @@ export default function SubtitlesTool() {
           ) : (
             <div style={{ marginTop: '1rem' }}>
               <div className={styles.optionsGrid}>
-                <Field
-                  label="Whisper Model"
-                  hint="Tiny runs fastest with low memory; Small provides higher accuracy."
-                >
+                <Field label="Whisper Model" hint="Tiny runs fastest with low memory; Small provides higher accuracy.">
                   <Select
                     id={modelId}
                     value={model}
@@ -545,22 +510,11 @@ export default function SubtitlesTool() {
                   />
                 </Field>
 
-                <Field
-                  label="Language"
-                  hint="Select spoken language or let Whisper detect automatically."
-                >
-                  <Select
-                    id={languageId}
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    options={WHISPER_LANGUAGES}
-                  />
+                <Field label="Language" hint="Select spoken language or let Whisper detect automatically.">
+                  <Select id={languageId} value={language} onChange={(e) => setLanguage(e.target.value)} options={WHISPER_LANGUAGES} />
                 </Field>
 
-                <Field
-                  label="Task"
-                  hint="Transcribe original audio or translate directly into English."
-                >
+                <Field label="Task" hint="Transcribe original audio or translate directly into English.">
                   <Select
                     id={taskId}
                     value={task}

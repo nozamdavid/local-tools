@@ -31,7 +31,9 @@ export async function testExtractionAndEmpty(): Promise<VerifyTestResult> {
   const resultEmpty = await extractPdfText(docEmpty);
 
   if (resultEmpty.hasText || resultEmpty.totalChars !== 0) {
-    throw new Error(`Empty check failed: expected hasText=false and totalChars=0, got hasText=${resultEmpty.hasText}, totalChars=${resultEmpty.totalChars}`);
+    throw new Error(
+      `Empty check failed: expected hasText=false and totalChars=0, got hasText=${resultEmpty.hasText}, totalChars=${resultEmpty.totalChars}`,
+    );
   }
 
   return {
@@ -94,9 +96,7 @@ export function testChunkBoundaryLogic(): VerifyTestResult {
   };
 }
 
-export async function runActualSummarizationInference(
-  onProgress?: (p: AiProgress) => void
-): Promise<VerifyTestResult> {
+export async function runActualSummarizationInference(onProgress?: (p: AiProgress) => void): Promise<VerifyTestResult> {
   const modelId = 'Xenova/t5-small';
   const testInput =
     'The solar system consists of the Sun and the celestial objects bound to it by gravity. ' +
@@ -135,9 +135,7 @@ export async function runActualSummarizationInference(
   };
 }
 
-export async function runActualTranslationInference(
-  onProgress?: (p: AiProgress) => void
-): Promise<VerifyTestResult> {
+export async function runActualTranslationInference(onProgress?: (p: AiProgress) => void): Promise<VerifyTestResult> {
   const modelId = 'Xenova/opus-mt-en-es';
   const testInput = ['Loconvert executes all document processing locally inside your web browser.'];
 
@@ -171,9 +169,7 @@ export async function runActualTranslationInference(
   };
 }
 
-export async function runVerification(
-  onProgress?: (msg: string) => void
-): Promise<AiVerifyReport> {
+export async function runVerification(onProgress?: (msg: string) => void): Promise<AiVerifyReport> {
   const results: VerifyTestResult[] = [];
 
   onProgress?.('Running test 1: extraction and empty check...');

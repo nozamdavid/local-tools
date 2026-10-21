@@ -18,7 +18,9 @@ export function DownloadResult({ blob, filename, summary, onReset }: DownloadRes
       <div className="stats-row">
         <div className="stat-item">
           <span className="stat-label">Output file</span>
-          <span className="stat-value" style={{ fontSize: '0.95rem' }}>{filename}</span>
+          <span className="stat-value" style={{ fontSize: '0.95rem' }}>
+            {filename}
+          </span>
         </div>
         <div className="stat-item">
           <span className="stat-label">Output size</span>

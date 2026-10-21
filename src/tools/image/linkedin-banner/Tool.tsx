@@ -46,7 +46,8 @@ export default function LinkedInBannerTool() {
           onReset={() => setFile(null)}
           additionalInfo={
             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              LinkedIn profile banners are 1584×396 px (4:1 aspect ratio). The lower-left corner is covered by your round profile picture on desktop browsers.
+              LinkedIn profile banners are 1584×396 px (4:1 aspect ratio). The lower-left corner is covered by your round profile picture on
+              desktop browsers.
             </div>
           }
         />

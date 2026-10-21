@@ -19,7 +19,15 @@ const DEFAULT_OPTIONS: GrayscaleOptions = {
 
 function hexToRgb(hex: string): [number, number, number] {
   const clean = hex.replace('#', '');
-  const num = parseInt(clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean, 16);
+  const num = parseInt(
+    clean.length === 3
+      ? clean
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : clean,
+    16,
+  );
   return [(num >> 16) & 255, (num >> 8) & 255, num & 255];
 }
 
@@ -44,7 +52,7 @@ function renderGrayscale(source: HTMLCanvasElement, options: GrayscaleOptions): 
     const g = data[i + 1];
     const b = data[i + 2];
 
-    let gray = 0;
+    let gray: number;
     if (options.method === 'luminance') {
       gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
     } else if (options.method === 'average') {
@@ -138,9 +146,7 @@ export default function GrayscaleTool() {
                   <input
                     type="color"
                     value={options.duotoneShadow}
-                    onChange={(e) =>
-                      setOptions((prev) => ({ ...prev, duotoneShadow: e.target.value }))
-                    }
+                    onChange={(e) => setOptions((prev) => ({ ...prev, duotoneShadow: e.target.value }))}
                     style={{ width: '100%', height: '38px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}
                   />
                 </Field>
@@ -148,9 +154,7 @@ export default function GrayscaleTool() {
                   <input
                     type="color"
                     value={options.duotoneHighlight}
-                    onChange={(e) =>
-                      setOptions((prev) => ({ ...prev, duotoneHighlight: e.target.value }))
-                    }
+                    onChange={(e) => setOptions((prev) => ({ ...prev, duotoneHighlight: e.target.value }))}
                     style={{ width: '100%', height: '38px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}
                   />
                 </Field>

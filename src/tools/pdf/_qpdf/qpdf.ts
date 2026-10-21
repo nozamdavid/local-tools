@@ -32,11 +32,7 @@ export interface QpdfRun {
  * `args` are the options only; the input and output paths are appended unless `output` is false.
  * Resolves with any exit code, so callers can inspect check commands such as `--is-encrypted`.
  */
-export function runQpdfRaw(
-  input: Uint8Array,
-  args: string[],
-  options: { output?: boolean } = {}
-): Promise<QpdfRun> {
+export function runQpdfRaw(input: Uint8Array, args: string[], options: { output?: boolean } = {}): Promise<QpdfRun> {
   const output = options.output ?? true;
   const fullArgs = output ? [...args, QPDF_IN, QPDF_OUT] : [...args, QPDF_IN];
 

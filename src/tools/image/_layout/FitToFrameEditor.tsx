@@ -136,6 +136,21 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
     }));
   };
 
+  // Keyboard equivalent of drag and wheel: arrows pan (Shift for larger steps), + and - zoom.
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const step = e.shiftKey ? 50 : 10;
+    const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
+    const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
+    const dz = e.key === '+' || e.key === '=' ? 0.05 : e.key === '-' ? -0.05 : 0;
+    if (!dx && !dy && !dz) return;
+    e.preventDefault();
+    setTransform((prev) => ({
+      panX: prev.panX + dx,
+      panY: prev.panY + dy,
+      zoom: Math.min(4.0, Math.max(0.2, Number((prev.zoom + dz).toFixed(2)))),
+    }));
+  };
+
   const handleResetPanZoom = () => {
     setTransform({ zoom: 1.0, panX: 0, panY: 0 });
   };
@@ -207,11 +222,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
         {fileSizeWarning && (
           <div className={styles.warningBox} style={{ margin: '1rem 0' }}>
             <span>⚠️ {fileSizeWarning}</span>
-            <Button
-              variant="secondary"
-              style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
-              onClick={() => handleExport(0.8)}
-            >
+            <Button variant="secondary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }} onClick={() => handleExport(0.8)}>
               Re-export at 80% quality
             </Button>
           </div>
@@ -224,11 +235,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
     if (guide.type === 'top') {
       const topPercent = (guide.size / config.height) * 100;
       return (
-        <div
-          key={idx}
-          className={`${styles.guideEdge} ${styles.guideTop}`}
-          style={{ height: `${topPercent}%` }}
-        >
+        <div key={idx} className={`${styles.guideEdge} ${styles.guideTop}`} style={{ height: `${topPercent}%` }}>
           {guide.label}
         </div>
       );
@@ -236,11 +243,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
     if (guide.type === 'bottom') {
       const bottomPercent = (guide.size / config.height) * 100;
       return (
-        <div
-          key={idx}
-          className={`${styles.guideEdge} ${styles.guideBottom}`}
-          style={{ height: `${bottomPercent}%` }}
-        >
+        <div key={idx} className={`${styles.guideEdge} ${styles.guideBottom}`} style={{ height: `${bottomPercent}%` }}>
           {guide.label}
         </div>
       );
@@ -251,11 +254,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
       const w = (guide.width / config.width) * 100;
       const h = (guide.height / config.height) * 100;
       return (
-        <div
-          key={idx}
-          className={styles.guideBox}
-          style={{ left: `${left}%`, top: `${top}%`, width: `${w}%`, height: `${h}%` }}
-        >
+        <div key={idx} className={styles.guideBox} style={{ left: `${left}%`, top: `${top}%`, width: `${w}%`, height: `${h}%` }}>
           {guide.label}
         </div>
       );
@@ -282,7 +281,10 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
     <div className={styles.editorWrapper}>
       <div className="meta-chips">
         <span className="meta-chip">
-          Target: <strong>{config.width} × {config.height} px</strong>
+          Target:{' '}
+          <strong>
+            {config.width} × {config.height} px
+          </strong>
         </span>
         <span className="meta-chip">
           Original: <strong>{img ? `${img.naturalWidth || img.width} × ${img.naturalHeight || img.height} px` : '...'}</strong>
@@ -303,13 +305,15 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
           onPointerMove={handlePointerMove}
           onPointerUp={handlePointerUp}
           onWheel={handleWheel}
+          onKeyDown={handleKeyDown}
+          tabIndex={0}
+          role="group"
+          aria-label="Image position. Arrow keys move the image (Shift for larger steps), plus and minus zoom."
           title="Drag to reposition, mouse wheel to zoom"
         >
-          <canvas ref={canvasRef} className={styles.previewCanvas} />
+          <canvas ref={canvasRef} className={styles.previewCanvas} role="img" aria-label="Preview of the framed image" />
           {showGuides && config.guides && config.guides.length > 0 && (
-            <div className={styles.guidesOverlay}>
-              {config.guides.map((g, i) => renderGuide(g, i))}
-            </div>
+            <div className={styles.guidesOverlay}>{config.guides.map((g, i) => renderGuide(g, i))}</div>
           )}
         </div>
       </div>
@@ -321,6 +325,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
             <button
               type="button"
               className={`${styles.toggleBtn} ${fitMode === 'cover' ? styles.toggleBtnActive : ''}`}
+              aria-pressed={fitMode === 'cover'}
               onClick={() => setFitMode('cover')}
             >
               Cover
@@ -328,6 +333,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
             <button
               type="button"
               className={`${styles.toggleBtn} ${fitMode === 'contain' ? styles.toggleBtnActive : ''}`}
+              aria-pressed={fitMode === 'contain'}
               onClick={() => setFitMode('contain')}
             >
               Contain
@@ -341,6 +347,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
               <button
                 type="button"
                 className={`${styles.toggleBtn} ${bgType === 'blur' ? styles.toggleBtnActive : ''}`}
+                aria-pressed={bgType === 'blur'}
                 onClick={() => setBgType('blur')}
               >
                 Blurred image
@@ -348,6 +355,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
               <button
                 type="button"
                 className={`${styles.toggleBtn} ${bgType === 'color' ? styles.toggleBtnActive : ''}`}
+                aria-pressed={bgType === 'color'}
                 onClick={() => setBgType('color')}
               >
                 Solid color
@@ -355,12 +363,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
             </div>
             {bgType === 'color' && (
               <div className={styles.colorInputRow} style={{ marginTop: '0.5rem' }}>
-                <input
-                  type="color"
-                  className={styles.colorPicker}
-                  value={bgColor}
-                  onChange={(e) => setBgColor(e.target.value)}
-                />
+                <input type="color" className={styles.colorPicker} value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
                 <span style={{ fontSize: '0.85rem' }}>{bgColor}</span>
               </div>
             )}
@@ -377,12 +380,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
             onChange={(z) => setTransform((prev) => ({ ...prev, zoom: z }))}
           />
           <div style={{ marginTop: '0.5rem' }}>
-            <Button
-              type="button"
-              variant="secondary"
-              style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
-              onClick={handleResetPanZoom}
-            >
+            <Button type="button" variant="secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }} onClick={handleResetPanZoom}>
               Reset pan & zoom
             </Button>
           </div>
@@ -420,22 +418,14 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '0.5rem' }}>
         {config.guides && config.guides.length > 0 && (
           <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={showGuides}
-              onChange={(e) => setShowGuides(e.target.checked)}
-            />
+            <input type="checkbox" checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} />
             <span>Show safe-zone guide overlays</span>
           </label>
         )}
 
         {config.allowCircularExport && (
           <label className="checkbox-label">
-            <input
-              type="checkbox"
-              checked={circularExport}
-              onChange={(e) => setCircularExport(e.target.checked)}
-            />
+            <input type="checkbox" checked={circularExport} onChange={(e) => setCircularExport(e.target.checked)} />
             <span>Export as Circular PNG (transparent outer background)</span>
           </label>
         )}

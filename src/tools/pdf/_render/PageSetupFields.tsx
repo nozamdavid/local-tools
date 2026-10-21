@@ -18,13 +18,7 @@ const MARGINS = [
   { value: '25', label: 'Wide (25 mm)' },
 ];
 
-export function PageSetupFields({
-  value,
-  onChange,
-  allowMatch = false,
-  showOrientation = true,
-  showMargin = true,
-}: PageSetupFieldsProps) {
+export function PageSetupFields({ value, onChange, allowMatch = false, showOrientation = true, showMargin = true }: PageSetupFieldsProps) {
   const sizeId = useId();
   const orientationId = useId();
   const marginId = useId();

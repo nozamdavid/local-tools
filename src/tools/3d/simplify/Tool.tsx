@@ -3,14 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Slider, Checkbox, Alert, Badge } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
-import {
-  MeshViewer,
-  use3DWorkbench,
-  WorkbenchHeader,
-  WorkbenchWarnings,
-  ExportCard,
-  ACCEPT_MESH_EXTENSIONS,
-} from '../_ui';
+import { MeshViewer, use3DWorkbench, WorkbenchHeader, WorkbenchWarnings, ExportCard, ACCEPT_MESH_EXTENSIONS } from '../_ui';
 import { processModel } from '../_mesh/client';
 import { Layers, RotateCcw, Scissors, XCircle, ArrowRight } from 'lucide-react';
 import styles from '../_ui/Workbench.module.css';
@@ -19,8 +12,7 @@ export default function SimplifyTool() {
   const meta = getToolMeta('three-simplify');
   const title = meta.title !== 'three-simplify' ? meta.title : '3D Mesh Simplifier & Decimator';
   const description =
-    meta.description ||
-    'Reduce triangle counts and optimize 3D meshes while preserving critical edges and boundary silhouettes.';
+    meta.description || 'Reduce triangle counts and optimize 3D meshes while preserving critical edges and boundary silhouettes.';
 
   const {
     file,
@@ -60,8 +52,7 @@ export default function SimplifyTool() {
   const currentTriangles = currentModel ? currentModel.indices.length / 3 : 0;
   const currentVertices = currentModel ? currentModel.positions.length / 3 : 0;
 
-  const reductionPercent =
-    origTriangles > 0 ? Math.max(0, Math.round((1 - currentTriangles / origTriangles) * 100)) : 0;
+  const reductionPercent = origTriangles > 0 ? Math.max(0, Math.round((1 - currentTriangles / origTriangles) * 100)) : 0;
 
   // Run simplification always against originalModel to prevent accumulating decimation
   const handleSimplify = async () => {
@@ -137,12 +128,7 @@ export default function SimplifyTool() {
               onReset={reset}
               action={
                 isSimplified ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<RotateCcw size={14} />}
-                    onClick={handleResetToOriginal}
-                  >
+                  <Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={handleResetToOriginal}>
                     Restore original
                   </Button>
                 ) : undefined
@@ -169,9 +155,7 @@ export default function SimplifyTool() {
                       {isSimplified ? `-${reductionPercent}% Triangles` : 'Original Mesh'}
                     </Badge>
                   </h3>
-                  <p className={styles.cardSub}>
-                    Adjust parameters below. Click "Simplify Mesh" when ready to process.
-                  </p>
+                  <p className={styles.cardSub}>Adjust parameters below. Click "Simplify Mesh" when ready to process.</p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
                     <div className="field">
@@ -185,9 +169,7 @@ export default function SimplifyTool() {
                         <label className="field-label" htmlFor="retention-slider">
                           Target Triangle Retention
                         </label>
-                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)' }}>
-                          {retentionPercent}%
-                        </span>
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)' }}>{retentionPercent}%</span>
                       </div>
                       <Slider
                         id="retention-slider"
@@ -200,8 +182,8 @@ export default function SimplifyTool() {
                         onChange={setRetentionPercent}
                       />
                       <p className="field-hint">
-                        Targeting ~{Math.round((origTriangles * retentionPercent) / 100).toLocaleString()}{' '}
-                        triangles ({100 - retentionPercent}% reduction).
+                        Targeting ~{Math.round((origTriangles * retentionPercent) / 100).toLocaleString()} triangles (
+                        {100 - retentionPercent}% reduction).
                       </p>
                     </div>
 
@@ -216,9 +198,7 @@ export default function SimplifyTool() {
                         <label className="field-label" htmlFor="error-slider">
                           Max Error Tolerance
                         </label>
-                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)' }}>
-                          {errorTolerance}
-                        </span>
+                        <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--weight-semibold)' }}>{errorTolerance}</span>
                       </div>
                       <Slider
                         id="error-slider"
@@ -229,9 +209,7 @@ export default function SimplifyTool() {
                         disabled={processing}
                         onChange={setErrorTolerance}
                       />
-                      <p className="field-hint">
-                        Relative distance threshold preventing excessive deviation from surface features.
-                      </p>
+                      <p className="field-hint">Relative distance threshold preventing excessive deviation from surface features.</p>
                     </div>
 
                     <div style={{ marginTop: 'var(--space-1)' }}>
@@ -256,12 +234,7 @@ export default function SimplifyTool() {
                         {processing ? 'Simplifying...' : 'Simplify Mesh'}
                       </Button>
                       {processing && (
-                        <Button
-                          variant="danger"
-                          size="lg"
-                          icon={<XCircle size={16} />}
-                          onClick={cancelProcessing}
-                        >
+                        <Button variant="danger" size="lg" icon={<XCircle size={16} />} onClick={cancelProcessing}>
                           Cancel
                         </Button>
                       )}

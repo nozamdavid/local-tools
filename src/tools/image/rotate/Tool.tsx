@@ -192,11 +192,7 @@ export default function RotateTool() {
               filename={resultInfo.filename}
               kind="image"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <img src={originalUrl} alt={file.name} className="preview-media" />
-                ) : null
-              }
+              beforePreview={originalUrl ? <img src={originalUrl} alt={file.name} className="preview-media" /> : null}
               onReset={handleReset}
             >
               <div className="meta-chips" style={{ marginBottom: '1rem' }}>
@@ -204,7 +200,10 @@ export default function RotateTool() {
                   Rotation: <strong>{angle}°</strong>
                 </span>
                 <span className="meta-chip">
-                  New dimensions: <strong>{resultInfo.width}×{resultInfo.height} px</strong>
+                  New dimensions:{' '}
+                  <strong>
+                    {resultInfo.width}×{resultInfo.height} px
+                  </strong>
                 </span>
               </div>
             </ResultPanel>
@@ -219,7 +218,10 @@ export default function RotateTool() {
                 </span>
                 {decodedImg && (
                   <span className="meta-chip">
-                    Dimensions: <strong>{decodedImg.width}×{decodedImg.height} px</strong>
+                    Dimensions:{' '}
+                    <strong>
+                      {decodedImg.width}×{decodedImg.height} px
+                    </strong>
                   </span>
                 )}
               </div>
@@ -232,6 +234,8 @@ export default function RotateTool() {
                   <div className={styles.livePreviewContainer}>
                     <canvas
                       ref={previewCanvasRef}
+                      role="img"
+                      aria-label="Rotated image preview"
                       style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain' }}
                     />
                   </div>
@@ -256,14 +260,7 @@ export default function RotateTool() {
 
                   {/* Free angle slider */}
                   <Field label={`Free angle: ${angle}°`} hint="Adjust angle freely with automatic canvas expansion to fit">
-                    <Slider
-                      value={angle}
-                      min={-180}
-                      max={180}
-                      step={1}
-                      unit="°"
-                      onChange={setAngle}
-                    />
+                    <Slider value={angle} min={-180} max={180} step={1} unit="°" onChange={setAngle} />
                   </Field>
 
                   {/* Flip toggles */}

@@ -39,8 +39,9 @@
 }
 
 .btn:focus-visible {
-  outline: none;
-  box-shadow: 0 0 0 3px var(--focus-ring);
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px var(--focus-ring);
 }
 
 .btn:disabled,
@@ -58,7 +59,9 @@
 .btn-primary {
   background: var(--accent);
   color: var(--on-accent);
-  box-shadow: var(--shadow-xs), inset 0 1px 0 rgb(255 255 255 / 0.14);
+  box-shadow:
+    var(--shadow-xs),
+    inset 0 1px 0 rgb(255 255 255 / 0.14);
 }
 
 .btn-primary:hover:not(:disabled) {
@@ -191,6 +194,8 @@
 .textarea:focus,
 .select:focus {
   border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
@@ -286,7 +291,9 @@
 }
 
 .slider:focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--radius-full);
 }
 
 .slider:focus-visible::-webkit-slider-thumb {
@@ -382,7 +389,9 @@
 }
 
 .switch:focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
 }
 
 .switch:focus-visible .switch-track {
@@ -434,7 +443,8 @@
 }
 
 .segmented-option:focus-visible {
-  outline: none;
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
   box-shadow: 0 0 0 2px var(--focus-ring);
 }
 
@@ -742,9 +752,7 @@
   padding: var(--space-12) var(--space-6);
   text-align: center;
   cursor: pointer;
-  background:
-    radial-gradient(120% 90% at 50% 0%, var(--accent-soft) 0%, transparent 60%),
-    var(--surface-sunken);
+  background: radial-gradient(120% 90% at 50% 0%, var(--accent-soft) 0%, transparent 60%), var(--surface-sunken);
   border: 1.5px dashed var(--border-hover);
   border-radius: var(--radius-xl);
   transition:
@@ -757,10 +765,8 @@
   border-color: var(--accent);
 }
 
-.file-drop:focus-visible {
-  outline: none;
+.file-drop:has(:focus-visible) {
   border-color: var(--accent);
-  box-shadow: 0 0 0 4px var(--focus-ring);
 }
 
 .file-drop.drag-over {
@@ -1190,6 +1196,8 @@ img.preview-media {
     select
   ):focus {
   border-color: var(--accent);
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
   box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
@@ -1245,4 +1253,10 @@ img.preview-media {
   color: var(--accent-text);
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+
+/* Result containers take focus when a job finishes so the outcome is announced; they are not in the Tab order. */
+.result-panel:focus,
+.batch-results:focus {
+  outline: none;
 }

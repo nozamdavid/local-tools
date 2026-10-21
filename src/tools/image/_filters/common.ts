@@ -22,7 +22,7 @@ export function hasAlphaChannel(canvas: HTMLCanvasElement): boolean {
 
 export function createPreviewCanvas(
   source: CanvasImageSource & { width: number; height: number },
-  maxDim: number = 1200
+  maxDim: number = 1200,
 ): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   const w = source.width;

@@ -148,12 +148,7 @@ export function removeSolidBackground(
 }
 
 /** Despills color cast from edges */
-export function applyDespill(
-  data: Uint8ClampedArray,
-  width: number,
-  height: number,
-  targetColor: RGB,
-) {
+export function applyDespill(data: Uint8ClampedArray, width: number, height: number, targetColor: RGB) {
   const totalPixels = width * height;
   const { r: tr, g: tg, b: tb } = targetColor;
 
@@ -215,7 +210,7 @@ export function applyAiMask(
 
   for (let i = 0; i < totalPixels; i++) {
     const m = mask[i];
-    let finalAlpha = 0;
+    let finalAlpha: number;
 
     if (m >= maxThresh) {
       finalAlpha = 255;

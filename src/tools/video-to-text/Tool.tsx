@@ -183,11 +183,7 @@ export default function VideoToTextTool() {
           {isRunning ? (
             <div style={{ marginTop: '1rem' }}>
               <ProgressBar
-                value={
-                  progressState.phase === 'transcribing'
-                    ? 0.95
-                    : progressState.ratio
-                }
+                value={progressState.phase === 'transcribing' ? 0.95 : progressState.ratio}
                 label={progressState.label || 'Processing...'}
               />
             </div>
@@ -236,10 +232,7 @@ export default function VideoToTextTool() {
           ) : (
             <div style={{ marginTop: '1rem' }}>
               <div className={styles.optionsGrid}>
-                <Field
-                  label="Whisper Model"
-                  hint="Tiny runs fastest with low memory; Small provides higher accuracy."
-                >
+                <Field label="Whisper Model" hint="Tiny runs fastest with low memory; Small provides higher accuracy.">
                   <Select
                     id={modelId}
                     value={model}
@@ -251,22 +244,11 @@ export default function VideoToTextTool() {
                   />
                 </Field>
 
-                <Field
-                  label="Language"
-                  hint="Select spoken language or let Whisper detect automatically."
-                >
-                  <Select
-                    id={languageId}
-                    value={language}
-                    onChange={(e) => setLanguage(e.target.value)}
-                    options={WHISPER_LANGUAGES}
-                  />
+                <Field label="Language" hint="Select spoken language or let Whisper detect automatically.">
+                  <Select id={languageId} value={language} onChange={(e) => setLanguage(e.target.value)} options={WHISPER_LANGUAGES} />
                 </Field>
 
-                <Field
-                  label="Task"
-                  hint="Transcribe original audio or translate directly into English."
-                >
+                <Field label="Task" hint="Transcribe original audio or translate directly into English.">
                   <Select
                     id={taskId}
                     value={task}

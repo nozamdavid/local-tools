@@ -73,17 +73,10 @@ self.onmessage = async (event: MessageEvent<AvifWorkerRequest>) => {
 
       const { width, height, data, options } = req;
       const isLossless = options?.lossless ?? false;
-      const quality =
-        options?.quality !== undefined
-          ? Math.max(1, Math.min(100, Math.round(options.quality)))
-          : 75;
-      const speed =
-        options?.speed !== undefined
-          ? Math.max(0, Math.min(10, Math.round(options.speed)))
-          : 6;
+      const quality = options?.quality !== undefined ? Math.max(1, Math.min(100, Math.round(options.quality))) : 75;
+      const speed = options?.speed !== undefined ? Math.max(0, Math.min(10, Math.round(options.speed))) : 6;
 
-      const clampedData =
-        data instanceof Uint8ClampedArray ? data : new Uint8ClampedArray(data);
+      const clampedData = data instanceof Uint8ClampedArray ? data : new Uint8ClampedArray(data);
       const imgData = { data: clampedData, width, height } as unknown as ImageData;
 
       const encodedBuffer = await encode(imgData, {
@@ -92,10 +85,7 @@ self.onmessage = async (event: MessageEvent<AvifWorkerRequest>) => {
         speed,
       });
 
-      (self.postMessage as any)(
-        { id: req.id, ok: true, type: 'encode', data: encodedBuffer },
-        [encodedBuffer]
-      );
+      (self.postMessage as any)({ id: req.id, ok: true, type: 'encode', data: encodedBuffer }, [encodedBuffer]);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       self.postMessage({ id: req.id, ok: false, error: errorMsg });

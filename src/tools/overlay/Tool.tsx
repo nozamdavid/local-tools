@@ -59,14 +59,14 @@ function calculateQuickPosition(
   overlayHeight: number,
   videoWidth: number,
   videoHeight: number,
-  marginPercent: number
+  marginPercent: number,
 ): { x: number; y: number } {
   const fw = overlayWidth / videoWidth;
   const fh = overlayHeight / videoHeight;
   const m = marginPercent / 100;
 
-  let x = 0;
-  let y = 0;
+  let x: number;
+  let y: number;
 
   if (id === 'tl' || id === 'ml' || id === 'bl') {
     x = m;
@@ -217,9 +217,7 @@ export default function OverlayTool() {
       const shadowBlur = hasShadow ? Math.max(3, Math.round(fontSize * 0.12)) : 0;
       const shadowOffsetX = hasShadow ? Math.max(2, Math.round(fontSize * 0.05)) : 0;
       const shadowOffsetY = hasShadow ? Math.max(2, Math.round(fontSize * 0.05)) : 0;
-      const shadowMargin = hasShadow
-        ? Math.ceil(shadowBlur + Math.max(shadowOffsetX, shadowOffsetY) + 2)
-        : 0;
+      const shadowMargin = hasShadow ? Math.ceil(shadowBlur + Math.max(shadowOffsetX, shadowOffsetY) + 2) : 0;
 
       const pad = hasBgBox ? bgBoxPadding : 0;
 
@@ -351,7 +349,7 @@ export default function OverlayTool() {
         overlayResult.height,
         videoMeta.width,
         videoMeta.height,
-        marginPercent
+        marginPercent,
       );
       setPos(updated);
     } else {
@@ -362,14 +360,7 @@ export default function OverlayTool() {
         y: Math.max(0, Math.min(Math.max(0, 1 - fh), prev.y)),
       }));
     }
-  }, [
-    overlayResult?.width,
-    overlayResult?.height,
-    videoMeta?.width,
-    videoMeta?.height,
-    activeQuickPos,
-    marginPercent,
-  ]);
+  }, [overlayResult?.width, overlayResult?.height, videoMeta?.width, videoMeta?.height, activeQuickPos, marginPercent]);
 
   // Global window listeners during active dragging
   useEffect(() => {
@@ -449,14 +440,7 @@ export default function OverlayTool() {
       return;
     }
     setActiveQuickPos(id);
-    const newPos = calculateQuickPosition(
-      id,
-      overlayResult.width,
-      overlayResult.height,
-      videoMeta.width,
-      videoMeta.height,
-      marginPercent
-    );
+    const newPos = calculateQuickPosition(id, overlayResult.width, overlayResult.height, videoMeta.width, videoMeta.height, marginPercent);
     setPos(newPos);
   };
 
@@ -469,7 +453,7 @@ export default function OverlayTool() {
         overlayResult.height,
         videoMeta.width,
         videoMeta.height,
-        val
+        val,
       );
       setPos(newPos);
     }
@@ -516,14 +500,8 @@ export default function OverlayTool() {
       const overlayPngName = 'overlay.png';
       const outputName = withSuffix(file.name, '-watermarked', 'mp4');
 
-      const overlayX = Math.max(
-        0,
-        Math.min(videoMeta.width - overlayResult.width, Math.round(pos.x * videoMeta.width))
-      );
-      const overlayY = Math.max(
-        0,
-        Math.min(videoMeta.height - overlayResult.height, Math.round(pos.y * videoMeta.height))
-      );
+      const overlayX = Math.max(0, Math.min(videoMeta.width - overlayResult.width, Math.round(pos.x * videoMeta.width)));
+      const overlayY = Math.max(0, Math.min(videoMeta.height - overlayResult.height, Math.round(pos.y * videoMeta.height)));
 
       const args = [
         '-i',
@@ -565,11 +543,11 @@ export default function OverlayTool() {
 
   const canApply = Boolean(
     file &&
-      videoMeta &&
-      overlayResult &&
-      overlayResult.width > 0 &&
-      overlayResult.height > 0 &&
-      (overlayType === 'text' ? text.trim().length > 0 : Boolean(imageFile && imageElement))
+    videoMeta &&
+    overlayResult &&
+    overlayResult.width > 0 &&
+    overlayResult.height > 0 &&
+    (overlayType === 'text' ? text.trim().length > 0 : Boolean(imageFile && imageElement)),
   );
 
   return (
@@ -592,11 +570,7 @@ export default function OverlayTool() {
               filename={withSuffix(file.name, '-watermarked', 'mp4')}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                videoUrl ? (
-                  <video controls src={videoUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={videoUrl ? <video controls src={videoUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (
@@ -614,7 +588,10 @@ export default function OverlayTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Resolution:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}
@@ -658,23 +635,14 @@ export default function OverlayTool() {
                           }}
                           onPointerDown={handlePointerDown}
                         >
-                          <img
-                            src={overlayResult.dataUrl}
-                            alt="Watermark"
-                            className={styles.overlayImage}
-                            draggable={false}
-                          />
+                          <img src={overlayResult.dataUrl} alt="Watermark" className={styles.overlayImage} draggable={false} />
                         </div>
                       )}
                     </div>
 
                     {videoMeta && (
                       <div className={styles.playbackBar}>
-                        <button
-                          type="button"
-                          className={styles.playToggleBtn}
-                          onClick={togglePlayback}
-                        >
+                        <button type="button" className={styles.playToggleBtn} onClick={togglePlayback}>
                           {isPlaying ? '⏸ Pause' : '▶ Play'}
                         </button>
                         <input
@@ -715,9 +683,7 @@ export default function OverlayTool() {
                   <div className={styles.sectionGrid}>
                     {/* Left Column: Overlay Customization */}
                     <div className={styles.settingsCard}>
-                      <div className={styles.cardTitle}>
-                        {overlayType === 'text' ? 'Text Settings' : 'Image Settings'}
-                      </div>
+                      <div className={styles.cardTitle}>{overlayType === 'text' ? 'Text Settings' : 'Image Settings'}</div>
 
                       {overlayType === 'text' ? (
                         <>
@@ -763,26 +729,14 @@ export default function OverlayTool() {
                               />
                               <span className={styles.colorHex}>{textColor.toUpperCase()}</span>
                               <label className="checkbox-label" htmlFor={boldCheckboxId} style={{ marginLeft: 'auto' }}>
-                                <input
-                                  id={boldCheckboxId}
-                                  type="checkbox"
-                                  checked={isBold}
-                                  onChange={(e) => setIsBold(e.target.checked)}
-                                />
+                                <input id={boldCheckboxId} type="checkbox" checked={isBold} onChange={(e) => setIsBold(e.target.checked)} />
                                 <span>Bold</span>
                               </label>
                             </div>
                           </div>
 
                           <Field label="Opacity">
-                            <Slider
-                              value={textOpacity}
-                              min={0}
-                              max={100}
-                              step={1}
-                              unit="%"
-                              onChange={setTextOpacity}
-                            />
+                            <Slider value={textOpacity} min={0} max={100} step={1} unit="%" onChange={setTextOpacity} />
                           </Field>
 
                           <div className="field" style={{ marginTop: '1rem' }}>
@@ -825,25 +779,11 @@ export default function OverlayTool() {
                               </div>
 
                               <Field label="Box opacity">
-                                <Slider
-                                  value={bgBoxOpacity}
-                                  min={0}
-                                  max={100}
-                                  step={1}
-                                  unit="%"
-                                  onChange={setBgBoxOpacity}
-                                />
+                                <Slider value={bgBoxOpacity} min={0} max={100} step={1} unit="%" onChange={setBgBoxOpacity} />
                               </Field>
 
                               <Field label="Box padding">
-                                <Slider
-                                  value={bgBoxPadding}
-                                  min={0}
-                                  max={60}
-                                  step={1}
-                                  unit="px"
-                                  onChange={setBgBoxPadding}
-                                />
+                                <Slider value={bgBoxPadding} min={0} max={60} step={1} unit="px" onChange={setBgBoxPadding} />
                               </Field>
                             </div>
                           )}
@@ -860,13 +800,7 @@ export default function OverlayTool() {
                           ) : (
                             <div>
                               <div className={styles.imagePreviewRow}>
-                                {imageElement && (
-                                  <img
-                                    src={imageElement.src}
-                                    alt="Overlay thumb"
-                                    className={styles.imageThumb}
-                                  />
-                                )}
+                                {imageElement && <img src={imageElement.src} alt="Overlay thumb" className={styles.imageThumb} />}
                                 <div className={styles.imageInfo}>
                                   <div className={styles.imageName}>{imageFile.name}</div>
                                   <div className={styles.imageSize}>{formatBytes(imageFile.size)}</div>
@@ -884,25 +818,11 @@ export default function OverlayTool() {
                               </div>
 
                               <Field label="Size (percentage of video width)">
-                                <Slider
-                                  value={imageSizePercent}
-                                  min={5}
-                                  max={100}
-                                  step={1}
-                                  unit="%"
-                                  onChange={setImageSizePercent}
-                                />
+                                <Slider value={imageSizePercent} min={5} max={100} step={1} unit="%" onChange={setImageSizePercent} />
                               </Field>
 
                               <Field label="Opacity">
-                                <Slider
-                                  value={imageOpacity}
-                                  min={0}
-                                  max={100}
-                                  step={1}
-                                  unit="%"
-                                  onChange={setImageOpacity}
-                                />
+                                <Slider value={imageOpacity} min={0} max={100} step={1} unit="%" onChange={setImageOpacity} />
                               </Field>
                             </div>
                           )}
@@ -932,14 +852,7 @@ export default function OverlayTool() {
                         </Field>
 
                         <Field label="Margin from edge">
-                          <Slider
-                            value={marginPercent}
-                            min={0}
-                            max={25}
-                            step={1}
-                            unit="%"
-                            onChange={handleMarginChange}
-                          />
+                          <Slider value={marginPercent} min={0} max={25} step={1} unit="%" onChange={handleMarginChange} />
                         </Field>
 
                         <div className={styles.dragHint}>

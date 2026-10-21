@@ -1,18 +1,6 @@
-import type {
-  MeshFormat,
-  MeshModel,
-  MeshStats,
-  MeshOperation,
-  MeshCapabilities,
-} from '../_mesh/types';
+import type { MeshFormat, MeshModel, MeshStats, MeshOperation, MeshCapabilities } from '../_mesh/types';
 
-export type {
-  MeshFormat,
-  MeshModel,
-  MeshStats,
-  MeshOperation,
-  MeshCapabilities,
-};
+export type { MeshFormat, MeshModel, MeshStats, MeshOperation, MeshCapabilities };
 
 export { MESH_ACCEPT, MESH_CAPABILITIES } from '../_mesh/types';
 

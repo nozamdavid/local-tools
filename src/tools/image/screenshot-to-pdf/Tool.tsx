@@ -8,11 +8,7 @@ import { formatBytes } from '../../../lib/format';
 import { IMAGE_ACCEPT } from '../../../lib/image';
 import { useJob } from '../../../lib/useJob';
 import { useObjectUrl } from '../../../lib/useObjectUrl';
-import {
-  imagesToPdf,
-  type PageSizeOption,
-  type MarginOption,
-} from '../_pdf/imageToPdf';
+import { imagesToPdf, type PageSizeOption, type MarginOption } from '../_pdf/imageToPdf';
 import { PdfPreview } from '../_pdf/PdfPreview';
 import styles from './Tool.module.css';
 
@@ -34,9 +30,7 @@ function ScreenshotCard({
   return (
     <div className={styles.thumbCard}>
       <span className={styles.badgeIndex}>#{index + 1}</span>
-      <div className={styles.thumbImgWrapper}>
-        {url ? <img src={url} alt={file.name} className={styles.thumbImg} /> : null}
-      </div>
+      <div className={styles.thumbImgWrapper}>{url ? <img src={url} alt={file.name} className={styles.thumbImg} /> : null}</div>
       <div className={styles.thumbMeta}>
         <span className={styles.thumbName} title={file.name}>
           {file.name}
@@ -62,12 +56,7 @@ function ScreenshotCard({
         >
           ▶
         </button>
-        <button
-          type="button"
-          className={`${styles.iconBtn} ${styles.removeBtn}`}
-          onClick={() => onRemove(index)}
-          title="Remove screenshot"
-        >
+        <button type="button" className={`${styles.iconBtn} ${styles.removeBtn}`} onClick={() => onRemove(index)} title="Remove screenshot">
           ✕
         </button>
       </div>
@@ -185,10 +174,7 @@ export default function ScreenshotToPdfTool() {
                       e.target.value = '';
                     }}
                   />
-                  <Button
-                    variant="secondary"
-                    onClick={() => fileInputRef.current?.click()}
-                  >
+                  <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
                     Add more screenshots
                   </Button>
                   <Button variant="secondary" onClick={handleReset}>

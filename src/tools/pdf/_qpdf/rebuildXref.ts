@@ -55,14 +55,11 @@ export function rebuildXref(bytes: Uint8Array): Uint8Array {
   let xref = `xref\n0 ${maxObj + 1}\n`;
   for (let n = 0; n <= maxObj; n++) {
     const entry = offsets.get(n);
-    xref += entry
-      ? `${pad(entry.offset + prefix, 10)} ${pad(entry.gen, 5)} n \n`
-      : `${pad(0, 10)} ${pad(n === 0 ? 65535 : 0, 5)} f \n`;
+    xref += entry ? `${pad(entry.offset + prefix, 10)} ${pad(entry.gen, 5)} n \n` : `${pad(0, 10)} ${pad(n === 0 ? 65535 : 0, 5)} f \n`;
   }
 
   const xrefOffset = prefix + body.length + 1;
-  const tail =
-    `\n${xref}trailer\n<< /Size ${maxObj + 1} /Root ${rootRef} >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
+  const tail = `\n${xref}trailer\n<< /Size ${maxObj + 1} /Root ${rootRef} >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
 
   // the body is copied from the original bytes: the scan text is only used to find offsets
   const head = toAsciiBytes(header);

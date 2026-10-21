@@ -113,11 +113,7 @@ export default function RemoveAudioTool() {
               filename={outputFilename}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (
@@ -135,7 +131,10 @@ export default function RemoveAudioTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Resolution:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}

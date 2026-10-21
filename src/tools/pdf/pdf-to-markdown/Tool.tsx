@@ -72,13 +72,7 @@ export default function PdfToMarkdownTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -139,10 +133,7 @@ export default function PdfToMarkdownTool() {
                 <Button variant="secondary" onClick={handleCopy}>
                   {copied ? 'Copied' : 'Copy'}
                 </Button>
-                <Button
-                  variant="primary"
-                  onClick={() => downloadBlob(new Blob([markdown], { type: 'text/markdown' }), outName)}
-                >
+                <Button variant="primary" onClick={() => downloadBlob(new Blob([markdown], { type: 'text/markdown' }), outName)}>
                   Download {outName}
                 </Button>
               </div>

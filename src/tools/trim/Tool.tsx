@@ -185,11 +185,7 @@ export default function TrimTool() {
               filename={withSuffix(file.name, '-trimmed', 'mp4')}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (
@@ -207,7 +203,10 @@ export default function TrimTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Resolution:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}
@@ -218,15 +217,7 @@ export default function TrimTool() {
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
                   <div className={styles.videoContainer}>
-                    {originalUrl && (
-                      <video
-                        ref={videoRef}
-                        src={originalUrl}
-                        controls
-                        playsInline
-                        className="preview-media"
-                      />
-                    )}
+                    {originalUrl && <video ref={videoRef} src={originalUrl} controls playsInline className="preview-media" />}
                   </div>
 
                   <div className={styles.durationBadge}>

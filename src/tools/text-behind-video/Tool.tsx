@@ -79,6 +79,7 @@ export default function TextBehindVideoTool() {
 
   const originalUrl = useObjectUrl(file);
 
+  const canvasHintId = useId();
   const fontId = useId();
   const weightId = useId();
   const fpsId = useId();
@@ -245,6 +246,20 @@ export default function TextBehindVideoTool() {
     updateTextLayer({ x, y });
   };
 
+  // Keyboard equivalent of dragging: arrow keys nudge the text by 1% of the frame (5% with Shift).
+  const handleCanvasKeyDown = (e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    const step = e.shiftKey ? 0.05 : 0.01;
+    const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
+    const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
+    if (!dx && !dy) return;
+    e.preventDefault();
+    setTextLayer((prev) => ({
+      ...prev,
+      x: Math.max(0, Math.min(1, prev.x + dx)),
+      y: Math.max(0, Math.min(1, prev.y + dy)),
+    }));
+  };
+
   const handleCancel = () => {
     abortControllerRef.current?.abort();
     segmentClientRef.current?.terminate();
@@ -353,11 +368,7 @@ export default function TextBehindVideoTool() {
               filename={outputFilename}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (
@@ -375,7 +386,10 @@ export default function TextBehindVideoTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Resolution:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}
@@ -398,12 +412,18 @@ export default function TextBehindVideoTool() {
                 <div className={styles.editorLayout}>
                   {/* Left: Canvas Preview */}
                   <div className={styles.canvasWrapper}>
-                    <div className={styles.canvasHint}>
-                      Live Preview (Frame 1): Drag to reposition text behind subject
+                    <div className={styles.canvasHint} id={canvasHintId}>
+                      Live Preview (Frame 1): Drag to reposition text behind subject. With the preview focused, use the arrow keys to move
+                      it (Shift for larger steps).
                     </div>
                     <canvas
                       ref={previewCanvasRef}
                       className={styles.canvas}
+                      tabIndex={0}
+                      role="img"
+                      aria-label="Live preview of the first video frame with the text placed behind the subject"
+                      aria-describedby={canvasHintId}
+                      onKeyDown={handleCanvasKeyDown}
                       onPointerDown={handlePointerDown}
                       onPointerMove={handlePointerMove}
                       onPointerUp={handlePointerUp}

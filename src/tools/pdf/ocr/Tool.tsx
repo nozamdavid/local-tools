@@ -12,14 +12,7 @@ import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { PageThumb } from '../_thumbs/PageThumb';
 import { usePdfSource } from '../_thumbs/usePdfSource';
-import {
-  OCR_LANGUAGES,
-  addTextLayer,
-  createOcrWorker,
-  pageHasText,
-  renderPageForOcr,
-  type OcrWorker,
-} from './ocrEngine';
+import { OCR_LANGUAGES, addTextLayer, createOcrWorker, pageHasText, renderPageForOcr, type OcrWorker } from './ocrEngine';
 import styles from './Tool.module.css';
 
 type PageState = 'pending' | 'working' | 'done' | 'skipped' | 'empty';
@@ -72,8 +65,7 @@ export default function OcrTool() {
     setStatus('');
   };
 
-  const setPageState = (index: number, state: PageState) =>
-    setPageStates((prev) => prev.map((s, i) => (i === index ? state : s)));
+  const setPageState = (index: number, state: PageState) => setPageStates((prev) => prev.map((s, i) => (i === index ? state : s)));
 
   const handleRecognize = () => {
     const doc = source.doc;
@@ -141,13 +133,7 @@ export default function OcrTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -163,19 +149,9 @@ export default function OcrTool() {
 
           {job.result ? (
             <div>
-              <PdfPreview
-                blob={job.result}
-                filename={`${base}-ocr.pdf`}
-                pageCount={total}
-                onReset={handleReset}
-              />
+              <PdfPreview blob={job.result} filename={`${base}-ocr.pdf`} pageCount={total} onReset={handleReset} />
               <div className="action-buttons" style={{ marginTop: '1rem' }}>
-                <Button
-                  variant="secondary"
-                  onClick={() =>
-                    downloadBlob(new Blob([text], { type: 'text/plain' }), `${base}-ocr.txt`)
-                  }
-                >
+                <Button variant="secondary" onClick={() => downloadBlob(new Blob([text], { type: 'text/plain' }), `${base}-ocr.txt`)}>
                   Download text (.txt)
                 </Button>
               </div>
@@ -228,12 +204,7 @@ export default function OcrTool() {
                   </div>
 
                   <label className={styles.check}>
-                    <input
-                      type="checkbox"
-                      checked={skipText}
-                      onChange={(e) => setSkipText(e.target.checked)}
-                      disabled={running}
-                    />
+                    <input type="checkbox" checked={skipText} onChange={(e) => setSkipText(e.target.checked)} disabled={running} />
                     Skip pages that already contain text
                   </label>
 
@@ -245,16 +216,9 @@ export default function OcrTool() {
                         data-state={pageStates[index] ?? 'pending'}
                         className={`${styles.pageCard} ${pageStates[index] === 'working' ? styles.pageCardActive : ''}`}
                       >
-                        <PageThumb
-                          src={source.thumbs[index]}
-                          width={page.width}
-                          height={page.height}
-                          alt={`Page ${index + 1}`}
-                        />
+                        <PageThumb src={source.thumbs[index]} width={page.width} height={page.height} alt={`Page ${index + 1}`} />
                         <span className={styles.pageLabel}>Page {index + 1}</span>
-                        {pageStates[index] && (
-                          <span className={styles.pageState}>{STATE_LABEL[pageStates[index]]}</span>
-                        )}
+                        {pageStates[index] && <span className={styles.pageState}>{STATE_LABEL[pageStates[index]]}</span>}
                       </div>
                     ))}
                   </div>

@@ -1,12 +1,4 @@
-export type BarcodeFormat =
-  | 'CODE128'
-  | 'EAN13'
-  | 'EAN8'
-  | 'UPC'
-  | 'CODE39'
-  | 'ITF14'
-  | 'MSI'
-  | 'pharmacode';
+export type BarcodeFormat = 'CODE128' | 'EAN13' | 'EAN8' | 'UPC' | 'CODE39' | 'ITF14' | 'MSI' | 'pharmacode';
 
 export interface BarcodeFormatDef {
   id: BarcodeFormat;

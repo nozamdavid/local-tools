@@ -9,10 +9,7 @@ interface QpdfRuntime {
   };
 }
 
-type QpdfFactory = (options: {
-  locateFile: () => string;
-  noInitialRun: boolean;
-})=> Promise<QpdfRuntime>;
+type QpdfFactory = (options: { locateFile: () => string; noInitialRun: boolean }) => Promise<QpdfRuntime>;
 
 export interface QpdfRequest {
   input: Uint8Array;
@@ -21,9 +18,7 @@ export interface QpdfRequest {
   output: boolean;
 }
 
-export type QpdfResponse =
-  | { ok: true; code: number; output: Uint8Array; stderr: string }
-  | { ok: false; message: string };
+export type QpdfResponse = { ok: true; code: number; output: Uint8Array; stderr: string } | { ok: false; message: string };
 
 self.onmessage = async (event: MessageEvent<QpdfRequest>) => {
   const { input, args, output } = event.data;

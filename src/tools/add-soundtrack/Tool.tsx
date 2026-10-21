@@ -22,13 +22,7 @@ async function detectAudio(file: File, meta?: VideoMeta): Promise<boolean> {
     const slice = await file.slice(0, 2 * 1024 * 1024).arrayBuffer();
     const bytes = new Uint8Array(slice);
     const text = new TextDecoder('latin1').decode(bytes);
-    if (
-      text.includes('soun') ||
-      text.includes('mp4a') ||
-      text.includes('A_VORBIS') ||
-      text.includes('A_OPUS') ||
-      text.includes('A_AAC')
-    ) {
+    if (text.includes('soun') || text.includes('mp4a') || text.includes('A_VORBIS') || text.includes('A_OPUS') || text.includes('A_AAC')) {
       return true;
     }
   } catch {
@@ -144,7 +138,7 @@ export default function AddSoundtrackTool() {
         '-shortest',
         '-movflags',
         '+faststart',
-        outputName
+        outputName,
       );
 
       return await runFFmpeg({
@@ -184,11 +178,7 @@ export default function AddSoundtrackTool() {
               filename={withSuffix(videoFile.name, '-soundtrack', 'mp4')}
               kind="video"
               originalSize={videoFile.size}
-              beforePreview={
-                videoUrl ? (
-                  <video controls src={videoUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={videoUrl ? <video controls src={videoUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (
@@ -234,14 +224,7 @@ export default function AddSoundtrackTool() {
                   ) : (
                     <div style={{ marginTop: '1.5rem' }}>
                       <Field label="Music volume" hint="Adjust volume level of the added soundtrack.">
-                        <Slider
-                          value={musicVolume}
-                          min={0}
-                          max={200}
-                          step={5}
-                          unit="%"
-                          onChange={setMusicVolume}
-                        />
+                        <Slider value={musicVolume} min={0} max={200} step={5} unit="%" onChange={setMusicVolume} />
                       </Field>
 
                       {isRelevantOriginalAudio && (
@@ -263,24 +246,14 @@ export default function AddSoundtrackTool() {
 
                       <div className="field">
                         <label className="checkbox-label" htmlFor={loopMusicId}>
-                          <input
-                            id={loopMusicId}
-                            type="checkbox"
-                            checked={loopMusic}
-                            onChange={(e) => setLoopMusic(e.target.checked)}
-                          />
+                          <input id={loopMusicId} type="checkbox" checked={loopMusic} onChange={(e) => setLoopMusic(e.target.checked)} />
                           <span>Loop music to fit video</span>
                         </label>
                       </div>
 
                       <div className="field">
                         <label className="checkbox-label" htmlFor={fadeOutId}>
-                          <input
-                            id={fadeOutId}
-                            type="checkbox"
-                            checked={fadeOut}
-                            onChange={(e) => setFadeOut(e.target.checked)}
-                          />
+                          <input id={fadeOutId} type="checkbox" checked={fadeOut} onChange={(e) => setFadeOut(e.target.checked)} />
                           <span>Fade out last 2 seconds</span>
                         </label>
                       </div>

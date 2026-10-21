@@ -183,11 +183,7 @@ export default function ResizeTool() {
               filename={withSuffix(file.name, `-${targetW}x${targetH}`, 'mp4')}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (
@@ -205,7 +201,10 @@ export default function ResizeTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Source size: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Source size:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}
@@ -262,21 +261,13 @@ export default function ResizeTool() {
 
                       <div className="field">
                         <label className="checkbox-label" htmlFor={lockAspectId}>
-                          <input
-                            id={lockAspectId}
-                            type="checkbox"
-                            checked={lockAspect}
-                            onChange={(e) => setLockAspect(e.target.checked)}
-                          />
+                          <input id={lockAspectId} type="checkbox" checked={lockAspect} onChange={(e) => setLockAspect(e.target.checked)} />
                           <span>Lock aspect ratio</span>
                         </label>
                       </div>
 
                       {!lockAspect && (
-                        <Field
-                          label="Fit mode"
-                          hint="How to adapt the video to the target resolution when aspect ratio changes."
-                        >
+                        <Field label="Fit mode" hint="How to adapt the video to the target resolution when aspect ratio changes.">
                           <Select
                             id={fitModeId}
                             value={fitMode}
@@ -294,7 +285,9 @@ export default function ResizeTool() {
 
                   <div className={styles.targetBox}>
                     <span className={styles.targetLabel}>Target size</span>
-                    <span className={styles.targetDimensions}>{targetW}x{targetH}</span>
+                    <span className={styles.targetDimensions}>
+                      {targetW}x{targetH}
+                    </span>
                   </div>
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>

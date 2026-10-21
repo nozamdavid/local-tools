@@ -55,14 +55,18 @@ export default function CompareTool() {
   // Extract text when docA is available
   useEffect(() => {
     if (sourceA.doc && !extractA) {
-      extractPdfText(sourceA.doc).then(setExtractA).catch(() => {});
+      extractPdfText(sourceA.doc)
+        .then(setExtractA)
+        .catch(() => {});
     }
   }, [sourceA.doc, extractA]);
 
   // Extract text when docB is available
   useEffect(() => {
     if (sourceB.doc && !extractB) {
-      extractPdfText(sourceB.doc).then(setExtractB).catch(() => {});
+      extractPdfText(sourceB.doc)
+        .then(setExtractB)
+        .catch(() => {});
     }
   }, [sourceB.doc, extractB]);
 
@@ -172,10 +176,7 @@ export default function CompareTool() {
     if (!exportReport || !sourceA.file || !sourceB.file) return;
     const nameA = sourceA.file.name.replace(/\.[^/.]+$/, '');
     const nameB = sourceB.file.name.replace(/\.[^/.]+$/, '');
-    downloadBlob(
-      new Blob([exportReport], { type: 'text/plain;charset=utf-8' }),
-      `compare-${nameA}-vs-${nameB}.txt`
-    );
+    downloadBlob(new Blob([exportReport], { type: 'text/plain;charset=utf-8' }), `compare-${nameA}-vs-${nameB}.txt`);
   };
 
   const activePageInfo = pageAlignments[selectedPageIndex] ?? pageAlignments[0];
@@ -198,20 +199,8 @@ export default function CompareTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {sourceA.password && (
-        <PasswordDialog
-          reason={sourceA.password.reason}
-          onSubmit={sourceA.password.submit}
-          onCancel={handleReset}
-        />
-      )}
-      {sourceB.password && (
-        <PasswordDialog
-          reason={sourceB.password.reason}
-          onSubmit={sourceB.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {sourceA.password && <PasswordDialog reason={sourceA.password.reason} onSubmit={sourceA.password.submit} onCancel={handleReset} />}
+      {sourceB.password && <PasswordDialog reason={sourceB.password.reason} onSubmit={sourceB.password.submit} onCancel={handleReset} />}
 
       {!bothLoaded ? (
         <div>
@@ -219,9 +208,7 @@ export default function CompareTool() {
             <div className={styles.uploadCard}>
               <div className={styles.cardHeader}>
                 <span className={styles.cardTitle}>Document A (Original)</span>
-                {sourceA.file && (
-                  <span className="badge badge-success">{formatBytes(sourceA.file.size)}</span>
-                )}
+                {sourceA.file && <span className="badge badge-success">{formatBytes(sourceA.file.size)}</span>}
               </div>
               {!sourceA.file ? (
                 <FileDrop
@@ -254,9 +241,7 @@ export default function CompareTool() {
             <div className={styles.uploadCard}>
               <div className={styles.cardHeader}>
                 <span className={styles.cardTitle}>Document B (Comparison)</span>
-                {sourceB.file && (
-                  <span className="badge badge-success">{formatBytes(sourceB.file.size)}</span>
-                )}
+                {sourceB.file && <span className="badge badge-success">{formatBytes(sourceB.file.size)}</span>}
               </div>
               {!sourceB.file ? (
                 <FileDrop
@@ -317,10 +302,7 @@ export default function CompareTool() {
             >
               Visual Page Comparison
             </button>
-            <button
-              className={`${styles.tabBtn} ${activeTab === 'text' ? styles.tabBtnActive : ''}`}
-              onClick={() => setActiveTab('text')}
-            >
+            <button className={`${styles.tabBtn} ${activeTab === 'text' ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('text')}>
               Text Differences
             </button>
             <button
@@ -345,26 +327,17 @@ export default function CompareTool() {
                   className={`${styles.pageThumbCard} ${idx === selectedPageIndex ? styles.pageThumbCardActive : ''}`}
                   onClick={() => setSelectedPageIndex(idx)}
                 >
-                  <PageThumb
-                    src={sourceA.thumbs[idx] || sourceB.thumbs[idx]}
-                    width={w}
-                    height={h}
-                    alt={`Page ${idx + 1}`}
-                  />
+                  <PageThumb src={sourceA.thumbs[idx] || sourceB.thumbs[idx]} width={w} height={h} alt={`Page ${idx + 1}`} />
                   <span
                     className={`${styles.pageBadge} ${
                       align.status === 'deleted'
                         ? styles.badgeDeleted
                         : align.status === 'inserted'
-                        ? styles.badgeInserted
-                        : styles.badgeNormal
+                          ? styles.badgeInserted
+                          : styles.badgeNormal
                     }`}
                   >
-                    {align.status === 'deleted'
-                      ? 'Deleted'
-                      : align.status === 'inserted'
-                      ? 'Inserted'
-                      : `Page ${idx + 1}`}
+                    {align.status === 'deleted' ? 'Deleted' : align.status === 'inserted' ? 'Inserted' : `Page ${idx + 1}`}
                   </span>
                 </div>
               );
@@ -395,11 +368,7 @@ export default function CompareTool() {
                 </span>
 
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto', cursor: 'pointer' }}>
-                  <input
-                    type="checkbox"
-                    checked={blendMode}
-                    onChange={(e) => setBlendMode(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={blendMode} onChange={(e) => setBlendMode(e.target.checked)} />
                   Difference Blend Mode
                 </label>
 
@@ -461,9 +430,7 @@ export default function CompareTool() {
           {activeTab === 'text' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <h4 style={{ margin: 0 }}>
-                  Differences on Page {selectedPageIndex + 1}
-                </h4>
+                <h4 style={{ margin: 0 }}>Differences on Page {selectedPageIndex + 1}</h4>
                 <div className="meta-chips">
                   <span className="badge badge-success">+{textDiffPage.filter((p) => p.added).length} added</span>
                   <span className="badge badge-danger" style={{ backgroundColor: 'var(--danger-soft)', color: 'var(--danger)' }}>
@@ -474,11 +441,7 @@ export default function CompareTool() {
 
               <div className={styles.diffTextContainer}>
                 {textDiffPage.map((part, index) => {
-                  const className = part.added
-                    ? styles.diffLineAdd
-                    : part.removed
-                    ? styles.diffLineDel
-                    : styles.diffLineSame;
+                  const className = part.added ? styles.diffLineAdd : part.removed ? styles.diffLineDel : styles.diffLineSame;
                   const prefix = part.added ? '+ ' : part.removed ? '- ' : '  ';
 
                   return (
@@ -503,12 +466,7 @@ export default function CompareTool() {
           {activeTab === 'export' && (
             <div>
               <h4 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Full Document Comparison Report</h4>
-              <textarea
-                className={styles.exportTextarea}
-                value={exportReport}
-                readOnly
-                aria-label="Exported comparison report"
-              />
+              <textarea className={styles.exportTextarea} value={exportReport} readOnly aria-label="Exported comparison report" />
               <div className="action-buttons" style={{ marginTop: '1rem' }}>
                 <Button variant="secondary" onClick={handleCopyReport}>
                   {copied ? 'Copied!' : 'Copy Report'}

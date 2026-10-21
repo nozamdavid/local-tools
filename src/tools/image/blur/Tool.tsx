@@ -31,11 +31,7 @@ const DEFAULT_OPTIONS: BlurOptions = {
   regions: [],
 };
 
-function renderBlur(
-  source: HTMLCanvasElement,
-  options: BlurOptions,
-  isPreview: boolean
-): HTMLCanvasElement {
+function renderBlur(source: HTMLCanvasElement, options: BlurOptions, isPreview: boolean): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = source.width;
   canvas.height = source.height;
@@ -185,10 +181,7 @@ export default function BlurTool() {
                 width: `${width}%`,
                 height: `${height}%`,
                 border: '2px dashed #6366f1',
-                backgroundColor:
-                  options.regionType === 'solid'
-                    ? options.solidColor
-                    : 'rgba(99, 102, 241, 0.2)',
+                backgroundColor: options.regionType === 'solid' ? options.solidColor : 'rgba(99, 102, 241, 0.2)',
                 opacity: options.regionType === 'solid' ? 0.85 : 1,
                 pointerEvents: 'none',
               }}
@@ -219,12 +212,8 @@ export default function BlurTool() {
                   top: `${reg.y * 100}%`,
                   width: `${reg.w * 100}%`,
                   height: `${reg.h * 100}%`,
-                  border:
-                    reg.type === 'solid' ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.7)',
-                  backgroundColor:
-                    reg.type === 'solid'
-                      ? reg.color || options.solidColor || '#000000'
-                      : 'rgba(255, 255, 255, 0.08)',
+                  border: reg.type === 'solid' ? '1px solid #ffffff' : '1px solid rgba(255, 255, 255, 0.7)',
+                  backgroundColor: reg.type === 'solid' ? reg.color || options.solidColor || '#000000' : 'rgba(255, 255, 255, 0.08)',
                   display: 'flex',
                   alignItems: 'flex-start',
                   justifyContent: 'flex-end',
@@ -367,9 +356,12 @@ export default function BlurTool() {
                     lineHeight: '1.45',
                   }}
                 >
-                  💡 <strong>How to censor regions:</strong> Click and drag on the image above to draw rectangles over areas you want to censor.
+                  💡 <strong>How to censor regions:</strong> Click and drag on the image above to draw rectangles over areas you want to
+                  censor.
                   <div style={{ marginTop: '0.4rem' }}>
-                    🔒 <strong>Solid mode for sensitive data:</strong> Standard blur or pixelation can sometimes be partially reconstructed or unblurred by computer vision tools. Solid redaction permanently burns 100% opaque color rectangles into the fresh exported image pixels, ensuring sensitive data (passwords, credit cards, PII) cannot be recovered.
+                    🔒 <strong>Solid mode for sensitive data:</strong> Standard blur or pixelation can sometimes be partially reconstructed
+                    or unblurred by computer vision tools. Solid redaction permanently burns 100% opaque color rectangles into the fresh
+                    exported image pixels, ensuring sensitive data (passwords, credit cards, PII) cannot be recovered.
                   </div>
                 </div>
 

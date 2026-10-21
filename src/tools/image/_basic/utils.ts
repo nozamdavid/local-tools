@@ -77,7 +77,7 @@ export function renderScaledCanvas(
   let curCanvas = document.createElement('canvas');
   curCanvas.width = curW;
   curCanvas.height = curH;
-  let curCtx = curCanvas.getContext('2d');
+  const curCtx = curCanvas.getContext('2d');
   if (!curCtx) throw new Error('Canvas 2D unavailable');
   curCtx.imageSmoothingEnabled = true;
   curCtx.imageSmoothingQuality = 'high';

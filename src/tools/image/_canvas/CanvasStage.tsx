@@ -1,10 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import {
-  CanvasDocument,
-  Layer,
-  TransformHandle,
-  PathLayer,
-} from './types';
+import { CanvasDocument, Layer, TransformHandle, PathLayer } from './types';
 import { renderDocument } from './render';
 import styles from './CanvasStage.module.css';
 
@@ -47,8 +42,26 @@ export interface CanvasStageProps {
 }
 
 type DragAction =
-  | { type: 'move'; layerId: string; startX: number; startY: number; origLayerX: number; origLayerY: number; origPoints?: Array<{ x: number; y: number }> }
-  | { type: 'resize'; layerId: string; handle: TransformHandle; startX: number; startY: number; origX: number; origY: number; origW: number; origH: number }
+  | {
+      type: 'move';
+      layerId: string;
+      startX: number;
+      startY: number;
+      origLayerX: number;
+      origLayerY: number;
+      origPoints?: Array<{ x: number; y: number }>;
+    }
+  | {
+      type: 'resize';
+      layerId: string;
+      handle: TransformHandle;
+      startX: number;
+      startY: number;
+      origX: number;
+      origY: number;
+      origW: number;
+      origH: number;
+    }
   | { type: 'rotate'; layerId: string; centerX: number; centerY: number; origRotation: number; startAngle: number }
   | { type: 'draw'; layerId: string }
   | { type: 'create-shape'; startX: number; startY: number; shape: ShapeConfig }
@@ -238,11 +251,7 @@ export function CanvasStage({
   };
 
   // Hit test handle
-  const hitTestHandle = (
-    layer: Layer,
-    sx: number,
-    sy: number,
-  ): TransformHandle | null => {
+  const hitTestHandle = (layer: Layer, sx: number, sy: number): TransformHandle | null => {
     const hitRadius = 14 / scale;
     const cx = layer.x + layer.width / 2;
     const cy = layer.y + layer.height / 2;
@@ -300,12 +309,7 @@ export function CanvasStage({
     const unrotX = cx + dx * Math.cos(rad) - dy * Math.sin(rad);
     const unrotY = cy + dx * Math.sin(rad) + dy * Math.cos(rad);
 
-    return (
-      unrotX >= layer.x &&
-      unrotX <= layer.x + layer.width &&
-      unrotY >= layer.y &&
-      unrotY <= layer.y + layer.height
-    );
+    return unrotX >= layer.x && unrotX <= layer.x + layer.width && unrotY >= layer.y && unrotY <= layer.y + layer.height;
   };
 
   // Pointer Down
@@ -335,12 +339,7 @@ export function CanvasStage({
         return;
       }
       // Inside crop rect: move
-      if (
-        sx >= cropRect.x &&
-        sx <= cropRect.x + cropRect.width &&
-        sy >= cropRect.y &&
-        sy <= cropRect.y + cropRect.height
-      ) {
+      if (sx >= cropRect.x && sx <= cropRect.x + cropRect.width && sy >= cropRect.y && sy <= cropRect.y + cropRect.height) {
         dragActionRef.current = { type: 'crop-move', startX: sx, startY: sy, origRect: { ...cropRect } };
         return;
       }
@@ -498,9 +497,7 @@ export function CanvasStage({
       onUpdateDocSilent((prev) => ({
         ...prev,
         layers: prev.layers.map((l) =>
-          l.id === action.layerId && l.type === 'path'
-            ? { ...l, points: [...l.points, { x: sx, y: sy }] }
-            : l
+          l.id === action.layerId && l.type === 'path' ? { ...l, points: [...l.points, { x: sx, y: sy }] } : l,
         ),
       }));
       return;
@@ -616,9 +613,7 @@ export function CanvasStage({
 
       onUpdateDocSilent((prev) => ({
         ...prev,
-        layers: prev.layers.map((l) =>
-          l.id === action.layerId ? { ...l, rotation: newRotation } : l
-        ),
+        layers: prev.layers.map((l) => (l.id === action.layerId ? { ...l, rotation: newRotation } : l)),
       }));
       return;
     }
@@ -654,9 +649,7 @@ export function CanvasStage({
       onUpdateDocSilent((prev) => ({
         ...prev,
         layers: prev.layers.map((l) =>
-          l.id === orig.layerId
-            ? { ...l, x: Math.round(nx), y: Math.round(ny), width: Math.round(nw), height: Math.round(nh) }
-            : l
+          l.id === orig.layerId ? { ...l, x: Math.round(nx), y: Math.round(ny), width: Math.round(nw), height: Math.round(nh) } : l,
         ),
       }));
     }
@@ -764,12 +757,7 @@ export function CanvasStage({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
-      ) {
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return;
       }
 
@@ -795,6 +783,8 @@ export function CanvasStage({
         <canvas
           ref={canvasRef}
           data-testid="canvas-stage"
+          role="img"
+          aria-label="Editing canvas. Placing, moving and resizing layers needs a pointer; the side panel controls and the Delete key edit the selected layer."
           className={`${styles.canvasElement} ${getCursorClass()}`}
           width={doc.width}
           height={doc.height}

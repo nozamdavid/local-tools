@@ -5,6 +5,8 @@ import { ScrollToTop } from './components/ScrollToTop';
 import { Home } from './pages/Home';
 import { MediaIndex } from './pages/MediaIndex';
 import { DesignSystem } from './pages/DesignSystem';
+import { NotFound } from './pages/NotFound';
+import { RouteErrorBoundary } from './components/ErrorBoundary';
 import { tools } from './tools/registry';
 
 function LoadingFallback() {
@@ -36,9 +38,11 @@ export function App() {
                 key={tool.id}
                 path={tool.path}
                 element={
-                  <Suspense fallback={<LoadingFallback />}>
-                    <Component />
-                  </Suspense>
+                  <RouteErrorBoundary>
+                    <Suspense fallback={<LoadingFallback />}>
+                      <Component />
+                    </Suspense>
+                  </RouteErrorBoundary>
                 }
               />
             );
@@ -49,7 +53,7 @@ export function App() {
             .map((tool) => (
               <Route key={`legacy-${tool.id}`} path={`/${tool.id}`} element={<Navigate to={tool.path} replace />} />
             ))}
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>

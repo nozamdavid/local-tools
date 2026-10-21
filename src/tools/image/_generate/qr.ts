@@ -35,21 +35,12 @@ export interface VCardData {
 
 /** Escapes special characters for standard WiFi QR code strings */
 export function escapeWifiString(str: string): string {
-  return str
-    .replace(/\\/g, '\\\\')
-    .replace(/;/g, '\\;')
-    .replace(/,/g, '\\,')
-    .replace(/:/g, '\\:')
-    .replace(/"/g, '\\"');
+  return str.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/:/g, '\\:').replace(/"/g, '\\"');
 }
 
 /** Escapes special characters for vCard field values */
 export function escapeVCardString(str: string): string {
-  return str
-    .replace(/\\/g, '\\\\')
-    .replace(/;/g, '\\;')
-    .replace(/,/g, '\\,')
-    .replace(/\n/g, '\\n');
+  return str.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
 }
 
 export function buildQrString(

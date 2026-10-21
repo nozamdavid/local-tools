@@ -59,10 +59,7 @@ export function PageSelector({ pageCount, thumbs, selected, onChange, tone, rang
           value={text}
           onChange={(e) => handleText(e.target.value)}
         />
-        <Button
-          variant="secondary"
-          onClick={() => commit(new Set(Array.from({ length: pageCount }, (_, i) => i + 1)))}
-        >
+        <Button variant="secondary" onClick={() => commit(new Set(Array.from({ length: pageCount }, (_, i) => i + 1)))}>
           Select all
         </Button>
         <Button variant="secondary" onClick={() => commit(new Set())}>

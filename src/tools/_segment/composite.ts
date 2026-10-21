@@ -1,11 +1,7 @@
 import type { TextLayer, VideoMaxResolution } from './types';
 
-export function calculateTargetSize(
-  origW: number,
-  origH: number,
-  maxResolution: VideoMaxResolution
-): { width: number; height: number } {
-  let targetMax = Infinity;
+export function calculateTargetSize(origW: number, origH: number, maxResolution: VideoMaxResolution): { width: number; height: number } {
+  let targetMax: number;
   switch (maxResolution) {
     case '1080p':
       targetMax = 1920;
@@ -41,13 +37,7 @@ export function calculateTargetSize(
   return { width, height };
 }
 
-export function drawTextLayers(
-  ctx: CanvasRenderingContext2D,
-  layers: TextLayer[],
-  width: number,
-  height: number,
-  baseScale = 1
-) {
+export function drawTextLayers(ctx: CanvasRenderingContext2D, layers: TextLayer[], width: number, height: number, baseScale = 1) {
   for (const layer of layers) {
     if (!layer.text) continue;
 
@@ -98,7 +88,7 @@ export function drawSubjectOnTop(
   frameImageData: ImageData,
   mask: Uint8ClampedArray,
   width: number,
-  height: number
+  height: number,
 ) {
   const { canvas, ctx } = getScratchContext(width, height);
   const subjectData = ctx.createImageData(width, height);
@@ -125,7 +115,7 @@ export function compositeRemoveBackgroundFrame(
   width: number,
   height: number,
   mode: 'webm' | 'solid' | 'greenscreen',
-  solidColor = '#ffffff'
+  solidColor = '#ffffff',
 ) {
   if (mode === 'webm') {
     // Transparent background

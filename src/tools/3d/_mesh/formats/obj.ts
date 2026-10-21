@@ -6,9 +6,7 @@ import type { MeshModel } from '../types';
  * Handles negative indices and polygon fan triangulation.
  */
 export function parseOBJ(text: string, name = 'model'): MeshModel {
-  const warnings: string[] = [
-    'OBJ files are unitless; coordinates assumed to be in millimeters (mm).',
-  ];
+  const warnings: string[] = ['OBJ files are unitless; coordinates assumed to be in millimeters (mm).'];
 
   let hasMaterials = false;
   let hasUVs = false;
@@ -35,11 +33,7 @@ export function parseOBJ(text: string, name = 'model'): MeshModel {
     if (line.startsWith('v ')) {
       const parts = line.substring(2).trim().split(/\s+/);
       if (parts.length >= 3) {
-        rawPositions.push(
-          parseFloat(parts[0]),
-          parseFloat(parts[1]),
-          parseFloat(parts[2])
-        );
+        rawPositions.push(parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]));
       }
       continue;
     }
@@ -55,7 +49,7 @@ export function parseOBJ(text: string, name = 'model'): MeshModel {
         const token = parts[p];
         const slashIdx = token.indexOf('/');
         const vertexStr = slashIdx === -1 ? token : token.substring(0, slashIdx);
-        let vIdx = parseInt(vertexStr, 10);
+        const vIdx = parseInt(vertexStr, 10);
 
         if (isNaN(vIdx)) continue;
 

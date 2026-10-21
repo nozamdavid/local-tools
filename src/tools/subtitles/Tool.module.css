@@ -184,8 +184,8 @@
   .cueRow {
     grid-template-columns: 1fr 1fr;
     grid-template-areas:
-      "start end"
-      "text text"
-      "play delete";
+      'start end'
+      'text text'
+      'play delete';
   }
 }

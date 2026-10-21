@@ -47,14 +47,7 @@ export function getAdjustmentFilter(doc: CanvasDocument): string {
   return parts.length > 0 ? parts.join(' ') : 'none';
 }
 
-function drawRoundedRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
+function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
   const radius = Math.min(r, Math.min(w, h) / 2);
   ctx.beginPath();
   ctx.moveTo(x + radius, y);
@@ -212,11 +205,7 @@ function renderTextLayer(ctx: CanvasRenderingContext2D, layer: TextLayer) {
   });
 }
 
-export function renderLayer(
-  ctx: CanvasRenderingContext2D,
-  layer: Layer,
-  isPreview = false,
-) {
+export function renderLayer(ctx: CanvasRenderingContext2D, layer: Layer, isPreview = false) {
   if (layer.opacity !== undefined && layer.opacity <= 0) return;
 
   if (layer.type === 'redact') {
@@ -390,11 +379,7 @@ export function renderLayer(
   ctx.restore();
 }
 
-export function renderDocument(
-  ctx: CanvasRenderingContext2D,
-  doc: CanvasDocument,
-  isPreview = false,
-) {
+export function renderDocument(ctx: CanvasRenderingContext2D, doc: CanvasDocument, isPreview = false) {
   ctx.clearRect(0, 0, doc.width, doc.height);
 
   if (doc.backgroundColor) {
@@ -415,11 +400,7 @@ export function renderDocument(
   }
 }
 
-export async function exportDocument(
-  doc: CanvasDocument,
-  mime: EncodableMime,
-  quality = 0.92,
-): Promise<Blob> {
+export async function exportDocument(doc: CanvasDocument, mime: EncodableMime, quality = 0.92): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.round(doc.width));
   canvas.height = Math.max(1, Math.round(doc.height));

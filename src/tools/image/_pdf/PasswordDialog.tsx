@@ -41,13 +41,9 @@ export function PasswordDialog({ reason, onSubmit, onCancel }: PasswordDialogPro
           boxShadow: 'var(--shadow-lg)',
         }}
       >
-        <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem', fontWeight: 600 }}>
-          🔒 Password Protected PDF
-        </h3>
+        <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem', fontWeight: 600 }}>🔒 Password Protected PDF</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-          {reason === 2
-            ? 'Incorrect password. Please try again.'
-            : 'This PDF requires a password to open. Enter the password below.'}
+          {reason === 2 ? 'Incorrect password. Please try again.' : 'This PDF requires a password to open. Enter the password below.'}
         </p>
 
         <form onSubmit={handleSubmit}>

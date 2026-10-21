@@ -19,7 +19,7 @@ function makeCanvas(width: number, height: number): HTMLCanvasElement {
 
 function toBlob(canvas: HTMLCanvasElement, type: string, quality?: number): Promise<Blob> {
   return new Promise((resolve, reject) =>
-    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Image encoding failed.'))), type, quality)
+    canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Image encoding failed.'))), type, quality),
   );
 }
 
@@ -102,11 +102,7 @@ function enhanceCanvas(canvas: HTMLCanvasElement, mode: Enhance): void {
       for (let x = 0; x < width; x++) {
         const x0 = Math.max(0, x - radius);
         const x1 = Math.min(width, x + radius + 1);
-        const sum =
-          integral[y1 * stride + x1] -
-          integral[y0 * stride + x1] -
-          integral[y1 * stride + x0] +
-          integral[y0 * stride + x0];
+        const sum = integral[y1 * stride + x1] - integral[y0 * stride + x1] - integral[y1 * stride + x0] + integral[y0 * stride + x0];
         const mean = sum / ((x1 - x0) * (y1 - y0));
         const v = gray[y * width + x] < mean * 0.9 ? 0 : 255;
         const i = (y * width + x) * 4;
@@ -138,18 +134,12 @@ export async function makeThumbnail(blob: Blob, mode: Enhance): Promise<string> 
   return url;
 }
 
-export async function buildPdf(
-  images: Blob[],
-  mode: Enhance,
-  size: PageSize,
-  onProgress: (ratio: number) => void
-): Promise<Blob> {
+export async function buildPdf(images: Blob[], mode: Enhance, size: PageSize, onProgress: (ratio: number) => void): Promise<Blob> {
   const pdf = await PDFDocument.create();
 
   for (let i = 0; i < images.length; i++) {
     const canvas = await drawEnhanced(images[i], mode, MAX_SIDE);
-    const encoded =
-      mode === 'bw' ? await toBlob(canvas, 'image/png') : await toBlob(canvas, 'image/jpeg', 0.9);
+    const encoded = mode === 'bw' ? await toBlob(canvas, 'image/png') : await toBlob(canvas, 'image/jpeg', 0.9);
     const bytes = new Uint8Array(await encoded.arrayBuffer());
     const embedded = mode === 'bw' ? await pdf.embedPng(bytes) : await pdf.embedJpg(bytes);
     canvas.width = 0;

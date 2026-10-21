@@ -34,13 +34,7 @@ async function detectAudio(file: File, meta?: VideoMeta): Promise<boolean> {
     const slice = await file.slice(0, 2 * 1024 * 1024).arrayBuffer();
     const bytes = new Uint8Array(slice);
     const text = new TextDecoder('latin1').decode(bytes);
-    if (
-      text.includes('soun') ||
-      text.includes('mp4a') ||
-      text.includes('A_VORBIS') ||
-      text.includes('A_OPUS') ||
-      text.includes('A_AAC')
-    ) {
+    if (text.includes('soun') || text.includes('mp4a') || text.includes('A_VORBIS') || text.includes('A_OPUS') || text.includes('A_AAC')) {
       return true;
     }
   } catch {
@@ -73,14 +67,10 @@ export default function MergeTool() {
       try {
         const vMeta = await getVideoMeta(item.file);
         const hasAudio = await detectAudio(item.file, vMeta);
-        setItems((current) =>
-          current.map((it) => (it.id === item.id ? { ...it, meta: vMeta, hasAudio } : it))
-        );
+        setItems((current) => current.map((it) => (it.id === item.id ? { ...it, meta: vMeta, hasAudio } : it)));
       } catch {
         const hasAudio = await detectAudio(item.file);
-        setItems((current) =>
-          current.map((it) => (it.id === item.id ? { ...it, hasAudio } : it))
-        );
+        setItems((current) => current.map((it) => (it.id === item.id ? { ...it, hasAudio } : it)));
       }
     }
   };
@@ -144,18 +134,15 @@ export default function MergeTool() {
         const item = items[i];
         // video filter
         filterParts.push(
-          `[${i}:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2,fps=30,setsar=1[v${i}]`
+          `[${i}:v]scale=${targetW}:${targetH}:force_original_aspect_ratio=decrease,pad=${targetW}:${targetH}:(ow-iw)/2:(oh-ih)/2,fps=30,setsar=1[v${i}]`,
         );
 
         // audio filter
         if (item.hasAudio) {
           filterParts.push(`[${i}:a]aresample=48000,aformat=channel_layouts=stereo[a${i}]`);
         } else {
-          const duration =
-            item.meta?.duration && item.meta.duration > 0 ? item.meta.duration.toFixed(3) : '10';
-          filterParts.push(
-            `anullsrc=channel_layout=stereo:sample_rate=48000,atrim=0:${duration}[a${i}]`
-          );
+          const duration = item.meta?.duration && item.meta.duration > 0 ? item.meta.duration.toFixed(3) : '10';
+          filterParts.push(`anullsrc=channel_layout=stereo:sample_rate=48000,atrim=0:${duration}[a${i}]`);
         }
       }
 
@@ -194,7 +181,7 @@ export default function MergeTool() {
         '192k',
         '-movflags',
         '+faststart',
-        'merged.mp4'
+        'merged.mp4',
       );
 
       return await runFFmpeg({
@@ -223,19 +210,11 @@ export default function MergeTool() {
           {job.error && <div className="error-banner">{job.error}</div>}
 
           {job.status === 'done' && job.result ? (
-            <ResultPanel
-              blob={job.result}
-              filename="merged.mp4"
-              kind="video"
-              originalSize={totalSize}
-              onReset={handleReset}
-            />
+            <ResultPanel blob={job.result} filename="merged.mp4" kind="video" originalSize={totalSize} onReset={handleReset} />
           ) : (
             <div>
               <div className="toolbar">
-                <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>
-                  Clips to merge ({items.length})
-                </span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>Clips to merge ({items.length})</span>
                 <Button
                   variant="secondary"
                   onClick={() => addFilesInputRef.current?.click()}
@@ -338,11 +317,7 @@ export default function MergeTool() {
                     <Button variant="secondary" onClick={handleReset}>
                       Clear all
                     </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleMerge}
-                      disabled={items.length < 2}
-                    >
+                    <Button variant="primary" onClick={handleMerge} disabled={items.length < 2}>
                       {items.length < 2 ? 'Add at least 2 videos' : 'Merge videos'}
                     </Button>
                   </div>

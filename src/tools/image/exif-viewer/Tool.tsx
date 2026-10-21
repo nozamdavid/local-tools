@@ -281,10 +281,7 @@ export default function ExifViewerTool() {
   };
 
   const hasSensitiveData =
-    grouped &&
-    (grouped.gps.length > 0 ||
-      grouped.camera.some((r) => r.sensitive) ||
-      grouped.other.some((r) => r.sensitive));
+    grouped && (grouped.gps.length > 0 || grouped.camera.some((r) => r.sensitive) || grouped.other.some((r) => r.sensitive));
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="img-exif-viewer">
@@ -334,9 +331,8 @@ export default function ExifViewerTool() {
                 <div className={styles.privacyBanner}>
                   <span style={{ fontSize: '1.25rem' }}>⚠️</span>
                   <div>
-                    <strong>Privacy Warning:</strong> This photo contains privacy-sensitive
-                    information such as GPS location or device serial numbers. Anyone with this
-                    original file can view these details.
+                    <strong>Privacy Warning:</strong> This photo contains privacy-sensitive information such as GPS location or device
+                    serial numbers. Anyone with this original file can view these details.
                   </div>
                 </div>
               )}
@@ -345,9 +341,7 @@ export default function ExifViewerTool() {
                 <div className={styles.thumbnailCard}>
                   <img src={thumbnailUrl} alt="Embedded EXIF Thumbnail" className={styles.thumbImg} />
                   <div>
-                    <strong style={{ display: 'block', marginBottom: '0.25rem' }}>
-                      Embedded EXIF Thumbnail
-                    </strong>
+                    <strong style={{ display: 'block', marginBottom: '0.25rem' }}>Embedded EXIF Thumbnail</strong>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                       A low-resolution preview image stored directly inside the metadata header.
                     </span>
@@ -407,15 +401,10 @@ export default function ExifViewerTool() {
                       <table className={styles.table}>
                         <tbody>
                           {grouped.camera.map((row) => (
-                            <tr
-                              key={row.key}
-                              className={row.sensitive ? styles.sensitiveRow : undefined}
-                            >
+                            <tr key={row.key} className={row.sensitive ? styles.sensitiveRow : undefined}>
                               <th>
                                 {row.label}
-                                {row.sensitive && (
-                                  <span className={styles.sensitiveTag}>Sensitive</span>
-                                )}
+                                {row.sensitive && <span className={styles.sensitiveTag}>Sensitive</span>}
                               </th>
                               <td>{row.value}</td>
                             </tr>
@@ -503,15 +492,10 @@ export default function ExifViewerTool() {
                       <table className={styles.table}>
                         <tbody>
                           {grouped.other.map((row) => (
-                            <tr
-                              key={row.key}
-                              className={row.sensitive ? styles.sensitiveRow : undefined}
-                            >
+                            <tr key={row.key} className={row.sensitive ? styles.sensitiveRow : undefined}>
                               <th>
                                 {row.label}
-                                {row.sensitive && (
-                                  <span className={styles.sensitiveTag}>Sensitive</span>
-                                )}
+                                {row.sensitive && <span className={styles.sensitiveTag}>Sensitive</span>}
                               </th>
                               <td>{row.value}</td>
                             </tr>

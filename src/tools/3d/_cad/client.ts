@@ -1,10 +1,4 @@
-import type {
-  CadFormat,
-  CadQuality,
-  CadWorkerRequest,
-  CadWorkerResponse,
-  MeshModel,
-} from './types';
+import type { CadFormat, CadQuality, CadWorkerRequest, CadWorkerResponse, MeshModel } from './types';
 
 export type { CadQuality, MeshModel };
 
@@ -78,7 +72,7 @@ class CadJobManager {
     const next = this.queue.then(task, task);
     this.queue = next.then(
       () => {},
-      () => {}
+      () => {},
     );
     return next;
   }
@@ -91,9 +85,7 @@ class CadJobManager {
 
     if (file.size > MAX_CAD_FILE_SIZE) {
       const mb = (file.size / (1024 * 1024)).toFixed(1);
-      return Promise.reject(
-        new Error(`CAD file size (${mb} MB) exceeds maximum allowed limit of 25 MB.`)
-      );
+      return Promise.reject(new Error(`CAD file size (${mb} MB) exceeds maximum allowed limit of 25 MB.`));
     }
 
     const format = getCadFormat(file.name, file.type);
@@ -149,32 +141,18 @@ export function getCadFormat(fileName: string, mimeType?: string): CadFormat {
   }
   if (mimeType) {
     const m = mimeType.trim().toLowerCase();
-    if (
-      m === 'model/step' ||
-      m === 'application/step' ||
-      m === 'model/x-step' ||
-      m === 'model/x.step'
-    ) {
+    if (m === 'model/step' || m === 'application/step' || m === 'model/x-step' || m === 'model/x.step') {
       return 'step';
     }
-    if (
-      m === 'model/iges' ||
-      m === 'application/iges' ||
-      m === 'model/x-iges' ||
-      m === 'model/x.iges'
-    ) {
+    if (m === 'model/iges' || m === 'application/iges' || m === 'model/x-iges' || m === 'model/x.iges') {
       return 'iges';
     }
-    if (
-      m === 'model/brep' ||
-      m === 'model/x-brep' ||
-      m === 'application/x-brep'
-    ) {
+    if (m === 'model/brep' || m === 'model/x-brep' || m === 'application/x-brep') {
       return 'brep';
     }
   }
   throw new Error(
-    `Unsupported file format for "${fileName}". Supported CAD formats are STEP (.step, .stp), IGES (.iges, .igs), and BREP (.brep).`
+    `Unsupported file format for "${fileName}". Supported CAD formats are STEP (.step, .stp), IGES (.iges, .igs), and BREP (.brep).`,
   );
 }
 
@@ -187,10 +165,7 @@ const manager = new CadJobManager();
  * @param quality Tessellation quality preset ('coarse', 'standard', or 'fine').
  * @returns Promise resolving to a MeshModel with coordinates normalized to millimeters.
  */
-export function importCadModel(
-  file: File,
-  quality: CadQuality = 'standard'
-): Promise<MeshModel> {
+export function importCadModel(file: File, quality: CadQuality = 'standard'): Promise<MeshModel> {
   return manager.convert(file, quality);
 }
 

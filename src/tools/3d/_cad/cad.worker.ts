@@ -2,13 +2,7 @@
 
 import occtimportjs, { type OcctImportParams, type OcctModule } from 'occt-import-js';
 import wasmUrl from 'occt-import-js/dist/occt-import-js.wasm?url';
-import type {
-  CadQuality,
-  CadWorkerConvertJob,
-  CadWorkerRequest,
-  CadWorkerResponse,
-  MeshModel,
-} from './types';
+import type { CadQuality, CadWorkerConvertJob, CadWorkerRequest, CadWorkerResponse, MeshModel } from './types';
 import { weldIndexedVertices } from '../_mesh/topology';
 
 const MAX_VERTICES = 1_000_000;
@@ -26,8 +20,7 @@ async function getOcct(): Promise<OcctModule> {
     const factory =
       typeof occtimportjs === 'function'
         ? occtimportjs
-        : (occtimportjs as unknown as { default: (overrides?: unknown) => Promise<OcctModule> })
-            ?.default;
+        : (occtimportjs as unknown as { default: (overrides?: unknown) => Promise<OcctModule> })?.default;
 
     if (typeof factory !== 'function') {
       throw new Error('occt-import-js factory could not be resolved from module exports.');
@@ -101,9 +94,7 @@ async function processCadJob(job: CadWorkerConvertJob): Promise<MeshModel> {
   }
 
   if (!result || !result.success) {
-    throw new Error(
-      `Failed to parse ${format.toUpperCase()} model. File may be corrupted or contain unsupported CAD entity types.`
-    );
+    throw new Error(`Failed to parse ${format.toUpperCase()} model. File may be corrupted or contain unsupported CAD entity types.`);
   }
 
   if (!result.meshes || result.meshes.length === 0) {
@@ -141,13 +132,13 @@ async function processCadJob(job: CadWorkerConvertJob): Promise<MeshModel> {
 
   if (totalVertices > MAX_VERTICES) {
     throw new Error(
-      `CAD model exceeds vertex limit: tessellated to ${totalVertices.toLocaleString()} vertices (limit is ${MAX_VERTICES.toLocaleString()}). Try selecting 'coarse' quality.`
+      `CAD model exceeds vertex limit: tessellated to ${totalVertices.toLocaleString()} vertices (limit is ${MAX_VERTICES.toLocaleString()}). Try selecting 'coarse' quality.`,
     );
   }
 
   if (totalTriangles > MAX_TRIANGLES) {
     throw new Error(
-      `CAD model exceeds triangle limit: tessellated to ${totalTriangles.toLocaleString()} triangles (limit is ${MAX_TRIANGLES.toLocaleString()}). Try selecting 'coarse' quality.`
+      `CAD model exceeds triangle limit: tessellated to ${totalTriangles.toLocaleString()} triangles (limit is ${MAX_TRIANGLES.toLocaleString()}). Try selecting 'coarse' quality.`,
     );
   }
 
@@ -182,9 +173,7 @@ async function processCadJob(job: CadWorkerConvertJob): Promise<MeshModel> {
     for (let i = 0; i < idx.length; i++) {
       const localIdx = idx[i];
       if (!Number.isInteger(localIdx) || localIdx < 0 || localIdx >= currentMeshVertexCount) {
-        throw new Error(
-          `Invalid index ${localIdx} for mesh face with ${currentMeshVertexCount} vertices.`
-        );
+        throw new Error(`Invalid index ${localIdx} for mesh face with ${currentMeshVertexCount} vertices.`);
       }
       const globalIdx = vertexOffset + localIdx;
       if (globalIdx > 0xffffffff) {
@@ -211,9 +200,7 @@ async function processCadJob(job: CadWorkerConvertJob): Promise<MeshModel> {
   ];
 
   if (result.meshes.length > 1) {
-    warnings.push(
-      `Flattened assembly containing ${result.meshes.length} parts into a unified single-mesh model.`
-    );
+    warnings.push(`Flattened assembly containing ${result.meshes.length} parts into a unified single-mesh model.`);
   }
 
   return {

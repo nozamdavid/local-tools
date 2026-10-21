@@ -100,8 +100,7 @@ export default function IconConverterTool() {
   const meta = getToolMeta('img-icon-converter');
   const title = meta.title && meta.title !== 'img-icon-converter' ? meta.title : 'Icon Converter';
   const description =
-    meta.description ||
-    'Extract all frames from ICO files to PNG, or build multi-resolution Windows ICO icons (16 to 256 px).';
+    meta.description || 'Extract all frames from ICO files to PNG, or build multi-resolution Windows ICO icons (16 to 256 px).';
 
   const [mode, setMode] = useState<Mode>(() => {
     const pending = peekPendingFiles('/image/icon-converter');
@@ -134,12 +133,12 @@ export default function IconConverterTool() {
 
       if (hasIco && hasRaster) {
         setError(
-          'Mixed input formats: cannot process ICO and raster images in the same batch. Please upload either ICO files or raster images.'
+          'Mixed input formats: cannot process ICO and raster images in the same batch. Please upload either ICO files or raster images.',
         );
         return;
       }
 
-      const targetMode: Mode = hasIco ? 'ico-to-png' : (hasRaster ? 'png-to-ico' : mode);
+      const targetMode: Mode = hasIco ? 'ico-to-png' : hasRaster ? 'png-to-ico' : mode;
       setMode(targetMode);
 
       setProcessing(true);
@@ -213,7 +212,7 @@ export default function IconConverterTool() {
         setProcessing(false);
       }
     },
-    [mode]
+    [mode],
   );
 
   const handleDownloadAllZip = async () => {
@@ -333,9 +332,7 @@ export default function IconConverterTool() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Extracted Frames ({extractedFrames.length})</h3>
-                <span style={{ fontSize: '0.85rem', opacity: 0.75 }}>
-                  Every embedded frame extracted with transparency preserved
-                </span>
+                <span style={{ fontSize: '0.85rem', opacity: 0.75 }}>Every embedded frame extracted with transparency preserved</span>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
@@ -401,9 +398,7 @@ export default function IconConverterTool() {
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                     <span style={{ fontWeight: 600 }}>{ico.name}</span>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>
-                      6 frames (16 to 256 px) · {formatBytes(ico.blob.size)}
-                    </span>
+                    <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>6 frames (16 to 256 px) · {formatBytes(ico.blob.size)}</span>
                   </div>
                   <Button variant="primary" onClick={() => downloadBlob(ico.blob, ico.name)}>
                     Download ICO

@@ -6,13 +6,7 @@ import { Field, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { useJob } from '../../../lib/useJob';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
-import {
-  buildPdf,
-  makeThumbnail,
-  normalizeImage,
-  type Enhance,
-  type PageSize,
-} from './scanImage';
+import { buildPdf, makeThumbnail, normalizeImage, type Enhance, type PageSize } from './scanImage';
 import styles from './Tool.module.css';
 
 interface ScanPage {
@@ -128,7 +122,7 @@ export default function ScanToPdfTool() {
       setError(
         denied
           ? 'Camera access was denied. Allow it in the browser, or upload photos instead.'
-          : 'No camera could be started. Upload photos instead.'
+          : 'No camera could be started. Upload photos instead.',
       );
     }
   };
@@ -156,7 +150,11 @@ export default function ScanToPdfTool() {
 
   const remove = (id: number) => {
     setPages((prev) => prev.filter((p) => p.id !== id));
-    setThumbs(({ [id]: _removed, ...rest }) => rest);
+    setThumbs((prev) => {
+      const copy = { ...prev };
+      delete copy[id];
+      return copy;
+    });
     job.reset();
   };
 
@@ -175,20 +173,15 @@ export default function ScanToPdfTool() {
         pages.map((p) => p.blob),
         enhance,
         size,
-        setProgress
-      )
+        setProgress,
+      ),
     );
   };
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
       {job.result ? (
-        <PdfPreview
-          blob={job.result}
-          filename="scan.pdf"
-          pageCount={pages.length}
-          onReset={handleReset}
-        />
+        <PdfPreview blob={job.result} filename="scan.pdf" pageCount={pages.length} onReset={handleReset} />
       ) : (
         <div>
           {error && <div className="error-banner">{error}</div>}
@@ -197,8 +190,8 @@ export default function ScanToPdfTool() {
           <div className={styles.camera}>
             {!cameraSupported ? (
               <p className={styles.notice}>
-                The camera needs a secure (HTTPS) connection and a supported browser, so it is not
-                available here. Upload photos of your pages below instead.
+                The camera needs a secure (HTTPS) connection and a supported browser, so it is not available here. Upload photos of your
+                pages below instead.
               </p>
             ) : stream ? (
               <div className={styles.viewfinder}>
@@ -217,20 +210,12 @@ export default function ScanToPdfTool() {
                 <Button variant="primary" onClick={startCamera}>
                   Start camera
                 </Button>
-                <span className={styles.hint}>
-                  The rear camera is used when your device has one. Photos stay on your device.
-                </span>
+                <span className={styles.hint}>The rear camera is used when your device has one. Photos stay on your device.</span>
               </div>
             )}
           </div>
 
-          <FileDrop
-            accept="image/*"
-            multiple
-            label="Or choose photos of your pages"
-            hint="JPG, PNG or WebP."
-            onFiles={handleUpload}
-          />
+          <FileDrop accept="image/*" multiple label="Or choose photos of your pages" hint="JPG, PNG or WebP." onFiles={handleUpload} />
 
           {pages.length > 0 && (
             <>
@@ -244,12 +229,7 @@ export default function ScanToPdfTool() {
                   />
                 </Field>
                 <Field label="Page size">
-                  <Select
-                    id={sizeId}
-                    value={size}
-                    onChange={(e) => setSize(e.target.value as PageSize)}
-                    options={SIZE_OPTIONS}
-                  />
+                  <Select id={sizeId} value={size} onChange={(e) => setSize(e.target.value as PageSize)} options={SIZE_OPTIONS} />
                 </Field>
               </div>
 
@@ -258,12 +238,7 @@ export default function ScanToPdfTool() {
                   <div key={page.id} className={styles.pageCard} data-scan-page={index + 1}>
                     <div className={styles.thumbBox}>
                       {thumbs[page.id] ? (
-                        <img
-                          src={thumbs[page.id].url}
-                          alt={`Page ${index + 1}`}
-                          className={styles.thumb}
-                          draggable={false}
-                        />
+                        <img src={thumbs[page.id].url} alt={`Page ${index + 1}`} className={styles.thumb} draggable={false} />
                       ) : (
                         <span className={styles.hint}>…</span>
                       )}

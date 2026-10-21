@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useId, useRef, useState } from 'react';
 import { Link, NavLink, Outlet, useLocation } from 'react-router-dom';
 import { ChevronDown, ChevronRight, Menu, Search, ShieldCheck, X } from 'lucide-react';
 import { categories, toolsByCategory, toolsByMedia, TOOL_METAS, type Media } from '../tools/registry';
@@ -57,17 +57,10 @@ function MegaMenu({ media, id, onClose }: { media: Media; id: string; onClose: (
   );
 }
 
-function MobileNav({ onClose }: { onClose: () => void }) {
+function MobileNav({ id, onClose, onSearch }: { id: string; onClose: () => void; onSearch: () => void }) {
   return (
-    <div className="mobile-nav" role="dialog" aria-modal="true" aria-label="Menu">
-      <button
-        type="button"
-        className="search-trigger search-trigger-block"
-        onClick={() => {
-          onClose();
-          openCommandPalette();
-        }}
-      >
+    <nav className="mobile-nav" id={id} aria-label="Menu">
+      <button type="button" className="search-trigger search-trigger-block" onClick={onSearch}>
         <Search aria-hidden="true" />
         <span>Search {TOOL_METAS.length} tools</span>
       </button>
@@ -100,20 +93,45 @@ function MobileNav({ onClose }: { onClose: () => void }) {
             ))}
         </details>
       ))}
-    </div>
+    </nav>
   );
+}
+
+/** Document title for the current route, so each page has its own name in tabs, history and screen readers. */
+function titleForPath(pathname: string): string | null {
+  const tool = TOOL_METAS.find((t) => t.path === pathname);
+  if (tool) return tool.title;
+  const media = MEDIA_LIST.find((m) => m.path === pathname);
+  if (media) return media.title;
+  if (pathname === '/design') return 'Design system';
+  return null;
 }
 
 export function Layout() {
   const [openMenu, setOpenMenu] = useState<Media | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const headerRef = useRef<HTMLElement>(null);
+  const mainRef = useRef<HTMLElement>(null);
+  const menuToggleRef = useRef<HTMLButtonElement>(null);
+  const previousPath = useRef<string | null>(null);
   const location = useLocation();
   const megaId = useId();
+  const mobileId = useId();
 
   useEffect(() => {
     setOpenMenu(null);
     setMobileOpen(false);
+  }, [location.pathname, location.hash]);
+
+  // Name each page, and move focus to the main region after in-app navigation so keyboard and
+  // screen reader users start at the new content instead of the link they just activated.
+  useEffect(() => {
+    const name = titleForPath(location.pathname);
+    if (name) document.title = `${name} · Loconvert`;
+    if (previousPath.current !== null && previousPath.current !== location.pathname && !location.hash) {
+      mainRef.current?.focus({ preventScroll: true });
+    }
+    previousPath.current = location.pathname;
   }, [location.pathname, location.hash]);
 
   useEffect(() => {
@@ -125,10 +143,12 @@ export function Layout() {
       }
     }
     function handleKey(event: KeyboardEvent) {
-      if (event.key === 'Escape') {
-        setOpenMenu(null);
-        setMobileOpen(false);
-      }
+      if (event.key !== 'Escape' || event.defaultPrevented) return;
+      // Hand focus back to the control that opened the menu.
+      const trigger = openMenu ? headerRef.current?.querySelector<HTMLElement>(`[data-nav-media="${openMenu}"]`) : menuToggleRef.current;
+      setOpenMenu(null);
+      setMobileOpen(false);
+      trigger?.focus();
     }
     document.addEventListener('mousedown', handlePointer);
     document.addEventListener('keydown', handleKey);
@@ -138,17 +158,40 @@ export function Layout() {
     };
   }, [openMenu, mobileOpen]);
 
+  // Tabbing out of the header closes whichever menu is open.
+  function handleHeaderBlur(event: React.FocusEvent<HTMLElement>) {
+    const next = event.relatedTarget as Node | null;
+    if (next && !event.currentTarget.contains(next)) {
+      setOpenMenu(null);
+      setMobileOpen(false);
+    }
+  }
+
+  function openSearchFromMobileNav() {
+    setMobileOpen(false);
+    // The menu button is where focus returns when the palette closes; the nav that held the search button unmounts.
+    menuToggleRef.current?.focus();
+    openCommandPalette();
+  }
+
   const activeMedia = MEDIA_LIST.find(
     (m) => location.pathname === m.path || TOOL_METAS.some((t) => t.media === m.media && t.path === location.pathname),
   )?.media;
 
   return (
     <div className="layout">
-      <a href="#main" className="skip-link">
+      <a
+        href="#main"
+        className="skip-link"
+        onClick={(event) => {
+          event.preventDefault();
+          mainRef.current?.focus();
+        }}
+      >
         Skip to content
       </a>
 
-      <header className="site-header" ref={headerRef}>
+      <header className="site-header" ref={headerRef} onBlur={handleHeaderBlur}>
         <div className="container header-inner">
           <Link to="/" className="brand" aria-label="Loconvert home">
             <LogoMark />
@@ -159,17 +202,21 @@ export function Layout() {
             {MEDIA_LIST.map(({ media, label }) => {
               const open = openMenu === media;
               return (
-                <button
-                  key={media}
-                  type="button"
-                  className={`nav-trigger ${open ? 'is-open' : ''} ${activeMedia === media ? 'is-active' : ''}`}
-                  aria-expanded={open}
-                  aria-controls={open ? megaId : undefined}
-                  onClick={() => setOpenMenu(open ? null : media)}
-                >
-                  {label}
-                  <ChevronDown aria-hidden="true" />
-                </button>
+                <Fragment key={media}>
+                  <button
+                    type="button"
+                    data-nav-media={media}
+                    className={`nav-trigger ${open ? 'is-open' : ''} ${activeMedia === media ? 'is-active' : ''}`}
+                    aria-expanded={open}
+                    aria-controls={open ? megaId : undefined}
+                    onClick={() => setOpenMenu(open ? null : media)}
+                  >
+                    {label}
+                    <ChevronDown aria-hidden="true" />
+                  </button>
+                  {/* Rendered right after its trigger so Tab moves from the button into the open menu. */}
+                  {open && <MegaMenu media={media} id={megaId} onClose={() => setOpenMenu(null)} />}
+                </Fragment>
               );
             })}
             <NavLink to="/file-converter" className={({ isActive }) => `nav-trigger ${isActive ? 'is-active' : ''}`}>
@@ -188,24 +235,25 @@ export function Layout() {
             </button>
             <ThemeToggle />
             <button
+              ref={menuToggleRef}
               type="button"
               className="btn btn-ghost btn-icon menu-toggle"
               aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
               aria-expanded={mobileOpen}
+              aria-controls={mobileOpen ? mobileId : undefined}
               onClick={() => setMobileOpen((v) => !v)}
             >
-              {mobileOpen ? <X /> : <Menu />}
+              {mobileOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
             </button>
           </div>
         </div>
 
-        {openMenu && <MegaMenu media={openMenu} id={megaId} onClose={() => setOpenMenu(null)} />}
-        {mobileOpen && <MobileNav onClose={() => setMobileOpen(false)} />}
+        {mobileOpen && <MobileNav id={mobileId} onClose={() => setMobileOpen(false)} onSearch={openSearchFromMobileNav} />}
       </header>
 
       {(openMenu || mobileOpen) && <div className="nav-scrim" aria-hidden="true" />}
 
-      <main id="main" className="main-content">
+      <main id="main" className="main-content" ref={mainRef} tabIndex={-1}>
         <Outlet />
       </main>
 
@@ -216,9 +264,7 @@ export function Layout() {
               <LogoMark size={26} />
               <span className="brand-name">Loconvert</span>
             </Link>
-            <p>
-              Private file tools that run entirely in your browser. Your files are processed on your device and never uploaded.
-            </p>
+            <p>Private file tools that run entirely in your browser. Your files are processed on your device and never uploaded.</p>
             <span className="badge badge-success">
               <ShieldCheck />
               No uploads · No accounts · No tracking
@@ -226,7 +272,7 @@ export function Layout() {
           </div>
 
           <div className="footer-col">
-            <div className="footer-col-title">Tools</div>
+            <h2 className="footer-col-title">Tools</h2>
             {MEDIA_LIST.map((m) => (
               <Link key={m.media} to={m.path}>
                 {m.title}
@@ -235,7 +281,7 @@ export function Layout() {
           </div>
 
           <div className="footer-col">
-            <div className="footer-col-title">Popular</div>
+            <h2 className="footer-col-title">Popular</h2>
             <Link to="/file-converter">File converter</Link>
             <Link to="/image/compress">Compress image</Link>
             <Link to="/pdf/merge">Merge PDF</Link>
@@ -243,7 +289,7 @@ export function Layout() {
           </div>
 
           <div className="footer-col">
-            <div className="footer-col-title">Project</div>
+            <h2 className="footer-col-title">Project</h2>
             <Link to="/design">Design system</Link>
           </div>
         </div>

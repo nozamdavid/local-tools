@@ -128,11 +128,7 @@ export default function CompressTool() {
               filename={withSuffix(file.name, '-compressed', 'mp4')}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (
@@ -150,7 +146,10 @@ export default function CompressTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Resolution:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}
@@ -189,12 +188,7 @@ export default function CompressTool() {
 
                   <div className="field">
                     <label className="checkbox-label" htmlFor={removeAudioId}>
-                      <input
-                        id={removeAudioId}
-                        type="checkbox"
-                        checked={removeAudio}
-                        onChange={(e) => setRemoveAudio(e.target.checked)}
-                      />
+                      <input id={removeAudioId} type="checkbox" checked={removeAudio} onChange={(e) => setRemoveAudio(e.target.checked)} />
                       <span>Remove audio track</span>
                     </label>
                   </div>

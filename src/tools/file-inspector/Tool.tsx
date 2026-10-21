@@ -98,7 +98,7 @@ export default function FileInspectorTool() {
     const hexDump = generateHexDump(bytes256);
 
     // Format detection
-    let detected: DetectedFormat | null = null;
+    let detected: DetectedFormat | null;
     try {
       detected = await detectFormat(file);
     } catch {
@@ -109,7 +109,7 @@ export default function FileInspectorTool() {
     const extensionMismatch = detected ? detected.extensionMismatch : false;
 
     // Optional EXIF extraction
-    let exifData: Record<string, any> | null = null;
+    let exifData: Record<string, any> | null;
     try {
       exifData = await exifr.parse(file, { tiff: true, xmp: true, icc: false });
     } catch {
@@ -158,11 +158,7 @@ export default function FileInspectorTool() {
     setHashProgress(0.05);
 
     try {
-      const digests = await computeFileDigests(
-        file,
-        (progress) => setHashProgress(progress),
-        abortCtrl.signal
-      );
+      const digests = await computeFileDigests(file, (progress) => setHashProgress(progress), abortCtrl.signal);
       setInspection((prev) => (prev ? { ...prev, digests } : null));
     } catch (err: unknown) {
       if ((err as Error).name !== 'AbortError') {
@@ -274,12 +270,7 @@ export default function FileInspectorTool() {
   const handleExportHtml = () => {
     if (!inspection) return;
     const escapeHtml = (str: string) =>
-      str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+      str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
 
     const htmlContent = `<!DOCTYPE html>
 <html lang="en">
@@ -395,7 +386,8 @@ export default function FileInspectorTool() {
                 <div>
                   {inspection.extensionMismatch ? (
                     <span className={styles.badgeMismatch}>
-                      ⚠️ Extension Mismatch: Apparent extension does not match file signature ({inspection.detectedFormat?.ext || 'unknown'})
+                      ⚠️ Extension Mismatch: Apparent extension does not match file signature ({inspection.detectedFormat?.ext || 'unknown'}
+                      )
                     </span>
                   ) : (
                     <span className={styles.badgeMatch}>✓ File Extension Matches Detected Signature</span>
@@ -435,9 +427,7 @@ export default function FileInspectorTool() {
 
               {/* Compare input */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600 }}>
-                  Compare with Expected Checksum / Digest:
-                </label>
+                <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600 }}>Compare with Expected Checksum / Digest:</label>
                 <input
                   type="text"
                   className={styles.compareInput}
@@ -448,9 +438,7 @@ export default function FileInspectorTool() {
                 {matchResult && (
                   <div>
                     {matchResult.match ? (
-                      <span className={styles.compareStatusMatch}>
-                        ✓ MATCH! Digest exactly matches {matchResult.algo} checksum.
-                      </span>
+                      <span className={styles.compareStatusMatch}>✓ MATCH! Digest exactly matches {matchResult.algo} checksum.</span>
                     ) : (
                       <span className={styles.compareStatusMismatch}>
                         ✗ MISMATCH: Input does not match any computed checksum ({matchResult.algo} length expected).
@@ -475,11 +463,7 @@ export default function FileInspectorTool() {
                       <div className={styles.hashValueRow}>
                         <span className={styles.hashValue}>{val}</span>
                         {inspection.digests && (
-                          <button
-                            type="button"
-                            className={styles.hashCopyBtn}
-                            onClick={() => handleCopyDigest(algoKey, val)}
-                          >
+                          <button type="button" className={styles.hashCopyBtn} onClick={() => handleCopyDigest(algoKey, val)}>
                             {copiedKey === algoKey ? '✓ Copied' : 'Copy'}
                           </button>
                         )}
@@ -492,9 +476,7 @@ export default function FileInspectorTool() {
 
             {/* First 256 Bytes Hex & ASCII Dump */}
             <div className={styles.card}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>
-                First 256 Bytes (Offset / Hex / ASCII)
-              </h3>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>First 256 Bytes (Offset / Hex / ASCII)</h3>
               <div className={styles.hexViewer}>{inspection.hexDump}</div>
             </div>
 
@@ -503,11 +485,7 @@ export default function FileInspectorTool() {
               <div className={styles.card}>
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Inert Image Preview</h3>
                 <div className={styles.previewContainer}>
-                  <img
-                    src={inspection.imagePreviewUrl}
-                    alt={inspection.name}
-                    className={styles.imagePreview}
-                  />
+                  <img src={inspection.imagePreviewUrl} alt={inspection.name} className={styles.imagePreview} />
                 </div>
               </div>
             )}
@@ -517,7 +495,8 @@ export default function FileInspectorTool() {
               <div className={styles.card}>
                 <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Document Security Isolation</h3>
                 <div className={styles.inertDocNotice}>
-                  🔒 HTML and PDF document previews are kept inert to prevent arbitrary script execution and plugin vulnerabilities. Inspection was performed strictly on binary structures.
+                  🔒 HTML and PDF document previews are kept inert to prevent arbitrary script execution and plugin vulnerabilities.
+                  Inspection was performed strictly on binary structures.
                 </div>
               </div>
             )}
@@ -532,9 +511,7 @@ export default function FileInspectorTool() {
                     .map(([key, val]) => (
                       <div key={key} className={styles.statItem}>
                         <div className={styles.statLabel}>{key}</div>
-                        <div className={styles.statValue}>
-                          {typeof val === 'object' ? JSON.stringify(val) : String(val)}
-                        </div>
+                        <div className={styles.statValue}>{typeof val === 'object' ? JSON.stringify(val) : String(val)}</div>
                       </div>
                     ))}
                 </div>
@@ -558,7 +535,8 @@ export default function FileInspectorTool() {
 
               {/* No Antivirus / Safety Claim Disclaimer */}
               <div className={styles.disclaimer}>
-                <strong>Security Notice:</strong> This tool performs cryptographic checksum calculation and structural header/signature inspection. It does NOT provide antivirus scanning, vulnerability assessments, or malware safety guarantees.
+                <strong>Security Notice:</strong> This tool performs cryptographic checksum calculation and structural header/signature
+                inspection. It does NOT provide antivirus scanning, vulnerability assessments, or malware safety guarantees.
               </div>
             </div>
           </>

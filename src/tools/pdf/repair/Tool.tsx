@@ -71,7 +71,7 @@ export default function RepairPdfTool() {
           setPageCount(pages);
           return new Blob([output as BlobPart], { type: 'application/pdf' });
         } catch (err) {
-          if (err instanceof QpdfError && err.badPassword) throw new Error(LOCKED_MESSAGE);
+          if (err instanceof QpdfError && err.badPassword) throw new Error(LOCKED_MESSAGE, { cause: err });
           // try the next method
         }
       }
@@ -81,10 +81,10 @@ export default function RepairPdfTool() {
       try {
         doc = await loadPdfDocument(source);
       } catch (err) {
-        if (err instanceof Error && err.name === 'PasswordException') throw new Error(LOCKED_MESSAGE);
-        throw new Error(
-          `This PDF is too damaged to repair: ${err instanceof Error ? err.message : 'no pages could be read.'}`
-        );
+        if (err instanceof Error && err.name === 'PasswordException') throw new Error(LOCKED_MESSAGE, { cause: err });
+        throw new Error(`This PDF is too damaged to repair: ${err instanceof Error ? err.message : 'no pages could be read.'}`, {
+          cause: err,
+        });
       }
 
       try {
@@ -119,8 +119,8 @@ export default function RepairPdfTool() {
           </div>
           {method === 'render' && (
             <div className="error-banner" role="note">
-              qpdf could not rebuild this file, so each page was rendered as an image. The pages look the same, but
-              text can no longer be selected or searched.
+              qpdf could not rebuild this file, so each page was rendered as an image. The pages look the same, but text can no longer be
+              selected or searched.
             </div>
           )}
           <PdfPreview
@@ -145,8 +145,8 @@ export default function RepairPdfTool() {
           </div>
 
           <p className="field-hint">
-            The tool first rewrites the file structure and keeps text and images intact. If that fails, it renders each
-            readable page as an image and builds a new PDF.
+            The tool first rewrites the file structure and keeps text and images intact. If that fails, it renders each readable page as an
+            image and builds a new PDF.
           </p>
 
           {job.status === 'running' ? (

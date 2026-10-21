@@ -211,7 +211,7 @@ export function validateHeaders(headers: string[]): void {
     if (seen.has(lower)) {
       const priorIdx = seen.get(lower)! + 1;
       throw new Error(
-        `Duplicate header column detected: "${trimmed}" at column ${idx + 1} duplicates column ${priorIdx}. All header column names must be unique to prevent data loss.`
+        `Duplicate header column detected: "${trimmed}" at column ${idx + 1} duplicates column ${priorIdx}. All header column names must be unique to prevent data loss.`,
       );
     }
     seen.set(lower, idx);
@@ -306,12 +306,7 @@ export function escapeCsvField(value: unknown, delimiter = ','): string {
   }
 
   const needsQuotes =
-    str.includes(delimiter) ||
-    str.includes('"') ||
-    str.includes('\n') ||
-    str.includes('\r') ||
-    str.startsWith(' ') ||
-    str.endsWith(' ');
+    str.includes(delimiter) || str.includes('"') || str.includes('\n') || str.includes('\r') || str.startsWith(' ') || str.endsWith(' ');
 
   if (needsQuotes) {
     return `"${str.replace(/"/g, '""')}"`;
@@ -322,10 +317,7 @@ export function escapeCsvField(value: unknown, delimiter = ','): string {
 /**
  * Serializes rows of values into a CSV string.
  */
-export function serializeCsv(
-  rows: (unknown)[][],
-  delimiter = ','
-): string {
+export function serializeCsv(rows: unknown[][], delimiter = ','): string {
   return rows.map((row) => row.map((cell) => escapeCsvField(cell, delimiter)).join(delimiter)).join('\r\n');
 }
 

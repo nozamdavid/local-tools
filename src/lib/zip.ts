@@ -1,7 +1,6 @@
-import JSZip from 'jszip';
-
 /** Zips blobs in memory. Duplicate names get a " (2)", " (3)" suffix instead of overwriting each other. */
 export async function zipFiles(files: { name: string; blob: Blob }[]): Promise<Blob> {
+  const { default: JSZip } = await import('jszip');
   const zip = new JSZip();
   const used = new Set<string>();
 

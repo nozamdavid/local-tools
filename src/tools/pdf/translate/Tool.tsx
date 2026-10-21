@@ -8,13 +8,7 @@ import { formatBytes } from '../../../lib/format';
 import { downloadBlob } from '../../../lib/download';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { usePdfSource } from '../_thumbs/usePdfSource';
-import {
-  extractPdfText,
-  chunkTextForInference,
-  TRANSLATION_PAIRS,
-  AiJob,
-  type ExtractionResult,
-} from '../_ai';
+import { extractPdfText, chunkTextForInference, TRANSLATION_PAIRS, AiJob, type ExtractionResult } from '../_ai';
 import styles from './Tool.module.css';
 
 export default function TranslateTool() {
@@ -79,8 +73,7 @@ export default function TranslateTool() {
     handleLoadDoc();
   }
 
-  const currentPair =
-    TRANSLATION_PAIRS.find((p) => p.id === selectedPairId) ?? TRANSLATION_PAIRS[0];
+  const currentPair = TRANSLATION_PAIRS.find((p) => p.id === selectedPairId) ?? TRANSLATION_PAIRS[0];
 
   const handleTranslate = async () => {
     if (!extractionResult || !extractionResult.hasText) return;
@@ -92,8 +85,7 @@ export default function TranslateTool() {
     setProgressLabel('Preparing translation model...');
 
     try {
-      const maxPages =
-        pageScope === '3' ? 3 : pageScope === '5' ? 5 : pageScope === '10' ? 10 : undefined;
+      const maxPages = pageScope === '3' ? 3 : pageScope === '5' ? 5 : pageScope === '10' ? 10 : undefined;
 
       const pagesToUse = maxPages ? extractionResult.pages.slice(0, maxPages) : extractionResult.pages;
       const chunks = chunkTextForInference(pagesToUse, {
@@ -150,10 +142,7 @@ export default function TranslateTool() {
   const handleDownload = () => {
     if (!translation || !source.file) return;
     const baseName = source.file.name.replace(/\.[^/.]+$/, '');
-    downloadBlob(
-      new Blob([translation], { type: 'text/plain;charset=utf-8' }),
-      `${baseName}-${currentPair.targetLang}.txt`
-    );
+    downloadBlob(new Blob([translation], { type: 'text/plain;charset=utf-8' }), `${baseName}-${currentPair.targetLang}.txt`);
   };
 
   const file = source.file;
@@ -174,13 +163,7 @@ export default function TranslateTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -219,18 +202,15 @@ export default function TranslateTool() {
           </div>
 
           {(source.loading || extracting) && (
-            <p className="status-text">
-              {source.loading ? 'Opening PDF document...' : 'Extracting document text...'}
-            </p>
+            <p className="status-text">{source.loading ? 'Opening PDF document...' : 'Extracting document text...'}</p>
           )}
 
           {extractionResult && !extractionResult.hasText && !extracting && (
             <div className={styles.ocrNotice}>
               <div className={styles.ocrNoticeTitle}>No Selectable Text Found</div>
               <p className={styles.ocrNoticeDesc}>
-                This PDF appears to be a scanned document or contains only images with no embedded text
-                layer. Local translation requires machine-readable text. Please process this PDF with the
-                OCR PDF tool first to recognize and extract its text.
+                This PDF appears to be a scanned document or contains only images with no embedded text layer. Local translation requires
+                machine-readable text. Please process this PDF with the OCR PDF tool first to recognize and extract its text.
               </p>
               <div className="action-buttons" style={{ justifyContent: 'center' }}>
                 <a href="/pdf/ocr" className="btn btn-primary" style={{ textDecoration: 'none' }}>
@@ -243,10 +223,7 @@ export default function TranslateTool() {
           {extractionResult && extractionResult.hasText && !translation && !running && (
             <div>
               <div className={styles.controls}>
-                <Field
-                  label="Language pair"
-                  hint={`Model: ${currentPair.modelId} (${currentPair.sizeEstimate})`}
-                >
+                <Field label="Language pair" hint={`Model: ${currentPair.modelId} (${currentPair.sizeEstimate})`}>
                   <Select
                     id={pairSelectId}
                     value={selectedPairId}
@@ -257,20 +234,15 @@ export default function TranslateTool() {
 
                 {source.pages.length > 3 && (
                   <Field label="Page scope" hint="Select how many pages to include in the translation.">
-                    <Select
-                      id={scopeSelectId}
-                      value={pageScope}
-                      onChange={(e) => setPageScope(e.target.value)}
-                      options={scopeOptions}
-                    />
+                    <Select id={scopeSelectId} value={pageScope} onChange={(e) => setPageScope(e.target.value)} options={scopeOptions} />
                   </Field>
                 )}
               </div>
 
               <div className={styles.noticeBox}>
-                🔒 <strong>100% Private & In-Browser:</strong> Translation models execute entirely on your
-                device using WebAssembly. Model weights are downloaded directly from Hugging Face and cached
-                in your browser. No document text or metadata is ever transmitted over the network.
+                🔒 <strong>100% Private & In-Browser:</strong> Translation models execute entirely on your device using WebAssembly. Model
+                weights are downloaded directly from Hugging Face and cached in your browser. No document text or metadata is ever
+                transmitted over the network.
                 <br />
                 <small style={{ marginTop: '0.4rem', display: 'block' }}>
                   Note: Output is formatted plain text with page and paragraph demarcations preserved.

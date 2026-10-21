@@ -38,8 +38,7 @@ const MAX_SIDE_PX = 6000;
 
 // Smallest module that only validates when the engine supports WebAssembly SIMD.
 const SIMD_PROBE = new Uint8Array([
-  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253,
-  15, 253, 98, 11,
+  0, 97, 115, 109, 1, 0, 0, 0, 1, 5, 1, 96, 0, 1, 123, 3, 2, 1, 0, 10, 10, 1, 8, 0, 65, 0, 253, 15, 253, 98, 11,
 ]);
 
 const absolute = (url: string) => new URL(url, window.location.href).href;
@@ -54,10 +53,7 @@ export interface OcrPageResult {
   lines: Line[];
 }
 
-export async function createOcrWorker(
-  language: string,
-  onStatus: (status: string) => void
-): Promise<OcrWorker> {
+export async function createOcrWorker(language: string, onStatus: (status: string) => void): Promise<OcrWorker> {
   const { createWorker, OEM } = await import('tesseract.js');
   let onProgress: (ratio: number) => void = () => {};
 
@@ -95,11 +91,7 @@ export interface RenderedPage {
 }
 
 /** Renders one pdf.js page to a PNG at the requested DPI, capped so the canvas stays manageable. */
-export async function renderPageForOcr(
-  doc: PDFDocumentProxy,
-  pageNumber: number,
-  dpi: number
-): Promise<RenderedPage> {
+export async function renderPageForOcr(doc: PDFDocumentProxy, pageNumber: number, dpi: number): Promise<RenderedPage> {
   const page = await doc.getPage(pageNumber);
   const base = page.getViewport({ scale: 1 });
   const scale = Math.min(dpi / 72, MAX_SIDE_PX / Math.max(base.width, base.height));
@@ -150,13 +142,7 @@ function encodable(text: string, supported: Set<number>): string {
 }
 
 /** Draws each recognized word as invisible text (render mode 3) over its position on the page. */
-export function addTextLayer(
-  pdf: PDFDocument,
-  pageIndex: number,
-  font: PDFFont,
-  rendered: RenderedPage,
-  lines: Line[]
-): void {
+export function addTextLayer(pdf: PDFDocument, pageIndex: number, font: PDFFont, rendered: RenderedPage, lines: Line[]): void {
   const page = pdf.getPage(pageIndex);
   const fontName = page.node.newFontDictionary('OcrFont', font.ref);
   const supported = new Set(font.getCharacterSet());
@@ -186,7 +172,7 @@ export function addTextLayer(
       ops.push(
         setFontAndSize(fontName, sizePt),
         setTextMatrix(cos * sx, sin * sx, -sin, cos, x0, y0),
-        showText(font.encodeText(`${text} `))
+        showText(font.encodeText(`${text} `)),
       );
     }
   }

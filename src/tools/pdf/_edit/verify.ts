@@ -25,7 +25,7 @@ export async function runVerification(): Promise<VerifyResults> {
   // Test 1: Fill + Flatten Output Values
   // -------------------------------------------------------------
   log('\n--- Test 1: Fill + Flatten Output Values ---');
-  let formFlattenSuccess = false;
+  let formFlattenSuccess: boolean;
   {
     const formDoc = await PDFDocument.create();
     const font = await formDoc.embedFont(StandardFonts.Helvetica);
@@ -89,7 +89,7 @@ export async function runVerification(): Promise<VerifyResults> {
   // Test 2: Annotation Output Original Content Retained
   // -------------------------------------------------------------
   log('\n--- Test 2: Annotation Output Original Content Retained ---');
-  let annotationRetainSuccess = false;
+  let annotationRetainSuccess: boolean;
   {
     const baseDoc = await PDFDocument.create();
     const font = await baseDoc.embedFont(StandardFonts.Helvetica);
@@ -162,7 +162,7 @@ export async function runVerification(): Promise<VerifyResults> {
   // Test 3: Redaction Output Contains No Sensitive Text / Attachments
   // -------------------------------------------------------------
   log('\n--- Test 3: Redaction Output Purges Sensitive Text & Attachments ---');
-  let redactionCleanSuccess = false;
+  let redactionCleanSuccess: boolean;
   {
     const sensitiveDoc = await PDFDocument.create();
     const font = await sensitiveDoc.embedFont(StandardFonts.Helvetica);

@@ -1,11 +1,4 @@
-import {
-  type RGBA,
-  type HSLA,
-  formatHex,
-  formatRgb,
-  formatHsl,
-  rgbToHsl,
-} from './convert';
+import { type RGBA, type HSLA, formatHex, formatRgb, formatHsl, rgbToHsl } from './convert';
 import { canvasToBlob } from '../../../lib/image';
 
 export interface PaletteColor {
@@ -29,9 +22,12 @@ interface ColorBox {
 }
 
 function getBoxRange(box: ColorBox): { dim: 'r' | 'g' | 'b'; range: number } {
-  let minR = 255, maxR = 0;
-  let minG = 255, maxG = 0;
-  let minB = 255, maxB = 0;
+  let minR = 255,
+    maxR = 0;
+  let minG = 255,
+    maxG = 0;
+  let minB = 255,
+    maxB = 0;
 
   for (const p of box.pixels) {
     if (p.r < minR) minR = p.r;
@@ -51,12 +47,7 @@ function getBoxRange(box: ColorBox): { dim: 'r' | 'g' | 'b'; range: number } {
   return { dim: 'b', range: rangeB };
 }
 
-export function extractPalette(
-  ctx: CanvasRenderingContext2D,
-  width: number,
-  height: number,
-  colorCount: number = 8,
-): PaletteColor[] {
+export function extractPalette(ctx: CanvasRenderingContext2D, width: number, height: number, colorCount: number = 8): PaletteColor[] {
   const targetCount = Math.min(12, Math.max(5, colorCount));
   const imgData = ctx.getImageData(0, 0, width, height);
   const data = imgData.data;
@@ -135,7 +126,9 @@ export function extractPalette(
   const totalCount = validPixels.length;
 
   const result: PaletteColor[] = boxes.map((box) => {
-    let sumR = 0, sumG = 0, sumB = 0;
+    let sumR = 0,
+      sumG = 0,
+      sumB = 0;
     for (const p of box.pixels) {
       sumR += p.r;
       sumG += p.g;
@@ -167,11 +160,7 @@ export function extractPalette(
   return result;
 }
 
-export async function generatePaletteStripBlob(
-  palette: PaletteColor[],
-  width = 800,
-  height = 140,
-): Promise<Blob> {
+export async function generatePaletteStripBlob(palette: PaletteColor[], width = 800, height = 140): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;

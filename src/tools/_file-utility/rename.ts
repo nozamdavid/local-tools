@@ -29,9 +29,28 @@ export interface ParsedFileName {
 const COMPOUND_EXTENSIONS = ['.tar.gz', '.tar.bz2', '.tar.xz', '.tar.zst'];
 
 const WINDOWS_RESERVED_NAMES = new Set([
-  'con', 'prn', 'aux', 'nul',
-  'com1', 'com2', 'com3', 'com4', 'com5', 'com6', 'com7', 'com8', 'com9',
-  'lpt1', 'lpt2', 'lpt3', 'lpt4', 'lpt5', 'lpt6', 'lpt7', 'lpt8', 'lpt9',
+  'con',
+  'prn',
+  'aux',
+  'nul',
+  'com1',
+  'com2',
+  'com3',
+  'com4',
+  'com5',
+  'com6',
+  'com7',
+  'com8',
+  'com9',
+  'lpt1',
+  'lpt2',
+  'lpt3',
+  'lpt4',
+  'lpt5',
+  'lpt6',
+  'lpt7',
+  'lpt8',
+  'lpt9',
 ]);
 
 /**
@@ -87,6 +106,7 @@ export function sanitizeFileName(name: string, fallback = 'file'): { name: strin
     // Replace directory separators and null bytes
     .replace(/[/\\\\]/g, '_')
     // Remove control characters (0-31)
+    // eslint-disable-next-line no-control-regex -- sanitizer checking for forbidden filesystem control characters
     .replace(/[\x00-\x1f\x7f]/g, '')
     // Replace illegal characters for cross-platform safety
     .replace(/[<>:"|?*]/g, '_')
@@ -141,10 +161,7 @@ export interface RenameResultItem {
 /**
  * Computes live batch renaming for a list of items with collision detection.
  */
-export function computeBatchRename(
-  items: { id: string; name: string; size: number }[],
-  config: RenameConfig
-): RenameResultItem[] {
+export function computeBatchRename(items: { id: string; name: string; size: number }[], config: RenameConfig): RenameResultItem[] {
   // First pass: generate preliminary new names
   const preliminary: { item: (typeof items)[0]; parsed: ParsedFileName; preliminaryName: string; sanitized: boolean }[] = [];
 
@@ -153,7 +170,7 @@ export function computeBatchRename(
     const parsed = parseFileName(item.name);
 
     // 1. Base name determine
-    let base = config.mode === 'custom' ? (config.baseName.trim() || 'file') : parsed.base;
+    let base = config.mode === 'custom' ? config.baseName.trim() || 'file' : parsed.base;
 
     // 2. Find and replace if specified
     if (config.findText) {

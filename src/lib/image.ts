@@ -1,4 +1,3 @@
-import { runFFmpeg } from './ffmpeg';
 import { isJxlFile, decodeJxlToBlob } from './jxl';
 
 export const IMAGE_ACCEPT =
@@ -46,7 +45,11 @@ async function withSvgSize(file: Blob): Promise<Blob> {
   };
   if (hasAbsoluteSize('width') && hasAbsoluteSize('height')) return file;
 
-  const viewBox = root.getAttribute('viewBox')?.trim().split(/[\s,]+/).map(Number);
+  const viewBox = root
+    .getAttribute('viewBox')
+    ?.trim()
+    .split(/[\s,]+/)
+    .map(Number);
   const [vbWidth, vbHeight] = viewBox && viewBox.length === 4 ? [viewBox[2], viewBox[3]] : [512, 512];
   root.setAttribute('width', String(vbWidth > 0 ? vbWidth : 512));
   root.setAttribute('height', String(vbHeight > 0 ? vbHeight : 512));
@@ -58,16 +61,26 @@ async function withSvgSize(file: Blob): Promise<Blob> {
 export async function decodeImage(file: File): Promise<HTMLImageElement> {
   if (isHeicFile(file)) {
     // The /csp build avoids eval, which the page CSP forbids. Loaded on demand because it is large.
-    const { heicTo } = await import('heic-to/csp');
-    const png = await heicTo({ blob: file, type: 'image/png' });
-    return loadImage(png);
+    try {
+      const { heicTo } = await import('heic-to/csp');
+      const png = await heicTo({ blob: file, type: 'image/png' });
+      return await loadImage(png);
+    } catch (err: unknown) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`HEIC/HEIF decode failure: could not decode "${file.name}". ${detail}`, { cause: err });
+    }
   }
   if (isSvgFile(file)) {
     return loadImage(await withSvgSize(file));
   }
   if (await isJxlFile(file)) {
-    const png = await decodeJxlToBlob(await file.arrayBuffer());
-    return loadImage(png);
+    try {
+      const png = await decodeJxlToBlob(await file.arrayBuffer());
+      return await loadImage(png);
+    } catch (err: unknown) {
+      const detail = err instanceof Error ? err.message : String(err);
+      throw new Error(`JPEG XL decode failure: could not decode "${file.name}". ${detail}`, { cause: err });
+    }
   }
   return loadImage(file);
 }
@@ -107,7 +120,7 @@ export async function canvasToBlob(canvas: HTMLCanvasElement, mime: EncodableMim
     ctx.drawImage(canvas, 0, 0);
   }
 
-  let blob: Blob | null = null;
+  let blob: Blob | null;
   try {
     blob = await new Promise<Blob | null>((resolve) => source.toBlob(resolve, mime, quality));
   } catch {
@@ -202,6 +215,7 @@ export async function encodeIco(canvases: HTMLCanvasElement[]): Promise<Blob> {
 
 /** Single-frame GIF encoded by ffmpeg.wasm with an optimised palette. */
 export async function encodeGif(canvas: HTMLCanvasElement): Promise<Blob> {
+  const { runFFmpeg } = await import('./ffmpeg');
   const png = await canvasToBlob(canvas, 'image/png');
   return runFFmpeg({
     inputs: [{ name: 'in.png', data: png }],

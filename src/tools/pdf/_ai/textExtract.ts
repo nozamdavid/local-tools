@@ -8,7 +8,7 @@ import type { ExtractedPageText, ExtractionResult, TextChunk } from './types';
 export async function extractPdfText(
   doc: PDFDocumentProxy,
   maxPages?: number,
-  onProgress?: (current: number, total: number) => void
+  onProgress?: (current: number, total: number) => void,
 ): Promise<ExtractionResult> {
   const totalPages = Math.min(doc.numPages, maxPages ?? doc.numPages);
   const pages: ExtractedPageText[] = [];
@@ -77,12 +77,12 @@ export function chunkTextForInference(
     maxChunkChars?: number;
     includePageHeaders?: boolean;
     maxTotalChunks?: number;
-  } = {}
+  } = {},
 ): TextChunk[] {
   const { maxChunkChars = 1800, includePageHeaders = false, maxTotalChunks = 20 } = options;
   const chunks: TextChunk[] = [];
   let currentChunkText = '';
-  let currentPageHeader: string | undefined;
+  const currentPageHeader: string | undefined = undefined;
 
   const flushChunk = () => {
     const trimmed = currentChunkText.trim();

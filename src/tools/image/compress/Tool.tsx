@@ -110,17 +110,17 @@ export default function CompressTool() {
               filename={resultInfo.filename}
               kind="image"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <img src={originalUrl} alt={file.name} className="preview-media" />
-                ) : null
-              }
+              beforePreview={originalUrl ? <img src={originalUrl} alt={file.name} className="preview-media" /> : null}
               onReset={handleReset}
             >
               {resultInfo.isLarger && (
-                <div className="error-banner" style={{ marginBottom: '1.25rem', backgroundColor: 'rgba(234, 179, 8, 0.15)', borderColor: '#eab308', color: 'inherit' }}>
+                <div
+                  className="error-banner"
+                  style={{ marginBottom: '1.25rem', backgroundColor: 'rgba(234, 179, 8, 0.15)', borderColor: '#eab308', color: 'inherit' }}
+                >
                   <p style={{ margin: 0, fontWeight: 500 }}>
-                    Notice: The compressed file is larger than the original input. This can occur when an image is already heavily compressed.
+                    Notice: The compressed file is larger than the original input. This can occur when an image is already heavily
+                    compressed.
                   </p>
                   <div style={{ marginTop: '0.75rem' }}>
                     <Button variant="secondary" onClick={() => downloadBlob(file, file.name)}>
@@ -142,7 +142,10 @@ export default function CompressTool() {
                 {imgMeta && (
                   <>
                     <span className="meta-chip">
-                      Dimensions: <strong>{imgMeta.width}×{imgMeta.height} px</strong>
+                      Dimensions:{' '}
+                      <strong>
+                        {imgMeta.width}×{imgMeta.height} px
+                      </strong>
                     </span>
                     {imgMeta.hasAlpha && (
                       <span className="meta-chip">
@@ -158,14 +161,7 @@ export default function CompressTool() {
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
                   <Field label="Quality" hint="Quality slider (default 75). Lower values produce smaller files.">
-                    <Slider
-                      value={quality}
-                      min={5}
-                      max={95}
-                      step={1}
-                      unit="%"
-                      onChange={setQuality}
-                    />
+                    <Slider value={quality} min={5} max={95} step={1} unit="%" onChange={setQuality} />
                   </Field>
 
                   <Field label="Max dimension" hint="Constrain the longest edge to reduce size further">

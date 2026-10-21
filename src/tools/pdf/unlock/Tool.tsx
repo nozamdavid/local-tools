@@ -69,7 +69,8 @@ export default function UnlockPdfTool() {
               ? pass
                 ? 'Incorrect password. Check it and try again.'
                 : 'This PDF needs a password to open. Enter it above.'
-              : `Could not unlock this PDF: ${err.message}`
+              : `Could not unlock this PDF: ${err.message}`,
+            { cause: err },
           );
         }
         throw err;
@@ -89,12 +90,7 @@ export default function UnlockPdfTool() {
           onFiles={(files) => setFile(files[0] ?? null)}
         />
       ) : job.status === 'done' && job.result ? (
-        <PdfPreview
-          blob={job.result}
-          filename={`${baseName(file.name)}-unlocked.pdf`}
-          originalSize={file.size}
-          onReset={reset}
-        />
+        <PdfPreview blob={job.result} filename={`${baseName(file.name)}-unlocked.pdf`} originalSize={file.size} onReset={reset} />
       ) : (
         <div>
           {inspection === 'unreadable' && <div className="error-banner">Could not read this PDF: {inspectError}</div>}
@@ -126,10 +122,7 @@ export default function UnlockPdfTool() {
               if (inspection === 'encrypted' && !busy) run();
             }}
           >
-            <Field
-              label="Password"
-              hint="Leave this empty if the PDF opens without a password but restricts printing, copying or editing."
-            >
+            <Field label="Password" hint="Leave this empty if the PDF opens without a password but restricts printing, copying or editing.">
               <input
                 type="password"
                 className={styles.input}

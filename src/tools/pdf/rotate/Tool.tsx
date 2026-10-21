@@ -85,13 +85,7 @@ export default function RotateTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -106,12 +100,7 @@ export default function RotateTool() {
           {job.error && <div className="error-banner">{job.error}</div>}
 
           {job.result ? (
-            <PdfPreview
-              blob={job.result}
-              filename={outName}
-              pageCount={total}
-              onReset={handleReset}
-            />
+            <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
           ) : (
             <div>
               <div className={styles.topRow}>
@@ -139,32 +128,17 @@ export default function RotateTool() {
                 <>
                   <div className={styles.controls}>
                     <Field label="Rotate">
-                      <Select
-                        id={angleId}
-                        value={String(angle)}
-                        onChange={(e) => setAngle(Number(e.target.value))}
-                        options={ANGLES}
-                      />
+                      <Select id={angleId} value={String(angle)} onChange={(e) => setAngle(Number(e.target.value))} options={ANGLES} />
                     </Field>
 
                     <Field label="Pages" hint="Rotation adds to each page's current orientation.">
                       <div className={styles.scope} role="radiogroup" aria-label="Pages to rotate">
                         <label>
-                          <input
-                            type="radio"
-                            name="scope"
-                            checked={scope === 'all'}
-                            onChange={() => setScope('all')}
-                          />
+                          <input type="radio" name="scope" checked={scope === 'all'} onChange={() => setScope('all')} />
                           All pages
                         </label>
                         <label>
-                          <input
-                            type="radio"
-                            name="scope"
-                            checked={scope === 'selected'}
-                            onChange={() => setScope('selected')}
-                          />
+                          <input type="radio" name="scope" checked={scope === 'selected'} onChange={() => setScope('selected')} />
                           Selected pages
                         </label>
                       </div>
@@ -176,10 +150,7 @@ export default function RotateTool() {
                       <span className={styles.selectCount}>
                         {selected.size} of {total} selected
                       </span>
-                      <Button
-                        variant="secondary"
-                        onClick={() => setSelected(new Set(source.pages.map((_, i) => i)))}
-                      >
+                      <Button variant="secondary" onClick={() => setSelected(new Set(source.pages.map((_, i) => i)))}>
                         Select all
                       </Button>
                       <Button variant="secondary" onClick={() => setSelected(new Set())}>

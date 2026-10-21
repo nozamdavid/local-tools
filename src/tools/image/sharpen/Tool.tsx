@@ -15,10 +15,7 @@ const DEFAULT_OPTIONS: SharpenOptions = {
   threshold: 0,
 };
 
-async function renderSharpen(
-  source: HTMLCanvasElement,
-  options: SharpenOptions
-): Promise<HTMLCanvasElement> {
+async function renderSharpen(source: HTMLCanvasElement, options: SharpenOptions): Promise<HTMLCanvasElement> {
   const canvas = document.createElement('canvas');
   canvas.width = source.width;
   canvas.height = source.height;
@@ -28,13 +25,7 @@ async function renderSharpen(
   ctx.drawImage(source, 0, 0);
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-  const outData = await filterWorkerClient.process(
-    'sharpen',
-    canvas.width,
-    canvas.height,
-    imgData.data,
-    options
-  );
+  const outData = await filterWorkerClient.process('sharpen', canvas.width, canvas.height, imgData.data, options);
 
   const outImgData = ctx.createImageData(canvas.width, canvas.height);
   outImgData.data.set(outData);
@@ -62,23 +53,12 @@ export default function SharpenTool() {
                   Amount ({Math.round(options.amount * 100)}%)
                 </span>
                 {options.amount !== DEFAULT_OPTIONS.amount && (
-                  <button
-                    type="button"
-                    className={styles.resetMiniBtn}
-                    onClick={() => update('amount', DEFAULT_OPTIONS.amount)}
-                  >
+                  <button type="button" className={styles.resetMiniBtn} onClick={() => update('amount', DEFAULT_OPTIONS.amount)}>
                     Reset
                   </button>
                 )}
               </div>
-              <Slider
-                value={options.amount}
-                min={0.1}
-                max={3.0}
-                step={0.1}
-                unit="x"
-                onChange={(v) => update('amount', v)}
-              />
+              <Slider value={options.amount} min={0.1} max={3.0} step={0.1} unit="x" onChange={(v) => update('amount', v)} />
             </div>
 
             <div className={styles.sliderWithReset}>
@@ -87,23 +67,12 @@ export default function SharpenTool() {
                   Radius ({options.radius}px)
                 </span>
                 {options.radius !== DEFAULT_OPTIONS.radius && (
-                  <button
-                    type="button"
-                    className={styles.resetMiniBtn}
-                    onClick={() => update('radius', DEFAULT_OPTIONS.radius)}
-                  >
+                  <button type="button" className={styles.resetMiniBtn} onClick={() => update('radius', DEFAULT_OPTIONS.radius)}>
                     Reset
                   </button>
                 )}
               </div>
-              <Slider
-                value={options.radius}
-                min={0.5}
-                max={10.0}
-                step={0.5}
-                unit="px"
-                onChange={(v) => update('radius', v)}
-              />
+              <Slider value={options.radius} min={0.5} max={10.0} step={0.5} unit="px" onChange={(v) => update('radius', v)} />
             </div>
 
             <div className={styles.sliderWithReset}>
@@ -112,23 +81,12 @@ export default function SharpenTool() {
                   Threshold ({options.threshold})
                 </span>
                 {options.threshold !== DEFAULT_OPTIONS.threshold && (
-                  <button
-                    type="button"
-                    className={styles.resetMiniBtn}
-                    onClick={() => update('threshold', DEFAULT_OPTIONS.threshold)}
-                  >
+                  <button type="button" className={styles.resetMiniBtn} onClick={() => update('threshold', DEFAULT_OPTIONS.threshold)}>
                     Reset
                   </button>
                 )}
               </div>
-              <Slider
-                value={options.threshold}
-                min={0}
-                max={50}
-                step={1}
-                unit=""
-                onChange={(v) => update('threshold', v)}
-              />
+              <Slider value={options.threshold} min={0} max={50} step={1} unit="" onChange={(v) => update('threshold', v)} />
             </div>
           </div>
         );

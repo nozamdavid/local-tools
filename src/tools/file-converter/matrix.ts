@@ -64,10 +64,7 @@ const ALL_TARGETS: Record<string, TargetFormat> = {
   txt: { id: 'txt', label: 'TXT', family: 'text', ext: 'txt', description: 'Plain text extract' },
 };
 
-export async function getTargetFormats(
-  detected: DetectedFormat,
-  file?: File
-): Promise<Record<FormatFamily, TargetFormat[]>> {
+export async function getTargetFormats(detected: DetectedFormat, file?: File): Promise<Record<FormatFamily, TargetFormat[]>> {
   const result: Record<FormatFamily, TargetFormat[]> = {
     image: [],
     video: [],

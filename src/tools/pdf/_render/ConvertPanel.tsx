@@ -50,13 +50,7 @@ export function ConvertPanel({
       {job.error && <div className="error-banner">{job.error}</div>}
 
       {job.result ? (
-        <PdfPreview
-          blob={job.result}
-          filename={outName}
-          originalSize={sourceSize}
-          pageCount={pageCount}
-          onReset={onReset}
-        />
+        <PdfPreview blob={job.result} filename={outName} originalSize={sourceSize} pageCount={pageCount} onReset={onReset} />
       ) : (
         <div>
           <div className={styles.topRow}>

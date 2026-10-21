@@ -7,11 +7,7 @@ env.useBrowserCache = true;
 
 const pipelineCache = new Map<string, any>();
 
-async function getPipeline(
-  task: 'summarization' | 'translation',
-  modelId: string,
-  onProgress: (info: ProgressInfo) => void
-): Promise<any> {
+async function getPipeline(task: 'summarization' | 'translation', modelId: string, onProgress: (info: ProgressInfo) => void): Promise<any> {
   let isWebGpu = false;
   if (typeof navigator !== 'undefined' && 'gpu' in navigator && Boolean(navigator.gpu)) {
     try {
@@ -117,8 +113,7 @@ self.onmessage = async (e: MessageEvent<AiWorkerInMessage>) => {
         min_new_tokens: msg.minLength || 20,
       });
 
-      const summaryText =
-        Array.isArray(output) && output[0]?.summary_text ? output[0].summary_text : String(output);
+      const summaryText = Array.isArray(output) && output[0]?.summary_text ? output[0].summary_text : String(output);
 
       self.postMessage({
         type: 'complete',
@@ -142,10 +137,7 @@ self.onmessage = async (e: MessageEvent<AiWorkerInMessage>) => {
           max_new_tokens: 400,
         });
 
-        const transText =
-          Array.isArray(output) && output[0]?.translation_text
-            ? output[0].translation_text
-            : String(output);
+        const transText = Array.isArray(output) && output[0]?.translation_text ? output[0].translation_text : String(output);
 
         translatedChunks.push(transText.trim());
 

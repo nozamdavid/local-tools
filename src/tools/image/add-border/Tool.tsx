@@ -28,11 +28,7 @@ const DEFAULT_OPTIONS: AddBorderOptions = {
   radius: 0,
 };
 
-function renderAddBorder(
-  source: HTMLCanvasElement,
-  options: AddBorderOptions,
-  isPreview: boolean
-): HTMLCanvasElement {
+function renderAddBorder(source: HTMLCanvasElement, options: AddBorderOptions, isPreview: boolean): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) return source;
@@ -71,10 +67,7 @@ function renderAddBorder(
       ctx.save();
       ctx.strokeStyle = options.color1;
       ctx.lineWidth = bw;
-      ctx.setLineDash([
-        Math.max(2, Math.round(options.dashLength * scaleRatio)),
-        Math.max(2, Math.round(options.dashGap * scaleRatio)),
-      ]);
+      ctx.setLineDash([Math.max(2, Math.round(options.dashLength * scaleRatio)), Math.max(2, Math.round(options.dashGap * scaleRatio))]);
       ctx.beginPath();
       if (r > 0 && ctx.roundRect) {
         ctx.roundRect(bw / 2, bw / 2, canvas.width - bw, canvas.height - bw, r);
@@ -114,10 +107,7 @@ function renderAddBorder(
     ctx.lineWidth = bw;
 
     if (options.style === 'dashed') {
-      ctx.setLineDash([
-        Math.max(2, Math.round(options.dashLength * scaleRatio)),
-        Math.max(2, Math.round(options.dashGap * scaleRatio)),
-      ]);
+      ctx.setLineDash([Math.max(2, Math.round(options.dashLength * scaleRatio)), Math.max(2, Math.round(options.dashGap * scaleRatio))]);
     }
 
     ctx.beginPath();

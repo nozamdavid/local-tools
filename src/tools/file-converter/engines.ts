@@ -2,15 +2,7 @@ import type { DetectedFormat } from './detect';
 import type { TargetFormat } from './matrix';
 import type { BatchResultItem } from '../../components/BatchResults';
 import { runFFmpeg } from '../../lib/ffmpeg';
-import {
-  decodeImage,
-  loadImage,
-  imageToCanvas,
-  canvasToBlob,
-  encodeBmp,
-  encodeGif,
-  encodeIco,
-} from '../../lib/image';
+import { decodeImage, loadImage, imageToCanvas, canvasToBlob, encodeBmp, encodeGif, encodeIco } from '../../lib/image';
 import { encodeJxlCanvas } from '../../lib/jxl';
 import { loadPdfDocument, renderPdfPageToBlob } from '../image/_pdf/pdfRenderer';
 import { renderDocxToImages } from '../image/_pdf/docxRenderer';
@@ -28,9 +20,7 @@ export interface ConvertOptions {
   onProgress?: (ratio: number) => void;
 }
 
-export type ConvertResult =
-  | { type: 'single'; name: string; blob: Blob }
-  | { type: 'batch'; items: BatchResultItem[] };
+export type ConvertResult = { type: 'single'; name: string; blob: Blob } | { type: 'batch'; items: BatchResultItem[] };
 
 function getBaseName(filename: string): string {
   const dot = filename.lastIndexOf('.');
@@ -45,7 +35,11 @@ async function loadSvgCanvas(file: File, scaleStr: '1x' | '2x' | '4x'): Promise<
   let w = parseFloat(root.getAttribute('width') || '');
   let h = parseFloat(root.getAttribute('height') || '');
   if (!w || !h || isNaN(w) || isNaN(h)) {
-    const viewBox = root.getAttribute('viewBox')?.trim().split(/[\s,]+/).map(Number);
+    const viewBox = root
+      .getAttribute('viewBox')
+      ?.trim()
+      .split(/[\s,]+/)
+      .map(Number);
     if (viewBox && viewBox.length === 4 && viewBox[2] > 0 && viewBox[3] > 0) {
       w = viewBox[2];
       h = viewBox[3];
@@ -68,7 +62,18 @@ async function loadSvgCanvas(file: File, scaleStr: '1x' | '2x' | '4x'): Promise<
 }
 
 export async function executeConversion(options: ConvertOptions): Promise<ConvertResult> {
-  const { file, detected, target, quality = 90, bgColor = '#ffffff', dpi = 150, svgScale = '2x', bitrate = '192k', icoSize = 64, onProgress } = options;
+  const {
+    file,
+    detected,
+    target,
+    quality = 90,
+    bgColor = '#ffffff',
+    dpi = 150,
+    svgScale = '2x',
+    bitrate = '192k',
+    icoSize = 64,
+    onProgress,
+  } = options;
   const baseName = getBaseName(file.name);
   const outName = `${baseName}.${target.ext}`;
 
@@ -225,13 +230,30 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
     const inputName = `input.${inputExt}`;
     const outputName = `output.${target.ext}`;
 
-    let ffmpegArgs: string[] = ['-i', inputName];
+    const ffmpegArgs: string[] = ['-i', inputName];
 
     if (target.id === 'mp4') {
       ffmpegArgs.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart');
     } else if (target.id === 'webm') {
       // VP8 (not VP9 to avoid crashes in ffmpeg.wasm 0.12)
-      ffmpegArgs.push('-c:v', 'libvpx', '-deadline', 'good', '-cpu-used', '4', '-b:v', '1M', '-crf', '10', '-pix_fmt', 'yuv420p', '-c:a', 'libopus', '-b:a', '96k');
+      ffmpegArgs.push(
+        '-c:v',
+        'libvpx',
+        '-deadline',
+        'good',
+        '-cpu-used',
+        '4',
+        '-b:v',
+        '1M',
+        '-crf',
+        '10',
+        '-pix_fmt',
+        'yuv420p',
+        '-c:a',
+        'libopus',
+        '-b:a',
+        '96k',
+      );
     } else if (target.id === 'mov') {
       ffmpegArgs.push('-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-c:a', 'aac', '-b:a', '128k');
     } else if (target.id === 'mkv') {
@@ -239,7 +261,13 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
     } else if (target.id === 'avi') {
       ffmpegArgs.push('-c:v', 'mpeg4', '-q:v', '3', '-pix_fmt', 'yuv420p', '-c:a', 'libmp3lame', '-q:a', '4');
     } else if (target.id === 'gif') {
-      ffmpegArgs.push('-vf', 'fps=15,scale=trunc(iw/2)*2:-2:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse', '-an', '-loop', '0');
+      ffmpegArgs.push(
+        '-vf',
+        'fps=15,scale=trunc(iw/2)*2:-2:flags=lanczos,split[a][b];[a]palettegen[p];[b][p]paletteuse',
+        '-an',
+        '-loop',
+        '0',
+      );
     } else if (target.id === 'mp3') {
       ffmpegArgs.push('-vn', '-c:a', 'libmp3lame', '-b:a', bitrate);
     } else if (target.id === 'm4a') {
@@ -322,7 +350,10 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
     }
 
     if (target.id === 'pdf') {
-      const images = await renderDocxToImages(file, baseName, { format: 'image/png', onProgress: (cur, tot) => onProgress?.(tot > 0 ? (cur / tot) * 0.7 : 0.35) });
+      const images = await renderDocxToImages(file, baseName, {
+        format: 'image/png',
+        onProgress: (cur, tot) => onProgress?.(tot > 0 ? (cur / tot) * 0.7 : 0.35),
+      });
       const { PDFDocument } = await import('pdf-lib');
       const pdfDoc = await PDFDocument.create();
 
@@ -341,12 +372,16 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
     }
 
     if (target.id === 'png' || target.id === 'jpg') {
-      const images = await renderDocxToImages(file, baseName, { format: target.id === 'jpg' ? 'image/jpeg' : 'image/png', onProgress: (cur, tot) => onProgress?.(tot > 0 ? cur / tot : 0.5) });
+      const images = await renderDocxToImages(file, baseName, {
+        format: target.id === 'jpg' ? 'image/jpeg' : 'image/png',
+        onProgress: (cur, tot) => onProgress?.(tot > 0 ? cur / tot : 0.5),
+      });
       if (images.length === 1) {
         return { type: 'single', name: outName, blob: images[0].blob };
       }
       const items: BatchResultItem[] = images.map((item, idx) => ({
-        name: `${baseName}-page-${idx + 1}.${target.ext}`, blob: item.blob,
+        name: `${baseName}-page-${idx + 1}.${target.ext}`,
+        blob: item.blob,
       }));
       return { type: 'batch', items };
     }

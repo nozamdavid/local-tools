@@ -1,9 +1,4 @@
-import type {
-  MeshFormat,
-  MeshModel,
-  MeshOperation,
-  MeshStats,
-} from './types';
+import type { MeshFormat, MeshModel, MeshOperation, MeshStats } from './types';
 import { MESH_ACCEPT, MESH_CAPABILITIES } from './types';
 import { MAX_FILE_SIZE_BYTES, MAX_CAD_FILE_SIZE_BYTES } from './validation';
 import type { WorkerRequest, WorkerResponse } from './mesh.worker';
@@ -31,7 +26,7 @@ function enqueueWorkerJob<T>(task: () => Promise<T>): Promise<T> {
   const next = meshQueue.then(task, task);
   meshQueue = next.then(
     () => {},
-    () => {}
+    () => {},
   );
   return next;
 }
@@ -74,7 +69,7 @@ function getOrCreateWorker(): Worker {
 function sendWorkerMessage<T>(
   reqFactory: (id: number) => WorkerRequest,
   transferList: Transferable[] = [],
-  expectedGen: number = cancelGeneration
+  expectedGen: number = cancelGeneration,
 ): Promise<T> {
   if (expectedGen !== cancelGeneration) {
     return Promise.reject(new Error('Mesh operation cancelled.'));
@@ -181,15 +176,10 @@ export async function importModel(file: File): Promise<MeshModel> {
       effectiveExt = 'obj';
     } else if (rawMime === 'model/ply') {
       effectiveExt = 'ply';
-    } else if (
-      rawMime === 'model/3mf' ||
-      rawMime === 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml'
-    ) {
+    } else if (rawMime === 'model/3mf' || rawMime === 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml') {
       effectiveExt = '3mf';
     } else {
-      throw new Error(
-        `Unsupported 3D model format for "${file.name}". Supported formats are STL, OBJ, PLY, 3MF, STEP, IGES, and BREP.`
-      );
+      throw new Error(`Unsupported 3D model format for "${file.name}". Supported formats are STL, OBJ, PLY, 3MF, STEP, IGES, and BREP.`);
     }
   }
 
@@ -206,7 +196,7 @@ export async function importModel(file: File): Promise<MeshModel> {
         extension: effectiveExt,
       }),
       [buffer],
-      jobGen
+      jobGen,
     );
   });
 }
@@ -228,7 +218,7 @@ export async function inspectModel(model: MeshModel): Promise<MeshStats> {
         model, // structured clone preserves caller buffers
       }),
       [],
-      jobGen
+      jobGen,
     );
   });
 }
@@ -237,10 +227,7 @@ export async function inspectModel(model: MeshModel): Promise<MeshStats> {
  * Executes a mesh operation (simplification, affine transform, or normal flip) in the Web Worker.
  * Live caller buffers are preserved and never detached.
  */
-export async function processModel(
-  model: MeshModel,
-  operation: MeshOperation
-): Promise<MeshModel> {
+export async function processModel(model: MeshModel, operation: MeshOperation): Promise<MeshModel> {
   const jobGen = cancelGeneration;
   return enqueueWorkerJob(() => {
     if (jobGen !== cancelGeneration) {
@@ -254,7 +241,7 @@ export async function processModel(
         operation,
       }),
       [],
-      jobGen
+      jobGen,
     );
   });
 }
@@ -276,7 +263,7 @@ export async function splitModel(model: MeshModel): Promise<MeshModel[]> {
         model, // structured clone preserves caller buffers
       }),
       [],
-      jobGen
+      jobGen,
     );
   });
 }
@@ -298,7 +285,7 @@ export async function mergeModels(models: MeshModel[]): Promise<MeshModel> {
         models, // structured clone preserves caller buffers
       }),
       [],
-      jobGen
+      jobGen,
     );
   });
 }
@@ -307,10 +294,7 @@ export async function mergeModels(models: MeshModel[]): Promise<MeshModel> {
  * Serializes a MeshModel to an export Blob (STL, OBJ, PLY, 3MF) in the Web Worker.
  * Live caller buffers are preserved and never detached.
  */
-export async function exportModel(
-  model: MeshModel,
-  format: MeshFormat
-): Promise<Blob> {
+export async function exportModel(model: MeshModel, format: MeshFormat): Promise<Blob> {
   const jobGen = cancelGeneration;
   const res = await enqueueWorkerJob(() => {
     if (jobGen !== cancelGeneration) {
@@ -324,7 +308,7 @@ export async function exportModel(
         format,
       }),
       [],
-      jobGen
+      jobGen,
     );
   });
 

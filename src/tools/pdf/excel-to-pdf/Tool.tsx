@@ -77,9 +77,8 @@ export default function ExcelToPdfTool() {
         >
           <PageSetupFields value={setup} onChange={setSetup} />
           <p className={styles.note}>
-            Each worksheet is converted to PDF pages with its cell data and formatting. Wide tables
-            are scaled to fit the page width. Embedded charts, macros, and floating drawings are not
-            rendered.
+            Each worksheet is converted to PDF pages with its cell data and formatting. Wide tables are scaled to fit the page width.
+            Embedded charts, macros, and floating drawings are not rendered.
           </p>
         </ConvertPanel>
       )}

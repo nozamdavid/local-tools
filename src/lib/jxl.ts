@@ -28,7 +28,7 @@ export function isJxlSignature(bytes: Uint8Array): boolean {
     bytes[8] === 0x0d && // '\r'
     bytes[9] === 0x0a && // '\n'
     bytes[10] === 0x87 &&
-    bytes[11] === 0x0a  // '\n'
+    bytes[11] === 0x0a // '\n'
   ) {
     return true;
   }
@@ -108,7 +108,7 @@ class JxlClient {
     const next = this.queue.then(op, op);
     this.queue = next.then(
       () => {},
-      () => {}
+      () => {},
     );
     return next;
   }
@@ -138,16 +138,11 @@ class JxlClient {
             buffer,
           };
           worker.postMessage(msg, [buffer]);
-        })
+        }),
     );
   }
 
-  public encode(
-    width: number,
-    height: number,
-    data: Uint8ClampedArray,
-    options?: JxlEncodeOptions
-  ): Promise<ArrayBuffer> {
+  public encode(width: number, height: number, data: Uint8ClampedArray, options?: JxlEncodeOptions): Promise<ArrayBuffer> {
     return this.enqueue(
       () =>
         new Promise<ArrayBuffer>((resolve, reject) => {
@@ -175,7 +170,7 @@ class JxlClient {
             options,
           };
           worker.postMessage(msg, [copy.buffer]);
-        })
+        }),
     );
   }
 }
@@ -196,9 +191,7 @@ export async function decodeJxl(buffer: ArrayBuffer | Uint8Array): Promise<Image
 /**
  * Decodes a JPEG XL buffer onto an HTMLCanvasElement.
  */
-export async function decodeJxlToCanvas(
-  buffer: ArrayBuffer | Uint8Array
-): Promise<HTMLCanvasElement> {
+export async function decodeJxlToCanvas(buffer: ArrayBuffer | Uint8Array): Promise<HTMLCanvasElement> {
   const imgData = await decodeJxl(buffer);
   const canvas = document.createElement('canvas');
   canvas.width = imgData.width;
@@ -212,9 +205,7 @@ export async function decodeJxlToCanvas(
 /**
  * Decodes a JPEG XL buffer into a browser-displayable PNG Blob.
  */
-export async function decodeJxlToBlob(
-  buffer: ArrayBuffer | Uint8Array
-): Promise<Blob> {
+export async function decodeJxlToBlob(buffer: ArrayBuffer | Uint8Array): Promise<Blob> {
   const canvas = await decodeJxlToCanvas(buffer);
   return new Promise<Blob>((resolve, reject) => {
     canvas.toBlob((blob) => {
@@ -227,26 +218,15 @@ export async function decodeJxlToBlob(
 /**
  * Encodes browser ImageData into a JPEG XL (.jxl) Blob.
  */
-export async function encodeJxl(
-  imageData: ImageData,
-  options?: JxlEncodeOptions
-): Promise<Blob> {
-  const encoded = await jxlClient.encode(
-    imageData.width,
-    imageData.height,
-    imageData.data,
-    options
-  );
+export async function encodeJxl(imageData: ImageData, options?: JxlEncodeOptions): Promise<Blob> {
+  const encoded = await jxlClient.encode(imageData.width, imageData.height, imageData.data, options);
   return new Blob([encoded], { type: 'image/jxl' });
 }
 
 /**
  * Encodes an HTMLCanvasElement into a JPEG XL (.jxl) Blob.
  */
-export async function encodeJxlCanvas(
-  canvas: HTMLCanvasElement,
-  options?: JxlEncodeOptions
-): Promise<Blob> {
+export async function encodeJxlCanvas(canvas: HTMLCanvasElement, options?: JxlEncodeOptions): Promise<Blob> {
   const ctx = canvas.getContext('2d');
   if (!ctx) throw new Error('Canvas 2D context is not available.');
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
@@ -263,12 +243,7 @@ if (typeof window !== 'undefined') {
     'error',
     (event: Event) => {
       const target = event.target;
-      if (
-        target instanceof HTMLImageElement &&
-        target.src &&
-        target.src.startsWith('blob:') &&
-        !target.dataset.jxlHandled
-      ) {
+      if (target instanceof HTMLImageElement && target.src && target.src.startsWith('blob:') && !target.dataset.jxlHandled) {
         target.dataset.jxlHandled = 'pending';
         fetch(target.src)
           .then((res) => res.blob())
@@ -287,6 +262,6 @@ if (typeof window !== 'undefined') {
           });
       }
     },
-    true // capture phase
+    true, // capture phase
   );
 }

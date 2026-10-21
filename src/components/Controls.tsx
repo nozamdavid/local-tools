@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useId } from 'react';
 import { CircleAlert, CircleCheck, Info, TriangleAlert } from 'lucide-react';
 import type { Media } from '../tools/registry';
 
@@ -17,14 +17,62 @@ export interface FieldProps {
   children: React.ReactNode;
 }
 
+/** Elements Field can wire to its label without the caller passing ids. */
+function isFormControl(node: React.ReactNode): node is React.ReactElement<Record<string, unknown>> {
+  if (!React.isValidElement(node)) return false;
+  const controls: unknown[] = ['input', 'select', 'textarea', Input, Select, Textarea, Slider];
+  return controls.includes(node.type);
+}
+
+/**
+ * Label plus control. When the children hold exactly one Input/Select/Textarea/Slider, it is associated with the label
+ * automatically (`htmlFor` is only needed for other controls); anything else is exposed as a labelled group.
+ */
 export function Field({ label, hint, error, htmlFor, children }: FieldProps) {
+  const autoId = useId();
+  const labelId = `${autoId}-label`;
+  const messageId = `${autoId}-message`;
+  const message = error || hint;
+  const nodes = React.Children.toArray(children);
+  const controls = htmlFor ? [] : nodes.filter(isFormControl);
+  const control = controls.length === 1 ? controls[0] : null;
+  const controlId = htmlFor ?? (control ? ((control.props.id as string | undefined) ?? autoId) : undefined);
+
+  const wired = control
+    ? nodes.map((node) =>
+        node === control
+          ? React.cloneElement(control, {
+              id: controlId,
+              'aria-describedby': [control.props['aria-describedby'], message ? messageId : null].filter(Boolean).join(' ') || undefined,
+              'aria-invalid': error ? true : control.props['aria-invalid'],
+            })
+          : node,
+      )
+    : children;
+
   return (
-    <div className="field">
-      <label className="field-label" htmlFor={htmlFor}>
-        {label}
-      </label>
-      {children}
-      {error ? <p className="field-error">{error}</p> : hint && <p className="field-hint">{hint}</p>}
+    <div className="field" role={controlId ? undefined : 'group'} aria-labelledby={controlId ? undefined : labelId}>
+      {controlId ? (
+        <label className="field-label" htmlFor={controlId} id={labelId}>
+          {label}
+        </label>
+      ) : (
+        <div className="field-label" id={labelId}>
+          {label}
+        </div>
+      )}
+      {wired}
+      {error ? (
+        <p className="field-error" id={messageId}>
+          {error}
+        </p>
+      ) : (
+        hint && (
+          <p className="field-hint" id={messageId}>
+            {hint}
+          </p>
+        )
+      )}
     </div>
   );
 }
@@ -41,6 +89,8 @@ export interface SliderProps {
   disabled?: boolean;
   id?: string;
   'aria-label'?: string;
+  'aria-describedby'?: string;
+  'aria-invalid'?: boolean;
 }
 
 export function Slider({ value, min, max, step = 1, unit = '', onChange, disabled = false, id, ...rest }: SliderProps) {
@@ -57,6 +107,9 @@ export function Slider({ value, min, max, step = 1, unit = '', onChange, disable
         value={value}
         disabled={disabled}
         aria-label={rest['aria-label']}
+        aria-describedby={rest['aria-describedby']}
+        aria-invalid={rest['aria-invalid']}
+        aria-valuetext={`${value}${unit}`}
         style={{ '--fill': `${Math.max(0, Math.min(100, fill))}%` } as React.CSSProperties}
         onChange={(e) => onChange(parseFloat(e.target.value))}
       />
@@ -159,11 +212,21 @@ export interface SwitchProps {
   onChange: (checked: boolean) => void;
   label?: React.ReactNode;
   disabled?: boolean;
+  /** Name for switches without a visible label */
+  'aria-label'?: string;
 }
 
-export function Switch({ checked, onChange, label, disabled }: SwitchProps) {
+export function Switch({ checked, onChange, label, disabled, ...rest }: SwitchProps) {
   return (
-    <button type="button" role="switch" aria-checked={checked} className="switch" disabled={disabled} onClick={() => onChange(!checked)}>
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={rest['aria-label']}
+      className="switch"
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+    >
       <span className="switch-track" aria-hidden="true">
         <span className="switch-thumb" />
       </span>
@@ -189,7 +252,8 @@ export interface SegmentedControlProps<T extends string> {
 export function SegmentedControl<T extends string>({ value, options, onChange, ...rest }: SegmentedControlProps<T>) {
   function handleKeyDown(event: React.KeyboardEvent) {
     const index = options.findIndex((o) => o.value === value);
-    const step = event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
+    const step =
+      event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : event.key === 'ArrowLeft' || event.key === 'ArrowUp' ? -1 : 0;
     if (!step) return;
     event.preventDefault();
     const next = options[(index + step + options.length) % options.length];

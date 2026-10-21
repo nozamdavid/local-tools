@@ -65,12 +65,7 @@ export function detectVideoContainer(firstBytes: Uint8Array): ContainerType {
   }
 
   // 2. EBML / WebM / MKV check: 1A 45 DF A3
-  if (
-    firstBytes[0] === 0x1a &&
-    firstBytes[1] === 0x45 &&
-    firstBytes[2] === 0xdf &&
-    firstBytes[3] === 0xa3
-  ) {
+  if (firstBytes[0] === 0x1a && firstBytes[1] === 0x45 && firstBytes[2] === 0xdf && firstBytes[3] === 0xa3) {
     return 'mkv-webm';
   }
 
@@ -88,7 +83,7 @@ export function detectVideoContainer(firstBytes: Uint8Array): ContainerType {
  * Inspects BMFF (MP4, MOV) atom boundaries.
  */
 export async function inspectBmff(
-  file: Blob | File | { size: number; slice: (s: number, e: number) => Blob | { arrayBuffer: () => Promise<ArrayBuffer> } }
+  file: Blob | File | { size: number; slice: (s: number, e: number) => Blob | { arrayBuffer: () => Promise<ArrayBuffer> } },
 ): Promise<ContainerCheckResult> {
   const fileSize = file.size;
   const issues: string[] = [];
@@ -114,12 +109,7 @@ export async function inspectBmff(
     const view = new DataView(headerBuf);
 
     const size32 = view.getUint32(0, false);
-    const type = String.fromCharCode(
-      view.getUint8(4),
-      view.getUint8(5),
-      view.getUint8(6),
-      view.getUint8(7)
-    );
+    const type = String.fromCharCode(view.getUint8(4), view.getUint8(5), view.getUint8(6), view.getUint8(7));
 
     let atomSize = size32;
     let headerSize = 8;
@@ -151,7 +141,7 @@ export async function inspectBmff(
     // Boundary check
     if (offset + atomSize > fileSize) {
       issues.push(
-        `Box '${type}' at offset ${offset} declares size ${atomSize} bytes (extending to ${offset + atomSize}), which exceeds total file size (${fileSize} bytes). File is truncated!`
+        `Box '${type}' at offset ${offset} declares size ${atomSize} bytes (extending to ${offset + atomSize}), which exceeds total file size (${fileSize} bytes). File is truncated!`,
       );
       atoms.push({ type, offset, size: atomSize, headerSize });
       break;
@@ -171,7 +161,9 @@ export async function inspectBmff(
   }
 
   if (!hasMoov) {
-    issues.push("Missing 'moov' atom (movie header index). Video player cannot locate audio/video tracks or decode samples; typical of an incomplete or interrupted recording.");
+    issues.push(
+      "Missing 'moov' atom (movie header index). Video player cannot locate audio/video tracks or decode samples; typical of an incomplete or interrupted recording.",
+    );
   }
   if (!hasMdat) {
     issues.push("Missing 'mdat' atom (media data payload). Video contains no media samples.");
@@ -222,7 +214,7 @@ export function readEbmlVint(bytes: Uint8Array, offset: number): { value: number
  * Inspects EBML (WebM, MKV) root and Segment boundaries.
  */
 export async function inspectEbml(
-  file: Blob | File | { size: number; slice: (s: number, e: number) => Blob | { arrayBuffer: () => Promise<ArrayBuffer> } }
+  file: Blob | File | { size: number; slice: (s: number, e: number) => Blob | { arrayBuffer: () => Promise<ArrayBuffer> } },
 ): Promise<ContainerCheckResult> {
   const fileSize = file.size;
   const issues: string[] = [];
@@ -307,7 +299,9 @@ export async function inspectEbml(
       }
       const totalVoidSize = 1 + voidSizeVint.length + voidSizeVint.value;
       if (currentOffset + totalVoidSize > fileSize) {
-        issues.push(`EBML Void element at offset ${currentOffset} declares size ${voidSizeVint.value} bytes extending past file end (${fileSize} bytes).`);
+        issues.push(
+          `EBML Void element at offset ${currentOffset} declares size ${voidSizeVint.value} bytes extending past file end (${fileSize} bytes).`,
+        );
         break;
       }
       atoms.push({
@@ -329,7 +323,9 @@ export async function inspectEbml(
       }
       const totalCrcSize = 1 + crcSizeVint.length + crcSizeVint.value;
       if (currentOffset + totalCrcSize > fileSize) {
-        issues.push(`EBML CRC-32 element at offset ${currentOffset} declares size ${crcSizeVint.value} bytes extending past file end (${fileSize} bytes).`);
+        issues.push(
+          `EBML CRC-32 element at offset ${currentOffset} declares size ${crcSizeVint.value} bytes extending past file end (${fileSize} bytes).`,
+        );
         break;
       }
       atoms.push({
@@ -345,17 +341,12 @@ export async function inspectEbml(
     // Must be Segment element (0x18 0x53 0x80 0x67)
     if (sliceBytes.length < 4) {
       issues.push(
-        `Incomplete Segment ID at byte offset ${currentOffset}: expected 4 bytes (0x18538067), only ${sliceBytes.length} available.`
+        `Incomplete Segment ID at byte offset ${currentOffset}: expected 4 bytes (0x18538067), only ${sliceBytes.length} available.`,
       );
       break;
     }
 
-    if (
-      sliceBytes[0] === 0x18 &&
-      sliceBytes[1] === 0x53 &&
-      sliceBytes[2] === 0x80 &&
-      sliceBytes[3] === 0x67
-    ) {
+    if (sliceBytes[0] === 0x18 && sliceBytes[1] === 0x53 && sliceBytes[2] === 0x80 && sliceBytes[3] === 0x67) {
       foundSegment = true;
       const segSizeVint = readEbmlVint(sliceBytes, 4);
       if (!segSizeVint) {
@@ -374,7 +365,7 @@ export async function inspectEbml(
         const totalDeclaredSegmentEnd = currentOffset + 4 + segSizeVint.length + segSizeVint.value;
         if (totalDeclaredSegmentEnd > fileSize) {
           issues.push(
-            `Declared EBML Segment end (${totalDeclaredSegmentEnd} bytes) exceeds total file size (${fileSize} bytes). File is truncated by ${totalDeclaredSegmentEnd - fileSize} bytes!`
+            `Declared EBML Segment end (${totalDeclaredSegmentEnd} bytes) exceeds total file size (${fileSize} bytes). File is truncated by ${totalDeclaredSegmentEnd - fileSize} bytes!`,
           );
         }
       }
@@ -383,7 +374,7 @@ export async function inspectEbml(
       issues.push(
         `Expected Segment ID 0x18538067 at offset ${currentOffset}, found ${Array.from(sliceBytes.slice(0, Math.min(4, sliceBytes.length)))
           .map((b) => b.toString(16).padStart(2, '0'))
-          .join(' ')}.`
+          .join(' ')}.`,
       );
       break;
     }
@@ -407,7 +398,7 @@ export async function inspectEbml(
  * Inspects RIFF / AVI container boundaries and declared size.
  */
 export async function inspectRiff(
-  file: Blob | File | { size: number; slice: (s: number, e: number) => Blob | { arrayBuffer: () => Promise<ArrayBuffer> } }
+  file: Blob | File | { size: number; slice: (s: number, e: number) => Blob | { arrayBuffer: () => Promise<ArrayBuffer> } },
 ): Promise<ContainerCheckResult> {
   const fileSize = file.size;
   const issues: string[] = [];
@@ -436,11 +427,11 @@ export async function inspectRiff(
 
   if (fileSize < totalExpectedSize) {
     issues.push(
-      `File truncated: Actual file size (${fileSize} bytes) is smaller than declared RIFF container size (${totalExpectedSize} bytes). Missing ${totalExpectedSize - fileSize} bytes.`
+      `File truncated: Actual file size (${fileSize} bytes) is smaller than declared RIFF container size (${totalExpectedSize} bytes). Missing ${totalExpectedSize - fileSize} bytes.`,
     );
   } else if (fileSize > totalExpectedSize + 1024) {
     warnings.push(
-      `File contains trailing bytes: Actual file size (${fileSize} bytes) exceeds declared RIFF container size (${totalExpectedSize} bytes) by ${fileSize - totalExpectedSize} bytes.`
+      `File contains trailing bytes: Actual file size (${fileSize} bytes) exceeds declared RIFF container size (${totalExpectedSize} bytes) by ${fileSize - totalExpectedSize} bytes.`,
     );
   }
 
@@ -459,7 +450,7 @@ export async function inspectRiff(
  * Tests browser native video playability with a strict timeout and guaranteed Object URL cleanup.
  */
 export async function testBrowserPlayability(
-  file: Blob | File
+  file: Blob | File,
 ): Promise<{ playable: boolean; error?: string; errorCode?: number; duration?: number; width?: number; height?: number }> {
   if (typeof window === 'undefined' || typeof document === 'undefined') {
     return { playable: false, error: 'Video playability probe not available in non-browser environment' };
@@ -567,7 +558,8 @@ export async function diagnoseVideoFile(file: File): Promise<VideoHealthReport> 
     statusMessage = 'Container corruption or truncation detected.';
   } else if (!playProbe.playable) {
     status = 'codec-unsupported';
-    statusMessage = 'Container structure is valid, but the video/audio codec is not natively supported by this browser (e.g. HEVC/H.265, AV1, ProRes).';
+    statusMessage =
+      'Container structure is valid, but the video/audio codec is not natively supported by this browser (e.g. HEVC/H.265, AV1, ProRes).';
   } else {
     status = 'healthy';
     statusMessage = 'Video container is intact and natively playable in this browser.';
@@ -614,7 +606,7 @@ export async function diagnoseVideoFile(file: File): Promise<VideoHealthReport> 
       disclaimer: 'Diagnostic inspection only. No guarantee of repairability or security.',
     },
     null,
-    2
+    2,
   );
 
   const lines = [

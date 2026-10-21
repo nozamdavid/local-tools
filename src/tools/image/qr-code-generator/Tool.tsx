@@ -4,14 +4,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { Field, Slider, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { downloadBlob } from '../../../lib/download';
-import {
-  type QrContentType,
-  type WifiData,
-  type EmailData,
-  type SmsData,
-  type VCardData,
-  buildQrString,
-} from '../_generate/qr';
+import { type QrContentType, type WifiData, type EmailData, type SmsData, type VCardData, buildQrString } from '../_generate/qr';
 import styles from './Tool.module.css';
 
 type ErrorCorrection = 'L' | 'M' | 'Q' | 'H';
@@ -294,9 +287,7 @@ export default function QrCodeGeneratorTool() {
                   <Field label="Encryption">
                     <Select
                       value={wifiVal.auth}
-                      onChange={(e) =>
-                        setWifiVal({ ...wifiVal, auth: e.target.value as 'WPA' | 'WEP' | 'nopass' })
-                      }
+                      onChange={(e) => setWifiVal({ ...wifiVal, auth: e.target.value as 'WPA' | 'WEP' | 'nopass' })}
                       options={[
                         { value: 'WPA', label: 'WPA / WPA2 / WPA3' },
                         { value: 'WEP', label: 'WEP' },
@@ -500,10 +491,7 @@ export default function QrCodeGeneratorTool() {
 
             {/* Customization Options */}
             <div className={styles.twoCols}>
-              <Field
-                label="Error Correction"
-                hint={logoImg ? 'Locked to High (30%) because center logo is active' : undefined}
-              >
+              <Field label="Error Correction" hint={logoImg ? 'Locked to High (30%) because center logo is active' : undefined}>
                 <Select
                   id={ecId}
                   value={effectiveEcLevel}
@@ -534,6 +522,7 @@ export default function QrCodeGeneratorTool() {
                     type="color"
                     className={styles.colorInput}
                     value={darkColor}
+                    aria-label="Foreground colour"
                     onChange={(e) => setDarkColor(e.target.value)}
                   />
                   <span>{darkColor}</span>
@@ -547,14 +536,11 @@ export default function QrCodeGeneratorTool() {
                     className={styles.colorInput}
                     value={lightColor}
                     disabled={transparentBg}
+                    aria-label="Background colour"
                     onChange={(e) => setLightColor(e.target.value)}
                   />
                   <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      checked={transparentBg}
-                      onChange={(e) => setTransparentBg(e.target.checked)}
-                    />
+                    <input type="checkbox" checked={transparentBg} onChange={(e) => setTransparentBg(e.target.checked)} />
                     Transparent
                   </label>
                 </div>
@@ -562,10 +548,7 @@ export default function QrCodeGeneratorTool() {
             </div>
 
             {/* Center Logo */}
-            <Field
-              label="Center Logo Image"
-              hint="Optional icon in center. Automatically enables High error correction."
-            >
+            <Field label="Center Logo Image" hint="Optional icon in center. Automatically enables High error correction.">
               <div className={styles.logoUploadArea}>
                 <input
                   ref={logoInputRef}
@@ -596,7 +579,7 @@ export default function QrCodeGeneratorTool() {
           {/* Preview & Download Column */}
           <div className={styles.previewCard}>
             <div className={styles.previewWrapper}>
-              <canvas ref={canvasRef} className={styles.previewCanvas} />
+              <canvas ref={canvasRef} className={styles.previewCanvas} role="img" aria-label="QR code preview" />
             </div>
 
             <div className={styles.actions}>

@@ -14,29 +14,18 @@ export function transformMesh(
   scale: [number, number, number],
   rotation: [number, number, number],
   center: boolean,
-  ground: boolean
+  ground: boolean,
 ): MeshModel {
   validateMeshModel(model);
 
   const [sx, sy, sz] = scale;
   const [degX, degY, degZ] = rotation;
 
-  if (
-    !Number.isFinite(sx) ||
-    !Number.isFinite(sy) ||
-    !Number.isFinite(sz) ||
-    sx === 0 ||
-    sy === 0 ||
-    sz === 0
-  ) {
+  if (!Number.isFinite(sx) || !Number.isFinite(sy) || !Number.isFinite(sz) || sx === 0 || sy === 0 || sz === 0) {
     throw new Error('Invalid transform: scale factors must be non-zero finite numbers.');
   }
 
-  if (
-    !Number.isFinite(degX) ||
-    !Number.isFinite(degY) ||
-    !Number.isFinite(degZ)
-  ) {
+  if (!Number.isFinite(degX) || !Number.isFinite(degY) || !Number.isFinite(degZ)) {
     throw new Error('Invalid transform: rotation angles must be finite numbers.');
   }
 
@@ -47,9 +36,12 @@ export function transformMesh(
   const radY = (degY * Math.PI) / 180;
   const radZ = (degZ * Math.PI) / 180;
 
-  const cosX = Math.cos(radX), sinX = Math.sin(radX);
-  const cosY = Math.cos(radY), sinY = Math.sin(radY);
-  const cosZ = Math.cos(radZ), sinZ = Math.sin(radZ);
+  const cosX = Math.cos(radX),
+    sinX = Math.sin(radX);
+  const cosY = Math.cos(radY),
+    sinY = Math.sin(radY);
+  const cosZ = Math.cos(radZ),
+    sinZ = Math.sin(radZ);
 
   // 1. Scale and Rotate
   for (let i = 0; i < positions.length; i += 3) {
@@ -81,8 +73,12 @@ export function transformMesh(
   }
 
   // 2. Compute bounding box after scale and rotation
-  let minX = Infinity, minY = Infinity, minZ = Infinity;
-  let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+  let minX = Infinity,
+    minY = Infinity,
+    minZ = Infinity;
+  let maxX = -Infinity,
+    maxY = -Infinity,
+    maxZ = -Infinity;
 
   for (let i = 0; i < newPositions.length; i += 3) {
     const x = newPositions[i];

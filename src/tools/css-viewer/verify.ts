@@ -1,7 +1,4 @@
-import {
-  escapeStyleTagBreakout,
-  sanitizeSampleHtml,
-} from '../../lib/inertMarkup';
+import { escapeStyleTagBreakout, sanitizeSampleHtml } from '../../lib/inertMarkup';
 
 export const TEST_PRESETS: Record<string, { label: string; html: string }> = {
   card: {

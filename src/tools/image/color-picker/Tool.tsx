@@ -203,17 +203,7 @@ export default function ColorPickerTool() {
     const sy = Math.floor(hoverPos.y) - sampleRadius;
 
     lCtx.clearRect(0, 0, sampleSize, sampleSize);
-    lCtx.drawImage(
-      offscreenCanvasRef.current!,
-      sx,
-      sy,
-      sampleSize,
-      sampleSize,
-      0,
-      0,
-      sampleSize,
-      sampleSize,
-    );
+    lCtx.drawImage(offscreenCanvasRef.current!, sx, sy, sampleSize, sampleSize, 0, 0, sampleSize, sampleSize);
   }, [hoverPos]);
 
   const handleEyeDropper = async () => {
@@ -273,12 +263,7 @@ export default function ColorPickerTool() {
           />
         ) : (
           <>
-            <div
-              className={styles.imageWrapper}
-              onMouseMove={handleMouseMove}
-              onMouseLeave={handleMouseLeave}
-              onClick={handleClick}
-            >
+            <div className={styles.imageWrapper} onMouseMove={handleMouseMove} onMouseLeave={handleMouseLeave} onClick={handleClick}>
               <img
                 ref={imgRef}
                 src={imgElement ? imgElement.src : undefined}
@@ -287,15 +272,10 @@ export default function ColorPickerTool() {
               />
 
               {hoverPos && loupePos && (
-                <div
-                  className={styles.loupe}
-                  style={{ left: `${loupePos.x}px`, top: `${loupePos.y}px` }}
-                >
-                  <canvas ref={loupeCanvasRef} className={styles.loupeCanvas} />
+                <div className={styles.loupe} style={{ left: `${loupePos.x}px`, top: `${loupePos.y}px` }}>
+                  <canvas ref={loupeCanvasRef} className={styles.loupeCanvas} aria-hidden="true" />
                   <div className={styles.loupeCrosshair} />
-                  {hoverColor && (
-                    <div className={styles.loupeBadge}>{hoverColor.hex.toUpperCase()}</div>
-                  )}
+                  {hoverColor && <div className={styles.loupeBadge}>{hoverColor.hex.toUpperCase()}</div>}
                 </div>
               )}
             </div>
@@ -303,13 +283,8 @@ export default function ColorPickerTool() {
             {selectedColor && (
               <div className={styles.detailsGrid}>
                 <div className={styles.swatchCard}>
-                  <div
-                    className={styles.swatchPreview}
-                    style={{ backgroundColor: selectedColor.hex }}
-                  />
-                  <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                    {selectedColor.hex.toUpperCase()}
-                  </div>
+                  <div className={styles.swatchPreview} style={{ backgroundColor: selectedColor.hex }} />
+                  <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{selectedColor.hex.toUpperCase()}</div>
                 </div>
 
                 <div className={styles.valuesList}>
@@ -342,11 +317,7 @@ export default function ColorPickerTool() {
               <div className={styles.historySection}>
                 <div className={styles.historyTitle}>
                   <span>Pick history ({history.length})</span>
-                  <Button
-                    variant="secondary"
-                    onClick={() => setHistory([])}
-                    style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
-                  >
+                  <Button variant="secondary" onClick={() => setHistory([])} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
                     Clear history
                   </Button>
                 </div>

@@ -24,12 +24,7 @@ const ALL_FORMAT_LABELS: Record<OutputFormat, string> = {
 };
 
 function isNonNativePreview(file: File): boolean {
-  return (
-    /image\/hei[cf]/i.test(file.type) ||
-    /\.hei[cf]$/i.test(file.name) ||
-    /image\/jxl/i.test(file.type) ||
-    /\.jxl$/i.test(file.name)
-  );
+  return /image\/hei[cf]/i.test(file.type) || /\.hei[cf]$/i.test(file.name) || /image\/jxl/i.test(file.type) || /\.jxl$/i.test(file.name);
 }
 
 export function Converter({ preset }: { preset: ConverterPreset }) {
@@ -48,9 +43,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
   const [progress, setProgress] = useState<number>(0);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
 
-  const [outputResults, setOutputResults] = useState<
-    { name: string; blob: Blob; originalSize: number }[]
-  >([]);
+  const [outputResults, setOutputResults] = useState<{ name: string; blob: Blob; originalSize: number }[]>([]);
   const [failedResults, setFailedResults] = useState<{ name: string; error: string }[]>([]);
 
   const formatSelectId = useId();
@@ -62,9 +55,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
   }, []);
 
   // Single file original preview
-  const rawPreviewUrl = useObjectUrl(
-    files.length === 1 && !isNonNativePreview(files[0]) ? files[0] : null,
-  );
+  const rawPreviewUrl = useObjectUrl(files.length === 1 && !isNonNativePreview(files[0]) ? files[0] : null);
   const [customPreviewUrl, setCustomPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -178,8 +169,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
           originalSize: file.size,
         });
       } catch (err) {
-        const errorMsg =
-          err instanceof Error ? err.message : 'Unknown error during conversion';
+        const errorMsg = err instanceof Error ? err.message : 'Unknown error during conversion';
         failed.push({
           name: file.name,
           error: errorMsg,
@@ -194,8 +184,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
     setStatus('done');
   };
 
-  const showQuality =
-    format === 'jpg' || format === 'webp' || format === 'avif' || (format === 'jxl' && !lossless);
+  const showQuality = format === 'jpg' || format === 'webp' || format === 'avif' || (format === 'jxl' && !lossless);
   const showBgColor = format === 'jpg' || format === 'bmp';
 
   return (
@@ -227,10 +216,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
                   Files: <strong>{files.length} images</strong>
                 </span>
                 <span className="meta-chip">
-                  Total size:{' '}
-                  <strong>
-                    {formatBytes(files.reduce((acc, f) => acc + f.size, 0))}
-                  </strong>
+                  Total size: <strong>{formatBytes(files.reduce((acc, f) => acc + f.size, 0))}</strong>
                 </span>
               </>
             )}
@@ -249,10 +235,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
           {/* Idle: Controls & Options */}
           {status === 'idle' && (
             <div style={{ marginTop: '1.25rem' }}>
-              <Field
-                label="Output format"
-                hint="Select the image format to convert to."
-              >
+              <Field label="Output format" hint="Select the image format to convert to.">
                 <Select
                   id={formatSelectId}
                   value={format}
@@ -264,11 +247,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
               {format === 'jxl' && (
                 <div style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
-                    <input
-                      type="checkbox"
-                      checked={lossless}
-                      onChange={(e) => setLossless(e.target.checked)}
-                    />
+                    <input type="checkbox" checked={lossless} onChange={(e) => setLossless(e.target.checked)} />
                     <span>Lossless compression</span>
                   </label>
                   <p style={{ margin: '0.35rem 0 0 1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
@@ -284,26 +263,16 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
                     format === 'jpg'
                       ? 'Controls JPEG compression quality. Higher means cleaner image, larger file.'
                       : format === 'jxl'
-                      ? 'Controls JPEG XL compression quality (1-100).'
-                      : 'Compression quality slider (1-100).'
+                        ? 'Controls JPEG XL compression quality (1-100).'
+                        : 'Compression quality slider (1-100).'
                   }
                 >
-                  <Slider
-                    value={quality}
-                    min={1}
-                    max={100}
-                    step={1}
-                    unit="%"
-                    onChange={setQuality}
-                  />
+                  <Slider value={quality} min={1} max={100} step={1} unit="%" onChange={setQuality} />
                 </Field>
               )}
 
               {showBgColor && (
-                <Field
-                  label="Background colour"
-                  hint="Used to fill transparent areas when flattening transparency into JPG or BMP."
-                >
+                <Field label="Background colour" hint="Used to fill transparent areas when flattening transparency into JPG or BMP.">
                   <div className={styles.colorPickerRow}>
                     <input
                       type="color"
@@ -319,10 +288,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
 
               {preset.hasScaleOption && (
                 <>
-                  <Field
-                    label="Output scale / width"
-                    hint="SVGs are vector graphics that can be rendered crisply at any size."
-                  >
+                  <Field label="Output scale / width" hint="SVGs are vector graphics that can be rendered crisply at any size.">
                     <Select
                       id={scaleSelectId}
                       value={svgScale}
@@ -337,21 +303,14 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
                   </Field>
 
                   {svgScale === 'custom' && (
-                    <Field
-                      label="Custom width (px)"
-                      hint="Height will scale proportionally."
-                    >
+                    <Field label="Custom width (px)" hint="Height will scale proportionally.">
                       <input
                         type="number"
                         className={styles.customWidthInput}
                         min={1}
                         max={16384}
                         value={customWidth}
-                        onChange={(e) =>
-                          setCustomWidth(
-                            Math.max(1, parseInt(e.target.value, 10) || 1),
-                          )
-                        }
+                        onChange={(e) => setCustomWidth(Math.max(1, parseInt(e.target.value, 10) || 1))}
                       />
                     </Field>
                   )}
@@ -406,15 +365,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
                     filename={outputResults[0].name}
                     kind="image"
                     originalSize={outputResults[0].originalSize}
-                    beforePreview={
-                      previewUrl ? (
-                        <img
-                          src={previewUrl}
-                          alt={files[0].name}
-                          className="preview-media"
-                        />
-                      ) : null
-                    }
+                    beforePreview={previewUrl ? <img src={previewUrl} alt={files[0].name} className="preview-media" /> : null}
                     onReset={handleReset}
                   />
                 ) : (

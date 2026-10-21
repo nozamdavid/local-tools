@@ -166,7 +166,10 @@ export function sanitizeSampleHtml(html: string): string {
   clean = clean.replace(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*>/gi, '');
 
   // 3. Strip forms and frame/embedded elements
-  clean = clean.replace(/<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet|form)>/gis, '');
+  clean = clean.replace(
+    /<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet|form)>/gis,
+    '',
+  );
   clean = clean.replace(/<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*\/?>/gi, '');
 
   // 4. Strip inline event handlers
@@ -179,9 +182,7 @@ export function sanitizeSampleHtml(html: string): string {
     if (href.startsWith('#')) {
       return match.replace(/\starget\s*=\s*(["']).*?\1/gi, '');
     }
-    return match
-      .replace(/\bhref\s*=\s*(["']).*?\1/gi, 'href="#"')
-      .replace(/\starget\s*=\s*(["']).*?\1/gi, '');
+    return match.replace(/\bhref\s*=\s*(["']).*?\1/gi, 'href="#"').replace(/\starget\s*=\s*(["']).*?\1/gi, '');
   });
 
   return clean;
@@ -190,8 +191,7 @@ export function sanitizeSampleHtml(html: string): string {
 export default function CssViewerTool() {
   const meta = getToolMeta('css-viewer');
   const title = meta.title !== 'css-viewer' ? meta.title : 'CSS Viewer';
-  const description =
-    meta.description || 'View, live edit, inspect, and test CSS stylesheets securely in a sandboxed preview.';
+  const description = meta.description || 'View, live edit, inspect, and test CSS stylesheets securely in a sandboxed preview.';
 
   const [cssCode, setCssCode] = useState<string>(DEFAULT_CSS);
   const [selectedPreset, setSelectedPreset] = useState<string>('card');
@@ -343,7 +343,7 @@ ${safeHtml}
         {/* Top Controls Bar */}
         <div className={styles.topBar}>
           <div className={styles.deviceControls}>
-            <span style={{ fontSize: '0.85rem', color: '#9ca3af', marginRight: '0.25rem' }}>Viewport:</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginRight: '0.25rem' }}>Viewport:</span>
             <button
               type="button"
               className={`${styles.deviceBtn} ${deviceWidth === 'desktop' ? styles.deviceBtnActive : ''}`}
@@ -403,6 +403,7 @@ ${safeHtml}
                 <select
                   className={styles.presetSelect}
                   value={selectedPreset}
+                  aria-label="HTML Preset"
                   onChange={(e) => handlePresetChange(e.target.value)}
                 >
                   {Object.entries(HTML_PRESETS).map(([k, p]) => (
@@ -414,11 +415,13 @@ ${safeHtml}
               )}
             </div>
 
-            {activeTab === 'css' ? (              <textarea
+            {activeTab === 'css' ? (
+              <textarea
                 className={styles.codeArea}
                 value={cssCode}
                 onChange={(e) => setCssCode(e.target.value)}
                 placeholder="Paste or write CSS stylesheet here..."
+                aria-label="CSS stylesheet"
                 spellCheck={false}
               />
             ) : (
@@ -427,6 +430,7 @@ ${safeHtml}
                 value={sampleHtml}
                 onChange={(e) => setSampleHtml(e.target.value)}
                 placeholder="Edit sample HTML to test against the stylesheet..."
+                aria-label="Sample HTML code"
                 spellCheck={false}
               />
             )}
@@ -435,12 +439,7 @@ ${safeHtml}
           {/* Right: Sandboxed Preview Pane */}
           <div className={styles.previewWrapper}>
             <div className={styles.previewFrameContainer} style={{ width: containerWidth }}>
-              <iframe
-                title="CSS Sandbox Preview"
-                className={styles.previewFrame}
-                sandbox=""
-                srcDoc={iframeSrcDoc}
-              />
+              <iframe title="CSS Sandbox Preview" className={styles.previewFrame} sandbox="" srcDoc={iframeSrcDoc} />
             </div>
           </div>
         </div>
@@ -448,7 +447,7 @@ ${safeHtml}
         {/* Browser CSS Parsing Diagnostics */}
         <div className={styles.diagPanel}>
           <div className={styles.diagHeader}>
-            <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Browser CSS Parsing Diagnostics</h3>
+            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Browser CSS Parsing Diagnostics</h2>
             <span className={styles.diagBadge}>Partial Preview Analysis</span>
           </div>
 
@@ -473,7 +472,8 @@ ${safeHtml}
 
           {diagnostics.warnings.length > 0 && (
             <ul className={styles.diagWarnings}>
-              {diagnostics.warnings.map((w, idx) => (                <li key={idx} className={styles.diagWarningItem}>
+              {diagnostics.warnings.map((w, idx) => (
+                <li key={idx} className={styles.diagWarningItem}>
                   ⚠️ {w}
                 </li>
               ))}
@@ -481,7 +481,9 @@ ${safeHtml}
           )}
 
           <div className={styles.diagDisclaimer}>
-            <strong>Note on diagnostics:</strong> Modern browser CSS parsers discard invalid properties and malformed rules silently without generating fatal syntax exceptions. These diagnostics provide a partial preview inspection and do not constitute a full CSS standards validation.
+            <strong>Note on diagnostics:</strong> Modern browser CSS parsers discard invalid properties and malformed rules silently without
+            generating fatal syntax exceptions. These diagnostics provide a partial preview inspection and do not constitute a full CSS
+            standards validation.
           </div>
         </div>
       </div>

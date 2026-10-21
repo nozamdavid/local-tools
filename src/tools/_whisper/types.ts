@@ -1,7 +1,4 @@
-export type WhisperModel =
-  | 'onnx-community/whisper-tiny'
-  | 'onnx-community/whisper-base'
-  | 'onnx-community/whisper-small';
+export type WhisperModel = 'onnx-community/whisper-tiny' | 'onnx-community/whisper-base' | 'onnx-community/whisper-small';
 
 export type WhisperTask = 'transcribe' | 'translate';
 
@@ -63,17 +60,11 @@ export interface WhisperChunk {
 export interface SubtitleCue {
   id: string;
   start: number; // in seconds
-  end: number;   // in seconds
+  end: number; // in seconds
   text: string;
 }
 
-export type TranscriptionPhase =
-  | 'idle'
-  | 'extracting'
-  | 'downloading'
-  | 'transcribing'
-  | 'burning'
-  | 'done';
+export type TranscriptionPhase = 'idle' | 'extracting' | 'downloading' | 'transcribing' | 'burning' | 'done';
 
 export interface ProgressState {
   phase: TranscriptionPhase;

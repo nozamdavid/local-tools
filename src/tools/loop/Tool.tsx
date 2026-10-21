@@ -59,17 +59,7 @@ export default function LoopTool() {
 
       // Attempt 1: fast stream copy
       try {
-        const copyArgs = [
-          '-stream_loop',
-          streamLoopArg,
-          '-i',
-          inputName,
-          '-c',
-          'copy',
-          '-movflags',
-          '+faststart',
-          outputName,
-        ];
+        const copyArgs = ['-stream_loop', streamLoopArg, '-i', inputName, '-c', 'copy', '-movflags', '+faststart', outputName];
 
         return await runFFmpeg({
           inputs: [{ name: inputName, data: file }],
@@ -141,11 +131,7 @@ export default function LoopTool() {
               filename={withSuffix(file.name, `-loop${loopCount}x`, 'mp4')}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (
@@ -163,7 +149,10 @@ export default function LoopTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Resolution:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}
@@ -174,14 +163,7 @@ export default function LoopTool() {
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
                   <div className={styles.videoContainer}>
-                    {originalUrl && (
-                      <video
-                        src={originalUrl}
-                        controls
-                        playsInline
-                        className="preview-media"
-                      />
-                    )}
+                    {originalUrl && <video src={originalUrl} controls playsInline className="preview-media" />}
                   </div>
 
                   {resultingDuration > 0 && (

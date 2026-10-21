@@ -11,9 +11,7 @@ import styles from './Tool.module.css';
 export default function MhtmlToHtmlTool() {
   const meta = getToolMeta('mhtml-to-html');
   const title = meta.title !== 'mhtml-to-html' ? meta.title : 'MHTML to HTML Converter';
-  const description =
-    meta.description ||
-    'Convert MHTML/MHT web archives into standalone HTML or ZIP with safely extracted assets.';
+  const description = meta.description || 'Convert MHTML/MHT web archives into standalone HTML or ZIP with safely extracted assets.';
 
   const [rawMhtml, setRawMhtml] = useState<string>('');
   const [sourceName, setSourceName] = useState<string>('archive');
@@ -47,11 +45,7 @@ export default function MhtmlToHtmlTool() {
     }
   };
 
-  const reprocess = (
-    mode: 'standalone' | 'zip',
-    block: boolean,
-    scripts: boolean
-  ) => {
+  const reprocess = (mode: 'standalone' | 'zip', block: boolean, scripts: boolean) => {
     if (!rawMhtml) return;
     try {
       setError(null);
@@ -160,15 +154,11 @@ export default function MhtmlToHtmlTool() {
             <div className={styles.previewHeader}>
               <div className={styles.previewTitle}>
                 HTML Preview
-                <span className={styles.badge}>
-                  {outputMode === 'standalone' ? 'Standalone HTML' : 'ZIP package'}
-                </span>
+                <span className={styles.badge}>{outputMode === 'standalone' ? 'Standalone HTML' : 'ZIP package'}</span>
               </div>
 
               <div className={styles.statsRow}>
-                <span className={`${styles.badge} ${styles.badgeSuccess}`}>
-                  {conversionResult.inlinedAssetsCount} assets resolved
-                </span>
+                <span className={`${styles.badge} ${styles.badgeSuccess}`}>{conversionResult.inlinedAssetsCount} assets resolved</span>
                 {conversionResult.blockedRemoteCount > 0 && (
                   <span className={`${styles.badge} ${styles.badgeWarning}`}>
                     {conversionResult.blockedRemoteCount} remote refs blocked
@@ -179,12 +169,7 @@ export default function MhtmlToHtmlTool() {
 
             {/* Sandboxed iframe preview: scripts disabled, no same-origin escalation, CSP enforced */}
             <div className={styles.iframeContainer}>
-              <iframe
-                title="Converted HTML Preview"
-                sandbox=""
-                srcDoc={conversionResult.html}
-                className={styles.iframe}
-              />
+              <iframe title="Converted HTML Preview" sandbox="" srcDoc={conversionResult.html} className={styles.iframe} />
             </div>
 
             <div className={styles.actions}>

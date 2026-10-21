@@ -9,10 +9,7 @@ export interface StripResult {
   lossless: boolean;
 }
 
-export function stripJpeg(
-  buf: Uint8Array,
-  keepIcc: boolean = true,
-): { data: Uint8Array; removed: string[] } {
+export function stripJpeg(buf: Uint8Array, keepIcc: boolean = true): { data: Uint8Array; removed: string[] } {
   if (buf[0] !== 0xff || buf[1] !== 0xd8) {
     throw new Error('Not a valid JPEG image.');
   }
@@ -40,11 +37,7 @@ export function stripJpeg(
       break;
     }
     // Standalone markers with no length
-    if (
-      (marker >= 0xd0 && marker <= 0xd7) ||
-      marker === 0x00 ||
-      marker === 0x01
-    ) {
+    if ((marker >= 0xd0 && marker <= 0xd7) || marker === 0x00 || marker === 0x01) {
       pieces.push(buf.subarray(offset - 2, offset));
       continue;
     }
@@ -99,11 +92,7 @@ export function stripPng(buf: Uint8Array): { data: Uint8Array; removed: string[]
   const dropTypes = new Set(['tEXt', 'iTXt', 'zTXt', 'eXIf']);
 
   while (offset + 8 <= buf.length) {
-    const len =
-      (buf[offset] << 24) |
-      (buf[offset + 1] << 16) |
-      (buf[offset + 2] << 8) |
-      buf[offset + 3];
+    const len = (buf[offset] << 24) | (buf[offset + 1] << 16) | (buf[offset + 2] << 8) | buf[offset + 3];
     const type = textDecoder.decode(buf.subarray(offset + 4, offset + 8));
     const totalChunkLen = 12 + len;
 
@@ -131,10 +120,7 @@ export function stripPng(buf: Uint8Array): { data: Uint8Array; removed: string[]
 
 export function stripWebp(buf: Uint8Array): { data: Uint8Array; removed: string[] } {
   const textDecoder = new TextDecoder();
-  if (
-    textDecoder.decode(buf.subarray(0, 4)) !== 'RIFF' ||
-    textDecoder.decode(buf.subarray(8, 12)) !== 'WEBP'
-  ) {
+  if (textDecoder.decode(buf.subarray(0, 4)) !== 'RIFF' || textDecoder.decode(buf.subarray(8, 12)) !== 'WEBP') {
     throw new Error('Not a valid WEBP image.');
   }
 
@@ -145,11 +131,7 @@ export function stripWebp(buf: Uint8Array): { data: Uint8Array; removed: string[
 
   while (offset + 8 <= buf.length) {
     const fourCC = textDecoder.decode(buf.subarray(offset, offset + 4));
-    const size =
-      buf[offset + 4] |
-      (buf[offset + 5] << 8) |
-      (buf[offset + 6] << 16) |
-      (buf[offset + 7] << 24);
+    const size = buf[offset + 4] | (buf[offset + 5] << 8) | (buf[offset + 6] << 16) | (buf[offset + 7] << 24);
     const paddedSize = size + (size % 2);
     const chunkBytes = buf.subarray(offset, offset + 8 + paddedSize);
 
@@ -194,10 +176,7 @@ export function stripWebp(buf: Uint8Array): { data: Uint8Array; removed: string[
   return { data: out, removed };
 }
 
-export async function stripFileMetadata(
-  file: File,
-  options: { applyOrientation: boolean; keepIcc: boolean },
-): Promise<StripResult> {
+export async function stripFileMetadata(file: File, options: { applyOrientation: boolean; keepIcc: boolean }): Promise<StripResult> {
   const mime = file.type.toLowerCase();
   const name = file.name.toLowerCase();
 

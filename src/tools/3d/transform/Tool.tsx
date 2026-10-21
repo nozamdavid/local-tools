@@ -3,14 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Checkbox, Select, Input, Alert } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
-import {
-  MeshViewer,
-  use3DWorkbench,
-  WorkbenchHeader,
-  WorkbenchWarnings,
-  ExportCard,
-  ACCEPT_MESH_EXTENSIONS,
-} from '../_ui';
+import { MeshViewer, use3DWorkbench, WorkbenchHeader, WorkbenchWarnings, ExportCard, ACCEPT_MESH_EXTENSIONS } from '../_ui';
 import { processModel } from '../_mesh/client';
 import { Move3d, RotateCcw, Compass, XCircle } from 'lucide-react';
 import styles from '../_ui/Workbench.module.css';
@@ -30,8 +23,7 @@ export default function TransformTool() {
   const meta = getToolMeta('three-transform');
   const title = meta.title !== 'three-transform' ? meta.title : '3D Mesh Transform & Unit Scaler';
   const description =
-    meta.description ||
-    'Scale dimensions, apply inch-to-mm conversions, rotate along XYZ axes, center, and ground to the build plate.';
+    meta.description || 'Scale dimensions, apply inch-to-mm conversions, rotate along XYZ axes, center, and ground to the build plate.';
 
   const {
     file,
@@ -68,11 +60,7 @@ export default function TransformTool() {
   const [center, setCenter] = useState<boolean>(true);
   const [ground, setGround] = useState<boolean>(true);
 
-  const isTransformed = !!(
-    originalModel &&
-    currentModel &&
-    currentModel !== originalModel
-  );
+  const isTransformed = !!(originalModel && currentModel && currentModel !== originalModel);
 
   const handlePresetChange = (presetVal: string) => {
     setScalePreset(presetVal);
@@ -182,12 +170,7 @@ export default function TransformTool() {
               onReset={reset}
               action={
                 isTransformed ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    icon={<RotateCcw size={14} />}
-                    onClick={handleResetToOriginal}
-                  >
+                  <Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={handleResetToOriginal}>
                     Restore original
                   </Button>
                 ) : undefined
@@ -217,11 +200,7 @@ export default function TransformTool() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                     <div className="field">
                       <label className="field-label">Unit / Scale Preset</label>
-                      <Select
-                        value={scalePreset}
-                        options={SCALE_PRESETS}
-                        onChange={(e) => handlePresetChange(e.target.value)}
-                      />
+                      <Select value={scalePreset} options={SCALE_PRESETS} onChange={(e) => handlePresetChange(e.target.value)} />
                     </div>
 
                     <div>
@@ -293,34 +272,19 @@ export default function TransformTool() {
                       <label className="field-label" style={{ fontSize: 'var(--text-xs)' }}>
                         Rotate X°
                       </label>
-                      <Input
-                        type="number"
-                        step="15"
-                        value={rotX}
-                        onChange={(e) => setRotX(parseFloat(e.target.value) || 0)}
-                      />
+                      <Input type="number" step="15" value={rotX} onChange={(e) => setRotX(parseFloat(e.target.value) || 0)} />
                     </div>
                     <div className="field">
                       <label className="field-label" style={{ fontSize: 'var(--text-xs)' }}>
                         Rotate Y°
                       </label>
-                      <Input
-                        type="number"
-                        step="15"
-                        value={rotY}
-                        onChange={(e) => setRotY(parseFloat(e.target.value) || 0)}
-                      />
+                      <Input type="number" step="15" value={rotY} onChange={(e) => setRotY(parseFloat(e.target.value) || 0)} />
                     </div>
                     <div className="field">
                       <label className="field-label" style={{ fontSize: 'var(--text-xs)' }}>
                         Rotate Z°
                       </label>
-                      <Input
-                        type="number"
-                        step="15"
-                        value={rotZ}
-                        onChange={(e) => setRotZ(parseFloat(e.target.value) || 0)}
-                      />
+                      <Input type="number" step="15" value={rotZ} onChange={(e) => setRotZ(parseFloat(e.target.value) || 0)} />
                     </div>
                   </div>
                   <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
@@ -379,12 +343,7 @@ export default function TransformTool() {
                       {processing ? 'Applying Transform...' : 'Apply Transforms'}
                     </Button>
                     {processing && (
-                      <Button
-                        variant="danger"
-                        size="lg"
-                        icon={<XCircle size={16} />}
-                        onClick={cancelProcessing}
-                      >
+                      <Button variant="danger" size="lg" icon={<XCircle size={16} />} onClick={cancelProcessing}>
                         Cancel
                       </Button>
                     )}

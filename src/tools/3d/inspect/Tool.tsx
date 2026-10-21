@@ -3,15 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Alert, Badge } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
-import {
-  MeshViewer,
-  use3DWorkbench,
-  WorkbenchHeader,
-  WorkbenchWarnings,
-  ExportCard,
-  ACCEPT_MESH_EXTENSIONS,
-  type MeshStats,
-} from '../_ui';
+import { MeshViewer, use3DWorkbench, WorkbenchHeader, WorkbenchWarnings, ExportCard, ACCEPT_MESH_EXTENSIONS, type MeshStats } from '../_ui';
 import { inspectModel } from '../_mesh/client';
 import { CheckCircle2, AlertOctagon, Ruler, Info } from 'lucide-react';
 import styles from '../_ui/Workbench.module.css';
@@ -19,9 +11,7 @@ import styles from '../_ui/Workbench.module.css';
 export default function InspectTool() {
   const meta = getToolMeta('three-inspect');
   const title = meta.title !== 'three-inspect' ? meta.title : '3D Mesh Inspector & Topology Analyzer';
-  const description =
-    meta.description ||
-    'Measure physical dimensions, surface area, volume, and inspect watertight manifold topology.';
+  const description = meta.description || 'Measure physical dimensions, surface area, volume, and inspect watertight manifold topology.';
 
   const {
     file,
@@ -133,9 +123,7 @@ export default function InspectTool() {
                       borderRadius: 'var(--radius-md)',
                     }}
                   >
-                    <span style={{ fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-md)' }}>
-                      Watertight Topology
-                    </span>
+                    <span style={{ fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-md)' }}>Watertight Topology</span>
                     {stats.watertight ? (
                       <Badge tone="success" icon={<CheckCircle2 size={14} />}>
                         Watertight (Closed 2-Manifold)
@@ -157,31 +145,26 @@ export default function InspectTool() {
                   {analyzing ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                       <span className="spinner" aria-hidden="true" />
-                      <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-                        Computing bounds...
-                      </span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>Computing bounds...</span>
                     </div>
                   ) : stats ? (
                     <>
                       <div className={styles.statRow}>
                         <span className={styles.statLabel}>Size (X × Y × Z)</span>
                         <span className={styles.statValue}>
-                          {formatCoord(stats.bounds.size[0])} × {formatCoord(stats.bounds.size[1])} ×{' '}
-                          {formatCoord(stats.bounds.size[2])} mm
+                          {formatCoord(stats.bounds.size[0])} × {formatCoord(stats.bounds.size[1])} × {formatCoord(stats.bounds.size[2])} mm
                         </span>
                       </div>
                       <div className={styles.statRow}>
                         <span className={styles.statLabel}>Min Bounds</span>
                         <span className={styles.statValue}>
-                          [{formatCoord(stats.bounds.min[0])}, {formatCoord(stats.bounds.min[1])},{' '}
-                          {formatCoord(stats.bounds.min[2])}]
+                          [{formatCoord(stats.bounds.min[0])}, {formatCoord(stats.bounds.min[1])}, {formatCoord(stats.bounds.min[2])}]
                         </span>
                       </div>
                       <div className={styles.statRow}>
                         <span className={styles.statLabel}>Max Bounds</span>
                         <span className={styles.statValue}>
-                          [{formatCoord(stats.bounds.max[0])}, {formatCoord(stats.bounds.max[1])},{' '}
-                          {formatCoord(stats.bounds.max[2])}]
+                          [{formatCoord(stats.bounds.max[0])}, {formatCoord(stats.bounds.max[1])}, {formatCoord(stats.bounds.max[2])}]
                         </span>
                       </div>
                     </>
@@ -197,9 +180,7 @@ export default function InspectTool() {
                   {analyzing ? (
                     <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
                       <span className="spinner" aria-hidden="true" />
-                      <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
-                        Computing surface area and volume...
-                      </span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>Computing surface area and volume...</span>
                     </div>
                   ) : stats ? (
                     <>
@@ -223,16 +204,14 @@ export default function InspectTool() {
                               </span>
                             </>
                           ) : (
-                            <span style={{ color: 'var(--warning)', fontStyle: 'italic' }}>
-                              N/A (Mesh is open or non-manifold)
-                            </span>
+                            <span style={{ color: 'var(--warning)', fontStyle: 'italic' }}>N/A (Mesh is open or non-manifold)</span>
                           )}
                         </span>
                       </div>
                       <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
                         <em>
-                          Note: Volume requires a closed, watertight mesh. A watertight mesh does not guarantee 3D
-                          printability (e.g. wall thickness, structural integrity, or slicer clearances).
+                          Note: Volume requires a closed, watertight mesh. A watertight mesh does not guarantee 3D printability (e.g. wall
+                          thickness, structural integrity, or slicer clearances).
                         </em>
                       </div>
                     </>
@@ -267,38 +246,23 @@ export default function InspectTool() {
                       </div>
                       <div className={styles.statRow}>
                         <span className={styles.statLabel}>Boundary Edges (Holes)</span>
-                        <span
-                          className={styles.statValue}
-                          style={{ color: stats.boundaryEdges > 0 ? 'var(--warning)' : 'inherit' }}
-                        >
+                        <span className={styles.statValue} style={{ color: stats.boundaryEdges > 0 ? 'var(--warning)' : 'inherit' }}>
                           {stats.boundaryEdges.toLocaleString()}{' '}
-                          <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>
-                            (edges with 1 face)
-                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>(edges with 1 face)</span>
                         </span>
                       </div>
                       <div className={styles.statRow}>
                         <span className={styles.statLabel}>Non-Manifold Edges</span>
-                        <span
-                          className={styles.statValue}
-                          style={{ color: stats.nonManifoldEdges > 0 ? 'var(--danger)' : 'inherit' }}
-                        >
+                        <span className={styles.statValue} style={{ color: stats.nonManifoldEdges > 0 ? 'var(--danger)' : 'inherit' }}>
                           {stats.nonManifoldEdges.toLocaleString()}{' '}
-                          <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>
-                            (edges with &gt;2 faces)
-                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>(edges with &gt;2 faces)</span>
                         </span>
                       </div>
                       <div className={styles.statRow}>
                         <span className={styles.statLabel}>Degenerate Triangles</span>
-                        <span
-                          className={styles.statValue}
-                          style={{ color: stats.degenerateTriangles > 0 ? 'var(--warning)' : 'inherit' }}
-                        >
+                        <span className={styles.statValue} style={{ color: stats.degenerateTriangles > 0 ? 'var(--warning)' : 'inherit' }}>
                           {stats.degenerateTriangles.toLocaleString()}{' '}
-                          <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>
-                            (zero-area faces)
-                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>(zero-area faces)</span>
                         </span>
                       </div>
                     </>

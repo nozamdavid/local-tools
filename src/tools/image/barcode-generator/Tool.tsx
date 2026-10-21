@@ -4,12 +4,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { Field, Slider, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { downloadBlob } from '../../../lib/download';
-import {
-  BARCODE_FORMATS,
-  validateBarcode,
-  type BarcodeFormat,
-  type BarcodeValidationResult,
-} from '../_generate/barcode';
+import { BARCODE_FORMATS, validateBarcode, type BarcodeFormat, type BarcodeValidationResult } from '../_generate/barcode';
 import styles from './Tool.module.css';
 
 export default function BarcodeGeneratorTool() {
@@ -28,9 +23,7 @@ export default function BarcodeGeneratorTool() {
   const [bgColor, setBgColor] = useState<string>('#ffffff');
   const [transparentBg, setTransparentBg] = useState<boolean>(false);
 
-  const [validation, setValidation] = useState<BarcodeValidationResult>(() =>
-    validateBarcode('CODE128', 'LOCONVERT-2026'),
-  );
+  const [validation, setValidation] = useState<BarcodeValidationResult>(() => validateBarcode('CODE128', 'LOCONVERT-2026'));
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const formatSelectId = useId();
@@ -173,9 +166,7 @@ export default function BarcodeGeneratorTool() {
               </div>
             )}
 
-            {validation.warning && (
-              <div className={styles.warningMessage}>{validation.warning}</div>
-            )}
+            {validation.warning && <div className={styles.warningMessage}>{validation.warning}</div>}
 
             <hr style={{ border: 'none', borderTop: '1px solid var(--border)' }} />
 
@@ -197,11 +188,7 @@ export default function BarcodeGeneratorTool() {
               <Field label="Show Text">
                 <div style={{ marginTop: '0.4rem' }}>
                   <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      checked={showText}
-                      onChange={(e) => setShowText(e.target.checked)}
-                    />
+                    <input type="checkbox" checked={showText} onChange={(e) => setShowText(e.target.checked)} />
                     Display human-readable text
                   </label>
                 </div>
@@ -221,6 +208,7 @@ export default function BarcodeGeneratorTool() {
                     type="color"
                     className={styles.colorInput}
                     value={lineColor}
+                    aria-label="Line colour"
                     onChange={(e) => setLineColor(e.target.value)}
                   />
                   <span>{lineColor}</span>
@@ -234,14 +222,11 @@ export default function BarcodeGeneratorTool() {
                     className={styles.colorInput}
                     value={bgColor}
                     disabled={transparentBg}
+                    aria-label="Background colour"
                     onChange={(e) => setBgColor(e.target.value)}
                   />
                   <label className={styles.checkboxLabel}>
-                    <input
-                      type="checkbox"
-                      checked={transparentBg}
-                      onChange={(e) => setTransparentBg(e.target.checked)}
-                    />
+                    <input type="checkbox" checked={transparentBg} onChange={(e) => setTransparentBg(e.target.checked)} />
                     Transparent
                   </label>
                 </div>
@@ -253,28 +238,17 @@ export default function BarcodeGeneratorTool() {
           <div className={styles.previewCard}>
             <div className={styles.previewWrapper}>
               {validation.valid ? (
-                <svg ref={svgRef} className={styles.previewSvg} />
+                <svg ref={svgRef} className={styles.previewSvg} role="img" aria-label="Barcode preview" />
               ) : (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
-                  Enter a valid barcode to view preview
-                </div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Enter a valid barcode to view preview</div>
               )}
             </div>
 
             <div className={styles.actions}>
-              <Button
-                className={styles.actionBtn}
-                disabled={!validation.valid}
-                onClick={handleDownloadPng}
-              >
+              <Button className={styles.actionBtn} disabled={!validation.valid} onClick={handleDownloadPng}>
                 Download PNG
               </Button>
-              <Button
-                variant="secondary"
-                className={styles.actionBtn}
-                disabled={!validation.valid}
-                onClick={handleDownloadSvg}
-              >
+              <Button variant="secondary" className={styles.actionBtn} disabled={!validation.valid} onClick={handleDownloadSvg}>
                 Download SVG
               </Button>
             </div>

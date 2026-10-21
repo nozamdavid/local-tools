@@ -24,10 +24,7 @@ const MARGIN_POINTS: Record<MarginOption, number> = {
   large: 36,
 };
 
-export async function imagesToPdf(
-  files: File[],
-  options: ImageToPdfOptions
-): Promise<Blob> {
+export async function imagesToPdf(files: File[], options: ImageToPdfOptions): Promise<Blob> {
   if (files.length === 0) {
     throw new Error('Please select at least one image.');
   }
@@ -65,9 +62,7 @@ export async function imagesToPdf(
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(img, 0, sy, imgWidth, sHeight, 0, 0, imgWidth, sHeight);
 
-          const sliceBlob = await new Promise<Blob | null>((res) =>
-            canvas.toBlob(res, 'image/jpeg', 0.92)
-          );
+          const sliceBlob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.92));
           canvas.width = 0;
           canvas.height = 0;
 

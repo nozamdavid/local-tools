@@ -19,10 +19,8 @@ interface Source {
 function Notice() {
   return (
     <p className={styles.notice}>
-      Web addresses cannot be fetched: files stay on your device, so there are no network
-      requests. Open the page, save it as an .html file, and drop it here. Images embedded as
-      data: URIs show up. Linked or remote images and stylesheets will not load. Scripts are not
-      run.
+      Web addresses cannot be fetched: files stay on your device, so there are no network requests. Open the page, save it as an .html file,
+      and drop it here. Images embedded as data: URIs show up. Linked or remote images and stylesheets will not load. Scripts are not run.
     </p>
   );
 }
@@ -137,12 +135,7 @@ export default function HtmlToPdfTool() {
           preview={
             <div className={styles.previewWrap}>
               <div className="preview-box-title">Preview</div>
-              <iframe
-                className={styles.preview}
-                title="HTML preview"
-                sandbox=""
-                srcDoc={withDoctype(sanitizeHtml(source.html))}
-              />
+              <iframe className={styles.preview} title="HTML preview" sandbox="" srcDoc={withDoctype(sanitizeHtml(source.html))} />
             </div>
           }
         >

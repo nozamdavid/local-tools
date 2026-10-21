@@ -1,13 +1,5 @@
 import { PDFDocument } from 'pdf-lib';
-import {
-  addFittedPage,
-  createStage,
-  pageGeometry,
-  pxToPt,
-  rasterize,
-  sanitizeRenderedDom,
-  type PageSetup,
-} from '../_render/render';
+import { addFittedPage, createStage, pageGeometry, pxToPt, rasterize, sanitizeRenderedDom, type PageSetup } from '../_render/render';
 import { neutralizeOfficeRels } from '../../../lib/inertMarkup';
 
 const SLIDE_WIDTH_PX = 960;
@@ -59,7 +51,7 @@ export async function preparePptxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffe
 export async function powerpointToPdf(
   file: File,
   setup: PageSetup,
-  onProgress: (ratio: number) => void
+  onProgress: (ratio: number) => void,
 ): Promise<{ blob: Blob; pages: number }> {
   const problem = await checkPptx(file);
   if (problem) throw new Error(problem);
@@ -93,16 +85,7 @@ export async function powerpointToPdf(
         await addFittedPage(pdf, canvas, width, height, pxToPt(width), pxToPt(height), 0, setup.format);
       } else {
         const geo = pageGeometry(setup.size, 'landscape', setup.marginMm);
-        await addFittedPage(
-          pdf,
-          canvas,
-          width,
-          height,
-          geo.widthPt,
-          geo.heightPt,
-          geo.marginPt,
-          setup.format
-        );
+        await addFittedPage(pdf, canvas, width, height, geo.widthPt, geo.heightPt, geo.marginPt, setup.format);
       }
 
       onProgress(0.2 + (0.75 * (i + 1)) / slides.length);

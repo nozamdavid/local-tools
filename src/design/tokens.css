@@ -25,7 +25,9 @@
   --gray-200: #d6dae1;
   --gray-300: #bcc2cc;
   --gray-400: #949cab;
+  --gray-450: #8790a0;
   --gray-500: #677082;
+  --gray-550: #5b6475;
   --gray-600: #4f5768;
   --gray-700: #3a404d;
   --gray-750: #2c313b;
@@ -81,8 +83,8 @@
 
   /* Text */
   --text: light-dark(var(--gray-900), var(--gray-100));
-  --text-muted: light-dark(var(--gray-500), var(--gray-400));
-  --text-subtle: light-dark(var(--gray-400), var(--gray-500));
+  --text-muted: light-dark(var(--gray-600), var(--gray-400));
+  --text-subtle: light-dark(var(--gray-550), var(--gray-450));
   --text-inverse: light-dark(var(--gray-0), var(--gray-900));
 
   /* Brand accent */
@@ -108,7 +110,7 @@
   --warning-soft: light-dark(#fff7e6, rgb(224 154 11 / 0.14));
   --warning-border: light-dark(#fbdca0, rgb(224 154 11 / 0.38));
   --danger: light-dark(var(--red-600), var(--red-300));
-  --danger-solid: light-dark(var(--red-600), var(--red-500));
+  --danger-solid: var(--red-600);
   --danger-soft: light-dark(#fdeeee, rgb(229 56 59 / 0.14));
   --danger-border: light-dark(#f6c5c5, rgb(229 56 59 / 0.4));
   --info: light-dark(var(--blue-600), var(--blue-300));
@@ -124,7 +126,7 @@
   --media-image-soft: light-dark(#e8f7f0, rgb(18 161 114 / 0.16));
   --media-pdf: light-dark(var(--red-600), var(--red-300));
   --media-pdf-soft: light-dark(#fdeeee, rgb(229 56 59 / 0.16));
-  --media-3d: var(--accent);
+  --media-3d: light-dark(var(--accent), var(--berry-400));
   --media-3d-soft: var(--accent-soft);
 
   /* Checkerboard for transparent image previews */

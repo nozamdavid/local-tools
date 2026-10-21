@@ -2,24 +2,17 @@ import { useState, useMemo } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
-import {
-  type RGBA,
-  formatHex,
-  parseColorAny,
-  getContrastRatio,
-  evaluateWcag,
-  suggestPassingColor,
-} from '../_color/convert';
+import { type RGBA, formatHex, parseColorAny, getContrastRatio, evaluateWcag, suggestPassingColor } from '../_color/convert';
 import styles from './Tool.module.css';
 
 export default function ColorContrastTool() {
   const meta = getToolMeta('img-color-contrast');
 
-  const [textHex, setTextHex] = useState<string>('#777777');
+  const [textHex, setTextHex] = useState<string>('#595959');
   const [bgHex, setBgHex] = useState<string>('#ffffff');
 
   const textRgba = useMemo<RGBA>(() => {
-    return parseColorAny(textHex) || { r: 119, g: 119, b: 119, a: 1 };
+    return parseColorAny(textHex) || { r: 89, g: 89, b: 89, a: 1 };
   }, [textHex]);
 
   const bgRgba = useMemo<RGBA>(() => {
@@ -85,13 +78,15 @@ export default function ColorContrastTool() {
                 value={formatHex(textRgba, 6)}
                 onChange={handleTextPicker}
                 title="Pick text colour"
+                aria-label="Pick text colour"
               />
               <input
                 type="text"
                 className={styles.textInput}
                 value={textHex}
                 onChange={(e) => setTextHex(e.target.value)}
-                placeholder="#777777"
+                placeholder="#595959"
+                aria-label="Text colour hex"
               />
             </div>
           </div>
@@ -109,6 +104,7 @@ export default function ColorContrastTool() {
                 value={formatHex(bgRgba, 6)}
                 onChange={handleBgPicker}
                 title="Pick background colour"
+                aria-label="Pick background colour"
               />
               <input
                 type="text"
@@ -116,15 +112,14 @@ export default function ColorContrastTool() {
                 value={bgHex}
                 onChange={(e) => setBgHex(e.target.value)}
                 placeholder="#ffffff"
+                aria-label="Background colour hex"
               />
             </div>
           </div>
         </div>
 
         <div className={styles.ratioCard}>
-          <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>
-            WCAG 2.x Contrast Ratio
-          </div>
+          <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 600 }}>WCAG 2.x Contrast Ratio</div>
           <div className={styles.ratioValue}>{ratio.toFixed(2)} : 1</div>
 
           <div className={styles.evalGrid}>
@@ -132,9 +127,7 @@ export default function ColorContrastTool() {
               <div className={styles.evalTitle}>Normal Text</div>
               <div className={styles.evalBadgeRow}>
                 <span>Level AA (4.5:1)</span>
-                <span className={evalResults.aaNormal ? styles.badgePass : styles.badgeFail}>
-                  {evalResults.aaNormal ? 'PASS' : 'FAIL'}
-                </span>
+                <span className={evalResults.aaNormal ? styles.badgePass : styles.badgeFail}>{evalResults.aaNormal ? 'PASS' : 'FAIL'}</span>
               </div>
               <div className={styles.evalBadgeRow}>
                 <span>Level AAA (7.0:1)</span>
@@ -148,15 +141,11 @@ export default function ColorContrastTool() {
               <div className={styles.evalTitle}>Large Text (≥ 18pt / 14pt bold)</div>
               <div className={styles.evalBadgeRow}>
                 <span>Level AA (3.0:1)</span>
-                <span className={evalResults.aaLarge ? styles.badgePass : styles.badgeFail}>
-                  {evalResults.aaLarge ? 'PASS' : 'FAIL'}
-                </span>
+                <span className={evalResults.aaLarge ? styles.badgePass : styles.badgeFail}>{evalResults.aaLarge ? 'PASS' : 'FAIL'}</span>
               </div>
               <div className={styles.evalBadgeRow}>
                 <span>Level AAA (4.5:1)</span>
-                <span className={evalResults.aaaLarge ? styles.badgePass : styles.badgeFail}>
-                  {evalResults.aaaLarge ? 'PASS' : 'FAIL'}
-                </span>
+                <span className={evalResults.aaaLarge ? styles.badgePass : styles.badgeFail}>{evalResults.aaaLarge ? 'PASS' : 'FAIL'}</span>
               </div>
             </div>
 
@@ -169,9 +158,7 @@ export default function ColorContrastTool() {
                 </span>
               </div>
               <div className={styles.evalBadgeRow}>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-                  Form borders & icons
-                </span>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Form borders & icons</span>
                 <span className={evalResults.uiComponent ? styles.badgePass : styles.badgeFail}>
                   {evalResults.uiComponent ? 'PASS' : 'FAIL'}
                 </span>
@@ -182,17 +169,16 @@ export default function ColorContrastTool() {
 
         <div
           className={styles.previewContainer}
+          aria-hidden="true"
           style={{
             backgroundColor: formatHex(bgRgba, 6),
             color: formatHex(textRgba, 6),
           }}
         >
-          <div className={styles.previewLarge}>
-            Large Heading Text (24px bold)
-          </div>
+          <div className={styles.previewLarge}>Large Heading Text (24px bold)</div>
           <div className={styles.previewNormal}>
-            This is regular paragraph text demonstrating readability under current lighting and contrast conditions.
-            Good contrast ensures that all users, including those with moderate low vision, can read content without difficulty.
+            This is regular paragraph text demonstrating readability under current lighting and contrast conditions. Good contrast ensures
+            that all users, including those with moderate low vision, can read content without difficulty.
           </div>
           <div className={styles.previewUiRow}>
             <div
@@ -236,9 +222,7 @@ export default function ColorContrastTool() {
                         border: '1px solid var(--border)',
                       }}
                     />
-                    <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                      {suggestedAa.hex.toUpperCase()}
-                    </span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{suggestedAa.hex.toUpperCase()}</span>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                       (Ratio: {suggestedAa.ratio.toFixed(2)} : 1 for AA)
                     </span>
@@ -265,9 +249,7 @@ export default function ColorContrastTool() {
                         border: '1px solid var(--border)',
                       }}
                     />
-                    <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>
-                      {suggestedAaa.hex.toUpperCase()}
-                    </span>
+                    <span style={{ fontFamily: 'monospace', fontWeight: 600 }}>{suggestedAaa.hex.toUpperCase()}</span>
                     <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                       (Ratio: {suggestedAaa.ratio.toFixed(2)} : 1 for AAA)
                     </span>

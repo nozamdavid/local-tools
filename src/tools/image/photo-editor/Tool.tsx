@@ -567,13 +567,7 @@ export default function Tool() {
                   />
                 </Field>
                 <Field label="Blur">
-                  <Slider
-                    value={doc.adjustments?.blur ?? 0}
-                    min={0}
-                    max={20}
-                    unit="px"
-                    onChange={(v) => updateAdjustment('blur', v)}
-                  />
+                  <Slider value={doc.adjustments?.blur ?? 0} min={0} max={20} unit="px" onChange={(v) => updateAdjustment('blur', v)} />
                 </Field>
               </div>
             )}
@@ -607,11 +601,7 @@ export default function Tool() {
                 <Field label="Aspect Ratio Preset">
                   <div className={styles.btnGroup}>
                     {['free', '1:1', '4:3', '16:9', '3:2', '9:16'].map((asp) => (
-                      <Button
-                        key={asp}
-                        variant={cropAspect === asp ? 'primary' : 'secondary'}
-                        onClick={() => handleAspectChange(asp)}
-                      >
+                      <Button key={asp} variant={cropAspect === asp ? 'primary' : 'secondary'} onClick={() => handleAspectChange(asp)}>
                         {asp.toUpperCase()}
                       </Button>
                     ))}
@@ -672,9 +662,7 @@ export default function Tool() {
                           const val = e.target.value;
                           pushDoc({
                             ...doc,
-                            layers: doc.layers.map((l) =>
-                              l.id === selectedLayer.id && l.type === 'text' ? { ...l, text: val } : l
-                            ),
+                            layers: doc.layers.map((l) => (l.id === selectedLayer.id && l.type === 'text' ? { ...l, text: val } : l)),
                           });
                         }}
                       />
@@ -688,9 +676,7 @@ export default function Tool() {
                         onChange={(val) => {
                           pushDoc({
                             ...doc,
-                            layers: doc.layers.map((l) =>
-                              l.id === selectedLayer.id && l.type === 'text' ? { ...l, fontSize: val } : l
-                            ),
+                            layers: doc.layers.map((l) => (l.id === selectedLayer.id && l.type === 'text' ? { ...l, fontSize: val } : l)),
                           });
                         }}
                       />
@@ -705,9 +691,7 @@ export default function Tool() {
                             const val = e.target.value;
                             pushDoc({
                               ...doc,
-                              layers: doc.layers.map((l) =>
-                                l.id === selectedLayer.id && l.type === 'text' ? { ...l, fill: val } : l
-                              ),
+                              layers: doc.layers.map((l) => (l.id === selectedLayer.id && l.type === 'text' ? { ...l, fill: val } : l)),
                             });
                           }}
                         />
@@ -724,9 +708,7 @@ export default function Tool() {
                             const val = e.target.value;
                             pushDoc({
                               ...doc,
-                              layers: doc.layers.map((l) =>
-                                l.id === selectedLayer.id && l.type === 'text' ? { ...l, stroke: val } : l
-                              ),
+                              layers: doc.layers.map((l) => (l.id === selectedLayer.id && l.type === 'text' ? { ...l, stroke: val } : l)),
                             });
                           }}
                         />
@@ -864,12 +846,7 @@ export default function Tool() {
               )}
             </div>
 
-            <Button
-              variant="primary"
-              data-testid="export-btn"
-              disabled={isExporting}
-              onClick={handleExport}
-            >
+            <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleExport}>
               {isExporting ? 'Exporting…' : 'Download Image'}
             </Button>
           </div>

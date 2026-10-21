@@ -253,8 +253,7 @@ export default function MergeTool() {
     setLoadError(null);
     try {
       const merged = buildCanvas();
-      const mime: EncodableMime =
-        format === 'jpg' ? 'image/jpeg' : format === 'webp' ? 'image/webp' : 'image/png';
+      const mime: EncodableMime = format === 'jpg' ? 'image/jpeg' : format === 'webp' ? 'image/webp' : 'image/png';
       const quality = format === 'png' ? undefined : 0.92;
       const blob = await canvasToBlob(merged, mime, quality);
 
@@ -278,12 +277,7 @@ export default function MergeTool() {
   if (result) {
     return (
       <ToolPage title={meta.title} description={meta.description} currentId="img-merge">
-        <ResultPanel
-          blob={result.blob}
-          filename={result.filename}
-          kind="image"
-          onReset={() => setResult(null)}
-        />
+        <ResultPanel blob={result.blob} filename={result.filename} kind="image" onReset={() => setResult(null)} />
       </ToolPage>
     );
   }
@@ -305,9 +299,7 @@ export default function MergeTool() {
           {/* Image List */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>
-                Images ({items.length})
-              </h3>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Images ({items.length})</h3>
               <input
                 ref={addFilesInputRef}
                 type="file"
@@ -319,11 +311,7 @@ export default function MergeTool() {
                   e.target.value = '';
                 }}
               />
-              <Button
-                variant="secondary"
-                style={{ fontSize: '0.85rem' }}
-                onClick={() => addFilesInputRef.current?.click()}
-              >
+              <Button variant="secondary" style={{ fontSize: '0.85rem' }} onClick={() => addFilesInputRef.current?.click()}>
                 + Add more images
               </Button>
             </div>
@@ -379,7 +367,7 @@ export default function MergeTool() {
           <div>
             <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Live Preview:</h3>
             <div className={styles.previewContainer}>
-              <canvas ref={canvasRef} className={styles.previewCanvas} />
+              <canvas ref={canvasRef} className={styles.previewCanvas} role="img" aria-label="Preview of the merged image" />
             </div>
           </div>
 
@@ -456,11 +444,7 @@ export default function MergeTool() {
                 />
                 {format !== 'jpg' && (
                   <label className="checkbox-label" style={{ margin: 0 }}>
-                    <input
-                      type="checkbox"
-                      checked={isTransparent}
-                      onChange={(e) => setIsTransparent(e.target.checked)}
-                    />
+                    <input type="checkbox" checked={isTransparent} onChange={(e) => setIsTransparent(e.target.checked)} />
                     <span>Transparent</span>
                   </label>
                 )}
@@ -470,11 +454,7 @@ export default function MergeTool() {
 
           <div className="field">
             <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={matchSize}
-                onChange={(e) => setMatchSize(e.target.checked)}
-              />
+              <input type="checkbox" checked={matchSize} onChange={(e) => setMatchSize(e.target.checked)} />
               <span>
                 <strong>Match size</strong> (scale all images to uniform height for horizontal, or uniform width for vertical)
               </span>
@@ -485,11 +465,7 @@ export default function MergeTool() {
             <Button variant="secondary" onClick={handleReset}>
               Start over
             </Button>
-            <Button
-              variant="primary"
-              onClick={handleExport}
-              disabled={exporting || items.length < 2}
-            >
+            <Button variant="primary" onClick={handleExport} disabled={exporting || items.length < 2}>
               {exporting ? 'Merging…' : `Merge ${items.length} images`}
             </Button>
           </div>

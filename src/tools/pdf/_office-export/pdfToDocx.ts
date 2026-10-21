@@ -1,12 +1,4 @@
-import {
-  Document,
-  Paragraph,
-  TextRun,
-  HeadingLevel,
-  PageBreak,
-  ExternalHyperlink,
-  Packer,
-} from 'docx';
+import { Document, Paragraph, TextRun, HeadingLevel, PageBreak, ExternalHyperlink, Packer } from 'docx';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 type HeadingLevelType = (typeof HeadingLevel)[keyof typeof HeadingLevel];
@@ -103,8 +95,7 @@ function groupLines(runs: Run[]): Line[] {
         if (i === 0) return r.text;
         const prev = row[i - 1];
         const gap = r.x - (prev.x + prev.width);
-        const needsSpace =
-          gap > r.size * 0.15 && !prev.text.endsWith(' ') && !r.text.startsWith(' ');
+        const needsSpace = gap > r.size * 0.15 && !prev.text.endsWith(' ') && !r.text.startsWith(' ');
         return (needsSpace ? ' ' : '') + r.text;
       })
       .join('')
@@ -116,9 +107,7 @@ function groupLines(runs: Run[]): Line[] {
 }
 
 function headingSizeRanks(allLines: Line[], body: number): number[] {
-  const sizes = allLines
-    .filter((l) => l.size / body >= 1.15 && l.text.length <= 140 && !BULLET_REGEX.test(l.text))
-    .map((l) => l.size);
+  const sizes = allLines.filter((l) => l.size / body >= 1.15 && l.text.length <= 140 && !BULLET_REGEX.test(l.text)).map((l) => l.size);
   const ranks: number[] = [];
   for (const size of sizes.sort((a, b) => b - a)) {
     const last = ranks[ranks.length - 1];
@@ -145,11 +134,7 @@ function runsToDocxChildren(runs: Run[]): (TextRun | ExternalHyperlink)[] {
 
   for (const run of runs) {
     const gap = prev ? run.x - (prev.x + prev.width) : 0;
-    const needsSpace =
-      prev !== undefined &&
-      gap > run.size * 0.15 &&
-      !prev.text.endsWith(' ') &&
-      !run.text.startsWith(' ');
+    const needsSpace = prev !== undefined && gap > run.size * 0.15 && !prev.text.endsWith(' ') && !run.text.startsWith(' ');
 
     const displayText = (needsSpace ? ' ' : '') + run.text;
     if (run.url) {
@@ -157,7 +142,7 @@ function runsToDocxChildren(runs: Run[]): (TextRun | ExternalHyperlink)[] {
         new ExternalHyperlink({
           children: [new TextRun({ text: displayText, style: 'Hyperlink' })],
           link: run.url,
-        })
+        }),
       );
     } else {
       children.push(new TextRun({ text: displayText }));
@@ -168,10 +153,7 @@ function runsToDocxChildren(runs: Run[]): (TextRun | ExternalHyperlink)[] {
   return children;
 }
 
-export async function pdfToDocx(
-  doc: PDFDocumentProxy,
-  onProgress?: (ratio: number) => void
-): Promise<Blob> {
+export async function pdfToDocx(doc: PDFDocumentProxy, onProgress?: (ratio: number) => void): Promise<Blob> {
   const numPages = doc.numPages;
   const pageRuns: Run[][] = [];
   let totalRuns = 0;
@@ -185,7 +167,7 @@ export async function pdfToDocx(
 
   if (totalRuns === 0) {
     throw new Error(
-      'No selectable text was found in this PDF. It appears to be a scanned document or image-only PDF. To convert it to Word, first use the OCR PDF tool to extract the text.'
+      'No selectable text was found in this PDF. It appears to be a scanned document or image-only PDF. To convert it to Word, first use the OCR PDF tool to extract the text.',
     );
   }
 
@@ -221,7 +203,7 @@ export async function pdfToDocx(
             heading: currentHeading,
             spacing: { before: 240, after: 120 },
             children,
-          })
+          }),
         );
       } else if (isBullet) {
         docParagraphs.push(
@@ -229,14 +211,14 @@ export async function pdfToDocx(
             bullet: { level: 0 },
             spacing: { after: 80 },
             children,
-          })
+          }),
         );
       } else {
         docParagraphs.push(
           new Paragraph({
             spacing: { after: 120, line: 276 },
             children,
-          })
+          }),
         );
       }
       currentParagraphRuns = [];

@@ -1,8 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ShieldCheck, Upload } from 'lucide-react';
 import { matchesAccept, takePendingFiles } from '../lib/handoff';
 import { Button, Kbd } from './Controls';
+import { useFocusFallback } from './useFocusFallback';
 
 export interface FileDropProps {
   accept?: string;
@@ -24,7 +25,11 @@ export function FileDrop({
   const [isDragOver, setIsDragOver] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useFocusFallback(rootRef);
   const dragDepth = useRef(0);
+  const labelId = useId();
+  const hintId = useId();
   const { pathname } = useLocation();
   const onFilesRef = useRef(onFiles);
   onFilesRef.current = onFiles;
@@ -96,44 +101,37 @@ export function FileDrop({
 
   const openPicker = () => fileInputRef.current?.click();
 
+  // The "Choose file" button is the keyboard and screen reader control. Clicking anywhere on the zone is a pointer shortcut for it.
   return (
     <div
       className={`file-drop ${isDragOver ? 'drag-over' : ''}`}
-      role="button"
-      tabIndex={0}
-      aria-label={`${label}. Press Enter to browse.`}
+      ref={rootRef}
+      role="group"
+      aria-labelledby={labelId}
+      aria-describedby={hint ? hintId : undefined}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={openPicker}
-      onKeyDown={(e) => {
-        if (e.target !== e.currentTarget) return;
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          openPicker();
-        }
-      }}
     >
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept={accept}
-        multiple={multiple}
-        hidden
-        tabIndex={-1}
-        onChange={handleChange}
-      />
+      <input ref={fileInputRef} type="file" accept={accept} multiple={multiple} hidden tabIndex={-1} onChange={handleChange} />
       <span className="file-drop-icon" aria-hidden="true">
         <Upload />
       </span>
-      <div className="file-drop-label">{isDragOver ? 'Release to open' : label}</div>
-      {hint && <div className="file-drop-hint">{hint}</div>}
+      <div className="file-drop-label" id={labelId}>
+        {isDragOver ? 'Release to open' : label}
+      </div>
+      {hint && (
+        <div className="file-drop-hint" id={hintId}>
+          {hint}
+        </div>
+      )}
 
       <div className="file-drop-actions">
         <Button
           variant="primary"
-          tabIndex={-1}
+          aria-describedby={labelId}
           onClick={(e) => {
             e.stopPropagation();
             openPicker();

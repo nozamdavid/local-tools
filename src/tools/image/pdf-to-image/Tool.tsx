@@ -9,11 +9,7 @@ import { Field, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
-import {
-  loadPdfDocument,
-  renderPdfThumbnail,
-  renderPdfPageToBlob,
-} from '../_pdf/pdfRenderer';
+import { loadPdfDocument, renderPdfThumbnail, renderPdfPageToBlob } from '../_pdf/pdfRenderer';
 import { PasswordDialog } from '../_pdf/PasswordDialog';
 import styles from './Tool.module.css';
 
@@ -190,12 +186,7 @@ export default function PdfToImageTool() {
 
           {items && items.length > 0 ? (
             items.length === 1 ? (
-              <ResultPanel
-                blob={items[0].blob}
-                filename={items[0].name}
-                kind="image"
-                onReset={handleReset}
-              />
+              <ResultPanel blob={items[0].blob} filename={items[0].name} kind="image" onReset={handleReset} />
             ) : (
               <BatchResults items={items} onReset={handleReset} />
             )
@@ -224,7 +215,10 @@ export default function PdfToImageTool() {
                   )}
                   {pdfDoc && (
                     <span className="meta-chip">
-                      Selected: <strong>{selectedPages.size} of {pdfDoc.numPages}</strong>
+                      Selected:{' '}
+                      <strong>
+                        {selectedPages.size} of {pdfDoc.numPages}
+                      </strong>
                     </span>
                   )}
                 </div>
@@ -313,11 +307,7 @@ export default function PdfToImageTool() {
                       <Button variant="secondary" onClick={handleReset}>
                         Choose different file
                       </Button>
-                      <Button
-                        variant="primary"
-                        onClick={handleConvert}
-                        disabled={selectedPages.size === 0}
-                      >
+                      <Button variant="primary" onClick={handleConvert} disabled={selectedPages.size === 0}>
                         Convert {selectedPages.size} {selectedPages.size === 1 ? 'page' : 'pages'}
                       </Button>
                     </div>

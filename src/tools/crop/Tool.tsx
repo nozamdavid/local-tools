@@ -125,10 +125,7 @@ export default function CropTool() {
   const handleCropPropChange = (prop: keyof CropRect, rawVal: number) => {
     if (!videoMeta) return;
     const val = isNaN(rawVal) ? 0 : rawVal;
-    const targetRatio =
-      aspectPreset !== 'free'
-        ? ASPECT_RATIOS[aspectPreset].w / ASPECT_RATIOS[aspectPreset].h
-        : null;
+    const targetRatio = aspectPreset !== 'free' ? ASPECT_RATIOS[aspectPreset].w / ASPECT_RATIOS[aspectPreset].h : null;
 
     setCrop((prev) => {
       let { x, y, w, h } = prev;
@@ -205,10 +202,7 @@ export default function CropTool() {
     window.addEventListener('pointercancel', onPointerUp);
   };
 
-  const handleHandlePointerDown = (
-    e: React.PointerEvent<HTMLDivElement>,
-    handle: 'nw' | 'ne' | 'se' | 'sw'
-  ) => {
+  const handleHandlePointerDown = (e: React.PointerEvent<HTMLDivElement>, handle: 'nw' | 'ne' | 'se' | 'sw') => {
     e.preventDefault();
     e.stopPropagation();
 
@@ -221,10 +215,7 @@ export default function CropTool() {
     const scaleX = videoMeta.width / rect.width;
     const scaleY = videoMeta.height / rect.height;
 
-    const targetRatio =
-      aspectPreset !== 'free'
-        ? ASPECT_RATIOS[aspectPreset].w / ASPECT_RATIOS[aspectPreset].h
-        : null;
+    const targetRatio = aspectPreset !== 'free' ? ASPECT_RATIOS[aspectPreset].w / ASPECT_RATIOS[aspectPreset].h : null;
 
     const onPointerMove = (ev: PointerEvent) => {
       const deltaX = (ev.clientX - startX) * scaleX;
@@ -424,11 +415,7 @@ export default function CropTool() {
               filename={withSuffix(file.name, '-cropped', 'mp4')}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (
@@ -446,7 +433,10 @@ export default function CropTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Original: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Original:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}
@@ -459,15 +449,7 @@ export default function CropTool() {
                   {/* Video Stage with interactive crop box */}
                   <div className={styles.stageContainer}>
                     <div className={styles.stage}>
-                      {originalUrl && (
-                        <video
-                          ref={videoRef}
-                          src={originalUrl}
-                          playsInline
-                          controls
-                          className="preview-media"
-                        />
-                      )}
+                      {originalUrl && <video ref={videoRef} src={originalUrl} playsInline controls className="preview-media" />}
                       {videoMeta && (
                         <div
                           className={styles.cropBox}
@@ -507,8 +489,12 @@ export default function CropTool() {
 
                   <div className={styles.infoBadge}>
                     <span>Crop size:</span>
-                    <strong>{crop.w} × {crop.h}</strong>
-                    <span>(at X: {crop.x}, Y: {crop.y})</span>
+                    <strong>
+                      {crop.w} × {crop.h}
+                    </strong>
+                    <span>
+                      (at X: {crop.x}, Y: {crop.y})
+                    </span>
                   </div>
 
                   <Field label="Aspect ratio preset" hint="Re-fits the largest centered box of that ratio.">

@@ -35,14 +35,11 @@ const round = (v: number, places: number) => {
 const clamp01 = (v: number) => Math.min(1, Math.max(0, v));
 
 /** Margin value in the chosen unit to a fraction of the page side (`dim` is in points). */
-const toFrac = (v: number, unit: Unit, dim: number) =>
-  unit === '%' ? v / 100 : (v * PT_PER_MM) / dim;
+const toFrac = (v: number, unit: Unit, dim: number) => (unit === '%' ? v / 100 : (v * PT_PER_MM) / dim);
 
-const fromFrac = (f: number, unit: Unit, dim: number) =>
-  round(unit === '%' ? f * 100 : (f * dim) / PT_PER_MM, 2);
+const fromFrac = (f: number, unit: Unit, dim: number) => round(unit === '%' ? f * 100 : (f * dim) / PT_PER_MM, 2);
 
-const toPoints = (v: number, unit: Unit, dim: number) =>
-  unit === '%' ? (v / 100) * dim : v * PT_PER_MM;
+const toPoints = (v: number, unit: Unit, dim: number) => (unit === '%' ? (v / 100) * dim : v * PT_PER_MM);
 
 const SIDES: { key: keyof Margins; label: string }[] = [
   { key: 'top', label: 'Top' },
@@ -185,13 +182,7 @@ export default function CropTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -206,12 +197,7 @@ export default function CropTool() {
           {job.error && <div className="error-banner">{job.error}</div>}
 
           {job.result ? (
-            <PdfPreview
-              blob={job.result}
-              filename={outName}
-              pageCount={total}
-              onReset={handleReset}
-            />
+            <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
           ) : (
             <div>
               <div className={styles.topRow}>
@@ -260,20 +246,17 @@ export default function CropTool() {
                       </Button>
                     </div>
 
-                    <CropArea
-                      src={preview}
-                      aspect={page.width / page.height}
-                      frac={frac}
-                      onChange={handleDrag}
-                    />
+                    <CropArea src={preview} aspect={page.width / page.height} frac={frac} onChange={handleDrag} />
                     <p className={styles.hint}>
-                      Drag on the page to draw the crop area, then fine-tune it with the handles or the
-                      margin fields.
+                      Drag on the page to draw the crop area, then fine-tune it with the handles or the margin fields.
                     </p>
                   </div>
 
                   <div className={styles.controlsCol}>
-                    <Field label="Margins to remove" hint={`Measured from each page edge. This page is ${round(page.width / PT_PER_MM, 1)} × ${round(page.height / PT_PER_MM, 1)} mm.`}>
+                    <Field
+                      label="Margins to remove"
+                      hint={`Measured from each page edge. This page is ${round(page.width / PT_PER_MM, 1)} × ${round(page.height / PT_PER_MM, 1)} mm.`}
+                    >
                       <div className={styles.marginGrid}>
                         {SIDES.map(({ key, label }) => (
                           <label key={key} className={styles.marginField}>
@@ -308,24 +291,17 @@ export default function CropTool() {
                       />
                     </Field>
 
-                    <Field label="Apply to" hint="With several page sizes, millimetre margins stay the same and percent margins scale with each page.">
+                    <Field
+                      label="Apply to"
+                      hint="With several page sizes, millimetre margins stay the same and percent margins scale with each page."
+                    >
                       <div className={styles.scope} role="radiogroup" aria-label="Pages to crop">
                         <label>
-                          <input
-                            type="radio"
-                            name="scope"
-                            checked={scope === 'all'}
-                            onChange={() => setScope('all')}
-                          />
+                          <input type="radio" name="scope" checked={scope === 'all'} onChange={() => setScope('all')} />
                           All pages
                         </label>
                         <label>
-                          <input
-                            type="radio"
-                            name="scope"
-                            checked={scope === 'current'}
-                            onChange={() => setScope('current')}
-                          />
+                          <input type="radio" name="scope" checked={scope === 'current'} onChange={() => setScope('current')} />
                           Current page only
                         </label>
                       </div>
@@ -338,8 +314,9 @@ export default function CropTool() {
                 </div>
               )}
 
-              {doc && page && (
-                job.status === 'running' ? (
+              {doc &&
+                page &&
+                (job.status === 'running' ? (
                   <ProgressBar value={job.progress} label="Cropping pages…" />
                 ) : (
                   <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
@@ -350,8 +327,7 @@ export default function CropTool() {
                       Crop {scope === 'all' ? `${total} ${total === 1 ? 'page' : 'pages'}` : 'this page'}
                     </Button>
                   </div>
-                )
-              )}
+                ))}
             </div>
           )}
         </div>

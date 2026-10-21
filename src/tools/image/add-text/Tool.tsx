@@ -119,9 +119,7 @@ export default function Tool() {
     if (!selectedLayerId) return;
     pushDoc({
       ...doc,
-      layers: doc.layers.map((l) =>
-        l.id === selectedLayerId && l.type === 'text' ? updater(l) : l
-      ),
+      layers: doc.layers.map((l) => (l.id === selectedLayerId && l.type === 'text' ? updater(l) : l)),
     });
   };
 
@@ -587,12 +585,7 @@ export default function Tool() {
               )}
             </div>
 
-            <Button
-              variant="primary"
-              data-testid="export-btn"
-              disabled={isExporting}
-              onClick={handleExport}
-            >
+            <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleExport}>
               {isExporting ? 'Exporting…' : 'Download Image'}
             </Button>
           </div>

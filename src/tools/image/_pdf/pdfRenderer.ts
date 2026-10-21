@@ -5,10 +5,7 @@ export interface LoadPdfOptions {
   onPassword?: (verifyPassword: (password: string) => void, reason: number) => void;
 }
 
-export async function loadPdfDocument(
-  file: File | Blob,
-  options?: LoadPdfOptions
-): Promise<PDFDocumentProxy> {
+export async function loadPdfDocument(file: File | Blob, options?: LoadPdfOptions): Promise<PDFDocumentProxy> {
   const pdfjs = await loadPdfjs();
   const arrayBuffer = await file.arrayBuffer();
 
@@ -25,11 +22,7 @@ export async function loadPdfDocument(
   return await loadingTask.promise;
 }
 
-export async function renderPdfThumbnail(
-  pdfDoc: PDFDocumentProxy,
-  pageNumber: number,
-  maxDim: number = 160
-): Promise<string> {
+export async function renderPdfThumbnail(pdfDoc: PDFDocumentProxy, pageNumber: number, maxDim: number = 160): Promise<string> {
   const page = await pdfDoc.getPage(pageNumber);
   const unscaled = page.getViewport({ scale: 1 });
   const scale = maxDim / Math.max(unscaled.width, unscaled.height);
@@ -60,7 +53,7 @@ export async function renderPdfPageToBlob(
   pageNumber: number,
   scale: number,
   format: 'image/jpeg' | 'image/png' | 'image/webp',
-  quality: number = 0.92
+  quality: number = 0.92,
 ): Promise<Blob> {
   const page = await pdfDoc.getPage(pageNumber);
   const viewport = page.getViewport({ scale });
@@ -79,9 +72,7 @@ export async function renderPdfPageToBlob(
 
   await page.render({ canvasContext: ctx, viewport, canvas }).promise;
 
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, format, quality)
-  );
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, format, quality));
 
   canvas.width = 0;
   canvas.height = 0;
@@ -103,7 +94,7 @@ export async function extractEmbeddedImagesOrPages(
     dpi?: number;
     quality?: number;
     onProgress?: (current: number, total: number) => void;
-  }
+  },
 ): Promise<{ items: { name: string; blob: Blob }[]; usedFallback: boolean }> {
   const pdfjs = await loadPdfjs();
   const numPages = pdfDoc.numPages;
@@ -124,9 +115,11 @@ export async function extractEmbeddedImagesOrPages(
         if (fn === pdfjs.OPS.paintImageXObject) {
           const objId = ops.argsArray[i][0];
           try {
-            const objs = typeof objId === 'string' && objId.startsWith('g_')
-              ? (page as unknown as { commonObjs: { has(id: string): boolean; get(id: string, cb?: (res: unknown) => void): unknown } }).commonObjs
-              : (page as unknown as { objs: { has(id: string): boolean; get(id: string, cb?: (res: unknown) => void): unknown } }).objs;
+            const objs =
+              typeof objId === 'string' && objId.startsWith('g_')
+                ? (page as unknown as { commonObjs: { has(id: string): boolean; get(id: string, cb?: (res: unknown) => void): unknown } })
+                    .commonObjs
+                : (page as unknown as { objs: { has(id: string): boolean; get(id: string, cb?: (res: unknown) => void): unknown } }).objs;
 
             let imgData: unknown = null;
             if (objs) {
@@ -155,10 +148,7 @@ export async function extractEmbeddedImagesOrPages(
                   ctx.fillRect(0, 0, canvas.width, canvas.height);
                 }
 
-                if (
-                  typeof ImageBitmap !== 'undefined' &&
-                  rawImg instanceof ImageBitmap
-                ) {
+                if (typeof ImageBitmap !== 'undefined' && rawImg instanceof ImageBitmap) {
                   ctx.drawImage(rawImg, 0, 0);
                 } else if (rawImg.data) {
                   const imgDataObj = ctx.createImageData(rawImg.width, rawImg.height);
@@ -166,9 +156,7 @@ export async function extractEmbeddedImagesOrPages(
                   ctx.putImageData(imgDataObj, 0, 0);
                 }
 
-                const blob = await new Promise<Blob | null>((res) =>
-                  canvas.toBlob(res, options.format, options.quality ?? 0.92)
-                );
+                const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, options.format, options.quality ?? 0.92));
                 canvas.width = 0;
                 canvas.height = 0;
 
@@ -200,13 +188,7 @@ export async function extractEmbeddedImagesOrPages(
     const scale = (options.dpi ?? 150) / 72;
     for (let p = 1; p <= numPages; p++) {
       options.onProgress?.(p - 1, numPages);
-      const blob = await renderPdfPageToBlob(
-        pdfDoc,
-        p,
-        scale,
-        options.format,
-        options.quality ?? 0.92
-      );
+      const blob = await renderPdfPageToBlob(pdfDoc, p, scale, options.format, options.quality ?? 0.92);
       items.push({
         name: `${cleanBase}-page-${p}.${ext}`,
         blob,

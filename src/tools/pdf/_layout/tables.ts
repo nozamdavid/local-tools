@@ -16,9 +16,7 @@ export interface Table {
   y: number;
 }
 
-export type Block =
-  | { kind: 'table'; table: Table; y: number }
-  | { kind: 'line'; line: Line; y: number };
+export type Block = { kind: 'table'; table: Table; y: number } | { kind: 'line'; line: Line; y: number };
 
 export interface RawCell {
   runs: TextRun[];
@@ -118,9 +116,7 @@ function buildTable(group: Candidate[]): { table: Table; used: number } | null {
   let used = group.length;
   while (used > 0 && !tabular(group[used - 1])) {
     const last = group[used - 1];
-    const spans = last.cells.some(
-      (cell) => columns.filter((c) => overlap(cell.x0, cell.x1, c.x0, c.x1) > 0).length > 1
-    );
+    const spans = last.cells.some((cell) => columns.filter((c) => overlap(cell.x0, cell.x1, c.x0, c.x1) > 0).length > 1);
     if (spans || last.line.size < group[0].line.size - 0.5 || last.line.size > group[0].line.size + 0.5) used--;
     else break;
   }
@@ -145,7 +141,10 @@ function buildTable(group: Candidate[]): { table: Table; used: number } | null {
 
     const target = isContinuation
       ? rows[rows.length - 1]
-      : { cells: columns.map(() => ({ text: '', bold: false, italic: false, size: c.line.size })), runs: columns.map(() => [] as TextRun[]) };
+      : {
+          cells: columns.map(() => ({ text: '', bold: false, italic: false, size: c.line.size })),
+          runs: columns.map(() => [] as TextRun[]),
+        };
 
     for (const cell of c.cells) {
       const col = columnOf(cell, columns);

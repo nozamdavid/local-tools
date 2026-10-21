@@ -135,11 +135,7 @@ export default function SpeedTool() {
               filename={outputFilename}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             >
               {newDuration !== null && (
@@ -165,7 +161,10 @@ export default function SpeedTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Resolution:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}
@@ -195,24 +194,12 @@ export default function SpeedTool() {
                         </Button>
                       ))}
                     </div>
-                    <Slider
-                      value={speed}
-                      min={0.25}
-                      max={4}
-                      step={0.05}
-                      unit="x"
-                      onChange={(v) => setSpeed(parseFloat(v.toFixed(2)))}
-                    />
+                    <Slider value={speed} min={0.25} max={4} step={0.05} unit="x" onChange={(v) => setSpeed(parseFloat(v.toFixed(2)))} />
                   </Field>
 
                   <div className="field">
                     <label className="checkbox-label" htmlFor={keepAudioId}>
-                      <input
-                        id={keepAudioId}
-                        type="checkbox"
-                        checked={keepAudio}
-                        onChange={(e) => setKeepAudio(e.target.checked)}
-                      />
+                      <input id={keepAudioId} type="checkbox" checked={keepAudio} onChange={(e) => setKeepAudio(e.target.checked)} />
                       <span>Keep audio</span>
                     </label>
                     <p className="field-hint">Audio is sped up or slowed down with the video, keeping its pitch.</p>

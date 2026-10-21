@@ -91,11 +91,7 @@ function renderRuns(runs: Run[]): string {
 
   for (const run of runs) {
     const gap = prev ? run.x - (prev.x + prev.width) : 0;
-    const needsSpace =
-      prev !== undefined &&
-      gap > run.size * 0.15 &&
-      !prev.text.endsWith(' ') &&
-      !run.text.startsWith(' ');
+    const needsSpace = prev !== undefined && gap > run.size * 0.15 && !prev.text.endsWith(' ') && !run.text.startsWith(' ');
     const text = escapeMarkdown(run.text);
 
     if (run.url !== openUrl) flushLink();
@@ -247,10 +243,7 @@ export interface MarkdownProgress {
 }
 
 /** Converts a pdf.js document into Markdown. Returns an empty string when no text layer exists. */
-export async function pdfToMarkdown(
-  doc: PDFDocumentProxy,
-  onProgress?: MarkdownProgress
-): Promise<string> {
+export async function pdfToMarkdown(doc: PDFDocumentProxy, onProgress?: MarkdownProgress): Promise<string> {
   const pageRuns: Run[][] = [];
   for (let p = 1; p <= doc.numPages; p++) {
     pageRuns.push(await readPageRuns(doc, p));
@@ -269,9 +262,7 @@ export async function pdfToMarkdown(
   const pageLines = pageRuns.map(groupLines);
   const ranks = headingSizeRanks(pageLines.flat(), body);
 
-  const pages = pageLines
-    .map((lines) => renderBlocks(blocksFromLines(lines, body, ranks)))
-    .filter((text) => text.length > 0);
+  const pages = pageLines.map((lines) => renderBlocks(blocksFromLines(lines, body, ranks))).filter((text) => text.length > 0);
 
   return pages.join('\n\n') + '\n';
 }

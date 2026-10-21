@@ -6,13 +6,7 @@ import { getToolMeta } from '../registry';
 import { downloadBlob } from '../../lib/download';
 import { peekPendingFiles } from '../../lib/handoff';
 import { classifyFile } from '../../lib/toolInputs';
-import {
-  gpxToGeoData,
-  kmlToGeoData,
-  geoDataToGpx,
-  geoDataToKml,
-  getGeoSummary,
-} from './gpxKml';
+import { gpxToGeoData, kmlToGeoData, geoDataToGpx, geoDataToKml, getGeoSummary } from './gpxKml';
 import styles from './Tool.module.css';
 
 export default function GpxKmlTool() {
@@ -167,11 +161,7 @@ export default function GpxKmlTool() {
           {inputTab === 'upload' ? (
             <FileDrop
               accept=".gpx,.kml,.xml,application/gpx+xml,application/vnd.google-earth.kml+xml"
-              label={
-                direction === 'gpx-to-kml'
-                  ? 'Choose or drag a GPX file'
-                  : 'Choose or drag a KML file'
-              }
+              label={direction === 'gpx-to-kml' ? 'Choose or drag a GPX file' : 'Choose or drag a KML file'}
               hint="100% on-device. No maps, tiles, or GPS location data leave your device."
               onFiles={handleFiles}
             />
@@ -232,9 +222,7 @@ export default function GpxKmlTool() {
               </div>
               <div className={styles.statItem}>
                 <span className={styles.statLabel}>Elevation</span>
-                <span className={styles.statValue}>
-                  {conversion.summary.hasElevations ? 'Yes' : 'No'}
-                </span>
+                <span className={styles.statValue}>{conversion.summary.hasElevations ? 'Yes' : 'No'}</span>
               </div>
             </div>
 

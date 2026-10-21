@@ -54,13 +54,7 @@ export interface BarcodeElement extends BaseElement {
   showText: boolean;
 }
 
-export type LabelElement =
-  | TextElement
-  | RectElement
-  | LineElement
-  | ImageElement
-  | QrElement
-  | BarcodeElement;
+export type LabelElement = TextElement | RectElement | LineElement | ImageElement | QrElement | BarcodeElement;
 
 export interface LabelPreset {
   id: string;

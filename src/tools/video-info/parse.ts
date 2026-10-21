@@ -62,7 +62,7 @@ export function parseFFmpegLog(log: string): ParsedVideoInfo {
 
     // Stream line: Stream #0:0[0x1](und): Video: ...
     const streamMatch = line.match(
-      /^\s*Stream #\d+:(\d+)(?:\[0x[0-9a-fA-F]+\])?(?:\(([a-zA-Z0-9_-]+)\))?(?:\s*\(([^)]+)\))?:\s*([A-Za-z]+):\s*(.*)$/
+      /^\s*Stream #\d+:(\d+)(?:\[0x[0-9a-fA-F]+\])?(?:\(([a-zA-Z0-9_-]+)\))?(?:\s*\(([^)]+)\))?:\s*([A-Za-z]+):\s*(.*)$/,
     );
     if (streamMatch) {
       const index = parseInt(streamMatch[1], 10);
@@ -129,9 +129,7 @@ export function parseFFmpegLog(log: string): ParsedVideoInfo {
       }
 
       // 4. Pixel format: e.g. yuv444p(progressive), yuv420p, etc.
-      const pixMatch = details.match(
-        /\b(yuv[a-z0-9]+(?:\([a-z0-9_,\s]+\))?|rgb[a-z0-9]+|bgr[a-z0-9]+|gray[a-z0-9]*)\b/i
-      );
+      const pixMatch = details.match(/\b(yuv[a-z0-9]+(?:\([a-z0-9_,\s]+\))?|rgb[a-z0-9]+|bgr[a-z0-9]+|gray[a-z0-9]*)\b/i);
       if (pixMatch) {
         currentStream.pixelFormat = pixMatch[1];
       }

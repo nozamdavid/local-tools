@@ -159,9 +159,7 @@ export default function Base64Tool() {
       });
     } catch (err) {
       setDecodeError(
-        err instanceof Error
-          ? `Could not decode Base64: ${err.message}`
-          : 'Could not decode Base64 string. Please verify the format.',
+        err instanceof Error ? `Could not decode Base64: ${err.message}` : 'Could not decode Base64 string. Please verify the format.',
       );
     }
   };
@@ -176,16 +174,10 @@ export default function Base64Tool() {
     <ToolPage title={meta.title} description={meta.description} currentId="img-base64">
       <div className={styles.container}>
         <div className={styles.modeTabs}>
-          <Button
-            variant={activeTab === 'encode' ? 'primary' : 'secondary'}
-            onClick={() => setActiveTab('encode')}
-          >
+          <Button variant={activeTab === 'encode' ? 'primary' : 'secondary'} onClick={() => setActiveTab('encode')}>
             Image to Base64
           </Button>
-          <Button
-            variant={activeTab === 'decode' ? 'primary' : 'secondary'}
-            onClick={() => setActiveTab('decode')}
-          >
+          <Button variant={activeTab === 'decode' ? 'primary' : 'secondary'} onClick={() => setActiveTab('decode')}>
             Base64 to Image (Decode)
           </Button>
         </div>
@@ -211,9 +203,7 @@ export default function Base64Tool() {
                     marginBottom: '1rem',
                   }}
                 >
-                  <div style={{ fontWeight: 600, fontSize: '1rem' }}>
-                    Encoded: {encodeResult.filename}
-                  </div>
+                  <div style={{ fontWeight: 600, fontSize: '1rem' }}>Encoded: {encodeResult.filename}</div>
                   <Button variant="secondary" onClick={handleResetEncode}>
                     Choose different image
                   </Button>
@@ -222,21 +212,15 @@ export default function Base64Tool() {
                 <div className={styles.statsRow}>
                   <div className={styles.statItem}>
                     <span className={styles.statLabel}>Original image size</span>
-                    <span className={styles.statValue}>
-                      {formatBytes(encodeResult.originalSize)}
-                    </span>
+                    <span className={styles.statValue}>{formatBytes(encodeResult.originalSize)}</span>
                   </div>
                   <div className={styles.statItem}>
                     <span className={styles.statLabel}>Base64 data size</span>
-                    <span className={styles.statValue}>
-                      {formatBytes(encodeResult.base64Length)}
-                    </span>
+                    <span className={styles.statValue}>{formatBytes(encodeResult.base64Length)}</span>
                   </div>
                   <div className={styles.statItem}>
                     <span className={styles.statLabel}>Data size overhead</span>
-                    <span className={`${styles.statValue} ${styles.overheadBadge}`}>
-                      +{encodeResult.overheadPercent}% larger
-                    </span>
+                    <span className={`${styles.statValue} ${styles.overheadBadge}`}>+{encodeResult.overheadPercent}% larger</span>
                   </div>
                 </div>
 
@@ -262,11 +246,7 @@ export default function Base64Tool() {
                         </Button>
                       </div>
                     </div>
-                    <textarea
-                      readOnly
-                      className={styles.snippetTextarea}
-                      value={encodeResult.dataUri}
-                    />
+                    <textarea readOnly className={styles.snippetTextarea} value={encodeResult.dataUri} />
                   </div>
 
                   {/* Raw Base64 */}
@@ -290,11 +270,7 @@ export default function Base64Tool() {
                         </Button>
                       </div>
                     </div>
-                    <textarea
-                      readOnly
-                      className={styles.snippetTextarea}
-                      value={encodeResult.rawBase64}
-                    />
+                    <textarea readOnly className={styles.snippetTextarea} value={encodeResult.rawBase64} />
                   </div>
 
                   {/* HTML img tag */}
@@ -309,11 +285,7 @@ export default function Base64Tool() {
                         {copiedKey === 'img' ? 'Copied!' : 'Copy snippet'}
                       </Button>
                     </div>
-                    <textarea
-                      readOnly
-                      className={styles.snippetTextarea}
-                      value={encodeResult.imgSnippet}
-                    />
+                    <textarea readOnly className={styles.snippetTextarea} value={encodeResult.imgSnippet} />
                   </div>
 
                   {/* CSS Background */}
@@ -328,11 +300,7 @@ export default function Base64Tool() {
                         {copiedKey === 'css' ? 'Copied!' : 'Copy snippet'}
                       </Button>
                     </div>
-                    <textarea
-                      readOnly
-                      className={styles.snippetTextarea}
-                      value={encodeResult.cssSnippet}
-                    />
+                    <textarea readOnly className={styles.snippetTextarea} value={encodeResult.cssSnippet} />
                   </div>
                 </div>
               </div>
@@ -343,10 +311,7 @@ export default function Base64Tool() {
             {decodeError && <div className="error-banner">{decodeError}</div>}
 
             <div className={styles.reverseInputCard}>
-              <Field
-                label="Paste Base64 string or Data URI"
-                hint="Accepts data:image/...;base64,... or raw base64 string."
-              >
+              <Field label="Paste Base64 string or Data URI" hint="Accepts data:image/...;base64,... or raw base64 string.">
                 <textarea
                   id={textareaId}
                   className={styles.snippetTextarea}
@@ -379,24 +344,21 @@ export default function Base64Tool() {
             {decodeResult && (
               <div className={styles.reversePreviewGrid} style={{ marginTop: '1.5rem' }}>
                 <div className={styles.previewThumbWrapper}>
-                  <img
-                    src={decodeResult.previewUrl}
-                    alt="Decoded preview"
-                    className={styles.previewImg}
-                  />
+                  <img src={decodeResult.previewUrl} alt="Decoded preview" className={styles.previewImg} />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center' }}>
-                  <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
-                    Successfully Decoded
-                  </div>
+                  <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Successfully Decoded</div>
 
                   <div className="meta-chips">
                     <span className="meta-chip">
                       Format: <strong>{decodeResult.mime}</strong>
                     </span>
                     <span className="meta-chip">
-                      Dimensions: <strong>{decodeResult.width}×{decodeResult.height} px</strong>
+                      Dimensions:{' '}
+                      <strong>
+                        {decodeResult.width}×{decodeResult.height} px
+                      </strong>
                     </span>
                     <span className="meta-chip">
                       Size: <strong>{formatBytes(decodeResult.size)}</strong>

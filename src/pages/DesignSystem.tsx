@@ -97,9 +97,8 @@ export function DesignSystem() {
         <div>
           <h1 className="page-title">Design system</h1>
           <p className="page-desc">
-            The tokens and components every Loconvert page and tool is built from. Tokens live in{' '}
-            <code>src/design/tokens.css</code>, components in <code>src/components/Controls.tsx</code>. Toggle the theme in
-            the header to check both modes.
+            The tokens and components every Loconvert page and tool is built from. Tokens live in <code>src/design/tokens.css</code>,
+            components in <code>src/components/Controls.tsx</code>. Toggle the theme in the header to check both modes.
           </p>
         </div>
       </header>
@@ -112,7 +111,11 @@ export function DesignSystem() {
         ))}
       </nav>
 
-      <Section id="color" title="Color" intro="Components use semantic tokens only. Each token carries its light and dark value via light-dark().">
+      <Section
+        id="color"
+        title="Color"
+        intro="Components use semantic tokens only. Each token carries its light and dark value via light-dark()."
+      >
         <h3 className="ds-sub">Surfaces & text</h3>
         <div className="ds-swatches">
           {SURFACES.map(([token, note]) => (
@@ -127,8 +130,7 @@ export function DesignSystem() {
         </div>
         <h3 className="ds-sub">Media families</h3>
         <p className="ds-note">
-          Each kind of file has a hue. Set <code>data-media</code> on an element to get <code>--tone</code> and{' '}
-          <code>--tone-soft</code>.
+          Each kind of file has a hue. Set <code>data-media</code> on an element to get <code>--tone</code> and <code>--tone-soft</code>.
         </p>
         <div className="ds-row">
           {MEDIA_LIST.map((m) => (
@@ -145,7 +147,11 @@ export function DesignSystem() {
         </div>
       </Section>
 
-      <Section id="type" title="Typography" intro="Geist for interface text, Geist Mono for numbers, code and file data. Bundled locally, so no font CDN.">
+      <Section
+        id="type"
+        title="Typography"
+        intro="Geist for interface text, Geist Mono for numbers, code and file data. Bundled locally, so no font CDN."
+      >
         <div className="ds-type">
           {TYPE_SCALE.map(([token, label, use]) => (
             <div key={token} className="ds-type-row">
@@ -170,7 +176,11 @@ export function DesignSystem() {
         </div>
       </Section>
 
-      <Section id="layout" title="Space, radius & elevation" intro="A 4px spacing grid. Corners grow with the size of the element. Shadows are kept light and used for layering only.">
+      <Section
+        id="layout"
+        title="Space, radius & elevation"
+        intro="A 4px spacing grid. Corners grow with the size of the element. Shadows are kept light and used for layering only."
+      >
         <h3 className="ds-sub">Spacing</h3>
         <div className="ds-spaces">
           {SPACES.map((s) => (
@@ -198,7 +208,11 @@ export function DesignSystem() {
         </div>
       </Section>
 
-      <Section id="buttons" title="Buttons" intro="One primary action per view, usually Download or Run. Secondary for alternatives, ghost for low-emphasis actions in toolbars.">
+      <Section
+        id="buttons"
+        title="Buttons"
+        intro="One primary action per view, usually Download or Run. Secondary for alternatives, ghost for low-emphasis actions in toolbars."
+      >
         <div className="ds-demo">
           <div className="ds-row">
             <Button icon={<Download />}>Primary</Button>
@@ -223,7 +237,11 @@ export function DesignSystem() {
         </div>
       </Section>
 
-      <Section id="forms" title="Form controls" intro="Labels sit above controls. Hints explain consequences, not mechanics. Values that matter, like quality, are shown next to the control.">
+      <Section
+        id="forms"
+        title="Form controls"
+        intro="Labels sit above controls. Hints explain consequences, not mechanics. Values that matter, like quality, are shown next to the control."
+      >
         <div className="ds-demo ds-form">
           <Field label="Output name" hint="The extension is added for you." htmlFor="ds-name">
             <Input id="ds-name" defaultValue="holiday-photo" />
@@ -263,7 +281,11 @@ export function DesignSystem() {
         </div>
       </Section>
 
-      <Section id="feedback" title="Feedback" intro="Tell people what happened and what to do next. Errors say what went wrong in plain words.">
+      <Section
+        id="feedback"
+        title="Feedback"
+        intro="Tell people what happened and what to do next. Errors say what went wrong in plain words."
+      >
         <div className="ds-demo">
           <Alert tone="info" title="Large file">
             This video is 2.1 GB. Processing may take a few minutes and use a lot of memory.
@@ -298,7 +320,11 @@ export function DesignSystem() {
         </div>
       </Section>
 
-      <Section id="patterns" title="Patterns" intro="The pieces every tool is assembled from: drop zone, then options, then progress, then result.">
+      <Section
+        id="patterns"
+        title="Patterns"
+        intro="The pieces every tool is assembled from: drop zone, then options, then progress, then result."
+      >
         <h3 className="ds-sub">File drop</h3>
         <FileDrop accept="image/*" label="Choose an image or drag it here" hint="JPG, PNG, WebP, HEIC, AVIF and more." onFiles={() => {}} />
         <h3 className="ds-sub">Tool cards</h3>

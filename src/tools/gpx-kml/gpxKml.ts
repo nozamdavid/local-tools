@@ -47,12 +47,7 @@ export interface GeoSummary {
 }
 
 export function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&apos;');
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
 export function unescapeXml(str: string): string {
@@ -212,9 +207,7 @@ export function parseXmlDocument(xmlText: string): SimpleElement {
     if (tagEnd === -1) throw new Error('Invalid XML: unclosed opening tag');
 
     const isSelfClosing = trimmed[tagEnd - 1] === '/';
-    const tagContent = isSelfClosing
-      ? trimmed.slice(pos, tagEnd - 1).trim()
-      : trimmed.slice(pos, tagEnd).trim();
+    const tagContent = isSelfClosing ? trimmed.slice(pos, tagEnd - 1).trim() : trimmed.slice(pos, tagEnd).trim();
 
     pos = tagEnd + 1;
 
@@ -548,7 +541,7 @@ export function geoDataToGpx(data: GeoData): string {
   const lines: string[] = [];
   lines.push('<?xml version="1.0" encoding="UTF-8"?>');
   lines.push(
-    '<gpx version="1.1" creator="loconvert" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">'
+    '<gpx version="1.1" creator="loconvert" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">',
   );
 
   // Metadata

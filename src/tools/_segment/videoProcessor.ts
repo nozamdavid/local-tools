@@ -20,7 +20,7 @@ export interface ProcessVideoOptions {
       width: number;
       height: number;
       frameIndex: number;
-    }
+    },
   ) => void;
 }
 
@@ -148,18 +148,13 @@ export async function processVideo({
     statusText: 'Encoding final video with FFmpeg...',
   });
 
-  const ext = videoFile.name.includes('.')
-    ? videoFile.name.slice(videoFile.name.lastIndexOf('.'))
-    : '.mp4';
+  const ext = videoFile.name.includes('.') ? videoFile.name.slice(videoFile.name.lastIndexOf('.')) : '.mp4';
   const audioSourceName = `audio_source${ext}`;
 
-  const inputs: RunFFmpegInput[] = [
-    ...pngInputs,
-    { name: audioSourceName, data: videoFile },
-  ];
+  const inputs: RunFFmpegInput[] = [...pngInputs, { name: audioSourceName, data: videoFile }];
 
-  let outputName = 'output.mp4';
-  let args: string[] = [];
+  let outputName: string;
+  let args: string[];
 
   if (outputFormat === 'webm') {
     outputName = 'output.webm';

@@ -138,11 +138,7 @@ export default function VideoHealthTool() {
               <div className={styles.statItem}>
                 <div className={styles.statLabel}>Browser Playable</div>
                 <div className={styles.statVal}>
-                  {report.playableInBrowser ? (
-                    <span style={{ color: '#34d399' }}>Yes</span>
-                  ) : (
-                    <span style={{ color: '#f87171' }}>No</span>
-                  )}
+                  {report.playableInBrowser ? <span style={{ color: '#34d399' }}>Yes</span> : <span style={{ color: '#f87171' }}>No</span>}
                 </div>
               </div>
               {report.duration && (
@@ -219,7 +215,9 @@ export default function VideoHealthTool() {
                           <td>
                             <strong>{atom.type}</strong>
                           </td>
-                          <td>0x{atom.offset.toString(16).padStart(8, '0')} ({atom.offset})</td>
+                          <td>
+                            0x{atom.offset.toString(16).padStart(8, '0')} ({atom.offset})
+                          </td>
                           <td>{atom.size.toLocaleString()}</td>
                           <td>{atom.headerSize}B</td>
                         </tr>
@@ -250,7 +248,8 @@ export default function VideoHealthTool() {
 
             {/* Explicit Disclaimer */}
             <div className={styles.disclaimerBanner}>
-              <strong>Diagnostic Notice:</strong> This tool provides non-destructive structural analysis of video container boundaries and headers. It is diagnostic only; no claims or guarantees of file repair or security verification are made.
+              <strong>Diagnostic Notice:</strong> This tool provides non-destructive structural analysis of video container boundaries and
+              headers. It is diagnostic only; no claims or guarantees of file repair or security verification are made.
             </div>
           </div>
         )}

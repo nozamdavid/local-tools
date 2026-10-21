@@ -78,7 +78,8 @@ export default function Tool() {
   // Calculate watermark layer dimensions & position
   const computeWatermarkLayout = (imgW: number, imgH: number) => {
     const wmW = Math.max(40, Math.round((imgW * wmSizePercent) / 100));
-    const wmH = wmType === 'text' ? Math.max(20, Math.round(wmW * 0.3)) : (logoImg ? Math.round((wmW * logoImg.height) / logoImg.width) : wmW);
+    const wmH =
+      wmType === 'text' ? Math.max(20, Math.round(wmW * 0.3)) : logoImg ? Math.round((wmW * logoImg.height) / logoImg.width) : wmW;
     const mX = Math.round((imgW * marginPercent) / 100);
     const mY = Math.round((imgH * marginPercent) / 100);
 
@@ -156,7 +157,7 @@ export default function Tool() {
               y,
               width: layout.width,
               height: layout.height,
-              fontSize: Math.max(16, Math.round(layout.width / (wmText.length || 1) * 1.5)),
+              fontSize: Math.max(16, Math.round((layout.width / (wmText.length || 1)) * 1.5)),
               fontFamily: 'sans',
               fill: wmColor,
               stroke: '#000000',
@@ -191,7 +192,7 @@ export default function Tool() {
         y: layout.y,
         width: layout.width,
         height: layout.height,
-        fontSize: Math.max(18, Math.round(layout.width / (wmText.length || 1) * 1.5)),
+        fontSize: Math.max(18, Math.round((layout.width / (wmText.length || 1)) * 1.5)),
         fontFamily: 'sans',
         fill: wmColor,
         stroke: '#000000',
@@ -354,14 +355,8 @@ export default function Tool() {
 
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
               {files.length > 1 && (
-                <Button
-                  variant="primary"
-                  disabled={isProcessingBatch}
-                  onClick={processAllImages}
-                >
-                  {isProcessingBatch
-                    ? 'Processing…'
-                    : `Apply to all (${files.length} images)`}
+                <Button variant="primary" disabled={isProcessingBatch} onClick={processAllImages}>
+                  {isProcessingBatch ? 'Processing…' : `Apply to all (${files.length} images)`}
                 </Button>
               )}
               <Button variant="secondary" onClick={() => setFiles([])}>
@@ -383,16 +378,10 @@ export default function Tool() {
           {/* Settings Panel */}
           <div className={styles.settingsPanel}>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <Button
-                variant={wmType === 'text' ? 'primary' : 'secondary'}
-                onClick={() => setWmType('text')}
-              >
+              <Button variant={wmType === 'text' ? 'primary' : 'secondary'} onClick={() => setWmType('text')}>
                 Text Watermark
               </Button>
-              <Button
-                variant={wmType === 'image' ? 'primary' : 'secondary'}
-                onClick={() => setWmType('image')}
-              >
+              <Button variant={wmType === 'image' ? 'primary' : 'secondary'} onClick={() => setWmType('image')}>
                 Logo Image
               </Button>
             </div>
@@ -401,22 +390,12 @@ export default function Tool() {
               {wmType === 'text' ? (
                 <>
                   <Field label="Watermark Text">
-                    <input
-                      type="text"
-                      className="input"
-                      value={wmText}
-                      onChange={(e) => setWmText(e.target.value)}
-                    />
+                    <input type="text" className="input" value={wmText} onChange={(e) => setWmText(e.target.value)} />
                   </Field>
 
                   <Field label="Text Color">
                     <div className={styles.colorRow}>
-                      <input
-                        type="color"
-                        className={styles.colorInput}
-                        value={wmColor}
-                        onChange={(e) => setWmColor(e.target.value)}
-                      />
+                      <input type="color" className={styles.colorInput} value={wmColor} onChange={(e) => setWmColor(e.target.value)} />
                       <span>{wmColor}</span>
                     </div>
                   </Field>
@@ -424,19 +403,10 @@ export default function Tool() {
               ) : (
                 <Field label="Logo Image">
                   {!logoImg ? (
-                    <FileDrop
-                      accept="image/*"
-                      label="Upload logo"
-                      hint="PNG with transparency recommended"
-                      onFiles={handleLogoDrop}
-                    />
+                    <FileDrop accept="image/*" label="Upload logo" hint="PNG with transparency recommended" onFiles={handleLogoDrop} />
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <img
-                        src={logoImg.src}
-                        alt="Logo preview"
-                        style={{ maxHeight: '48px', maxWidth: '100px', objectFit: 'contain' }}
-                      />
+                      <img src={logoImg.src} alt="Logo preview" style={{ maxHeight: '48px', maxWidth: '100px', objectFit: 'contain' }} />
                       <Button variant="secondary" onClick={() => setLogoImg(null)}>
                         Change Logo
                       </Button>
@@ -446,33 +416,15 @@ export default function Tool() {
               )}
 
               <Field label="Size (percentage of image width)">
-                <Slider
-                  value={wmSizePercent}
-                  min={5}
-                  max={100}
-                  unit="%"
-                  onChange={setWmSizePercent}
-                />
+                <Slider value={wmSizePercent} min={5} max={100} unit="%" onChange={setWmSizePercent} />
               </Field>
 
               <Field label="Opacity">
-                <Slider
-                  value={wmOpacity}
-                  min={5}
-                  max={100}
-                  unit="%"
-                  onChange={setWmOpacity}
-                />
+                <Slider value={wmOpacity} min={5} max={100} unit="%" onChange={setWmOpacity} />
               </Field>
 
               <Field label="Rotation">
-                <Slider
-                  value={wmRotation}
-                  min={-180}
-                  max={180}
-                  unit="°"
-                  onChange={setWmRotation}
-                />
+                <Slider value={wmRotation} min={-180} max={180} unit="°" onChange={setWmRotation} />
               </Field>
 
               <Field label="Position (9-Grid)">
@@ -493,38 +445,29 @@ export default function Tool() {
               </Field>
 
               <Field label="Margin from Edge">
-                <Slider
-                  value={marginPercent}
-                  min={0}
-                  max={25}
-                  unit="%"
-                  disabled={isTiled}
-                  onChange={setMarginPercent}
-                />
+                <Slider value={marginPercent} min={0} max={25} unit="%" disabled={isTiled} onChange={setMarginPercent} />
               </Field>
             </div>
 
             {/* Tile Mode Section */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border)' }}>
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '0.75rem',
+                paddingTop: '0.5rem',
+                borderTop: '1px solid var(--border)',
+              }}
+            >
               <label className="checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={isTiled}
-                  onChange={(e) => setIsTiled(e.target.checked)}
-                />
+                <input type="checkbox" checked={isTiled} onChange={(e) => setIsTiled(e.target.checked)} />
                 <span>Tile watermark diagonally across the image</span>
               </label>
 
               {isTiled && (
                 <div className={styles.grid}>
                   <Field label="Tile Spacing">
-                    <Slider
-                      value={tileSpacing}
-                      min={60}
-                      max={300}
-                      unit="px"
-                      onChange={setTileSpacing}
-                    />
+                    <Slider value={tileSpacing} min={60} max={300} unit="px" onChange={setTileSpacing} />
                   </Field>
                 </div>
               )}
@@ -553,12 +496,7 @@ export default function Tool() {
               )}
             </div>
 
-            <Button
-              variant="primary"
-              data-testid="export-btn"
-              disabled={isExporting}
-              onClick={handleSingleExport}
-            >
+            <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleSingleExport}>
               {isExporting ? 'Exporting…' : 'Download Image'}
             </Button>
           </div>

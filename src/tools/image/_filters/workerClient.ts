@@ -40,7 +40,7 @@ class FilterWorkerClient {
     width: number,
     height: number,
     data: Uint8ClampedArray,
-    options: any
+    options: any,
   ): Promise<Uint8ClampedArray> {
     return new Promise((resolve, reject) => {
       const id = ++this.reqId;

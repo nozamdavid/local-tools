@@ -32,7 +32,11 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
   // 1. Embedded SVG valid and alpha-aware pixel shapes
   // -------------------------------------------------------------
   try {
-    const embedSvg = generateEmbeddedSvg('data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 64, 48);
+    const embedSvg = generateEmbeddedSvg(
+      'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      64,
+      48,
+    );
     assert(validateSvgString(embedSvg), 'embedded-svg-valid', 'Generated embedded SVG must be valid XML with SVG tags');
     assert(embedSvg.includes('viewBox="0 0 64 48"'), 'embedded-svg-viewbox', 'Must contain correct viewBox');
     assert(embedSvg.includes('<image'), 'embedded-svg-image-tag', 'Must contain <image> tag');
@@ -42,17 +46,20 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
     // [1,0]: Opaque Red (255, 0, 0, 255) -> should group into width="2"
     // [0,1]: Semi-transparent Blue (0, 0, 255, 128)
     // [1,1]: Fully Transparent (0, 0, 0, 0) -> must be omitted
-    const pixelData = new Uint8ClampedArray([
-      255, 0, 0, 255,
-      255, 0, 0, 255,
-      0, 0, 255, 128,
-      0, 0, 0, 0,
-    ]);
+    const pixelData = new Uint8ClampedArray([255, 0, 0, 255, 255, 0, 0, 255, 0, 0, 255, 128, 0, 0, 0, 0]);
 
     const pixelSvg = generatePixelSvg(pixelData, 2, 2, { groupConsecutive: true });
     assert(validateSvgString(pixelSvg), 'pixel-svg-valid', 'Generated pixel SVG must be valid SVG');
-    assert(pixelSvg.includes('width="2" height="1" fill="#ff0000"'), 'pixel-svg-run-grouping', 'Consecutive identical pixels must be grouped');
-    assert(pixelSvg.includes('fill="#0000ff" fill-opacity="0.502"'), 'pixel-svg-alpha-opacity', 'Semi-transparent pixels must include fill-opacity');
+    assert(
+      pixelSvg.includes('width="2" height="1" fill="#ff0000"'),
+      'pixel-svg-run-grouping',
+      'Consecutive identical pixels must be grouped',
+    );
+    assert(
+      pixelSvg.includes('fill="#0000ff" fill-opacity="0.502"'),
+      'pixel-svg-alpha-opacity',
+      'Semi-transparent pixels must include fill-opacity',
+    );
     assert(!pixelSvg.includes('x="1" y="1"'), 'pixel-svg-alpha-omitted', 'Fully transparent pixels must not produce rects');
   } catch (err: any) {
     if (!results.find((r) => r.name === 'embedded-svg-valid' && !r.passed)) {
@@ -120,11 +127,23 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
 
     // Frame 0 XOR data
     const f0XorStart = frame0Offset + 40;
-    bytes[f0XorStart + 0] = 0; bytes[f0XorStart + 1] = 255; bytes[f0XorStart + 2] = 0; bytes[f0XorStart + 3] = 255;
-    bytes[f0XorStart + 4] = 0; bytes[f0XorStart + 5] = 0; bytes[f0XorStart + 6] = 0; bytes[f0XorStart + 7] = 0;
+    bytes[f0XorStart + 0] = 0;
+    bytes[f0XorStart + 1] = 255;
+    bytes[f0XorStart + 2] = 0;
+    bytes[f0XorStart + 3] = 255;
+    bytes[f0XorStart + 4] = 0;
+    bytes[f0XorStart + 5] = 0;
+    bytes[f0XorStart + 6] = 0;
+    bytes[f0XorStart + 7] = 0;
     const f0Row1 = f0XorStart + frame0XorStride;
-    bytes[f0Row1 + 0] = 255; bytes[f0Row1 + 1] = 0; bytes[f0Row1 + 2] = 0; bytes[f0Row1 + 3] = 255;
-    bytes[f0Row1 + 4] = 0; bytes[f0Row1 + 5] = 0; bytes[f0Row1 + 6] = 255; bytes[f0Row1 + 7] = 255;
+    bytes[f0Row1 + 0] = 255;
+    bytes[f0Row1 + 1] = 0;
+    bytes[f0Row1 + 2] = 0;
+    bytes[f0Row1 + 3] = 255;
+    bytes[f0Row1 + 4] = 0;
+    bytes[f0Row1 + 5] = 0;
+    bytes[f0Row1 + 6] = 255;
+    bytes[f0Row1 + 7] = 255;
 
     // Frame 1 DIB Header
     view.setUint32(frame1Offset, 40, true);
@@ -134,7 +153,9 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
     view.setUint16(frame1Offset + 14, 24, true);
 
     const f1XorStart = frame1Offset + 40;
-    bytes[f1XorStart] = 100; bytes[f1XorStart + 1] = 100; bytes[f1XorStart + 2] = 100;
+    bytes[f1XorStart] = 100;
+    bytes[f1XorStart + 1] = 100;
+    bytes[f1XorStart + 2] = 100;
     const f1AndStart = f1XorStart + frame1XorStride;
     bytes[f1AndStart] = 0x80;
 
@@ -146,7 +167,11 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
 
     const f0Rgba = parsed.frames[0].rgba!;
     assert(f0Rgba !== undefined, 'ico-frame0-rgba', 'Frame 0 must decode RGBA');
-    assert(f0Rgba[0] === 0 && f0Rgba[1] === 0 && f0Rgba[2] === 255 && f0Rgba[3] === 255, 'ico-frame0-topleft-rgba', 'Top-left pixel must be Blue opaque');
+    assert(
+      f0Rgba[0] === 0 && f0Rgba[1] === 0 && f0Rgba[2] === 255 && f0Rgba[3] === 255,
+      'ico-frame0-topleft-rgba',
+      'Top-left pixel must be Blue opaque',
+    );
     assert(f0Rgba[3 * 4 + 3] === 0, 'ico-frame0-transparent-pixel', 'Bottom-right pixel must be transparent (alpha 0)');
 
     const f1Rgba = parsed.frames[1].rgba!;
@@ -173,12 +198,7 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
   // 3. Signature white->transparent and dark/colored ink retained
   // -------------------------------------------------------------
   try {
-    const sigPixels = new Uint8ClampedArray([
-      252, 250, 248, 255,
-      230, 228, 225, 255,
-      25, 25, 30, 255,
-      215, 40, 50, 255,
-    ]);
+    const sigPixels = new Uint8ClampedArray([252, 250, 248, 255, 230, 228, 225, 255, 25, 25, 30, 255, 215, 40, 50, 255]);
 
     const sigResult = cleanSignaturePixels(sigPixels, 2, 2, {
       preset: 'signature',
@@ -206,10 +226,7 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
     assert(redAlpha > 180, 'stamp-red-ink-alpha', 'Red stamp ink must have high alpha in stamp preset');
     assert(redChannel > 120, 'stamp-red-ink-color', 'Red stamp color must be preserved');
 
-    const allWhitePixels = new Uint8ClampedArray([
-      255, 255, 255, 255,
-      250, 250, 250, 255,
-    ]);
+    const allWhitePixels = new Uint8ClampedArray([255, 255, 255, 255, 250, 250, 250, 255]);
     const emptyResult = cleanSignaturePixels(allWhitePixels, 2, 1, {
       preset: 'signature',
       threshold: 200,
@@ -245,7 +262,10 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
     }
 
     const redactedData = new Uint8ClampedArray(imgData);
-    const rx = 2, ry = 2, rw = 4, rh = 4;
+    const rx = 2,
+      ry = 2,
+      rw = 4,
+      rh = 4;
     for (let y = ry; y < ry + rh; y++) {
       for (let x = rx; x < rx + rw; x++) {
         const idx = (y * width + x) * 4;
@@ -272,10 +292,18 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
     }
 
     assert(allRedactedOpaqueBlack, 'redaction-opaque-black', 'Redaction region must be 100% opaque solid color');
-    assert(!anySecretPixelRemains, 'redaction-secret-erased', 'Original secret pixels must be permanently overwritten and no longer present');
+    assert(
+      !anySecretPixelRemains,
+      'redaction-secret-erased',
+      'Original secret pixels must be permanently overwritten and no longer present',
+    );
 
     const outsideIdx = (0 * width + 0) * 4;
-    assert(redactedData[outsideIdx] === 255 && redactedData[outsideIdx + 3] === 255, 'redaction-outside-untouched', 'Pixels outside redacted region must remain unchanged');
+    assert(
+      redactedData[outsideIdx] === 255 && redactedData[outsideIdx + 3] === 255,
+      'redaction-outside-untouched',
+      'Pixels outside redacted region must remain unchanged',
+    );
   } catch (err: any) {
     if (!results.find((r) => r.name === 'redaction-opaque-black' && !r.passed)) {
       results.push({ name: 'redaction-verification-fatal', passed: false, message: err.message });

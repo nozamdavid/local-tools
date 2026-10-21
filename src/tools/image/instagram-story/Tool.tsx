@@ -41,7 +41,8 @@ export default function InstagramStoryTool() {
           onReset={() => setFile(null)}
           additionalInfo={
             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              Keep essential text, stickers, and faces inside the safe center area (between 250 px from top and 340 px from bottom) to avoid being hidden by Instagram&apos;s UI elements.
+              Keep essential text, stickers, and faces inside the safe center area (between 250 px from top and 340 px from bottom) to avoid
+              being hidden by Instagram&apos;s UI elements.
             </div>
           }
         />

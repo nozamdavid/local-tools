@@ -2,25 +2,15 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button, Select, Alert, Badge } from '../../../components/Controls';
 import { downloadBlob } from '../../../lib/download';
 import { formatBytes } from '../../../lib/format';
-import {
-  ALL_MESH_FORMATS,
-  detectFormatFromFilename,
-  type MeshFormat,
-  type MeshModel,
-} from './types';
-import {
-  importModel,
-  exportModel,
-  cancelMeshJobs,
-  MESH_ACCEPT,
-} from '../_mesh/client';
+import { ALL_MESH_FORMATS, detectFormatFromFilename, type MeshFormat, type MeshModel } from './types';
+import { importModel, exportModel, cancelMeshJobs, MESH_ACCEPT } from '../_mesh/client';
 import { Download, RotateCcw } from 'lucide-react';
 import styles from './Workbench.module.css';
 
 export const ACCEPT_MESH_EXTENSIONS = MESH_ACCEPT || '.stl,.obj,.ply,.3mf';
 
 export function stripMeshExtension(filename: string): string {
-  const basename = filename.split(/[\/\\]/).pop() || filename;
+  const basename = filename.split(/[/\\]/).pop() || filename;
   return basename.replace(/\.(stl|obj|ply|3mf|step|stp|iges|igs|brep)$/i, '');
 }
 
@@ -59,7 +49,7 @@ export function use3DWorkbench({ multiple = false }: Use3DWorkbenchOptions = {})
       jobIdRef.current += 1;
       try {
         cancelMeshJobs();
-      } catch (e) {
+      } catch {
         // ignore
       }
     };
@@ -119,7 +109,7 @@ export function use3DWorkbench({ multiple = false }: Use3DWorkbenchOptions = {})
         }
       }
     },
-    [currentModel, multiple]
+    [currentModel, multiple],
   );
 
   // Remove a file in multi-mode
@@ -156,7 +146,7 @@ export function use3DWorkbench({ multiple = false }: Use3DWorkbenchOptions = {})
     jobIdRef.current += 1;
     try {
       cancelMeshJobs();
-    } catch (e) {
+    } catch {
       // ignore
     }
     setFile(null);
@@ -202,7 +192,7 @@ export function use3DWorkbench({ multiple = false }: Use3DWorkbenchOptions = {})
         }
       }
     },
-    [currentModel, exportFormat, file]
+    [currentModel, exportFormat, file],
   );
 
   return {
@@ -319,13 +309,7 @@ export function ExportCard({
           style={{ flex: 1 }}
           aria-label="Export format"
         />
-        <Button
-          variant="primary"
-          icon={<Download size={15} />}
-          loading={exporting}
-          disabled={disabled || exporting}
-          onClick={onExport}
-        >
+        <Button variant="primary" icon={<Download size={15} />} loading={exporting} disabled={disabled || exporting} onClick={onExport}>
           Download .{exportFormat}
         </Button>
       </div>

@@ -146,9 +146,7 @@ export default function EditTool() {
 
   const addTextAnnotation = () => {
     if (!textContent.trim()) return;
-    const targetPages = pageScope === 'all'
-      ? Array.from({ length: total }, (_, i) => i + 1)
-      : [previewPage];
+    const targetPages = pageScope === 'all' ? Array.from({ length: total }, (_, i) => i + 1) : [previewPage];
 
     const newItems: Annotation[] = targetPages.map((p) => ({
       id: `text-${Date.now()}-${Math.random()}`,
@@ -169,9 +167,7 @@ export default function EditTool() {
 
   const addImageAnnotation = () => {
     if (!uploadedImgUrl) return;
-    const targetPages = pageScope === 'all'
-      ? Array.from({ length: total }, (_, i) => i + 1)
-      : [previewPage];
+    const targetPages = pageScope === 'all' ? Array.from({ length: total }, (_, i) => i + 1) : [previewPage];
 
     const hPercent = imgWidth * imgAspect;
     const newItems: Annotation[] = targetPages.map((p) => ({
@@ -189,9 +185,7 @@ export default function EditTool() {
   };
 
   const addRectAnnotation = () => {
-    const targetPages = pageScope === 'all'
-      ? Array.from({ length: total }, (_, i) => i + 1)
-      : [previewPage];
+    const targetPages = pageScope === 'all' ? Array.from({ length: total }, (_, i) => i + 1) : [previewPage];
 
     const newItems: Annotation[] = targetPages.map((p) => ({
       id: `rect-${Date.now()}-${Math.random()}`,
@@ -257,13 +251,7 @@ export default function EditTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -278,12 +266,7 @@ export default function EditTool() {
           {job.error && <div className="error-banner">{job.error}</div>}
 
           {job.result ? (
-            <PdfPreview
-              blob={job.result}
-              filename={outName}
-              pageCount={total}
-              onReset={handleReset}
-            />
+            <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
           ) : (
             <div>
               <div className={styles.topRow}>
@@ -306,9 +289,8 @@ export default function EditTool() {
               </div>
 
               <div className={styles.noticeBanner}>
-                <strong>Annotations overlay only:</strong> This tool places visual annotations
-                (text, uploaded images, shapes, and freehand marks) over selected PDF pages. It does
-                not modify or reflow the original underlying PDF text.
+                <strong>Annotations overlay only:</strong> This tool places visual annotations (text, uploaded images, shapes, and freehand
+                marks) over selected PDF pages. It does not modify or reflow the original underlying PDF text.
               </div>
 
               {source.loading && <p className={styles.status}>Opening PDF document…</p>}
@@ -322,11 +304,7 @@ export default function EditTool() {
                         Page {previewPage} of {total}
                       </span>
                       <div className={styles.pageNavButtons}>
-                        <Button
-                          variant="secondary"
-                          disabled={previewPage <= 1}
-                          onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
-                        >
+                        <Button variant="secondary" disabled={previewPage <= 1} onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}>
                           Prev
                         </Button>
                         <Button
@@ -342,11 +320,7 @@ export default function EditTool() {
                     <div className={styles.previewContainer}>
                       {previewThumb ? (
                         <div className={styles.pageImgWrapper}>
-                          <img
-                            src={previewThumb}
-                            alt={`Page ${previewPage} preview`}
-                            className={styles.pageImg}
-                          />
+                          <img src={previewThumb} alt={`Page ${previewPage} preview`} className={styles.pageImg} />
 
                           {/* Render current page's annotations overlay */}
                           <div className={styles.overlayLayer}>
@@ -404,10 +378,7 @@ export default function EditTool() {
                                       bottom: `${bottomPercent}%`,
                                       left: `${leftPercent}%`,
                                       width: `${ann.widthPercent}%`,
-                                      height:
-                                        ann.type === 'drawing'
-                                          ? '100%'
-                                          : `${ann.heightPercent}%`,
+                                      height: ann.type === 'drawing' ? '100%' : `${ann.heightPercent}%`,
                                       objectFit: 'contain',
                                       border: 'none',
                                     }}
@@ -424,6 +395,8 @@ export default function EditTool() {
                                 ref={drawCanvasRef}
                                 width={600}
                                 height={800}
+                                role="img"
+                                aria-label="Freehand drawing area over the page. Drawing needs a mouse, touch or pen."
                                 className={styles.drawingCanvas}
                                 onPointerDown={startDrawing}
                                 onPointerMove={draw}
@@ -434,9 +407,7 @@ export default function EditTool() {
                           </div>
                         </div>
                       ) : (
-                        <div style={{ color: 'var(--text-muted)' }}>
-                          Loading page preview…
-                        </div>
+                        <div style={{ color: 'var(--text-muted)' }}>Loading page preview…</div>
                       )}
                     </div>
                   </div>
@@ -473,22 +444,12 @@ export default function EditTool() {
                     <Field label="Apply to">
                       <div style={{ display: 'flex', gap: '1rem' }}>
                         <label>
-                          <input
-                            type="radio"
-                            name="pageScope"
-                            checked={pageScope === 'current'}
-                            onChange={() => setPageScope('current')}
-                          />{' '}
+                          <input type="radio" name="pageScope" checked={pageScope === 'current'} onChange={() => setPageScope('current')} />{' '}
                           Current page ({previewPage})
                         </label>
                         <label>
-                          <input
-                            type="radio"
-                            name="pageScope"
-                            checked={pageScope === 'all'}
-                            onChange={() => setPageScope('all')}
-                          />{' '}
-                          All pages ({total})
+                          <input type="radio" name="pageScope" checked={pageScope === 'all'} onChange={() => setPageScope('all')} /> All
+                          pages ({total})
                         </label>
                       </div>
                     </Field>
@@ -507,14 +468,7 @@ export default function EditTool() {
                         </Field>
 
                         <Field label="Font Size">
-                          <Slider
-                            value={textSize}
-                            min={8}
-                            max={64}
-                            step={1}
-                            unit="pt"
-                            onChange={setTextSize}
-                          />
+                          <Slider value={textSize} min={8} max={64} step={1} unit="pt" onChange={setTextSize} />
                         </Field>
 
                         <div className={styles.colorPickerRow}>
@@ -529,11 +483,7 @@ export default function EditTool() {
 
                           <Field label="Background Highlight">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <input
-                                type="checkbox"
-                                checked={hasBgColor}
-                                onChange={(e) => setHasBgColor(e.target.checked)}
-                              />
+                              <input type="checkbox" checked={hasBgColor} onChange={(e) => setHasBgColor(e.target.checked)} />
                               {hasBgColor && (
                                 <input
                                   type="color"
@@ -547,25 +497,11 @@ export default function EditTool() {
                         </div>
 
                         <Field label="Horizontal Position (X %)">
-                          <Slider
-                            value={textX}
-                            min={0}
-                            max={90}
-                            step={1}
-                            unit="%"
-                            onChange={setTextX}
-                          />
+                          <Slider value={textX} min={0} max={90} step={1} unit="%" onChange={setTextX} />
                         </Field>
 
                         <Field label="Vertical Position (Y % from bottom)">
-                          <Slider
-                            value={textY}
-                            min={5}
-                            max={95}
-                            step={1}
-                            unit="%"
-                            onChange={setTextY}
-                          />
+                          <Slider value={textY} min={5} max={95} step={1} unit="%" onChange={setTextY} />
                         </Field>
 
                         <Button onClick={addTextAnnotation}>Add Text Annotation</Button>
@@ -576,47 +512,21 @@ export default function EditTool() {
                     {activeTab === 'image' && (
                       <div className={styles.card}>
                         <Field label="Choose Image (PNG, JPG, WebP)">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleImageUpload}
-                            className={styles.input}
-                          />
+                          <input type="file" accept="image/*" onChange={handleImageUpload} className={styles.input} />
                         </Field>
 
                         {uploadedImgUrl && (
                           <>
                             <Field label="Width (%)">
-                              <Slider
-                                value={imgWidth}
-                                min={5}
-                                max={80}
-                                step={1}
-                                unit="%"
-                                onChange={setImgWidth}
-                              />
+                              <Slider value={imgWidth} min={5} max={80} step={1} unit="%" onChange={setImgWidth} />
                             </Field>
 
                             <Field label="Horizontal Position (X %)">
-                              <Slider
-                                value={imgX}
-                                min={0}
-                                max={90}
-                                step={1}
-                                unit="%"
-                                onChange={setImgX}
-                              />
+                              <Slider value={imgX} min={0} max={90} step={1} unit="%" onChange={setImgX} />
                             </Field>
 
                             <Field label="Vertical Position (Y % from bottom)">
-                              <Slider
-                                value={imgY}
-                                min={5}
-                                max={95}
-                                step={1}
-                                unit="%"
-                                onChange={setImgY}
-                              />
+                              <Slider value={imgY} min={5} max={95} step={1} unit="%" onChange={setImgY} />
                             </Field>
 
                             <Button onClick={addImageAnnotation}>Add Image Annotation</Button>
@@ -630,24 +540,10 @@ export default function EditTool() {
                       <div className={styles.card}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
                           <Field label="Width (%)">
-                            <Slider
-                              value={rectWidth}
-                              min={5}
-                              max={90}
-                              step={1}
-                              unit="%"
-                              onChange={setRectWidth}
-                            />
+                            <Slider value={rectWidth} min={5} max={90} step={1} unit="%" onChange={setRectWidth} />
                           </Field>
                           <Field label="Height (%)">
-                            <Slider
-                              value={rectHeight}
-                              min={2}
-                              max={80}
-                              step={1}
-                              unit="%"
-                              onChange={setRectHeight}
-                            />
+                            <Slider value={rectHeight} min={2} max={80} step={1} unit="%" onChange={setRectHeight} />
                           </Field>
                         </div>
 
@@ -663,11 +559,7 @@ export default function EditTool() {
 
                           <Field label="Fill">
                             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <input
-                                type="checkbox"
-                                checked={hasFill}
-                                onChange={(e) => setHasFill(e.target.checked)}
-                              />
+                              <input type="checkbox" checked={hasFill} onChange={(e) => setHasFill(e.target.checked)} />
                               {hasFill && (
                                 <input
                                   type="color"
@@ -681,36 +573,15 @@ export default function EditTool() {
                         </div>
 
                         <Field label="Border Width (px)">
-                          <Slider
-                            value={rectStrokeWidth}
-                            min={1}
-                            max={10}
-                            step={1}
-                            unit="px"
-                            onChange={setRectStrokeWidth}
-                          />
+                          <Slider value={rectStrokeWidth} min={1} max={10} step={1} unit="px" onChange={setRectStrokeWidth} />
                         </Field>
 
                         <Field label="Horizontal Position (X %)">
-                          <Slider
-                            value={rectX}
-                            min={0}
-                            max={90}
-                            step={1}
-                            unit="%"
-                            onChange={setRectX}
-                          />
+                          <Slider value={rectX} min={0} max={90} step={1} unit="%" onChange={setRectX} />
                         </Field>
 
                         <Field label="Vertical Position (Y % from bottom)">
-                          <Slider
-                            value={rectY}
-                            min={5}
-                            max={95}
-                            step={1}
-                            unit="%"
-                            onChange={setRectY}
-                          />
+                          <Slider value={rectY} min={5} max={95} step={1} unit="%" onChange={setRectY} />
                         </Field>
 
                         <Button onClick={addRectAnnotation}>Add Rectangle</Button>
@@ -735,29 +606,15 @@ export default function EditTool() {
                           </Field>
 
                           <Field label="Pen Width">
-                            <Slider
-                              value={penWidth}
-                              min={1}
-                              max={16}
-                              step={1}
-                              unit="px"
-                              onChange={setPenWidth}
-                            />
+                            <Slider value={penWidth} min={1} max={16} step={1} unit="px" onChange={setPenWidth} />
                           </Field>
                         </div>
 
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <Button
-                            variant="secondary"
-                            onClick={clearDrawing}
-                            disabled={!hasDrawnStrokes}
-                          >
+                          <Button variant="secondary" onClick={clearDrawing} disabled={!hasDrawnStrokes}>
                             Clear Drawing
                           </Button>
-                          <Button
-                            onClick={addDrawingAnnotation}
-                            disabled={!hasDrawnStrokes}
-                          >
+                          <Button onClick={addDrawingAnnotation} disabled={!hasDrawnStrokes}>
                             Add Drawing to Page
                           </Button>
                         </div>
@@ -766,14 +623,11 @@ export default function EditTool() {
 
                     {/* Annotations List */}
                     <div className={styles.card}>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
-                        Added Annotations ({annotations.length})
-                      </div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Added Annotations ({annotations.length})</div>
 
                       {annotations.length === 0 ? (
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
-                          No annotations added yet. Use the tools above to place text, images,
-                          rectangles, or drawings.
+                          No annotations added yet. Use the tools above to place text, images, rectangles, or drawings.
                         </p>
                       ) : (
                         <div className={styles.annList}>
@@ -784,16 +638,12 @@ export default function EditTool() {
                                 {ann.type === 'text'
                                   ? `Text "${ann.text.substring(0, 16)}"`
                                   : ann.type === 'rect'
-                                  ? 'Rectangle'
-                                  : ann.type === 'image'
-                                  ? 'Image'
-                                  : 'Freehand mark'}
+                                    ? 'Rectangle'
+                                    : ann.type === 'image'
+                                      ? 'Image'
+                                      : 'Freehand mark'}
                               </span>
-                              <button
-                                className={styles.deleteBtn}
-                                onClick={() => removeAnnotation(ann.id)}
-                                title="Remove"
-                              >
+                              <button className={styles.deleteBtn} onClick={() => removeAnnotation(ann.id)} title="Remove">
                                 ✕
                               </button>
                             </div>
@@ -805,11 +655,7 @@ export default function EditTool() {
                     {job.status === 'running' ? (
                       <ProgressBar value={job.progress} label="Applying annotations..." />
                     ) : (
-                      <Button
-                        variant="primary"
-                        disabled={annotations.length === 0}
-                        onClick={handleApply}
-                      >
+                      <Button variant="primary" disabled={annotations.length === 0} onClick={handleApply}>
                         Apply Annotations & Save PDF
                       </Button>
                     )}

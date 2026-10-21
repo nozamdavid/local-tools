@@ -19,11 +19,7 @@ const MAX_PIXELS = 4096;
  *    source objects, zero original metadata, and zero source attachments.
  * 4. Preserves page dimensions and rotation mapping.
  */
-export async function redactPdf(
-  doc: PDFDocumentProxy,
-  redactions: RedactionBox[],
-  options?: RedactOptions
-): Promise<Uint8Array> {
+export async function redactPdf(doc: PDFDocumentProxy, redactions: RedactionBox[], options?: RedactOptions): Promise<Uint8Array> {
   const dpi = options?.dpi ?? 150;
   const quality = options?.quality ?? 0.92;
   const onProgress = options?.onProgress;
@@ -81,9 +77,7 @@ export async function redactPdf(
     }
 
     // Convert rasterized canvas to JPEG
-    const jpegBlob = await new Promise<Blob | null>((resolve) =>
-      canvas.toBlob(resolve, 'image/jpeg', quality)
-    );
+    const jpegBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/jpeg', quality));
     canvas.width = 0;
     canvas.height = 0;
 

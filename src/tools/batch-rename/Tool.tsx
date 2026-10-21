@@ -21,8 +21,7 @@ export default function BatchRenameTool() {
   const meta = getToolMeta('batch-rename');
   const title = meta.title !== 'batch-rename' ? meta.title : 'Batch File Renamer';
   const description =
-    meta.description ||
-    'Rename multiple files with numbering, custom prefixes, extension preservation, and collision protection.';
+    meta.description || 'Rename multiple files with numbering, custom prefixes, extension preservation, and collision protection.';
 
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [config, setConfig] = useState<RenameConfig>({
@@ -73,7 +72,7 @@ export default function BatchRenameTool() {
   const renamedItems = useMemo(() => {
     return computeBatchRename(
       files.map((f) => ({ id: f.id, name: f.name, size: f.size })),
-      config
+      config,
     );
   }, [files, config]);
 
@@ -111,7 +110,7 @@ export default function BatchRenameTool() {
         },
         (metadata) => {
           setZipProgress(0.5 + (metadata.percent / 100) * 0.5);
-        }
+        },
       );
 
       downloadBlob(zipBlob, 'renamed-files.zip');
@@ -138,7 +137,8 @@ export default function BatchRenameTool() {
             {/* Memory safety warning if large */}
             {hasHighMemoryRisk && (
               <div className={styles.memoryWarning}>
-                ⚠️ <strong>Memory Advisory:</strong> Combined file size is {formatBytes(totalSizeBytes)}. Bundling over 1GB in browser memory may strain system resources. Consider downloading in smaller batches.
+                ⚠️ <strong>Memory Advisory:</strong> Combined file size is {formatBytes(totalSizeBytes)}. Bundling over 1GB in browser
+                memory may strain system resources. Consider downloading in smaller batches.
               </div>
             )}
 
@@ -321,9 +321,7 @@ export default function BatchRenameTool() {
                     <tr key={item.id} className={item.hasCollision ? styles.collisionRow : ''}>
                       <td>{idx + 1}</td>
                       <td style={{ color: '#9ca3af', fontFamily: 'monospace' }}>{item.originalName}</td>
-                      <td style={{ fontWeight: 600, color: '#60a5fa', fontFamily: 'monospace' }}>
-                        {item.newName}
-                      </td>
+                      <td style={{ fontWeight: 600, color: '#60a5fa', fontFamily: 'monospace' }}>{item.newName}</td>
                       <td>{formatBytes(item.size)}</td>
                       <td>
                         {item.hasCollision ? (

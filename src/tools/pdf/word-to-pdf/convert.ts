@@ -91,11 +91,7 @@ async function renderSectionPages(section: HTMLElement): Promise<RenderedPage[]>
   return pages;
 }
 
-export async function wordToPdf(
-  file: File,
-  setup: PageSetup,
-  onProgress: (ratio: number) => void
-): Promise<{ blob: Blob; pages: number }> {
+export async function wordToPdf(file: File, setup: PageSetup, onProgress: (ratio: number) => void): Promise<{ blob: Blob; pages: number }> {
   const problem = await checkDocx(file);
   if (problem) throw new Error(problem);
 

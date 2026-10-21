@@ -3,13 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Alert, Badge } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
-import {
-  MeshViewer,
-  use3DWorkbench,
-  ExportCard,
-  ACCEPT_MESH_EXTENSIONS,
-  type MeshModel,
-} from '../_ui';
+import { MeshViewer, use3DWorkbench, ExportCard, ACCEPT_MESH_EXTENSIONS, type MeshModel } from '../_ui';
 import { mergeModels } from '../_mesh/client';
 import { Combine, Trash2, XCircle, ShieldAlert, Plus, RotateCcw } from 'lucide-react';
 import styles from '../_ui/Workbench.module.css';
@@ -17,9 +11,7 @@ import styles from '../_ui/Workbench.module.css';
 export default function MergeTool() {
   const meta = getToolMeta('three-merge');
   const title = meta.title !== 'three-merge' ? meta.title : '3D Mesh Merger';
-  const description =
-    meta.description ||
-    'Combine and flatten multiple 3D model files into a single unified mesh container.';
+  const description = meta.description || 'Combine and flatten multiple 3D model files into a single unified mesh container.';
 
   const {
     files,
@@ -110,9 +102,7 @@ export default function MergeTool() {
           <>
             <div className={styles.fileHeader}>
               <div className={styles.fileInfo}>
-                <span className={styles.fileName}>
-                  {mergedModel ? 'Merged 3D Mesh' : `${multiModels.length} Models Loaded`}
-                </span>
+                <span className={styles.fileName}>{mergedModel ? 'Merged 3D Mesh' : `${multiModels.length} Models Loaded`}</span>
                 <span className={styles.fileMeta}>
                   Total: {totalInputTriangles.toLocaleString()} triangles • {totalInputVertices.toLocaleString()} vertices
                 </span>
@@ -144,9 +134,8 @@ export default function MergeTool() {
                   <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
                     <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
                     <div>
-                      <strong>Flatten Notice:</strong> Combines and flattens geometry buffers into a single mesh
-                      container. <strong>This does not perform CSG Boolean union operations</strong> (no intersection
-                      carving or seam welding).
+                      <strong>Flatten Notice:</strong> Combines and flattens geometry buffers into a single mesh container.{' '}
+                      <strong>This does not perform CSG Boolean union operations</strong> (no intersection carving or seam welding).
                     </div>
                   </div>
                 </Alert>
@@ -206,7 +195,7 @@ export default function MergeTool() {
                         size="md"
                         icon={<Plus size={15} />}
                         onClick={(e) => {
-                          const input = (e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement);
+                          const input = e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
                           input?.click();
                         }}
                         style={{ width: '100%' }}

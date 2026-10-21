@@ -60,13 +60,7 @@ export default function DocxToPngTool() {
 
           {items && items.length > 0 ? (
             items.length === 1 ? (
-              <ResultPanel
-                blob={items[0].blob}
-                filename={items[0].name}
-                kind="image"
-                originalSize={file.size}
-                onReset={handleReset}
-              />
+              <ResultPanel blob={items[0].blob} filename={items[0].name} kind="image" originalSize={file.size} onReset={handleReset} />
             ) : (
               <BatchResults items={items} onReset={handleReset} />
             )
@@ -90,13 +84,10 @@ export default function DocxToPngTool() {
                   margin: '1.25rem 0',
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.35rem' }}>
-                  ℹ️ Conversion details & limitations
-                </div>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.35rem' }}>ℹ️ Conversion details & limitations</div>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Documents are rendered client-side at 2× retina scale for crisp text. Fonts not
-                  installed on your device will fall back to standard system fonts. Complex Word
-                  macros or external links are ignored for security and privacy.
+                  Documents are rendered client-side at 2× retina scale for crisp text. Fonts not installed on your device will fall back to
+                  standard system fonts. Complex Word macros or external links are ignored for security and privacy.
                 </p>
               </div>
 

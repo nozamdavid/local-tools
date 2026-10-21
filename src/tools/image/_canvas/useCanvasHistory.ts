@@ -24,27 +24,33 @@ export function useCanvasHistory(initialDoc: CanvasDocument) {
   const currentDocRef = useRef<CanvasDocument>(initialDoc);
   currentDocRef.current = history[currentIndex] || initialDoc;
 
-  const pushDoc = useCallback((newDoc: CanvasDocument) => {
-    const cloned = cloneDoc(newDoc);
-    setHistory((prev) => {
-      const upToCurrent = prev.slice(0, currentIndex + 1);
-      const updated = [...upToCurrent, cloned];
-      if (updated.length > MAX_HISTORY) {
-        return updated.slice(updated.length - MAX_HISTORY);
-      }
-      return updated;
-    });
-    setCurrentIndex((prev) => Math.min(prev + 1, MAX_HISTORY - 1));
-  }, [currentIndex]);
+  const pushDoc = useCallback(
+    (newDoc: CanvasDocument) => {
+      const cloned = cloneDoc(newDoc);
+      setHistory((prev) => {
+        const upToCurrent = prev.slice(0, currentIndex + 1);
+        const updated = [...upToCurrent, cloned];
+        if (updated.length > MAX_HISTORY) {
+          return updated.slice(updated.length - MAX_HISTORY);
+        }
+        return updated;
+      });
+      setCurrentIndex((prev) => Math.min(prev + 1, MAX_HISTORY - 1));
+    },
+    [currentIndex],
+  );
 
-  const updateDocSilent = useCallback((updater: (prev: CanvasDocument) => CanvasDocument) => {
-    setHistory((prev) => {
-      const updated = [...prev];
-      const newDoc = updater(updated[currentIndex]);
-      updated[currentIndex] = newDoc;
-      return updated;
-    });
-  }, [currentIndex]);
+  const updateDocSilent = useCallback(
+    (updater: (prev: CanvasDocument) => CanvasDocument) => {
+      setHistory((prev) => {
+        const updated = [...prev];
+        const newDoc = updater(updated[currentIndex]);
+        updated[currentIndex] = newDoc;
+        return updated;
+      });
+    },
+    [currentIndex],
+  );
 
   const resetHistory = useCallback((newInitial: CanvasDocument) => {
     const cloned = cloneDoc(newInitial);
@@ -71,12 +77,7 @@ export function useCanvasHistory(initialDoc: CanvasDocument) {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
-      if (
-        target &&
-        (target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.isContentEditable)
-      ) {
+      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
         return;
       }
 

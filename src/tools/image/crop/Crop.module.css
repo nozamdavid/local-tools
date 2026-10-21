@@ -37,14 +37,46 @@
   box-sizing: border-box;
 }
 
-.handleNw { top: -6px; left: -6px; cursor: nwse-resize; }
-.handleNe { top: -6px; right: -6px; cursor: nesw-resize; }
-.handleSw { bottom: -6px; left: -6px; cursor: nesw-resize; }
-.handleSe { bottom: -6px; right: -6px; cursor: nwse-resize; }
-.handleN  { top: -6px; left: calc(50% - 6px); cursor: ns-resize; }
-.handleS  { bottom: -6px; left: calc(50% - 6px); cursor: ns-resize; }
-.handleW  { top: calc(50% - 6px); left: -6px; cursor: ew-resize; }
-.handleE  { top: calc(50% - 6px); right: -6px; cursor: ew-resize; }
+.handleNw {
+  top: -6px;
+  left: -6px;
+  cursor: nwse-resize;
+}
+.handleNe {
+  top: -6px;
+  right: -6px;
+  cursor: nesw-resize;
+}
+.handleSw {
+  bottom: -6px;
+  left: -6px;
+  cursor: nesw-resize;
+}
+.handleSe {
+  bottom: -6px;
+  right: -6px;
+  cursor: nwse-resize;
+}
+.handleN {
+  top: -6px;
+  left: calc(50% - 6px);
+  cursor: ns-resize;
+}
+.handleS {
+  bottom: -6px;
+  left: calc(50% - 6px);
+  cursor: ns-resize;
+}
+.handleW {
+  top: calc(50% - 6px);
+  left: -6px;
+  cursor: ew-resize;
+}
+.handleE {
+  top: calc(50% - 6px);
+  right: -6px;
+  cursor: ew-resize;
+}
 
 .inputsGrid {
   display: grid;

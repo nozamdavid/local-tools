@@ -62,8 +62,7 @@ export default function OrganizeTool() {
     job.reset();
   };
 
-  const update = (fn: (list: PageItem[]) => PageItem[]) =>
-    setItems((prev) => (prev ? fn(prev) : prev));
+  const update = (fn: (list: PageItem[]) => PageItem[]) => setItems((prev) => (prev ? fn(prev) : prev));
 
   const move = (from: number, to: number) =>
     update((list) => {
@@ -75,9 +74,7 @@ export default function OrganizeTool() {
     });
 
   const rotate = (index: number, delta: number) =>
-    update((list) =>
-      list.map((it, i) => (i === index ? { ...it, rot: normalize(it.rot + delta) } : it)),
-    );
+    update((list) => list.map((it, i) => (i === index ? { ...it, rot: normalize(it.rot + delta) } : it)));
 
   const remove = (index: number) => update((list) => list.filter((_, i) => i !== index));
 
@@ -148,13 +145,7 @@ export default function OrganizeTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -169,12 +160,7 @@ export default function OrganizeTool() {
           {job.error && <div className="error-banner">{job.error}</div>}
 
           {job.result ? (
-            <PdfPreview
-              blob={job.result}
-              filename={outName}
-              pageCount={items?.length}
-              onReset={handleReset}
-            />
+            <PdfPreview blob={job.result} filename={outName} pageCount={items?.length} onReset={handleReset} />
           ) : (
             <div>
               <div className={styles.topRow}>
@@ -193,10 +179,7 @@ export default function OrganizeTool() {
                 </div>
                 <div className={styles.topActions}>
                   {ready && (
-                    <Button
-                      variant="secondary"
-                      onClick={() => setItems(initialItems(source.pages))}
-                    >
+                    <Button variant="secondary" onClick={() => setItems(initialItems(source.pages))}>
                       Undo all changes
                     </Button>
                   )}
@@ -210,9 +193,7 @@ export default function OrganizeTool() {
 
               {ready && (
                 <>
-                  <p className={styles.hint}>
-                    Drag pages to reorder them, or focus a page and press Alt + ← / →.
-                  </p>
+                  <p className={styles.hint}>Drag pages to reorder them, or focus a page and press Alt + ← / →.</p>
 
                   <div className={styles.pageGrid}>
                     {items.map((it, index) => (
@@ -257,9 +238,7 @@ export default function OrganizeTool() {
                           alt={it.src === null ? 'Blank page' : `Page ${it.src + 1}`}
                         />
 
-                        <span className={styles.pageLabel}>
-                          {it.src === null ? 'Blank page' : `Page ${it.src + 1}`}
-                        </span>
+                        <span className={styles.pageLabel}>{it.src === null ? 'Blank page' : `Page ${it.src + 1}`}</span>
 
                         <div className={styles.cardActions}>
                           <button
@@ -317,9 +296,7 @@ export default function OrganizeTool() {
                     ))}
                   </div>
 
-                  {items.length === 0 && (
-                    <p className={styles.status}>All pages were removed. Undo changes to start again.</p>
-                  )}
+                  {items.length === 0 && <p className={styles.status}>All pages were removed. Undo changes to start again.</p>}
 
                   {job.status === 'running' ? (
                     <ProgressBar value={job.progress} label="Building PDF…" />

@@ -12,13 +12,7 @@ export interface PdfPreviewProps {
   onReset: () => void;
 }
 
-export function PdfPreview({
-  blob,
-  filename,
-  originalSize,
-  pageCount,
-  onReset,
-}: PdfPreviewProps) {
+export function PdfPreview({ blob, filename, originalSize, pageCount, onReset }: PdfPreviewProps) {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -61,9 +55,7 @@ export function PdfPreview({
               }}
             />
           ) : (
-            <div style={{ padding: '3rem', color: 'var(--text-muted)' }}>
-              Rendering PDF preview…
-            </div>
+            <div style={{ padding: '3rem', color: 'var(--text-muted)' }}>Rendering PDF preview…</div>
           )}
         </div>
       </div>
@@ -91,13 +83,8 @@ export function PdfPreview({
         {changePercent !== null && (
           <div className="stat-item">
             <span className="stat-label">Difference</span>
-            <span
-              className={`badge ${changePercent <= 0 ? 'badge-success' : ''}`}
-              style={{ alignSelf: 'flex-start', marginTop: '0.2rem' }}
-            >
-              {changePercent <= 0
-                ? `${Math.abs(changePercent)}% reduction`
-                : `+${changePercent}% larger`}
+            <span className={`badge ${changePercent <= 0 ? 'badge-success' : ''}`} style={{ alignSelf: 'flex-start', marginTop: '0.2rem' }}>
+              {changePercent <= 0 ? `${Math.abs(changePercent)}% reduction` : `+${changePercent}% larger`}
             </span>
           </div>
         )}

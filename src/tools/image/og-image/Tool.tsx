@@ -37,7 +37,8 @@ export default function OgImageTool() {
           onReset={() => setFile(null)}
           additionalInfo={
             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              1200×630 px is the universal recommended size for Open Graph (og:image) previews across Facebook, X / Twitter Large Cards, LinkedIn, Discord, and Slack.
+              1200×630 px is the universal recommended size for Open Graph (og:image) previews across Facebook, X / Twitter Large Cards,
+              LinkedIn, Discord, and Slack.
             </div>
           }
         />

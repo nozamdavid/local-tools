@@ -41,11 +41,7 @@ const PT_PER_MM = 72 / 25.4;
 const PIXEL_RATIO = 2;
 const JPEG_QUALITY = 0.9;
 
-export function pageGeometry(
-  size: 'a4' | 'letter',
-  orientation: Orientation,
-  marginMm: number
-): PageGeometry {
+export function pageGeometry(size: 'a4' | 'letter', orientation: Orientation, marginMm: number): PageGeometry {
   const [w, h] = PAGE_PT[size];
   const widthPt = orientation === 'portrait' ? w : h;
   const heightPt = orientation === 'portrait' ? h : w;
@@ -148,8 +144,8 @@ export function sanitizeRenderedDom(root: HTMLElement): void {
   root.querySelectorAll('picture source, source').forEach((source) => {
     const src = source.getAttribute('src') || '';
     const srcset = source.getAttribute('srcset') || '';
-    const isSafe = (!src || src.startsWith('data:') || src.startsWith('blob:')) &&
-                   (!srcset || srcset.startsWith('data:') || srcset.startsWith('blob:'));
+    const isSafe =
+      (!src || src.startsWith('data:') || src.startsWith('blob:')) && (!srcset || srcset.startsWith('data:') || srcset.startsWith('blob:'));
     if (!isSafe) {
       source.remove();
     } else {
@@ -197,12 +193,7 @@ export function sanitizeRenderedDom(root: HTMLElement): void {
   root.querySelectorAll('iframe, frame, frameset, object, embed, video, audio, form, input[type="image"]').forEach((el) => el.remove());
 }
 
-export function rasterize(
-  el: HTMLElement,
-  width: number,
-  height: number,
-  offsetY = 0
-): Promise<HTMLCanvasElement> {
+export function rasterize(el: HTMLElement, width: number, height: number, offsetY = 0): Promise<HTMLCanvasElement> {
   return toCanvas(el, {
     pixelRatio: PIXEL_RATIO,
     skipFonts: true,
@@ -225,13 +216,9 @@ export function rasterize(
   });
 }
 
-export async function embedCanvas(
-  pdf: PDFDocument,
-  canvas: HTMLCanvasElement,
-  format: ImageFormat
-): Promise<PDFImage> {
+export async function embedCanvas(pdf: PDFDocument, canvas: HTMLCanvasElement, format: ImageFormat): Promise<PDFImage> {
   const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, format === 'png' ? 'image/png' : 'image/jpeg', JPEG_QUALITY)
+    canvas.toBlob(resolve, format === 'png' ? 'image/png' : 'image/jpeg', JPEG_QUALITY),
   );
   canvas.width = 0;
   canvas.height = 0;
@@ -267,12 +254,7 @@ function collectBreakTops(root: HTMLElement, maxHeight: number): number[] {
   return Array.from(tops).sort((a, b) => a - b);
 }
 
-export function planSlices(
-  el: HTMLElement,
-  totalHeight: number,
-  sliceHeight: number,
-  initialOffset = 0
-): { y: number; h: number }[] {
+export function planSlices(el: HTMLElement, totalHeight: number, sliceHeight: number, initialOffset = 0): { y: number; h: number }[] {
   const candidateTops = collectBreakTops(el, totalHeight);
   const slices: { y: number; h: number }[] = [];
   let start = initialOffset;
@@ -310,7 +292,7 @@ export async function addElementPages(
   el: HTMLElement,
   geo: PageGeometry,
   format: ImageFormat,
-  onPage?: (done: number, total: number) => void
+  onPage?: (done: number, total: number) => void,
 ): Promise<number> {
   sanitizeRenderedDom(el);
   const images = Array.from(el.querySelectorAll<HTMLImageElement>('img'));
@@ -354,7 +336,7 @@ export async function addFittedPage(
   pageWpt: number,
   pageHpt: number,
   marginPt: number,
-  format: ImageFormat
+  format: ImageFormat,
 ): Promise<void> {
   const image = await embedCanvas(pdf, canvas, format);
 

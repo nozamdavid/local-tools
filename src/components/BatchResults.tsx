@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatBytes } from '../lib/format';
 import { downloadBlob } from '../lib/download';
 import { useObjectUrl } from '../lib/useObjectUrl';
 import { zipFiles } from '../lib/zip';
 import { Download, File as FileIcon, FolderDown, RotateCcw } from 'lucide-react';
 import { Button } from './Controls';
+import { useFocusFallback } from './useFocusFallback';
 
 export interface BatchResultItem {
   name: string;
@@ -72,6 +73,13 @@ function BatchRow({ item }: { item: BatchResultItem }) {
 export function BatchResults({ items, onReset }: BatchResultsProps) {
   const [zipping, setZipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  useFocusFallback(panelRef);
+
+  // The button that started the batch has left the page; move focus here so the outcome is announced.
+  useEffect(() => {
+    panelRef.current?.focus({ preventScroll: true });
+  }, []);
 
   async function downloadAll() {
     setZipping(true);
@@ -87,7 +95,13 @@ export function BatchResults({ items, onReset }: BatchResultsProps) {
   }
 
   return (
-    <div className="batch-results">
+    <div
+      className="batch-results"
+      ref={panelRef}
+      tabIndex={-1}
+      role="region"
+      aria-label={`Results: ${items.length} ${items.length === 1 ? 'file' : 'files'} ready`}
+    >
       <ul className="batch-list">
         {items.map((item, index) => (
           <BatchRow key={`${item.name}-${index}`} item={item} />

@@ -39,10 +39,7 @@ export function getVisualPageDims(page: PDFPage): VisualDims {
  * (counter-clockwise degrees) to PDF coordinate system (x, y from PDF bottom-left)
  * and total PDF rotation angle.
  */
-export function mapVisualToPdf(
-  visualPos: { x: number; y: number; angle?: number },
-  dims: VisualDims
-): PdfPlacement {
+export function mapVisualToPdf(visualPos: { x: number; y: number; angle?: number }, dims: VisualDims): PdfPlacement {
   const { pdfWidth, pdfHeight, rotation } = dims;
   const xv = visualPos.x;
   const yv = visualPos.y;
@@ -87,7 +84,7 @@ export function calcRotatedCenterVisualOrigin(
   cy: number,
   width: number,
   height: number,
-  angleDegrees: number
+  angleDegrees: number,
 ): { x: number; y: number } {
   const rad = (angleDegrees * Math.PI) / 180;
   const cos = Math.cos(rad);

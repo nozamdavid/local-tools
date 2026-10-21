@@ -37,7 +37,7 @@ function drawRoundedRectPath(
   y: number,
   w: number,
   h: number,
-  radii: [number, number, number, number]
+  radii: [number, number, number, number],
 ) {
   const [tl, tr, br, bl] = radii;
   ctx.beginPath();
@@ -53,11 +53,7 @@ function drawRoundedRectPath(
   ctx.closePath();
 }
 
-function renderRoundedCorners(
-  source: HTMLCanvasElement,
-  options: RoundedCornersOptions,
-  isPreview: boolean
-): HTMLCanvasElement {
+function renderRoundedCorners(source: HTMLCanvasElement, options: RoundedCornersOptions, isPreview: boolean): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   canvas.width = source.width;
   canvas.height = source.height;
@@ -69,26 +65,10 @@ function renderRoundedCorners(
   const scaleRatio = isPreview ? 1 : source.width / Math.min(1200, source.width);
   const baseR = Math.max(0, Math.round(options.radius * scaleRatio));
 
-  const rTL = Math.round(
-    options.independent
-      ? options.tlActive ? options.tlRadius * scaleRatio : 0
-      : options.tlActive ? baseR : 0
-  );
-  const rTR = Math.round(
-    options.independent
-      ? options.trActive ? options.trRadius * scaleRatio : 0
-      : options.trActive ? baseR : 0
-  );
-  const rBR = Math.round(
-    options.independent
-      ? options.brActive ? options.brRadius * scaleRatio : 0
-      : options.brActive ? baseR : 0
-  );
-  const rBL = Math.round(
-    options.independent
-      ? options.blActive ? options.blRadius * scaleRatio : 0
-      : options.blActive ? baseR : 0
-  );
+  const rTL = Math.round(options.independent ? (options.tlActive ? options.tlRadius * scaleRatio : 0) : options.tlActive ? baseR : 0);
+  const rTR = Math.round(options.independent ? (options.trActive ? options.trRadius * scaleRatio : 0) : options.trActive ? baseR : 0);
+  const rBR = Math.round(options.independent ? (options.brActive ? options.brRadius * scaleRatio : 0) : options.brActive ? baseR : 0);
+  const rBL = Math.round(options.independent ? (options.blActive ? options.blRadius * scaleRatio : 0) : options.blActive ? baseR : 0);
 
   if (options.fillBackground) {
     ctx.fillStyle = options.bgColor;

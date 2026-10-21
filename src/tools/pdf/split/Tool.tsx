@@ -104,20 +104,10 @@ export default function SplitPdfTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="pdf-split">
-      {pdf.password && (
-        <PasswordDialog
-          reason={pdf.password.reason}
-          onSubmit={pdf.password.submit}
-          onCancel={reset}
-        />
-      )}
+      {pdf.password && <PasswordDialog reason={pdf.password.reason} onSubmit={pdf.password.submit} onCancel={reset} />}
 
       {!file ? (
-        <FileDrop
-          accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          onFiles={(files) => setFile(files[0] ?? null)}
-        />
+        <FileDrop accept="application/pdf,.pdf" label="Choose a PDF file or drag it here" onFiles={(files) => setFile(files[0] ?? null)} />
       ) : job.status === 'done' && job.result && result ? (
         result.zip ? (
           <ZipResult zip={result.zip} zipName={`${result.base}-split.zip`} items={result.items} onReset={reset} />
@@ -175,10 +165,7 @@ export default function SplitPdfTool() {
               </Field>
 
               {mode === 'ranges' && (
-                <Field
-                  label="Page ranges"
-                  hint="Separate ranges with commas. Each range becomes its own PDF, for example 1-3, 5, 7-9."
-                >
+                <Field label="Page ranges" hint="Separate ranges with commas. Each range becomes its own PDF, for example 1-3, 5, 7-9.">
                   <input
                     id={rangesId}
                     type="text"
@@ -209,9 +196,7 @@ export default function SplitPdfTool() {
               {plan.error && <div className="error-banner">{plan.error}</div>}
               {!plan.error && outputCount > 0 && (
                 <p className="field-hint">
-                  {outputCount === 1
-                    ? 'This will create 1 PDF.'
-                    : `This will create ${outputCount} PDFs, delivered as one ZIP.`}
+                  {outputCount === 1 ? 'This will create 1 PDF.' : `This will create ${outputCount} PDFs, delivered as one ZIP.`}
                 </p>
               )}
 

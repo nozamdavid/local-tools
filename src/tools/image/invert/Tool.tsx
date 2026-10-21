@@ -57,11 +57,7 @@ export default function InvertTool() {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <Button
-                variant={allChecked ? 'primary' : 'secondary'}
-                type="button"
-                onClick={() => toggleAll(!allChecked)}
-              >
+              <Button variant={allChecked ? 'primary' : 'secondary'} type="button" onClick={() => toggleAll(!allChecked)}>
                 {allChecked ? 'Full Negative (Active)' : 'Select All Channels'}
               </Button>
             </div>
@@ -128,9 +124,7 @@ export default function InvertTool() {
               </label>
             </div>
 
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
-              Alpha transparency is preserved intact.
-            </p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Alpha transparency is preserved intact.</p>
           </div>
         );
       }}

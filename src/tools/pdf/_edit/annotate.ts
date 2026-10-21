@@ -20,10 +20,7 @@ export function dataUrlToBytes(dataUrl: string): { bytes: Uint8Array; mime: stri
  * Applies a list of annotations to a loaded PDFDocument.
  * Uses visual coordinate mapping to correctly handle rotated pages (0, 90, 180, 270 deg).
  */
-export async function applyAnnotations(
-  doc: PDFDocument,
-  annotations: Annotation[]
-): Promise<void> {
+export async function applyAnnotations(doc: PDFDocument, annotations: Annotation[]): Promise<void> {
   const pages = doc.getPages();
   const font = await doc.embedFont(StandardFonts.Helvetica);
 
@@ -84,9 +81,7 @@ export async function applyAnnotations(
       } else if (ann.type === 'image' || ann.type === 'drawing') {
         if (!ann.dataUrl) continue;
         const { bytes, mime } = dataUrlToBytes(ann.dataUrl);
-        const embeddedImage = mime.includes('jpeg') || mime.includes('jpg')
-          ? await doc.embedJpg(bytes)
-          : await doc.embedPng(bytes);
+        const embeddedImage = mime.includes('jpeg') || mime.includes('jpg') ? await doc.embedJpg(bytes) : await doc.embedPng(bytes);
 
         page.drawImage(embeddedImage, {
           x: placement.x,

@@ -4,16 +4,12 @@ import type { SubtitleCue } from '../_whisper';
 
 export interface SubtitleStyleOptions {
   fontSize: number; // base size (e.g. 28)
-  color: string;    // e.g. '#ffffff'
+  color: string; // e.g. '#ffffff'
   backgroundBox: boolean;
   position: 'bottom' | 'top';
 }
 
-function wrapText(
-  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
-  text: string,
-  maxWidth: number
-): string[] {
+function wrapText(ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D, text: string, maxWidth: number): string[] {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length === 0) return [];
 
@@ -35,26 +31,16 @@ function wrapText(
   return lines;
 }
 
-async function renderCueToPng(
-  cue: SubtitleCue,
-  width: number,
-  height: number,
-  style: SubtitleStyleOptions
-): Promise<Uint8Array> {
+async function renderCueToPng(cue: SubtitleCue, width: number, height: number, style: SubtitleStyleOptions): Promise<Uint8Array> {
   const canvas =
-    typeof OffscreenCanvas !== 'undefined'
-      ? new OffscreenCanvas(width, height)
-      : (document.createElement('canvas') as HTMLCanvasElement);
+    typeof OffscreenCanvas !== 'undefined' ? new OffscreenCanvas(width, height) : (document.createElement('canvas') as HTMLCanvasElement);
 
   if ('width' in canvas) {
     canvas.width = width;
     canvas.height = height;
   }
 
-  const ctx = canvas.getContext('2d') as
-    | CanvasRenderingContext2D
-    | OffscreenCanvasRenderingContext2D
-    | null;
+  const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
 
   if (!ctx) {
     throw new Error('Canvas 2D context not available');
@@ -129,10 +115,8 @@ async function renderCueToPng(
   return canvasToUint8Array(canvas);
 }
 
-async function canvasToUint8Array(
-  canvas: HTMLCanvasElement | OffscreenCanvas
-): Promise<Uint8Array> {
-  let blob: Blob | null = null;
+async function canvasToUint8Array(canvas: HTMLCanvasElement | OffscreenCanvas): Promise<Uint8Array> {
+  let blob: Blob | null;
   if (canvas instanceof OffscreenCanvas) {
     blob = await canvas.convertToBlob({ type: 'image/png' });
   } else {
@@ -153,19 +137,15 @@ export async function burnSubtitlesIntoVideo(
   style: SubtitleStyleOptions,
   videoWidth: number = 1280,
   videoHeight: number = 720,
-  onProgress?: (ratio: number) => void
+  onProgress?: (ratio: number) => void,
 ): Promise<Blob> {
   const safeWidth = videoWidth > 0 ? videoWidth : 1280;
   const safeHeight = videoHeight > 0 ? videoHeight : 720;
 
   // Filter valid cues that have text and valid timing
-  const validCues = cues.filter(
-    (c) => c.text.trim().length > 0 && Number.isFinite(c.start) && Number.isFinite(c.end) && c.end > c.start
-  );
+  const validCues = cues.filter((c) => c.text.trim().length > 0 && Number.isFinite(c.start) && Number.isFinite(c.end) && c.end > c.start);
 
-  const inputVideoExt = videoFile.name.includes('.')
-    ? videoFile.name.slice(videoFile.name.lastIndexOf('.'))
-    : '.mp4';
+  const inputVideoExt = videoFile.name.includes('.') ? videoFile.name.slice(videoFile.name.lastIndexOf('.')) : '.mp4';
   const inputVideoName = `input${inputVideoExt}`;
   const outputName = withSuffix(videoFile.name, '-subtitled-burned', 'mp4');
 

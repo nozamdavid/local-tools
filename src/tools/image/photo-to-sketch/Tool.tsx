@@ -12,10 +12,7 @@ const DEFAULT_OPTIONS: SketchOptions = {
   intensity: 85,
 };
 
-async function renderSketch(
-  source: HTMLCanvasElement,
-  options: SketchOptions
-): Promise<HTMLCanvasElement> {
+async function renderSketch(source: HTMLCanvasElement, options: SketchOptions): Promise<HTMLCanvasElement> {
   const canvas = document.createElement('canvas');
   canvas.width = source.width;
   canvas.height = source.height;
@@ -25,13 +22,7 @@ async function renderSketch(
   ctx.drawImage(source, 0, 0);
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-  const outData = await filterWorkerClient.process(
-    'sketch',
-    canvas.width,
-    canvas.height,
-    imgData.data,
-    options
-  );
+  const outData = await filterWorkerClient.process('sketch', canvas.width, canvas.height, imgData.data, options);
 
   const outImgData = ctx.createImageData(canvas.width, canvas.height);
   outImgData.data.set(outData);

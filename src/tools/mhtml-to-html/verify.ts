@@ -1,10 +1,4 @@
-import {
-  parseMhtml,
-  convertMhtmlToHtml,
-  decodeQuotedPrintable,
-  decodeBase64,
-  unfoldHeaders,
-} from './mhtml';
+import { parseMhtml, convertMhtmlToHtml, decodeQuotedPrintable, decodeBase64, unfoldHeaders } from './mhtml';
 
 export async function runVerification(): Promise<void> {
   console.log('--- Starting MHTML to HTML Verification ---');
@@ -124,7 +118,7 @@ export async function runVerification(): Promise<void> {
     throw new Error('CSP meta tag not found or not inside <head>');
   }
   if (!standalone.html.includes("default-src 'none'")) {
-    throw new Error('CSP missing default-src \'none\'');
+    throw new Error("CSP missing default-src 'none'");
   }
   if (!standalone.html.includes("base-uri 'none'") || !standalone.html.includes("form-action 'none'")) {
     throw new Error('CSP missing base-uri/form-action none');

@@ -50,11 +50,12 @@ const MONO = /mono|courier|consolas|menlo|typewriter/i;
 const SERIF = /times|serif|georgia|garamond|cambria|minion|palatino|book/i;
 
 function traitsFor(name: string, cssFamily: string): FontTraits {
-  const family: FontFamily = MONO.test(name) || MONO.test(cssFamily)
-    ? 'mono'
-    : (SERIF.test(name) && !/sans/i.test(name)) || (/serif/i.test(cssFamily) && !/sans/i.test(cssFamily))
-      ? 'serif'
-      : 'sans';
+  const family: FontFamily =
+    MONO.test(name) || MONO.test(cssFamily)
+      ? 'mono'
+      : (SERIF.test(name) && !/sans/i.test(name)) || (/serif/i.test(cssFamily) && !/sans/i.test(cssFamily))
+        ? 'serif'
+        : 'sans';
   return { bold: BOLD.test(name), italic: ITALIC.test(name), family };
 }
 
@@ -191,10 +192,7 @@ export function bodySize(pages: PageText[]): number {
  * Opens a second pdf.js document that exposes real font names (needed for bold/italic hints).
  * Falls back to the given document when the file cannot be reopened, such as for encrypted PDFs.
  */
-export async function openWithFontInfo(
-  file: File,
-  fallback: PDFDocumentProxy
-): Promise<{ doc: PDFDocumentProxy; close: () => void }> {
+export async function openWithFontInfo(file: File, fallback: PDFDocumentProxy): Promise<{ doc: PDFDocumentProxy; close: () => void }> {
   try {
     const pdfjs = await loadPdfjs();
     const data = new Uint8Array(await file.arrayBuffer());

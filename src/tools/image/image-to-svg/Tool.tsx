@@ -13,9 +13,7 @@ type SvgMode = 'embed' | 'pixel';
 export default function ImageToSvgTool() {
   const meta = getToolMeta('img-image-to-svg');
   const title = meta.title && meta.title !== 'img-image-to-svg' ? meta.title : 'Image to SVG Converter';
-  const description =
-    meta.description ||
-    'Convert raster images (PNG, JPG, WebP) into scalable SVG vector graphics or embed them safely.';
+  const description = meta.description || 'Convert raster images (PNG, JPG, WebP) into scalable SVG vector graphics or embed them safely.';
 
   const [file, setFile] = useState<File | null>(null);
   const [dataUri, setDataUri] = useState<string | null>(null);
@@ -178,33 +176,31 @@ export default function ImageToSvgTool() {
               >
                 {mode === 'embed' ? (
                   <div>
-                    💡 <strong>Raster Embed Mode:</strong> Packages your exact original image bytes inside an SVG container with proper viewBox and width/height dimensions. Best for web workflows, documents, and lightweight vector wrappers without altering pixels.
+                    💡 <strong>Raster Embed Mode:</strong> Packages your exact original image bytes inside an SVG container with proper
+                    viewBox and width/height dimensions. Best for web workflows, documents, and lightweight vector wrappers without altering
+                    pixels.
                   </div>
                 ) : (
                   <div>
-                    ✨ <strong>Pixel Vector Shapes Mode:</strong> Converts pixel rows into native geometric SVG <code>&lt;rect&gt;</code> vector paths, grouping identical neighboring pixels and maintaining alpha transparency. Scalable to any size without blur—ideal for pixel art, sprites, logos, and retro graphics (bounded to 128×128 max for high performance).
+                    ✨ <strong>Pixel Vector Shapes Mode:</strong> Converts pixel rows into native geometric SVG <code>&lt;rect&gt;</code>{' '}
+                    vector paths, grouping identical neighboring pixels and maintaining alpha transparency. Scalable to any size without
+                    blur—ideal for pixel art, sprites, logos, and retro graphics (bounded to 128×128 max for high performance).
                   </div>
                 )}
               </div>
 
               {mode === 'pixel' && (
-                <Field label={`Vector Grid Resolution: ${pixelResolution}×${pixelResolution} px (Max 128×128)`} hint="Higher resolution captures finer pixel details; lower resolution creates chunky pixel art.">
-                  <Slider
-                    value={pixelResolution}
-                    min={16}
-                    max={128}
-                    step={8}
-                    unit="px"
-                    onChange={setPixelResolution}
-                  />
+                <Field
+                  label={`Vector Grid Resolution: ${pixelResolution}×${pixelResolution} px (Max 128×128)`}
+                  hint="Higher resolution captures finer pixel details; lower resolution creates chunky pixel art."
+                >
+                  <Slider value={pixelResolution} min={16} max={128} step={8} unit="px" onChange={setPixelResolution} />
                 </Field>
               )}
             </div>
 
             {error && (
-              <div style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px' }}>
-                {error}
-              </div>
+              <div style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px' }}>{error}</div>
             )}
 
             {/* Preview Box */}
@@ -220,11 +216,7 @@ export default function ImageToSvgTool() {
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ fontWeight: 600 }}>SVG Preview</span>
-                {svgBlob && (
-                  <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>
-                    Size: {formatBytes(svgBlob.size)}
-                  </span>
-                )}
+                {svgBlob && <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>Size: {formatBytes(svgBlob.size)}</span>}
               </div>
 
               <div
@@ -234,8 +226,7 @@ export default function ImageToSvgTool() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  background:
-                    'repeating-conic-gradient(#80808020 0% 25%, transparent 0% 50%) 50% / 16px 16px',
+                  background: 'repeating-conic-gradient(#80808020 0% 25%, transparent 0% 50%) 50% / 16px 16px',
                   borderRadius: '8px',
                   padding: '1rem',
                   overflow: 'auto',

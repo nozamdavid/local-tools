@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { describeError } from './errors';
 
 export type JobStatus = 'idle' | 'running' | 'done' | 'error';
 
@@ -29,23 +30,26 @@ export function useJob(): UseJobReturn {
     setResult(undefined);
   }, []);
 
-  const run = useCallback(async (fn: (setProgress: (ratio: number) => void) => Promise<Blob>) => {
-    setStatus('running');
-    setProgressState(0);
-    setError(undefined);
-    setResult(undefined);
+  const run = useCallback(
+    async (fn: (setProgress: (ratio: number) => void) => Promise<Blob>) => {
+      setStatus('running');
+      setProgressState(0);
+      setError(undefined);
+      setResult(undefined);
 
-    try {
-      const blob = await fn(setProgress);
-      setResult(blob);
-      setProgressState(1);
-      setStatus('done');
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
-      setStatus('error');
-    }
-  }, [setProgress]);
+      try {
+        const blob = await fn(setProgress);
+        setResult(blob);
+        setProgressState(1);
+        setStatus('done');
+      } catch (err: unknown) {
+        const msg = describeError(err);
+        setError(msg);
+        setStatus('error');
+      }
+    },
+    [setProgress],
+  );
 
   return {
     status,

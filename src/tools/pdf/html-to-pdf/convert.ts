@@ -69,10 +69,14 @@ export function sanitizeHtml(rawHtml: string): string {
       return m.replace(/\s*href\s*=\s*(["']).*?\1/gi, '').replace(/\s*target\s*=\s*(["']).*?\1/gi, '');
     });
     // 10. Remove frames, forms, objects
-    clean = clean.replace(/<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet|form)>/gis, '');
+    clean = clean.replace(
+      /<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet|form)>/gis,
+      '',
+    );
     clean = clean.replace(/<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*\/?>/gi, '');
 
-    const csp = '<meta http-equiv="Content-Security-Policy" content="default-src \'none\'; img-src data: blob:; style-src \'unsafe-inline\' data: blob:; font-src data: blob:; connect-src \'none\'; frame-src \'none\'; object-src \'none\'; base-uri \'none\'; form-action \'none\';">';
+    const csp =
+      "<meta http-equiv=\"Content-Security-Policy\" content=\"default-src 'none'; img-src data: blob:; style-src 'unsafe-inline' data: blob:; font-src data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';\">";
     if (/<head\b[^>]*>/i.test(clean)) {
       return clean.replace(/<head\b[^>]*>/i, (m) => `${m}\n  ${csp}`);
     }
@@ -145,8 +149,8 @@ export function sanitizeHtml(rawHtml: string): string {
   doc.querySelectorAll('picture source, source').forEach((source) => {
     const src = source.getAttribute('src') || '';
     const srcset = source.getAttribute('srcset') || '';
-    const isSafe = (!src || src.startsWith('data:') || src.startsWith('blob:')) &&
-                   (!srcset || srcset.startsWith('data:') || srcset.startsWith('blob:'));
+    const isSafe =
+      (!src || src.startsWith('data:') || src.startsWith('blob:')) && (!srcset || srcset.startsWith('data:') || srcset.startsWith('blob:'));
     if (!isSafe) {
       source.remove();
     } else {
@@ -203,7 +207,7 @@ export function sanitizeHtml(rawHtml: string): string {
   cspMeta.setAttribute('http-equiv', 'Content-Security-Policy');
   cspMeta.setAttribute(
     'content',
-    "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline' data: blob:; font-src data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';"
+    "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline' data: blob:; font-src data: blob:; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none';",
   );
   head.insertBefore(cspMeta, head.firstChild);
 
@@ -219,7 +223,7 @@ function loadFrame(frame: HTMLIFrameElement, html: string): Promise<void> {
         window.clearTimeout(timer);
         resolve();
       },
-      { once: true }
+      { once: true },
     );
     frame.srcdoc = withDoctype(html);
   });
@@ -228,7 +232,7 @@ function loadFrame(frame: HTMLIFrameElement, html: string): Promise<void> {
 export async function htmlToPdf(
   html: string,
   setup: PageSetup,
-  onProgress: (ratio: number) => void
+  onProgress: (ratio: number) => void,
 ): Promise<{ blob: Blob; pages: number }> {
   const checkError = checkHtml(html);
   if (checkError) throw new Error(checkError);

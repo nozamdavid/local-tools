@@ -44,7 +44,13 @@ export async function createSyntheticComparePdfs(): Promise<SyntheticComparePdfs
   // Page 1 with modified lines
   const p1B = docB.addPage([500, 400]);
   p1B.drawText('Quarterly Financial Report', { x: 50, y: 350, size: 16, font: fontB, color: rgb(0, 0, 0) });
-  p1B.drawText('Revenue grew by 22% this quarter with enterprise gains.', { x: 50, y: 310, size: 12, font: fontB, color: rgb(0.2, 0.2, 0.2) });
+  p1B.drawText('Revenue grew by 22% this quarter with enterprise gains.', {
+    x: 50,
+    y: 310,
+    size: 12,
+    font: fontB,
+    color: rgb(0.2, 0.2, 0.2),
+  });
   p1B.drawText('Operating costs increased slightly to $4.8M.', { x: 50, y: 280, size: 12, font: fontB, color: rgb(0.2, 0.2, 0.2) });
   p1B.drawText('Customer retention reached an all-time high.', { x: 50, y: 250, size: 12, font: fontB, color: rgb(0.2, 0.2, 0.2) });
 

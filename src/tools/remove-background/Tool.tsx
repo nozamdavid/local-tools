@@ -135,15 +135,7 @@ export default function RemoveBackgroundTool() {
           setProgressLabel(`${p.statusText}${etaText}`);
         },
         compositeFn: (ctx, info) => {
-          compositeRemoveBackgroundFrame(
-            ctx,
-            info.frameImageData,
-            info.mask,
-            info.width,
-            info.height,
-            outputFormat,
-            solidColor
-          );
+          compositeRemoveBackgroundFrame(ctx, info.frameImageData, info.mask, info.width, info.height, outputFormat, solidColor);
         },
       });
 
@@ -190,11 +182,7 @@ export default function RemoveBackgroundTool() {
               filename={outputFilename}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             >
               {outputFormat === 'webm' && resultUrl && (
@@ -223,7 +211,10 @@ export default function RemoveBackgroundTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Resolution:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}
@@ -240,10 +231,7 @@ export default function RemoveBackgroundTool() {
                 </div>
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
-                  <Field
-                    label="Output format"
-                    hint="WebM preserves transparency. MP4 places the cutout on solid color or green screen."
-                  >
+                  <Field label="Output format" hint="WebM preserves transparency. MP4 places the cutout on solid color or green screen.">
                     <Select
                       id={formatId}
                       value={outputFormat}

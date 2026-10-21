@@ -22,15 +22,10 @@ export interface CleanerResult {
   bounds: { minX: number; minY: number; maxX: number; maxY: number } | null;
 }
 
-export function cleanSignaturePixels(
-  inputData: Uint8ClampedArray,
-  width: number,
-  height: number,
-  options: CleanerOptions
-): CleanerResult {
+export function cleanSignaturePixels(inputData: Uint8ClampedArray, width: number, height: number, options: CleanerOptions): CleanerResult {
   const outputData = new Uint8ClampedArray(width * height * 4);
   const feather = Math.max(1, options.detail * 0.8);
-  const contrastFactor = 1 + (options.contrast / 50);
+  const contrastFactor = 1 + options.contrast / 50;
 
   let minX = width;
   let minY = height;
@@ -103,7 +98,7 @@ export function cleanSignaturePixels(
           const unmixedB = Math.max(0, Math.min(255, Math.round((b - 255 * (1 - inkStrength)) / inkStrength)));
 
           // Darken ink according to contrast
-          const darkening = 1 - (options.contrast / 300);
+          const darkening = 1 - options.contrast / 300;
           outputData[idx] = Math.max(0, Math.min(255, Math.round(unmixedR * darkening)));
           outputData[idx + 1] = Math.max(0, Math.min(255, Math.round(unmixedG * darkening)));
           outputData[idx + 2] = Math.max(0, Math.min(255, Math.round(unmixedB * darkening)));
@@ -117,7 +112,7 @@ export function cleanSignaturePixels(
           outputData[idx + 2] = 255;
           outputData[idx + 3] = 255;
         } else {
-          const darkening = 1 - (options.contrast / 300);
+          const darkening = 1 - options.contrast / 300;
           const finalR = Math.max(0, Math.min(255, Math.round(r * darkening)));
           const finalG = Math.max(0, Math.min(255, Math.round(g * darkening)));
           const finalB = Math.max(0, Math.min(255, Math.round(b * darkening)));
@@ -149,7 +144,7 @@ export function cropImageData(
   srcHeight: number,
   bounds: { minX: number; minY: number; maxX: number; maxY: number },
   padding = 8,
-  fillWhite = false
+  fillWhite = false,
 ): { croppedData: Uint8ClampedArray; cropWidth: number; cropHeight: number } {
   const padX0 = Math.max(0, bounds.minX - padding);
   const padY0 = Math.max(0, bounds.minY - padding);

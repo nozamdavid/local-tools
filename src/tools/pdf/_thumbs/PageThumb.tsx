@@ -21,10 +21,7 @@ export function PageThumb({ src, width, height, rotation = 0, box = 140, alt = '
 
   return (
     <div className={styles.slot} style={{ width: box, height: box }}>
-      <div
-        className={styles.sheet}
-        style={{ width: visualW * scale, height: visualH * scale }}
-      >
+      <div className={styles.sheet} style={{ width: visualW * scale, height: visualH * scale }}>
         {src ? (
           <img
             src={src}

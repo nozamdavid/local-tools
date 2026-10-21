@@ -15,11 +15,7 @@ export interface FilterEditorShellProps<T> {
   defaultOptions: T;
   suffix: string;
   defaultFormat?: EncodableMime;
-  render: (
-    sourceCanvas: HTMLCanvasElement,
-    options: T,
-    isPreview: boolean
-  ) => Promise<HTMLCanvasElement> | HTMLCanvasElement;
+  render: (sourceCanvas: HTMLCanvasElement, options: T, isPreview: boolean) => Promise<HTMLCanvasElement> | HTMLCanvasElement;
   renderControls: (
     options: T,
     setOptions: React.Dispatch<React.SetStateAction<T>>,
@@ -28,7 +24,7 @@ export interface FilterEditorShellProps<T> {
       imageHeight: number;
       previewCanvas: HTMLCanvasElement | null;
       previewContainerRef: React.RefObject<HTMLDivElement | null>;
-    }
+    },
   ) => React.ReactNode;
   renderOverlay?: (
     options: T,
@@ -38,7 +34,7 @@ export interface FilterEditorShellProps<T> {
       imageHeight: number;
       previewWidth: number;
       previewHeight: number;
-    }
+    },
   ) => React.ReactNode;
 }
 
@@ -184,13 +180,7 @@ export function FilterEditorShell<T>({
           onFiles={handleFiles}
         />
       ) : resultBlob ? (
-        <ResultPanel
-          blob={resultBlob}
-          filename={resultFilename}
-          kind="image"
-          originalSize={file.size}
-          onReset={handleFullReset}
-        >
+        <ResultPanel blob={resultBlob} filename={resultFilename} kind="image" originalSize={file.size} onReset={handleFullReset}>
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
             <Button variant="secondary" onClick={() => setResultBlob(null)}>
               ← Back to editing
@@ -210,7 +200,10 @@ export function FilterEditorShell<T>({
             </span>
             {fullSourceCanvas && (
               <span className="meta-chip">
-                Dimensions: <strong>{fullSourceCanvas.width} × {fullSourceCanvas.height}</strong>
+                Dimensions:{' '}
+                <strong>
+                  {fullSourceCanvas.width} × {fullSourceCanvas.height}
+                </strong>
               </span>
             )}
           </div>
@@ -230,11 +223,7 @@ export function FilterEditorShell<T>({
                   👁️ Compare (hold)
                 </button>
                 <label style={{ fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <input
-                    type="checkbox"
-                    checked={compareToggle}
-                    onChange={(e) => setCompareToggle(e.target.checked)}
-                  />
+                  <input type="checkbox" checked={compareToggle} onChange={(e) => setCompareToggle(e.target.checked)} />
                   <span>Show original</span>
                 </label>
               </div>
@@ -248,6 +237,8 @@ export function FilterEditorShell<T>({
               <canvas
                 ref={previewDisplayCanvasRef}
                 className={styles.canvas}
+                role="img"
+                aria-label="Live preview of the edited image"
                 data-testid="preview-canvas"
               />
               {renderOverlay && previewSourceCanvas && (
@@ -288,14 +279,7 @@ export function FilterEditorShell<T>({
 
                 {format !== 'image/png' && (
                   <Field label={`Quality (${quality}%)`}>
-                    <Slider
-                      value={quality}
-                      min={1}
-                      max={100}
-                      step={1}
-                      unit="%"
-                      onChange={setQuality}
-                    />
+                    <Slider value={quality} min={1} max={100} step={1} unit="%" onChange={setQuality} />
                   </Field>
                 )}
               </div>
@@ -307,12 +291,7 @@ export function FilterEditorShell<T>({
                 <Button variant="secondary" onClick={handleFullReset}>
                   Choose different file
                 </Button>
-                <Button
-                  variant="primary"
-                  onClick={handleDownload}
-                  disabled={isProcessing}
-                  data-testid="download-btn"
-                >
+                <Button variant="primary" onClick={handleDownload} disabled={isProcessing} data-testid="download-btn">
                   {isProcessing ? 'Processing full image...' : 'Download'}
                 </Button>
               </div>

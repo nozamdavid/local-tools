@@ -73,8 +73,7 @@ export default function BulkResizeTool() {
           }
         }
 
-        const outMime: EncodableMime | undefined =
-          formatChoice === 'keep' ? getDefaultFormat(file, 'image/png').mime : formatChoice;
+        const outMime: EncodableMime | undefined = formatChoice === 'keep' ? getDefaultFormat(file, 'image/png').mime : formatChoice;
 
         const res = await resizeImage(file, {
           width: targetW,
@@ -127,10 +126,7 @@ export default function BulkResizeTool() {
 
           {processing ? (
             <div style={{ marginTop: '1.5rem' }}>
-              <ProgressBar
-                value={progress}
-                label={`Resizing images (${Math.round(progress * files.length)} of ${files.length})...`}
-              />
+              <ProgressBar value={progress} label={`Resizing images (${Math.round(progress * files.length)} of ${files.length})...`} />
             </div>
           ) : (
             <div style={{ marginTop: '1.5rem' }}>
@@ -148,14 +144,7 @@ export default function BulkResizeTool() {
 
               {mode === 'percent' ? (
                 <Field label="Scale percentage">
-                  <Slider
-                    value={percent}
-                    min={5}
-                    max={200}
-                    step={5}
-                    unit="%"
-                    onChange={setPercent}
-                  />
+                  <Slider value={percent} min={5} max={200} step={5} unit="%" onChange={setPercent} />
                   <div className={styles.presetChips}>
                     {[25, 50, 75, 100, 150].map((p) => (
                       <button
@@ -210,14 +199,7 @@ export default function BulkResizeTool() {
 
               {formatChoice !== 'image/png' && (
                 <Field label="Quality">
-                  <Slider
-                    value={quality}
-                    min={10}
-                    max={100}
-                    step={1}
-                    unit="%"
-                    onChange={setQuality}
-                  />
+                  <Slider value={quality} min={10} max={100} step={1} unit="%" onChange={setQuality} />
                 </Field>
               )}
 

@@ -56,7 +56,7 @@ export default function SignTool() {
 
   // Position on visual page (percentage)
   const [xPercent, setXPercent] = useState(65); // 0 to 100
-  const [yPercent, setYPercent] = useState(8);  // 0 to 100 from visual bottom
+  const [yPercent, setYPercent] = useState(8); // 0 to 100 from visual bottom
   const [widthPercent, setWidthPercent] = useState(25); // 10 to 60
 
   const previewBoxRef = useRef<HTMLDivElement | null>(null);
@@ -320,13 +320,7 @@ export default function SignTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -341,12 +335,7 @@ export default function SignTool() {
           {job.error && <div className="error-banner">{job.error}</div>}
 
           {job.result ? (
-            <PdfPreview
-              blob={job.result}
-              filename={outName}
-              pageCount={total}
-              onReset={handleReset}
-            />
+            <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
           ) : (
             <div>
               <div className={styles.topRow}>
@@ -369,7 +358,8 @@ export default function SignTool() {
               </div>
 
               <div className={styles.noticeBanner}>
-                <strong>Visual signature only:</strong> This tool places a visual signature image stamp on selected PDF pages. It does not create or attach a cryptographic / PKI digital signature certificate.
+                <strong>Visual signature only:</strong> This tool places a visual signature image stamp on selected PDF pages. It does not
+                create or attach a cryptographic / PKI digital signature certificate.
               </div>
 
               {source.loading && <p className={styles.status}>Opening PDF document…</p>}
@@ -380,6 +370,7 @@ export default function SignTool() {
                     <button
                       type="button"
                       className={`${styles.tabBtn} ${inputMode === 'draw' ? styles.tabBtnActive : ''}`}
+                      aria-pressed={inputMode === 'draw'}
                       onClick={() => setInputMode('draw')}
                     >
                       ✏️ Draw signature
@@ -387,6 +378,7 @@ export default function SignTool() {
                     <button
                       type="button"
                       className={`${styles.tabBtn} ${inputMode === 'type' ? styles.tabBtnActive : ''}`}
+                      aria-pressed={inputMode === 'type'}
                       onClick={() => setInputMode('type')}
                     >
                       ⌨️ Type signature
@@ -394,6 +386,7 @@ export default function SignTool() {
                     <button
                       type="button"
                       className={`${styles.tabBtn} ${inputMode === 'upload' ? styles.tabBtnActive : ''}`}
+                      aria-pressed={inputMode === 'upload'}
                       onClick={() => setInputMode('upload')}
                     >
                       📁 Upload signature
@@ -406,6 +399,8 @@ export default function SignTool() {
                         ref={canvasRef}
                         width={500}
                         height={160}
+                        role="img"
+                        aria-label="Signature drawing area. Drawing needs a mouse, touch or pen. To sign with the keyboard, choose Type signature."
                         className={styles.drawCanvas}
                         onPointerDown={startDrawing}
                         onPointerMove={draw}
@@ -539,16 +534,9 @@ export default function SignTool() {
                           onPointerUp={handlePointerUpSig}
                         >
                           {previewThumb ? (
-                            <img
-                              src={previewThumb}
-                              alt={`Page ${previewPage}`}
-                              className={styles.previewPageImage}
-                              draggable={false}
-                            />
+                            <img src={previewThumb} alt={`Page ${previewPage}`} className={styles.previewPageImage} draggable={false} />
                           ) : (
-                            <div style={{ padding: '4rem', color: 'var(--text-muted)' }}>
-                              Loading page {previewPage}…
-                            </div>
+                            <div style={{ padding: '4rem', color: 'var(--text-muted)' }}>Loading page {previewPage}…</div>
                           )}
 
                           {signatureUrl && (
@@ -562,22 +550,15 @@ export default function SignTool() {
                               }}
                               onPointerDown={handlePointerDownSig}
                             >
-                              <img
-                                src={signatureUrl}
-                                alt="Signature preview"
-                                className={styles.signatureOverlayImg}
-                                draggable={false}
-                              />
+                              <img src={signatureUrl} alt="Signature preview" className={styles.signatureOverlayImg} draggable={false} />
                             </div>
                           )}
                         </div>
 
-                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}>
-                          <Button
-                            variant="secondary"
-                            disabled={previewPage <= 1}
-                            onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}
-                          >
+                        <div
+                          style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}
+                        >
+                          <Button variant="secondary" disabled={previewPage <= 1} onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}>
                             ‹ Prev
                           </Button>
                           <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>
@@ -595,51 +576,24 @@ export default function SignTool() {
 
                       <div>
                         <Field label="Signature Size">
-                          <Slider
-                            value={widthPercent}
-                            min={10}
-                            max={60}
-                            step={2}
-                            unit="%"
-                            onChange={setWidthPercent}
-                          />
+                          <Slider value={widthPercent} min={10} max={60} step={2} unit="%" onChange={setWidthPercent} />
                         </Field>
 
                         <Field label="Quick Position Presets">
                           <div className={styles.presetButtons}>
-                            <button
-                              type="button"
-                              className={styles.presetBtn}
-                              onClick={() => setPreset('bottom-right')}
-                            >
+                            <button type="button" className={styles.presetBtn} onClick={() => setPreset('bottom-right')}>
                               Bottom Right
                             </button>
-                            <button
-                              type="button"
-                              className={styles.presetBtn}
-                              onClick={() => setPreset('bottom-center')}
-                            >
+                            <button type="button" className={styles.presetBtn} onClick={() => setPreset('bottom-center')}>
                               Bottom Center
                             </button>
-                            <button
-                              type="button"
-                              className={styles.presetBtn}
-                              onClick={() => setPreset('bottom-left')}
-                            >
+                            <button type="button" className={styles.presetBtn} onClick={() => setPreset('bottom-left')}>
                               Bottom Left
                             </button>
-                            <button
-                              type="button"
-                              className={styles.presetBtn}
-                              onClick={() => setPreset('center')}
-                            >
+                            <button type="button" className={styles.presetBtn} onClick={() => setPreset('center')}>
                               Center
                             </button>
-                            <button
-                              type="button"
-                              className={styles.presetBtn}
-                              onClick={() => setPreset('top-right')}
-                            >
+                            <button type="button" className={styles.presetBtn} onClick={() => setPreset('top-right')}>
                               Top Right
                             </button>
                           </div>
@@ -666,12 +620,7 @@ export default function SignTool() {
                               First page only
                             </label>
                             <label>
-                              <input
-                                type="radio"
-                                name="targetMode"
-                                checked={targetMode === 'all'}
-                                onChange={() => setTargetMode('all')}
-                              />
+                              <input type="radio" name="targetMode" checked={targetMode === 'all'} onChange={() => setTargetMode('all')} />
                               All pages
                             </label>
                             <label>
@@ -713,11 +662,7 @@ export default function SignTool() {
                       <Button variant="secondary" onClick={handleReset}>
                         Choose different file
                       </Button>
-                      <Button
-                        variant="primary"
-                        onClick={handleApply}
-                        disabled={!signatureUrl || targetPageList.length === 0}
-                      >
+                      <Button variant="primary" onClick={handleApply} disabled={!signatureUrl || targetPageList.length === 0}>
                         Sign {targetPageList.length} {targetPageList.length === 1 ? 'page' : 'pages'}
                       </Button>
                     </div>

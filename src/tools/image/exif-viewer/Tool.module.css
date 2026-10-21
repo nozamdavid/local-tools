@@ -24,7 +24,6 @@
   font-size: 0.9rem;
 }
 
-
 .thumbnailCard {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -114,7 +113,6 @@
   border-radius: 4px;
   margin-left: 0.5rem;
 }
-
 
 .outboundLink {
   display: inline-flex;

@@ -1,8 +1,4 @@
-import type {
-  AvifEncodeOptions,
-  AvifWorkerRequest,
-  AvifWorkerResponse,
-} from './avif.worker';
+import type { AvifEncodeOptions, AvifWorkerRequest, AvifWorkerResponse } from './avif.worker';
 
 export type { AvifEncodeOptions };
 
@@ -101,17 +97,12 @@ class AvifClient {
     const next = this.queue.then(op, op);
     this.queue = next.then(
       () => {},
-      () => {}
+      () => {},
     );
     return next;
   }
 
-  public encode(
-    width: number,
-    height: number,
-    data: Uint8ClampedArray,
-    options?: AvifEncodeOptions
-  ): Promise<ArrayBuffer> {
+  public encode(width: number, height: number, data: Uint8ClampedArray, options?: AvifEncodeOptions): Promise<ArrayBuffer> {
     return this.enqueue(
       () =>
         new Promise<ArrayBuffer>((resolve, reject) => {
@@ -138,7 +129,7 @@ class AvifClient {
             options,
           };
           worker.postMessage(msg, [copy.buffer]);
-        })
+        }),
     );
   }
 }
@@ -152,7 +143,7 @@ export async function encodeAvif(
   width: number,
   height: number,
   data: Uint8ClampedArray,
-  options?: AvifEncodeOptions
+  options?: AvifEncodeOptions,
 ): Promise<ArrayBuffer> {
   return avifClient.encode(width, height, data, options);
 }
@@ -160,20 +151,12 @@ export async function encodeAvif(
 /**
  * Encodes an HTMLCanvasElement directly into an AVIF Blob using the lazy WASM worker.
  */
-export async function encodeAvifCanvas(
-  canvas: HTMLCanvasElement,
-  options?: AvifEncodeOptions
-): Promise<Blob> {
+export async function encodeAvifCanvas(canvas: HTMLCanvasElement, options?: AvifEncodeOptions): Promise<Blob> {
   const ctx = canvas.getContext('2d');
   if (!ctx) {
     throw new Error('Canvas 2D is not available in this browser.');
   }
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-  const buffer = await avifClient.encode(
-    imgData.width,
-    imgData.height,
-    imgData.data,
-    options
-  );
+  const buffer = await avifClient.encode(imgData.width, imgData.height, imgData.data, options);
   return new Blob([buffer], { type: 'image/avif' });
 }

@@ -1,11 +1,5 @@
 import { getToolMeta, TOOL_METAS, type ToolMeta } from '../tools/registry';
-import {
-  classifyFile,
-  extensionOf,
-  isToolEligibleForBatch,
-  isToolEligibleForFile,
-  mimeOf,
-} from './toolInputs';
+import { classifyFile, extensionOf, isToolEligibleForBatch, isToolEligibleForFile, mimeOf } from './toolInputs';
 
 export { extensionOf };
 
@@ -79,50 +73,21 @@ export function matchesAccept(file: File, accept?: string): boolean {
       if (c.format === 'stl' && (token === 'model/stl' || token === 'application/sla')) return true;
       if (
         c.format === 'step' &&
-        (token === 'model/step' ||
-          token === 'application/step' ||
-          token === 'model/x-step' ||
-          token === 'model/x.step')
+        (token === 'model/step' || token === 'application/step' || token === 'model/x-step' || token === 'model/x.step')
       )
         return true;
       if (
         c.format === 'iges' &&
-        (token === 'model/iges' ||
-          token === 'application/iges' ||
-          token === 'model/x-iges' ||
-          token === 'model/x.iges')
+        (token === 'model/iges' || token === 'application/iges' || token === 'model/x-iges' || token === 'model/x.iges')
       )
         return true;
-      if (
-        c.format === 'brep' &&
-        (token === 'model/brep' ||
-          token === 'model/x-brep' ||
-          token === 'application/x-brep')
-      )
-        return true;
-      if (
-        c.format === '3mf' &&
-        (token === 'model/3mf' ||
-          token === 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml')
-      )
-        return true;
+      if (c.format === 'brep' && (token === 'model/brep' || token === 'model/x-brep' || token === 'application/x-brep')) return true;
+      if (c.format === '3mf' && (token === 'model/3mf' || token === 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml')) return true;
       return false;
     });
 }
 
-export type FileKind =
-  | 'image'
-  | 'video'
-  | 'audio'
-  | 'pdf'
-  | 'word'
-  | 'excel'
-  | 'powerpoint'
-  | 'web'
-  | 'data'
-  | 'text'
-  | '3d'
-  | 'other';
+export type FileKind = 'image' | 'video' | 'audio' | 'pdf' | 'word' | 'excel' | 'powerpoint' | 'web' | 'data' | 'text' | '3d' | 'other';
 
 export function fileKind(file: File): FileKind {
   const c = classifyFile(file);
@@ -146,14 +111,7 @@ export function isToolEligible(toolId: string, file: File): boolean {
   return isToolEligibleForFile(meta, file);
 }
 
-const THREE_SINGLE_TOOLS = [
-  'three-convert',
-  'three-simplify',
-  'three-inspect',
-  'three-transform',
-  'three-normals',
-  'three-split',
-];
+const THREE_SINGLE_TOOLS = ['three-convert', 'three-simplify', 'three-inspect', 'three-transform', 'three-normals', 'three-split'];
 
 /** Primary format-specific tools to rank first for single files. */
 const PRIMARY_SINGLE_TOOLS: Record<string, string[]> = {

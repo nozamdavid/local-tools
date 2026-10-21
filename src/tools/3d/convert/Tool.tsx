@@ -18,8 +18,7 @@ import styles from '../_ui/Workbench.module.css';
 export default function ConvertTool() {
   const meta = getToolMeta('three-convert');
   const title = meta.title !== 'three-convert' ? meta.title : '3D Format Converter';
-  const description =
-    meta.description || 'Convert 3D mesh files between STL, OBJ, PLY, and 3MF formats entirely on your device.';
+  const description = meta.description || 'Convert 3D mesh files between STL, OBJ, PLY, and 3MF formats entirely on your device.';
 
   const {
     file,

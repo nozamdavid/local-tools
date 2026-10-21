@@ -65,20 +65,10 @@ export function PageSelectTool({ toolId, mode }: PageSelectToolProps) {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={toolId}>
-      {pdf.password && (
-        <PasswordDialog
-          reason={pdf.password.reason}
-          onSubmit={pdf.password.submit}
-          onCancel={reset}
-        />
-      )}
+      {pdf.password && <PasswordDialog reason={pdf.password.reason} onSubmit={pdf.password.submit} onCancel={reset} />}
 
       {!file ? (
-        <FileDrop
-          accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          onFiles={(files) => setFile(files[0] ?? null)}
-        />
+        <FileDrop accept="application/pdf,.pdf" label="Choose a PDF file or drag it here" onFiles={(files) => setFile(files[0] ?? null)} />
       ) : job.status === 'done' && job.result ? (
         <PdfPreview blob={job.result} filename={outName} pageCount={outPages} originalSize={file.size} onReset={reset} />
       ) : (

@@ -23,9 +23,7 @@ import styles from '../_ui/Workbench.module.css';
 export default function SplitTool() {
   const meta = getToolMeta('three-split');
   const title = meta.title !== 'three-split' ? meta.title : '3D Mesh Component Splitter';
-  const description =
-    meta.description ||
-    'Decompose multi-part 3D models into separate disconnected component files or a ZIP archive.';
+  const description = meta.description || 'Decompose multi-part 3D models into separate disconnected component files or a ZIP archive.';
 
   const {
     file,
@@ -192,7 +190,8 @@ export default function SplitTool() {
                 <MeshViewer model={currentModel} />
                 {components.length > 0 && (
                   <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textAlign: 'center' }}>
-                    Viewing component {selectedCompIdx + 1} of {components.length} ({currentModel?.indices.length ? currentModel.indices.length / 3 : 0} triangles)
+                    Viewing component {selectedCompIdx + 1} of {components.length} (
+                    {currentModel?.indices.length ? currentModel.indices.length / 3 : 0} triangles)
                   </div>
                 )}
               </div>
@@ -205,9 +204,7 @@ export default function SplitTool() {
                       {components.length > 0 ? `${components.length} Shells Found` : 'Ready to Split'}
                     </Badge>
                   </h3>
-                  <p className={styles.cardSub}>
-                    Decomposes the mesh into geometrically independent non-connected surface shells.
-                  </p>
+                  <p className={styles.cardSub}>Decomposes the mesh into geometrically independent non-connected surface shells.</p>
 
                   <div className={styles.actionRow}>
                     <Button

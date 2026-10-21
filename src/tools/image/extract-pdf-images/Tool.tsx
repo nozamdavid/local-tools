@@ -91,7 +91,7 @@ export default function ExtractPdfImagesTool() {
 
       if (res.usedFallback) {
         setFallbackNote(
-          'No standalone raster images were found embedded in the PDF. Successfully rendered every page as an image instead.'
+          'No standalone raster images were found embedded in the PDF. Successfully rendered every page as an image instead.',
         );
       }
 

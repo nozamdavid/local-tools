@@ -1,11 +1,4 @@
-import {
-  suggestToolsForFiles,
-  setPendingFiles,
-  clearPendingFiles,
-  peekPendingFiles,
-  takePendingFiles,
-  matchesAccept,
-} from './handoff';
+import { suggestToolsForFiles, setPendingFiles, clearPendingFiles, peekPendingFiles, takePendingFiles, matchesAccept } from './handoff';
 import { isToolEligibleForBatch } from './toolInputs';
 import { getToolMeta } from '../tools/registry';
 import { parseCsv, detectDelimiter } from '../tools/_tabular/csv';
@@ -62,14 +55,7 @@ export function runHandoffVerification(): VerificationSummary {
     assert(ids.includes('img-png-to-jpg'), 'PNG suggestions must include img-png-to-jpg');
     assert(first12.includes('img-png-to-jpg'), 'First 12 PNG suggestions must include img-png-to-jpg');
 
-    const forbidden = [
-      'img-jpg-to-png',
-      'img-heic-to-jpg',
-      'img-webp-to-jpg',
-      'img-webp-to-png',
-      'img-svg-to-png',
-      'pdf-jpg-to-pdf',
-    ];
+    const forbidden = ['img-jpg-to-png', 'img-heic-to-jpg', 'img-webp-to-jpg', 'img-webp-to-png', 'img-svg-to-png', 'pdf-jpg-to-pdf'];
     for (const toolId of forbidden) {
       assert(!ids.includes(toolId), `PNG suggestions must NOT contain ${toolId}`);
       assert(!first12.includes(toolId), `First 12 PNG suggestions must NOT contain ${toolId}`);
@@ -109,13 +95,7 @@ export function runHandoffVerification(): VerificationSummary {
       assert(ids.includes('pdf-jpg-to-pdf'), `${item.name} must include pdf-jpg-to-pdf`);
       assert(first12.includes('pdf-jpg-to-pdf'), `${item.name} first 12 must include pdf-jpg-to-pdf`);
 
-      const forbidden = [
-        'img-png-to-jpg',
-        'img-heic-to-jpg',
-        'img-webp-to-jpg',
-        'img-webp-to-png',
-        'img-svg-to-png',
-      ];
+      const forbidden = ['img-png-to-jpg', 'img-heic-to-jpg', 'img-webp-to-jpg', 'img-webp-to-png', 'img-svg-to-png'];
       for (const toolId of forbidden) {
         assert(!ids.includes(toolId), `${item.name} must NOT contain ${toolId}`);
         assert(!first12.includes(toolId), `${item.name} first 12 must NOT contain ${toolId}`);
@@ -136,13 +116,7 @@ export function runHandoffVerification(): VerificationSummary {
     assert(first12.includes('img-webp-to-jpg'), 'First 12 WebP suggestions must include img-webp-to-jpg');
     assert(first12.includes('img-webp-to-png'), 'First 12 WebP suggestions must include img-webp-to-png');
 
-    const forbidden = [
-      'img-image-to-webp',
-      'img-png-to-jpg',
-      'img-jpg-to-png',
-      'img-heic-to-jpg',
-      'img-svg-to-png',
-    ];
+    const forbidden = ['img-image-to-webp', 'img-png-to-jpg', 'img-jpg-to-png', 'img-heic-to-jpg', 'img-svg-to-png'];
     for (const toolId of forbidden) {
       assert(!ids.includes(toolId), `WebP suggestions must NOT contain ${toolId}`);
     }
@@ -165,13 +139,7 @@ export function runHandoffVerification(): VerificationSummary {
       assert(ids.includes('img-exif-viewer'), `${filename} must include img-exif-viewer`);
       assert(first12.includes('img-heic-to-jpg'), `${filename} first 12 must include img-heic-to-jpg`);
 
-      const forbidden = [
-        'img-png-to-jpg',
-        'img-jpg-to-png',
-        'img-webp-to-jpg',
-        'img-webp-to-png',
-        'img-svg-to-png',
-      ];
+      const forbidden = ['img-png-to-jpg', 'img-jpg-to-png', 'img-webp-to-jpg', 'img-webp-to-png', 'img-svg-to-png'];
       for (const toolId of forbidden) {
         assert(!ids.includes(toolId), `${filename} must NOT contain ${toolId}`);
       }
@@ -295,7 +263,18 @@ export function runHandoffVerification(): VerificationSummary {
       assert(ids.includes('media-speed'), `${item.name} must include media-speed`);
       assert(ids.includes('file-converter'), `${item.name} must include file-converter`);
 
-      const videoOnly = ['trim', 'crop', 'loop', 'resize', 'merge', 'compress', 'audio-extract', 'remove-audio', 'boost-volume', 'video-health'];
+      const videoOnly = [
+        'trim',
+        'crop',
+        'loop',
+        'resize',
+        'merge',
+        'compress',
+        'audio-extract',
+        'remove-audio',
+        'boost-volume',
+        'video-health',
+      ];
       for (const vId of videoOnly) {
         assert(!ids.includes(vId), `${item.name} must NOT contain video-only tool ${vId}`);
       }
@@ -548,7 +527,9 @@ export function runHandoffVerification(): VerificationSummary {
   runTest('Ranking: batch-rename always in top 12 for multi-file selections', () => {
     const img1 = new File(['d1'], 'a.png', { type: 'image/png' });
     const img2 = new File(['d2'], 'b.png', { type: 'image/png' });
-    const first12 = suggestToolsForFiles([img1, img2]).slice(0, 12).map((t) => t.id);
+    const first12 = suggestToolsForFiles([img1, img2])
+      .slice(0, 12)
+      .map((t) => t.id);
     assert(first12.includes('batch-rename'), 'batch-rename must be in first 12 for multi-image drop');
   });
 
@@ -582,20 +563,25 @@ export function runHandoffVerification(): VerificationSummary {
     clearPendingFiles();
   });
 
-
   // 28. Extensionless files with recognized MIME
   runTest('Extensionless files: recognized MIME for CSV, TSV, JSON, GPX, KML', () => {
     const csvFile = new File(['a,b\n1,2'], 'raw_csv_stream', { type: 'text/csv' });
     const csvIds = suggestToolsForFiles([csvFile]).map((t) => t.id);
     assert(csvIds.includes('json-csv'), 'Extensionless text/csv must include json-csv');
     assert(csvIds.includes('csv-viewer'), 'Extensionless text/csv must include csv-viewer');
-    assert(matchesAccept(csvFile, '.json,application/json,.csv,.tsv,text/csv,text/tab-separated-values,text/*'), 'Extensionless CSV matches json-csv accept');
+    assert(
+      matchesAccept(csvFile, '.json,application/json,.csv,.tsv,text/csv,text/tab-separated-values,text/*'),
+      'Extensionless CSV matches json-csv accept',
+    );
 
     const tsvFile = new File(['a\tb\n1\t2'], 'raw_tsv_stream', { type: 'text/tab-separated-values' });
     const tsvIds = suggestToolsForFiles([tsvFile]).map((t) => t.id);
     assert(tsvIds.includes('json-csv'), 'Extensionless text/tab-separated-values must include json-csv');
     assert(tsvIds.includes('csv-viewer'), 'Extensionless text/tab-separated-values must include csv-viewer');
-    assert(matchesAccept(tsvFile, '.json,application/json,.csv,.tsv,text/csv,text/tab-separated-values,text/*'), 'Extensionless TSV matches json-csv accept');
+    assert(
+      matchesAccept(tsvFile, '.json,application/json,.csv,.tsv,text/csv,text/tab-separated-values,text/*'),
+      'Extensionless TSV matches json-csv accept',
+    );
 
     const jsonFile = new File(['{"key":"value"}'], 'raw_json_stream', { type: 'application/json' });
     const jsonIds = suggestToolsForFiles([jsonFile]).map((t) => t.id);
@@ -604,12 +590,18 @@ export function runHandoffVerification(): VerificationSummary {
     const gpxFile = new File(['<gpx version="1.1"></gpx>'], 'raw_gpx_stream', { type: 'application/gpx+xml' });
     const gpxIds = suggestToolsForFiles([gpxFile]).map((t) => t.id);
     assert(gpxIds.includes('gpx-kml'), 'Extensionless application/gpx+xml must include gpx-kml');
-    assert(matchesAccept(gpxFile, '.gpx,.kml,.xml,application/gpx+xml,application/vnd.google-earth.kml+xml'), 'Extensionless GPX matches gpx-kml accept');
+    assert(
+      matchesAccept(gpxFile, '.gpx,.kml,.xml,application/gpx+xml,application/vnd.google-earth.kml+xml'),
+      'Extensionless GPX matches gpx-kml accept',
+    );
 
     const kmlFile = new File(['<kml></kml>'], 'raw_kml_stream', { type: 'application/vnd.google-earth.kml+xml' });
     const kmlIds = suggestToolsForFiles([kmlFile]).map((t) => t.id);
     assert(kmlIds.includes('gpx-kml'), 'Extensionless application/vnd.google-earth.kml+xml must include gpx-kml');
-    assert(matchesAccept(kmlFile, '.gpx,.kml,.xml,application/gpx+xml,application/vnd.google-earth.kml+xml'), 'Extensionless KML matches gpx-kml accept');
+    assert(
+      matchesAccept(kmlFile, '.gpx,.kml,.xml,application/gpx+xml,application/vnd.google-earth.kml+xml'),
+      'Extensionless KML matches gpx-kml accept',
+    );
   });
 
   // 29. Mixed TSV + CSV batch delimiter autodetection and parsing
@@ -656,14 +648,7 @@ export function runHandoffVerification(): VerificationSummary {
       { name: 'solid.brep', type: 'model/x-brep' },
     ];
 
-    const expectedSix = [
-      'three-convert',
-      'three-simplify',
-      'three-inspect',
-      'three-transform',
-      'three-normals',
-      'three-split',
-    ];
+    const expectedSix = ['three-convert', 'three-simplify', 'three-inspect', 'three-transform', 'three-normals', 'three-split'];
 
     for (const item of singleFormats) {
       const file = new File(['dummy content'], item.name, { type: item.type });
@@ -722,11 +707,17 @@ export function runHandoffVerification(): VerificationSummary {
 
     const png = new File(['dummy image'], 'texture.png', { type: 'image/png' });
     const mixedBatchIds = suggestToolsForFiles([stl, png]).map((t) => t.id);
-    assert(mixedBatchIds.length === 1 && mixedBatchIds[0] === 'batch-rename', `Mixed model + image batch must ONLY suggest batch-rename, got: ${mixedBatchIds.join(', ')}`);
+    assert(
+      mixedBatchIds.length === 1 && mixedBatchIds[0] === 'batch-rename',
+      `Mixed model + image batch must ONLY suggest batch-rename, got: ${mixedBatchIds.join(', ')}`,
+    );
 
     const pdf = new File(['dummy pdf'], 'spec.pdf', { type: 'application/pdf' });
     const mixedPdfIds = suggestToolsForFiles([obj, pdf]).map((t) => t.id);
-    assert(mixedPdfIds.length === 1 && mixedPdfIds[0] === 'batch-rename', `Mixed model + pdf batch must ONLY suggest batch-rename, got: ${mixedPdfIds.join(', ')}`);
+    assert(
+      mixedPdfIds.length === 1 && mixedPdfIds[0] === 'batch-rename',
+      `Mixed model + pdf batch must ONLY suggest batch-rename, got: ${mixedPdfIds.join(', ')}`,
+    );
   });
 
   // 33. Unknown binary safety: firmware.bin suggests NO 3D tools

@@ -17,7 +17,10 @@ interface Sample {
 }
 
 const hex = (r: number, g: number, b: number) =>
-  [r, g, b].map((v) => Math.round(v).toString(16).padStart(2, '0')).join('').toUpperCase();
+  [r, g, b]
+    .map((v) => Math.round(v).toString(16).padStart(2, '0'))
+    .join('')
+    .toUpperCase();
 
 /** Reads the surrounding background and the darkest ink colour of a line's box. */
 function sampleLine(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): Sample {
@@ -52,7 +55,7 @@ async function renderPage(
   doc: PDFDocumentProxy,
   pageNumber: number,
   scale: number,
-  lines: Line[]
+  lines: Line[],
 ): Promise<{ data: string; inks: string[] }> {
   const page = await doc.getPage(pageNumber);
   const viewport = page.getViewport({ scale });
@@ -150,7 +153,7 @@ async function convert(doc: PDFDocumentProxy, textDoc: PDFDocumentProxy, options
             valign: 'top',
             wrap: false,
             fit: 'none',
-          }
+          },
         );
       }
     });

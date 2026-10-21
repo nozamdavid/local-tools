@@ -127,3 +127,32 @@ hr {
   scrollbar-width: thin;
   scrollbar-color: var(--border-hover) transparent;
 }
+
+/* Respect the OS "reduce motion" setting: no transitions, no looping or entrance animation.
+   Spinners keep a slow rotation so work in progress stays visible. */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .spinner {
+    animation-duration: 1.6s !important;
+    animation-iteration-count: infinite !important;
+  }
+}
+
+/* Windows high-contrast / forced colours: keep focus visible */
+@media (forced-colors: active) {
+  :focus-visible {
+    outline: 2px solid Highlight;
+  }
+}

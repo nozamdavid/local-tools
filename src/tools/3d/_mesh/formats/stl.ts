@@ -9,9 +9,7 @@ export function parseSTL(buffer: ArrayBuffer, name = 'model'): MeshModel {
     throw new Error('STL file is too small to be valid.');
   }
 
-  const warnings: string[] = [
-    'STL files are unitless; coordinates assumed to be in millimeters (mm).',
-  ];
+  const warnings: string[] = ['STL files are unitless; coordinates assumed to be in millimeters (mm).'];
 
   // Try binary detection first
   let isBinary = false;
@@ -56,7 +54,7 @@ function parseBinarySTL(buffer: ArrayBuffer, name: string, warnings: string[]): 
 
   if (buffer.byteLength < expectedSize) {
     throw new Error(
-      `Corrupt binary STL: expected at least ${expectedSize} bytes for ${triangleCount} triangles, found ${buffer.byteLength} bytes.`
+      `Corrupt binary STL: expected at least ${expectedSize} bytes for ${triangleCount} triangles, found ${buffer.byteLength} bytes.`,
     );
   }
 
@@ -91,17 +89,14 @@ function parseBinarySTL(buffer: ArrayBuffer, name: string, warnings: string[]): 
 }
 
 function parseAsciiSTL(text: string, name: string, warnings: string[]): MeshModel {
-  const vertexPattern = /vertex\s+([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s+([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s+([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/gi;
+  const vertexPattern =
+    /vertex\s+([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s+([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s+([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/gi;
 
   const rawCoords: number[] = [];
   let match: RegExpExecArray | null;
 
   while ((match = vertexPattern.exec(text)) !== null) {
-    rawCoords.push(
-      parseFloat(match[1]),
-      parseFloat(match[2]),
-      parseFloat(match[3])
-    );
+    rawCoords.push(parseFloat(match[1]), parseFloat(match[2]), parseFloat(match[3]));
   }
 
   if (rawCoords.length === 0 || rawCoords.length % 9 !== 0) {
@@ -158,8 +153,12 @@ export function exportSTL(model: MeshModel): ArrayBuffer {
     const z2 = positions[i2 * 3 + 2];
 
     // Compute surface normal
-    const ux = x1 - x0, uy = y1 - y0, uz = z1 - z0;
-    const wx = x2 - x0, wy = y2 - y0, wz = z2 - z0;
+    const ux = x1 - x0,
+      uy = y1 - y0,
+      uz = z1 - z0;
+    const wx = x2 - x0,
+      wy = y2 - y0,
+      wz = z2 - z0;
     let nx = uy * wz - uz * wy;
     let ny = uz * wx - ux * wz;
     let nz = ux * wy - uy * wx;

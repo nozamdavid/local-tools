@@ -116,14 +116,14 @@ export async function compressToTargetSize(file: File, targetBytes: number): Pro
   const isWebp = file.type === 'image/webp' || /\.webp$/i.test(file.name);
 
   // For compressing to target size, JPG or WEBP must be used because PNG toBlob ignores quality
-  const mime: EncodableMime = (hasAlpha || isWebp) ? 'image/webp' : 'image/jpeg';
+  const mime: EncodableMime = hasAlpha || isWebp ? 'image/webp' : 'image/jpeg';
   const ext = mime === 'image/webp' ? 'webp' : 'jpg';
 
   // Binary search quality helper at a given canvas
   async function searchQualityAtCanvas(c: HTMLCanvasElement): Promise<{ blob: Blob; q: number } | null> {
-    let low = 0.30;
+    let low = 0.3;
     let high = 0.95;
-    let best: { blob: Blob; q: number } | null = null;
+    let best: { blob: Blob; q: number } | null;
 
     // First check lowest quality
     const minBlob = await canvasToBlob(c, mime, low);
@@ -170,7 +170,7 @@ export async function compressToTargetSize(file: File, targetBytes: number): Pro
   }
 
   // 2. Downscale in steps if quality floor 0.3 cannot reach target
-  const scaleSteps = [0.85, 0.70, 0.55, 0.40, 0.30, 0.20, 0.15, 0.10];
+  const scaleSteps = [0.85, 0.7, 0.55, 0.4, 0.3, 0.2, 0.15, 0.1];
   let smallestBlob: { blob: Blob; w: number; h: number; q: number; s: number } | null = null;
 
   for (const s of scaleSteps) {
@@ -193,18 +193,18 @@ export async function compressToTargetSize(file: File, targetBytes: number): Pro
     }
 
     // Keep track of the lowest size so far at quality 0.30
-    const testBlob = await canvasToBlob(stepCanvas, mime, 0.30);
+    const testBlob = await canvasToBlob(stepCanvas, mime, 0.3);
     if (!smallestBlob || testBlob.size < smallestBlob.blob.size) {
-      smallestBlob = { blob: testBlob, w: sw, h: sh, q: 0.30, s };
+      smallestBlob = { blob: testBlob, w: sw, h: sh, q: 0.3, s };
     }
   }
 
   // Fallback if target was ridiculously small
   const final = smallestBlob || {
-    blob: await canvasToBlob(baseCanvas, mime, 0.30),
+    blob: await canvasToBlob(baseCanvas, mime, 0.3),
     w: img.width,
     h: img.height,
-    q: 0.30,
+    q: 0.3,
     s: 1,
   };
 

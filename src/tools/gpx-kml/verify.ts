@@ -1,11 +1,4 @@
-import {
-  gpxToGeoData,
-  kmlToGeoData,
-  geoDataToGpx,
-  geoDataToKml,
-  validateCoordinates,
-  parseXmlDocument,
-} from './gpxKml';
+import { gpxToGeoData, kmlToGeoData, geoDataToGpx, geoDataToKml, validateCoordinates, parseXmlDocument } from './gpxKml';
 
 export async function runVerification(): Promise<void> {
   console.log('--- Starting GPX ↔ KML Verification ---');
@@ -115,7 +108,7 @@ export async function runVerification(): Promise<void> {
     throw new Error(`Roundtrip coordinate/ele mismatch: ${JSON.stringify(seg1Pt0)}`);
   }
   const seg2Pt1 = roundtripTrk.segments[1].points[1];
-  if (seg2Pt1.lat !== 46.8650 || seg2Pt1.lon !== -121.7450 || seg2Pt1.ele !== 9500.0) {
+  if (seg2Pt1.lat !== 46.865 || seg2Pt1.lon !== -121.745 || seg2Pt1.ele !== 9500.0) {
     throw new Error(`Roundtrip segment 2 coordinate/ele mismatch: ${JSON.stringify(seg2Pt1)}`);
   }
 

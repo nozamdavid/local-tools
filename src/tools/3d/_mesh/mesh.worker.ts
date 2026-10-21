@@ -16,9 +16,7 @@ export type WorkerRequest =
   | { id: number; type: 'merge'; models: MeshModel[] }
   | { id: number; type: 'export'; model: MeshModel; format: MeshFormat };
 
-export type WorkerResponse =
-  | { id: number; ok: true; result: unknown }
-  | { id: number; ok: false; error: string };
+export type WorkerResponse = { id: number; ok: true; result: unknown } | { id: number; ok: false; error: string };
 
 let workerQueue: Promise<void> = Promise.resolve();
 
@@ -58,10 +56,7 @@ async function handleWorkerRequest(req: WorkerRequest): Promise<void> {
 
         const response: WorkerResponse = { id, ok: true, result: model };
         // Transfer newly allocated arrays to client
-        (self as unknown as Worker).postMessage(response, [
-          model.positions.buffer as ArrayBuffer,
-          model.indices.buffer as ArrayBuffer,
-        ]);
+        (self as unknown as Worker).postMessage(response, [model.positions.buffer as ArrayBuffer, model.indices.buffer as ArrayBuffer]);
         break;
       }
 
@@ -79,21 +74,10 @@ async function handleWorkerRequest(req: WorkerRequest): Promise<void> {
         let resultModel: MeshModel;
         switch (operation.kind) {
           case 'simplify':
-            resultModel = await simplifyMesh(
-              model,
-              operation.ratio,
-              operation.error,
-              operation.lockBorder
-            );
+            resultModel = await simplifyMesh(model, operation.ratio, operation.error, operation.lockBorder);
             break;
           case 'transform':
-            resultModel = transformMesh(
-              model,
-              operation.scale,
-              operation.rotation,
-              operation.center,
-              operation.ground
-            );
+            resultModel = transformMesh(model, operation.scale, operation.rotation, operation.center, operation.ground);
             break;
           case 'normals':
             resultModel = flipNormals(model, operation.flip);
@@ -120,10 +104,7 @@ async function handleWorkerRequest(req: WorkerRequest): Promise<void> {
 
         const transferables: ArrayBuffer[] = [];
         for (const m of models) {
-          transferables.push(
-            m.positions.buffer as ArrayBuffer,
-            m.indices.buffer as ArrayBuffer
-          );
+          transferables.push(m.positions.buffer as ArrayBuffer, m.indices.buffer as ArrayBuffer);
         }
 
         const response: WorkerResponse = { id, ok: true, result: models };
@@ -136,10 +117,7 @@ async function handleWorkerRequest(req: WorkerRequest): Promise<void> {
         validateMeshModel(merged);
 
         const response: WorkerResponse = { id, ok: true, result: merged };
-        (self as unknown as Worker).postMessage(response, [
-          merged.positions.buffer as ArrayBuffer,
-          merged.indices.buffer as ArrayBuffer,
-        ]);
+        (self as unknown as Worker).postMessage(response, [merged.positions.buffer as ArrayBuffer, merged.indices.buffer as ArrayBuffer]);
         break;
       }
 

@@ -40,7 +40,7 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
   const minHeaderSize = 6 + count * 16;
   if (buffer.byteLength < minHeaderSize) {
     throw new Error(
-      `Malformed ICO directory: header claims ${count} frames, requiring ${minHeaderSize} bytes, but file is only ${buffer.byteLength} bytes`
+      `Malformed ICO directory: header claims ${count} frames, requiring ${minHeaderSize} bytes, but file is only ${buffer.byteLength} bytes`,
     );
   }
 
@@ -57,7 +57,7 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
     // Bounds checking
     if (imageOffset < minHeaderSize || imageOffset + bytesInRes > buffer.byteLength) {
       throw new Error(
-        `Malformed ICO frame ${i + 1} (${bWidth}x${bHeight}): offset ${imageOffset} + length ${bytesInRes} exceeds file size ${buffer.byteLength}`
+        `Malformed ICO frame ${i + 1} (${bWidth}x${bHeight}): offset ${imageOffset} + length ${bytesInRes} exceeds file size ${buffer.byteLength}`,
       );
     }
     if (bytesInRes < 8) {
@@ -94,9 +94,7 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
     const frameView = new DataView(buffer, imageOffset, bytesInRes);
     const headerSize = frameView.getUint32(0, true);
     if (headerSize < 40) {
-      throw new Error(
-        `Malformed DIB frame ${i + 1}: header size ${headerSize} is less than BITMAPINFOHEADER (40)`
-      );
+      throw new Error(`Malformed DIB frame ${i + 1}: header size ${headerSize} is less than BITMAPINFOHEADER (40)`);
     }
 
     const dibWidth = frameView.getInt32(4, true);
@@ -111,20 +109,16 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
     const compression = frameView.getUint32(16, true);
 
     if (compression !== 0 && compression !== 3) {
-      throw new Error(
-        `Unsupported DIB compression ${compression} in ICO frame ${i + 1} (${actualWidth}x${actualHeight})`
-      );
+      throw new Error(`Unsupported DIB compression ${compression} in ICO frame ${i + 1} (${actualWidth}x${actualHeight})`);
     }
 
     const validBits = [1, 4, 8, 24, 32];
     if (!validBits.includes(dibBitCount)) {
-      throw new Error(
-        `Unsupported bit depth ${dibBitCount} in ICO frame ${i + 1} (${actualWidth}x${actualHeight})`
-      );
+      throw new Error(`Unsupported bit depth ${dibBitCount} in ICO frame ${i + 1} (${actualWidth}x${actualHeight})`);
     }
 
     // Palette handling for indexed formats
-    let paletteOffset = headerSize + (compression === 3 ? 12 : 0);
+    const paletteOffset = headerSize + (compression === 3 ? 12 : 0);
     const clrUsed = frameView.getUint32(32, true);
     const numColors = dibBitCount <= 8 ? (clrUsed > 0 ? clrUsed : 1 << dibBitCount) : 0;
     const palette: { r: number; g: number; b: number }[] = [];
@@ -150,9 +144,7 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
     const andDataSize = andRowStride * actualHeight;
 
     if (xorOffset + xorDataSize > bytesInRes) {
-      throw new Error(
-        `Malformed ICO frame ${i + 1}: XOR mask data truncated (needed ${xorOffset + xorDataSize}, got ${bytesInRes})`
-      );
+      throw new Error(`Malformed ICO frame ${i + 1}: XOR mask data truncated (needed ${xorOffset + xorDataSize}, got ${bytesInRes})`);
     }
 
     const andOffset = xorOffset + xorDataSize;

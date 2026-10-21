@@ -13,24 +13,27 @@ export function ProgressBar({ value, label, indeterminate = false }: ProgressBar
   return (
     <div className="progress-bar-container">
       <div className="progress-header">
-        <span>
+        {/* Only the label is a live region: it announces each new stage once, while the percentage stays out of the speech queue. */}
+        <span role="status">
           <span className="spinner" aria-hidden="true" />
           {text}
         </span>
-        {!indeterminate && <span className="progress-percent">{percent}%</span>}
+        {!indeterminate && (
+          <span className="progress-percent" aria-hidden="true">
+            {percent}%
+          </span>
+        )}
       </div>
       <div
         className="progress-track"
         role="progressbar"
         aria-label={text}
         aria-valuenow={indeterminate ? undefined : percent}
+        aria-valuetext={indeterminate ? 'In progress' : `${percent}%`}
         aria-valuemin={0}
         aria-valuemax={100}
       >
-        <div
-          className={`progress-fill ${indeterminate ? 'progress-fill-indeterminate' : ''}`}
-          style={{ width: `${percent}%` }}
-        />
+        <div className={`progress-fill ${indeterminate ? 'progress-fill-indeterminate' : ''}`} style={{ width: `${percent}%` }} />
       </div>
     </div>
   );

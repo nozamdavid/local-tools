@@ -1,13 +1,7 @@
 import { FilterEditorShell } from '../_filters/FilterEditorShell';
 import { Field, Select, Slider } from '../../../components/Controls';
 
-export type BorderPreset =
-  | 'polaroid'
-  | 'film-strip'
-  | 'double-line'
-  | 'shadowed-mat'
-  | 'rounded-card'
-  | 'vintage-vignette';
+export type BorderPreset = 'polaroid' | 'film-strip' | 'double-line' | 'shadowed-mat' | 'rounded-card' | 'vintage-vignette';
 
 interface BorderOptions {
   preset: BorderPreset;
@@ -30,10 +24,7 @@ const DEFAULT_COLORS: Record<BorderPreset, string> = {
   'vintage-vignette': '#292524',
 };
 
-function renderDecorativeBorder(
-  source: HTMLCanvasElement,
-  options: BorderOptions
-): HTMLCanvasElement {
+function renderDecorativeBorder(source: HTMLCanvasElement, options: BorderOptions): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
   if (!ctx) return source;
@@ -240,9 +231,7 @@ export default function BorderTool() {
               <input
                 type="color"
                 value={options.color}
-                onChange={(e) =>
-                  setOptions((prev) => ({ ...prev, color: e.target.value }))
-                }
+                onChange={(e) => setOptions((prev) => ({ ...prev, color: e.target.value }))}
                 style={{ width: '100%', height: '38px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}
               />
             </Field>

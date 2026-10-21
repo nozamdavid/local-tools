@@ -1,8 +1,7 @@
-import { PDFDocument, EncryptedPDFError, PDFName, PDFArray, PDFDict, PDFRef } from 'pdf-lib';
+import type { PDFDocument, PDFArray, PDFDict, PDFRef } from 'pdf-lib';
 import { decryptPdf, QpdfError } from '../_qpdf/qpdf';
 
-export const ENCRYPTED_MESSAGE =
-  'This PDF is password protected. Enter the password to open it.';
+export const ENCRYPTED_MESSAGE = 'This PDF is password protected. Enter the password to open it.';
 
 export interface OpenedPdf {
   bytes: Uint8Array;
@@ -28,17 +27,15 @@ export class IncorrectPasswordError extends Error {
 
 /** Reads a PDF with pdf-lib. Decrypts with worker qpdf when password-protected. */
 export async function openPdf(file: File | Blob, password?: string): Promise<OpenedPdf> {
+  const { PDFDocument, EncryptedPDFError } = await import('pdf-lib');
   let bytes = new Uint8Array(await file.arrayBuffer());
   try {
     const doc = await PDFDocument.load(bytes, { updateMetadata: false });
     return { bytes, doc, pageCount: doc.getPageCount() };
   } catch (err) {
-    const isEncrypted =
-      err instanceof EncryptedPDFError || (err instanceof Error && /is encrypted/i.test(err.message));
+    const isEncrypted = err instanceof EncryptedPDFError || (err instanceof Error && /is encrypted/i.test(err.message));
     if (!isEncrypted) {
-      throw new Error(
-        `Could not read this PDF: ${err instanceof Error ? err.message : 'the file may be damaged.'}`
-      );
+      throw new Error(`Could not read this PDF: ${err instanceof Error ? err.message : 'the file may be damaged.'}`, { cause: err });
     }
 
     if (password === undefined) {
@@ -69,47 +66,50 @@ export async function openPdf(file: File | Blob, password?: string): Promise<Ope
 export function cleanDanglingLinks(doc: PDFDocument, keptIndices: number[]): void {
   const allPages = doc.getPages();
   const keptSet = new Set(keptIndices);
-  const deletedRefs = new Set(
-    allPages.filter((_, i) => !keptSet.has(i)).map((p) => p.ref)
-  );
+  const deletedRefs = new Set(allPages.filter((_, i) => !keptSet.has(i)).map((p) => p.ref));
 
   if (deletedRefs.size === 0) return;
+
+  const PDFArray = (doc.context.obj([]) as object).constructor;
+  const PDFDict = (doc.context.obj({}) as object).constructor;
+  const PDFRef = (doc.context.nextRef() as object).constructor;
+  const nameOf = (name: string) => doc.context.obj(name);
 
   for (const idx of keptIndices) {
     if (idx < 0 || idx >= allPages.length) continue;
     const page = allPages[idx];
-    const annotsRef = page.node.get(PDFName.of('Annots'));
+    const annotsRef = page.node.get(nameOf('Annots'));
     const annots = doc.context.lookup(annotsRef);
     if (!(annots instanceof PDFArray)) continue;
 
     const keptAnnots: (PDFRef | PDFDict)[] = [];
-    for (let i = 0; i < annots.size(); i++) {
-      const annotRef = annots.get(i);
+    for (let i = 0; i < (annots as PDFArray).size(); i++) {
+      const annotRef = (annots as PDFArray).get(i);
       const annot = doc.context.lookup(annotRef);
       if (!(annot instanceof PDFDict)) {
         keptAnnots.push(annotRef as PDFRef | PDFDict);
         continue;
       }
-      if (annot.get(PDFName.of('Subtype'))?.toString() !== '/Link') {
+      if ((annot as PDFDict).get(nameOf('Subtype'))?.toString() !== '/Link') {
         keptAnnots.push(annotRef as PDFRef | PDFDict);
         continue;
       }
 
       let targetRef: unknown = null;
-      const dest = doc.context.lookup(annot.get(PDFName.of('Dest')));
-      if (dest instanceof PDFArray && dest.size() > 0) {
-        targetRef = dest.get(0);
+      const dest = doc.context.lookup((annot as PDFDict).get(nameOf('Dest')));
+      if (dest instanceof PDFArray && (dest as PDFArray).size() > 0) {
+        targetRef = (dest as PDFArray).get(0);
       } else {
-        const action = doc.context.lookup(annot.get(PDFName.of('A')));
+        const action = doc.context.lookup((annot as PDFDict).get(nameOf('A')));
         if (action instanceof PDFDict) {
-          const actionDest = doc.context.lookup(action.get(PDFName.of('D')));
-          if (actionDest instanceof PDFArray && actionDest.size() > 0) {
-            targetRef = actionDest.get(0);
+          const actionDest = doc.context.lookup((action as PDFDict).get(nameOf('D')));
+          if (actionDest instanceof PDFArray && (actionDest as PDFArray).size() > 0) {
+            targetRef = (actionDest as PDFArray).get(0);
           }
         }
       }
 
-      if (targetRef instanceof PDFRef && deletedRefs.has(targetRef)) {
+      if (targetRef instanceof PDFRef && deletedRefs.has(targetRef as PDFRef)) {
         // Dangling link pointing to a deleted page. Omit it so the deleted page content object is not copied.
       } else {
         keptAnnots.push(annotRef as PDFRef | PDFDict);
@@ -117,19 +117,16 @@ export function cleanDanglingLinks(doc: PDFDocument, keptIndices: number[]): voi
     }
 
     if (keptAnnots.length === 0) {
-      page.node.delete(PDFName.of('Annots'));
+      page.node.delete(nameOf('Annots'));
     } else {
-      page.node.set(PDFName.of('Annots'), doc.context.obj(keptAnnots));
+      page.node.set(nameOf('Annots'), doc.context.obj(keptAnnots));
     }
   }
 }
 
 /** Builds a new PDF from the given 1-based page numbers of `src`, in the order given. */
-export async function copyPagesToPdf(
-  src: PDFDocument,
-  pageNumbers: number[],
-  out?: PDFDocument
-): Promise<PDFDocument> {
+export async function copyPagesToPdf(src: PDFDocument, pageNumbers: number[], out?: PDFDocument): Promise<PDFDocument> {
+  const { PDFDocument } = await import('pdf-lib');
   const target = out ?? (await PDFDocument.create());
   const zeroIndexed = pageNumbers.map((n) => n - 1);
   cleanDanglingLinks(src, zeroIndexed);
@@ -182,7 +179,7 @@ export function expandRange([from, to]: [number, number]): number[] {
 export function formatPages(pages: Iterable<number>): string {
   const sorted = Array.from(new Set(pages)).sort((a, b) => a - b);
   const parts: string[] = [];
-  for (let i = 0; i < sorted.length; ) {
+  for (let i = 0; i < sorted.length;) {
     let j = i;
     while (j + 1 < sorted.length && sorted[j + 1] === sorted[j] + 1) j++;
     parts.push(j > i ? `${sorted[i]}-${sorted[j]}` : String(sorted[i]));

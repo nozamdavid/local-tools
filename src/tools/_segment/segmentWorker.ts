@@ -105,10 +105,7 @@ self.onmessage = async (e: MessageEvent<SegmentWorkerInMessage>) => {
       }
 
       const maskData = out[0].mask.data as Uint8ClampedArray;
-      const maskBuffer = maskData.buffer.slice(
-        maskData.byteOffset,
-        maskData.byteOffset + maskData.byteLength
-      );
+      const maskBuffer = maskData.buffer.slice(maskData.byteOffset, maskData.byteOffset + maskData.byteLength);
       const transferableMask = new Uint8ClampedArray(maskBuffer);
 
       const resultMsg: SegmentWorkerOutMessage = {

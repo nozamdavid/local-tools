@@ -42,12 +42,7 @@ const H264_ARGS = [
   '128k',
 ];
 
-function buildEncodeArgs(
-  format: OutputFormat,
-  fastCopy: boolean,
-  gifFps: string,
-  gifWidth: GifWidth,
-): string[] {
+function buildEncodeArgs(format: OutputFormat, fastCopy: boolean, gifFps: string, gifWidth: GifWidth): string[] {
   if (COPY_FORMATS.includes(format) && fastCopy) {
     return format === 'mp4' ? ['-c', 'copy', '-movflags', '+faststart'] : ['-c', 'copy'];
   }
@@ -79,27 +74,10 @@ function buildEncodeArgs(
         '96k',
       ];
     case 'avi':
-      return [
-        '-c:v',
-        'mpeg4',
-        '-q:v',
-        '3',
-        '-pix_fmt',
-        'yuv420p',
-        '-c:a',
-        'libmp3lame',
-        '-q:a',
-        '4',
-      ];
+      return ['-c:v', 'mpeg4', '-q:v', '3', '-pix_fmt', 'yuv420p', '-c:a', 'libmp3lame', '-q:a', '4'];
     case 'gif': {
       const scale = gifWidth === 'original' ? '' : `scale=${gifWidth}:-2:flags=lanczos,`;
-      return [
-        '-vf',
-        `fps=${gifFps},${scale}split[a][b];[a]palettegen[p];[b][p]paletteuse`,
-        '-an',
-        '-loop',
-        '0',
-      ];
+      return ['-vf', `fps=${gifFps},${scale}split[a][b];[a]palettegen[p];[b][p]paletteuse`, '-an', '-loop', '0'];
     }
   }
 }
@@ -188,11 +166,7 @@ export default function ConvertTool() {
               filename={outputFilename}
               kind={format === 'gif' ? 'image' : 'video'}
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (
@@ -210,7 +184,10 @@ export default function ConvertTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Resolution:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}
@@ -232,12 +209,7 @@ export default function ConvertTool() {
                   {canCopy && (
                     <div className="field">
                       <label className="checkbox-label" htmlFor={fastCopyId}>
-                        <input
-                          id={fastCopyId}
-                          type="checkbox"
-                          checked={fastCopy}
-                          onChange={(e) => setFastCopy(e.target.checked)}
-                        />
+                        <input id={fastCopyId} type="checkbox" checked={fastCopy} onChange={(e) => setFastCopy(e.target.checked)} />
                         <span>Fast (no re-encode)</span>
                       </label>
                       <p className="field-hint">

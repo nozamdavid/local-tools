@@ -76,36 +76,19 @@ export default function AdjustTool() {
           setOptions((prev) => ({ ...prev, [key]: val }));
         };
 
-        const renderSlider = (
-          label: string,
-          key: keyof AdjustOptions,
-          min: number,
-          max: number,
-          unit: string = ''
-        ) => (
+        const renderSlider = (label: string, key: keyof AdjustOptions, min: number, max: number, unit: string = '') => (
           <div className={styles.sliderWithReset}>
             <div className={styles.sliderHeader}>
               <span className="field-label" style={{ marginBottom: 0 }}>
                 {label}
               </span>
               {options[key] !== DEFAULT_OPTIONS[key] && (
-                <button
-                  type="button"
-                  className={styles.resetMiniBtn}
-                  onClick={() => update(key, DEFAULT_OPTIONS[key])}
-                >
+                <button type="button" className={styles.resetMiniBtn} onClick={() => update(key, DEFAULT_OPTIONS[key])}>
                   Reset
                 </button>
               )}
             </div>
-            <Slider
-              value={options[key]}
-              min={min}
-              max={max}
-              step={1}
-              unit={unit}
-              onChange={(v) => update(key, v)}
-            />
+            <Slider value={options[key]} min={min} max={max} step={1} unit={unit} onChange={(v) => update(key, v)} />
           </div>
         );
 

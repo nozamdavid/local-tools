@@ -10,7 +10,7 @@ export interface DocxRenderOptions {
 export async function renderDocxToImages(
   file: File | Blob,
   baseFilename: string,
-  options: DocxRenderOptions
+  options: DocxRenderOptions,
 ): Promise<{ name: string; blob: Blob }[]> {
   const docxModuleUrl = '/node_modules/docx-preview/dist/docx-preview.mjs';
   const docx = (await import(/* @vite-ignore */ docxModuleUrl)) as typeof DocxModule;
@@ -38,9 +38,7 @@ export async function renderDocxToImages(
       pageElements = Array.from(container.querySelectorAll('.docx-page, .docx_page'));
     }
     if (pageElements.length === 0) {
-      pageElements = (Array.from(container.children) as HTMLElement[]).filter(
-        (el) => el.tagName !== 'STYLE' && el.tagName !== 'SCRIPT'
-      );
+      pageElements = (Array.from(container.children) as HTMLElement[]).filter((el) => el.tagName !== 'STYLE' && el.tagName !== 'SCRIPT');
     }
     if (pageElements.length === 0) {
       pageElements = [container as unknown as HTMLElement];
@@ -62,11 +60,7 @@ export async function renderDocxToImages(
       });
 
       const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob(
-          resolve,
-          options.format,
-          options.format === 'image/jpeg' ? options.quality ?? 0.92 : undefined
-        )
+        canvas.toBlob(resolve, options.format, options.format === 'image/jpeg' ? (options.quality ?? 0.92) : undefined),
       );
 
       canvas.width = 0;

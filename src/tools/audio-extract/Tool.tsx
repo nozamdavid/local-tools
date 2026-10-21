@@ -93,7 +93,7 @@ export default function AudioExtractTool() {
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
         if (NO_AUDIO_PATTERN.test(message)) {
-          throw new Error('This video has no audio track, so there is nothing to extract.');
+          throw new Error('This video has no audio track, so there is nothing to extract.', { cause: err });
         }
         throw err;
       }
@@ -119,11 +119,7 @@ export default function AudioExtractTool() {
               blob={job.result}
               filename={outputFilename}
               kind="audio"
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (

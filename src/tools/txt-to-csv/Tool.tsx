@@ -10,8 +10,7 @@ import styles from './Tool.module.css';
 export default function TxtToCsvTool() {
   const meta = getToolMeta('txt-to-csv');
   const title = meta.title !== 'txt-to-csv' ? meta.title : 'TXT to CSV Converter';
-  const description =
-    meta.description || 'Convert text, TSV, or log files into clean, standard CSV with quote-aware parsing.';
+  const description = meta.description || 'Convert text, TSV, or log files into clean, standard CSV with quote-aware parsing.';
 
   const [inputTab, setInputTab] = useState<'upload' | 'paste'>('paste');
   const [inputText, setInputText] = useState<string>('');
@@ -186,11 +185,7 @@ export default function TxtToCsvTool() {
             )}
 
             <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
-              <input
-                type="checkbox"
-                checked={hasHeader}
-                onChange={(e) => setHasHeader(e.target.checked)}
-              />
+              <input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} />
               First row is header
             </label>
           </div>
@@ -204,11 +199,7 @@ export default function TxtToCsvTool() {
                 <span className={styles.metaBadge}>{totalRows} rows</span>
                 <span className={styles.metaBadge}>{maxCols} columns</span>
               </div>
-              {totalRows > 25 && (
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Showing first 25 rows
-                </span>
-              )}
+              {totalRows > 25 && <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Showing first 25 rows</span>}
             </div>
 
             <div className={styles.tableWrap}>

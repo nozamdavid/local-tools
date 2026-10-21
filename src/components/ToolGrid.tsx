@@ -12,7 +12,15 @@ export interface ToolGridProps {
   onSelect?: (tool: ToolMeta) => void;
 }
 
-export function ToolCard({ tool, variant = 'default', onSelect }: { tool: ToolMeta; variant?: ToolGridProps['variant']; onSelect?: ToolGridProps['onSelect'] }) {
+export function ToolCard({
+  tool,
+  variant = 'default',
+  onSelect,
+}: {
+  tool: ToolMeta;
+  variant?: ToolGridProps['variant'];
+  onSelect?: ToolGridProps['onSelect'];
+}) {
   return (
     <Link to={tool.path} className={`tool-card tool-card-${variant}`} onClick={() => onSelect?.(tool)}>
       <MediaTile media={tool.media} size={variant === 'compact' ? 'sm' : 'md'}>

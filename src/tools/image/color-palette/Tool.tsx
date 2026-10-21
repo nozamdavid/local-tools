@@ -5,11 +5,7 @@ import { Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { decodeImage } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
-import {
-  type PaletteColor,
-  extractPalette,
-  generatePaletteStripBlob,
-} from '../_color/palette';
+import { type PaletteColor, extractPalette, generatePaletteStripBlob } from '../_color/palette';
 import styles from './Tool.module.css';
 
 export default function ColorPaletteTool() {
@@ -82,9 +78,7 @@ export default function ColorPaletteTool() {
   };
 
   const getCssVariables = () => {
-    const lines = palette.map(
-      (c, idx) => `  --color-${idx + 1}: ${c.hex.toLowerCase()}; /* ${c.share}% */`,
-    );
+    const lines = palette.map((c, idx) => `  --color-${idx + 1}: ${c.hex.toLowerCase()}; /* ${c.share}% */`);
     return `:root {\n${lines.join('\n')}\n}`;
   };
 
@@ -129,13 +123,7 @@ export default function ColorPaletteTool() {
             <div className={styles.controlsRow}>
               <div className={styles.sliderWrapper}>
                 <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Colours:</span>
-                <Slider
-                  min={5}
-                  max={12}
-                  step={1}
-                  value={colorCount}
-                  onChange={handleCountChange}
-                />
+                <Slider min={5} max={12} step={1} value={colorCount} onChange={handleCountChange} />
               </div>
 
               <Button variant="secondary" onClick={handleReset}>
@@ -227,21 +215,12 @@ export default function ColorPaletteTool() {
                     </div>
                   </div>
 
-                  <textarea
-                    readOnly
-                    className={styles.exportTextarea}
-                    value={exportMode === 'css' ? getCssVariables() : getJsonExport()}
-                  />
+                  <textarea readOnly className={styles.exportTextarea} value={exportMode === 'css' ? getCssVariables() : getJsonExport()} />
 
                   <div className={styles.exportActions}>
                     <Button
                       variant="secondary"
-                      onClick={() =>
-                        copyToClipboard(
-                          exportMode === 'css' ? getCssVariables() : getJsonExport(),
-                          'export-copy',
-                        )
-                      }
+                      onClick={() => copyToClipboard(exportMode === 'css' ? getCssVariables() : getJsonExport(), 'export-copy')}
                     >
                       {copiedKey === 'export-copy' ? 'Copied to clipboard!' : 'Copy to clipboard'}
                     </Button>

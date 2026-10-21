@@ -118,9 +118,7 @@ export default function MediaSpeedTool() {
 
   // Build the list of speeds to display:
   // Presets: 0.5, 0.75, 1.25, 1.5, 1.75, 2, 2.5, 3 and custom speed
-  const allSpeeds = Array.from(new Set([...PRESET_SPEEDS, customSpeed])).filter(
-    (s) => s > 0 && Number.isFinite(s)
-  );
+  const allSpeeds = Array.from(new Set([...PRESET_SPEEDS, customSpeed])).filter((s) => s > 0 && Number.isFinite(s));
   allSpeeds.sort((a, b) => a - b);
 
   // Reverse mode calculation
@@ -137,7 +135,7 @@ export default function MediaSpeedTool() {
         <div className={styles.card}>
           <div className={styles.cardTitle}>
             <span>1. Media Duration</span>
-            <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--accent)' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--accent-text)' }}>
               Total: {formatTime(totalDurationSeconds)}
             </span>
           </div>
@@ -151,6 +149,7 @@ export default function MediaSpeedTool() {
                 step="1"
                 className={styles.numberInput}
                 value={hours}
+                aria-label="Hours"
                 onChange={(e) => {
                   setHours(Math.max(0, parseInt(e.target.value, 10) || 0));
                   setPasteValue('');
@@ -166,6 +165,7 @@ export default function MediaSpeedTool() {
                 step="1"
                 className={styles.numberInput}
                 value={minutes}
+                aria-label="Minutes"
                 onChange={(e) => {
                   setMinutes(Math.max(0, parseInt(e.target.value, 10) || 0));
                   setPasteValue('');
@@ -181,6 +181,7 @@ export default function MediaSpeedTool() {
                 step="1"
                 className={styles.numberInput}
                 value={seconds}
+                aria-label="Seconds"
                 onChange={(e) => {
                   setSeconds(Math.max(0, parseInt(e.target.value, 10) || 0));
                   setPasteValue('');
@@ -196,6 +197,7 @@ export default function MediaSpeedTool() {
               className={styles.pasteInput}
               placeholder="Paste duration e.g. 1:30:00"
               value={pasteValue}
+              aria-label="Paste formatted duration"
               onChange={(e) => handlePasteChange(e.target.value)}
             />
           </div>
@@ -204,7 +206,9 @@ export default function MediaSpeedTool() {
           <div className={styles.fileDropWrapper}>
             {loadedFileName ? (
               <div className={styles.fileLoadedBanner}>
-                <span>✓ Duration auto-filled from: <strong>{loadedFileName}</strong></span>
+                <span>
+                  ✓ Duration auto-filled from: <strong>{loadedFileName}</strong>
+                </span>
                 <Button
                   variant="secondary"
                   onClick={() => setLoadedFileName(null)}
@@ -221,7 +225,11 @@ export default function MediaSpeedTool() {
                 onFiles={handleFileDrop}
               />
             )}
-            {fileError && <div className="error-banner" style={{ marginTop: '0.75rem' }}>{fileError}</div>}
+            {fileError && (
+              <div className="error-banner" style={{ marginTop: '0.75rem' }}>
+                {fileError}
+              </div>
+            )}
           </div>
         </div>
 
@@ -229,9 +237,7 @@ export default function MediaSpeedTool() {
         <div className={styles.card}>
           <div className={styles.cardTitle}>
             <span>2. Custom Playback Speed</span>
-            <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent)' }}>
-              {customSpeed}x
-            </span>
+            <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-text)' }}>{customSpeed}x</span>
           </div>
 
           <Field label="Custom Speed Multiplier" hint="Select or enter any playback speed (e.g. 1.35x, 2.25x)">
@@ -244,6 +250,7 @@ export default function MediaSpeedTool() {
                 step="0.05"
                 className={styles.numberInput}
                 value={customSpeed}
+                aria-label="Custom speed multiplier"
                 onChange={(e) => {
                   const val = parseFloat(e.target.value);
                   if (!isNaN(val) && val > 0) setCustomSpeed(val);
@@ -255,6 +262,7 @@ export default function MediaSpeedTool() {
                 max={4}
                 step={0.05}
                 unit="x"
+                aria-label="Custom speed multiplier"
                 onChange={setCustomSpeed}
               />
             </div>
@@ -267,7 +275,7 @@ export default function MediaSpeedTool() {
             <span>3. Playback Speed Comparison</span>
           </div>
 
-          <div className={styles.tableWrapper}>
+          <div className={styles.tableWrapper} tabIndex={0} role="region" aria-label="Playback speed comparison table">
             <table className={styles.speedTable}>
               <thead>
                 <tr>
@@ -283,24 +291,16 @@ export default function MediaSpeedTool() {
                   const timeDiff = totalDurationSeconds - newDuration;
                   const isCustom = spd === customSpeed && !PRESET_SPEEDS.includes(spd);
 
-                  let diffDisplay: React.ReactNode = null;
-                  let percentDisplay = '';
+                  let diffDisplay: React.ReactNode;
+                  let percentDisplay: string;
 
                   if (spd > 1) {
                     const pct = ((1 - 1 / spd) * 100).toFixed(1);
-                    diffDisplay = (
-                      <span className={styles.savedBadge}>
-                        Saved {formatTime(timeDiff)}
-                      </span>
-                    );
+                    diffDisplay = <span className={styles.savedBadge}>Saved {formatTime(timeDiff)}</span>;
                     percentDisplay = `-${pct}%`;
                   } else if (spd < 1) {
                     const pct = ((1 / spd - 1) * 100).toFixed(1);
-                    diffDisplay = (
-                      <span className={styles.extraBadge}>
-                        +{formatTime(Math.abs(timeDiff))} extra
-                      </span>
-                    );
+                    diffDisplay = <span className={styles.extraBadge}>+{formatTime(Math.abs(timeDiff))} extra</span>;
                     percentDisplay = `+${pct}%`;
                   } else {
                     diffDisplay = <span className={styles.normalBadge}>Baseline (Normal)</span>;
@@ -308,16 +308,11 @@ export default function MediaSpeedTool() {
                   }
 
                   return (
-                    <tr
-                      key={spd}
-                      className={spd === customSpeed ? styles.customRow : undefined}
-                    >
+                    <tr key={spd} className={spd === customSpeed ? styles.customRow : undefined}>
                       <td>
                         <strong>{spd}x</strong>
                         {isCustom && <span className={styles.badgeCustom}>Custom</span>}
-                        {spd === customSpeed && !isCustom && (
-                          <span className={styles.badgeCustom}>Selected</span>
-                        )}
+                        {spd === customSpeed && !isCustom && <span className={styles.badgeCustom}>Selected</span>}
                       </td>
                       <td>
                         <strong>{formatTime(newDuration)}</strong>
@@ -338,10 +333,7 @@ export default function MediaSpeedTool() {
             <span>4. Reverse Mode: "I have X minutes, what speed do I need?"</span>
           </div>
 
-          <Field
-            label="Available Time (in minutes)"
-            hint="Enter how many minutes you have available to watch or listen"
-          >
+          <Field label="Available Time (in minutes)" hint="Enter how many minutes you have available to watch or listen">
             <input
               id={targetMinutesId}
               type="number"
@@ -357,26 +349,19 @@ export default function MediaSpeedTool() {
 
           {reverseSpeed !== null && totalDurationSeconds > 0 && (
             <div className={styles.reverseResult}>
-              <div className={styles.reverseHighlight}>
-                {reverseSpeed.toFixed(2)}x
-              </div>
+              <div className={styles.reverseHighlight}>{reverseSpeed.toFixed(2)}x</div>
               <p className={styles.reverseDesc}>
                 {reverseSpeed > 1 ? (
                   <>
-                    To finish a <strong>{formatTime(totalDurationSeconds)}</strong> media in{' '}
-                    <strong>{parsedTargetMinutes} minutes</strong>, you need to play it at{' '}
-                    <strong>{reverseSpeed.toFixed(2)}x speed</strong> (saves{' '}
+                    To finish a <strong>{formatTime(totalDurationSeconds)}</strong> media in <strong>{parsedTargetMinutes} minutes</strong>,
+                    you need to play it at <strong>{reverseSpeed.toFixed(2)}x speed</strong> (saves{' '}
                     {formatTime(totalDurationSeconds - parsedTargetMinutes * 60)}).
                   </>
                 ) : (
                   <>
-                    You have plenty of time! At normal 1.0x speed, the media finishes in{' '}
-                    <strong>{formatTime(totalDurationSeconds)}</strong>, leaving you with{' '}
-                    <strong>
-                      {(parsedTargetMinutes - totalDurationSeconds / 60).toFixed(1)} minutes
-                    </strong>{' '}
-                    to spare. You could even slow it down to{' '}
-                    <strong>{reverseSpeed.toFixed(2)}x</strong>.
+                    You have plenty of time! At normal 1.0x speed, the media finishes in <strong>{formatTime(totalDurationSeconds)}</strong>
+                    , leaving you with <strong>{(parsedTargetMinutes - totalDurationSeconds / 60).toFixed(1)} minutes</strong> to spare. You
+                    could even slow it down to <strong>{reverseSpeed.toFixed(2)}x</strong>.
                   </>
                 )}
               </p>

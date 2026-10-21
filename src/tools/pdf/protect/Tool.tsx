@@ -54,7 +54,7 @@ export default function ProtectPdfTool() {
         return new Blob([output as BlobPart], { type: 'application/pdf' });
       } catch (err) {
         if (err instanceof QpdfError) {
-          throw new Error(err.badPassword ? LOCKED_MESSAGE : `Could not protect this PDF: ${err.message}`);
+          throw new Error(err.badPassword ? LOCKED_MESSAGE : `Could not protect this PDF: ${err.message}`, { cause: err });
         }
         throw err;
       }

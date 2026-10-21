@@ -6,12 +6,7 @@ import { validateMeshModel } from './validation';
  * Executes polygon reduction via MeshoptSimplifier (WASM).
  * Operates on indexed geometry and compacts unreferenced vertices.
  */
-export async function simplifyMesh(
-  model: MeshModel,
-  ratio: number,
-  targetError: number,
-  lockBorder: boolean
-): Promise<MeshModel> {
+export async function simplifyMesh(model: MeshModel, ratio: number, targetError: number, lockBorder: boolean): Promise<MeshModel> {
   validateMeshModel(model);
 
   await MeshoptSimplifier.ready;
@@ -39,7 +34,7 @@ export async function simplifyMesh(
     3, // stride in floats
     targetIndexCount,
     targetError,
-    flags
+    flags,
   );
 
   // Compact mesh to strip unreferenced vertices
@@ -72,7 +67,7 @@ export async function simplifyMesh(
   const achievedTriangles = compactedIndices.length / 3;
   const warnings = [...model.warnings];
   warnings.push(
-    `Simplification achieved: ${achievedTriangles.toLocaleString()} triangles (${((achievedTriangles / originalTriangles) * 100).toFixed(1)}% of original ${originalTriangles.toLocaleString()}) with relative error ${achievedError.toExponential(2)}.`
+    `Simplification achieved: ${achievedTriangles.toLocaleString()} triangles (${((achievedTriangles / originalTriangles) * 100).toFixed(1)}% of original ${originalTriangles.toLocaleString()}) with relative error ${achievedError.toExponential(2)}.`,
   );
 
   return {

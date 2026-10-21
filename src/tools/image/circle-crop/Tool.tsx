@@ -78,9 +78,7 @@ export default function CircleCropTool() {
   const viewH = shape === 'circle' ? VIEWPORT_SIZE : Math.round(VIEWPORT_SIZE * 0.75);
 
   // Compute scale and position for preview display
-  const baseScale = decodedImg
-    ? Math.max(viewW / decodedImg.width, viewH / decodedImg.height)
-    : 1;
+  const baseScale = decodedImg ? Math.max(viewW / decodedImg.width, viewH / decodedImg.height) : 1;
   const totalScale = baseScale * zoom;
   const dispW = decodedImg ? Math.round(decodedImg.width * totalScale) : viewW;
   const dispH = decodedImg ? Math.round(decodedImg.height * totalScale) : viewH;
@@ -226,11 +224,7 @@ export default function CircleCropTool() {
               filename={resultInfo.filename}
               kind="image"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <img src={originalUrl} alt={file.name} className="preview-media" />
-                ) : null
-              }
+              beforePreview={originalUrl ? <img src={originalUrl} alt={file.name} className="preview-media" /> : null}
               onReset={handleReset}
             >
               <div className="meta-chips" style={{ marginBottom: '1rem' }}>
@@ -238,7 +232,10 @@ export default function CircleCropTool() {
                   Shape: <strong>{shape === 'circle' ? 'Circle' : 'Ellipse'}</strong>
                 </span>
                 <span className="meta-chip">
-                  Output: <strong>{resultInfo.width}×{resultInfo.height} px (PNG)</strong>
+                  Output:{' '}
+                  <strong>
+                    {resultInfo.width}×{resultInfo.height} px (PNG)
+                  </strong>
                 </span>
               </div>
             </ResultPanel>
@@ -253,7 +250,10 @@ export default function CircleCropTool() {
                 </span>
                 {decodedImg && (
                   <span className="meta-chip">
-                    Dimensions: <strong>{decodedImg.width}×{decodedImg.height} px</strong>
+                    Dimensions:{' '}
+                    <strong>
+                      {decodedImg.width}×{decodedImg.height} px
+                    </strong>
                   </span>
                 )}
               </div>
@@ -320,43 +320,29 @@ export default function CircleCropTool() {
 
                   {/* Zoom slider */}
                   <Field label="Zoom">
-                    <Slider
-                      value={zoom}
-                      min={1}
-                      max={4}
-                      step={0.05}
-                      unit="x"
-                      onChange={setZoom}
-                    />
+                    <Slider value={zoom} min={1} max={4} step={0.05} unit="x" onChange={setZoom} />
                   </Field>
 
                   {/* Border ring controls */}
                   <Field label="Border ring">
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <label className="checkbox-label">
-                        <input
-                          type="checkbox"
-                          checked={hasBorder}
-                          onChange={(e) => setHasBorder(e.target.checked)}
-                        />
+                        <input type="checkbox" checked={hasBorder} onChange={(e) => setHasBorder(e.target.checked)} />
                         <span>Enable border ring</span>
                       </label>
 
                       {hasBorder && (
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                           <div style={{ flex: 1, minWidth: '150px' }}>
-                            <label className="field-label" style={{ fontSize: '0.8rem' }}>Width: {borderWidth}px</label>
-                            <Slider
-                              value={borderWidth}
-                              min={1}
-                              max={30}
-                              step={1}
-                              unit="px"
-                              onChange={setBorderWidth}
-                            />
+                            <label className="field-label" style={{ fontSize: '0.8rem' }}>
+                              Width: {borderWidth}px
+                            </label>
+                            <Slider value={borderWidth} min={1} max={30} step={1} unit="px" onChange={setBorderWidth} />
                           </div>
                           <div>
-                            <label className="field-label" style={{ fontSize: '0.8rem' }}>Color</label>
+                            <label className="field-label" style={{ fontSize: '0.8rem' }}>
+                              Color
+                            </label>
                             <input
                               type="color"
                               value={borderColor}

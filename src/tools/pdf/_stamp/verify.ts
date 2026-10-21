@@ -136,13 +136,7 @@ export async function runVerification() {
     const text = 'CONFIDENTIAL';
     const textWidth = wmFont.widthOfTextAtSize(text, 48);
     const textHeight = 48 * 0.7;
-    const origin = calcRotatedCenterVisualOrigin(
-      dims.visualWidth / 2,
-      dims.visualHeight / 2,
-      textWidth,
-      textHeight,
-      -45
-    );
+    const origin = calcRotatedCenterVisualOrigin(dims.visualWidth / 2, dims.visualHeight / 2, textWidth, textHeight, -45);
     const placement = mapVisualToPdf({ x: origin.x, y: origin.y, angle: -45 }, dims);
 
     p.drawText(text, {
@@ -167,8 +161,7 @@ export async function runVerification() {
   {
     const signDoc = await PDFDocument.load(origBytes);
     // Minimal 1x1 transparent PNG data bytes:
-    const pngBase64 =
-      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+    const pngBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
     const pngBytes = Uint8Array.from(atob(pngBase64), (c) => c.charCodeAt(0));
     const embeddedSig = await signDoc.embedPng(pngBytes);
 

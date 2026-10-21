@@ -1,9 +1,6 @@
 import { runFFmpeg } from '../../lib/ffmpeg';
 
-export async function extractAudioPCM(
-  file: File | Blob,
-  onProgress?: (ratio: number) => void
-): Promise<Float32Array> {
+export async function extractAudioPCM(file: File | Blob, onProgress?: (ratio: number) => void): Promise<Float32Array> {
   const fileName = 'name' in file ? file.name : 'input.bin';
   const dotIndex = fileName.lastIndexOf('.');
   const ext = dotIndex >= 0 ? fileName.slice(dotIndex).toLowerCase() : '.mp4';
@@ -27,7 +24,7 @@ export async function extractAudioPCM(
       errorText.includes('does not contain any stream') ||
       errorText.includes('no streams')
     ) {
-      throw new Error('No audio track was found in this file. Please select a file with audio.');
+      throw new Error('No audio track was found in this file. Please select a file with audio.', { cause: err });
     }
     throw err;
   }

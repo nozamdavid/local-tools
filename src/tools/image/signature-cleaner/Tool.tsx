@@ -13,11 +13,9 @@ type OutputMode = 'transparent' | 'white';
 
 export default function SignatureCleanerTool() {
   const meta = getToolMeta('img-signature-cleaner');
-  const title =
-    meta.title && meta.title !== 'img-signature-cleaner' ? meta.title : 'Signature & Stamp Cleaner';
+  const title = meta.title && meta.title !== 'img-signature-cleaner' ? meta.title : 'Signature & Stamp Cleaner';
   const description =
-    meta.description ||
-    'Remove paper backgrounds from signatures, stamps and seals while preserving thin ink strokes and colors.';
+    meta.description || 'Remove paper backgrounds from signatures, stamps and seals while preserving thin ink strokes and colors.';
 
   const [file, setFile] = useState<File | null>(null);
   const [sourceImg, setSourceImg] = useState<HTMLImageElement | null>(null);
@@ -92,12 +90,7 @@ export default function SignatureCleanerTool() {
         cropToInk,
       };
 
-      const cleanResult = cleanSignaturePixels(
-        sourceData.data,
-        sourceData.width,
-        sourceData.height,
-        options
-      );
+      const cleanResult = cleanSignaturePixels(sourceData.data, sourceData.width, sourceData.height, options);
 
       setIsEmpty(cleanResult.isEmpty);
 
@@ -112,7 +105,7 @@ export default function SignatureCleanerTool() {
           sourceData.height,
           cleanResult.bounds,
           10,
-          outputMode === 'white'
+          outputMode === 'white',
         );
         finalWidth = cropped.cropWidth;
         finalHeight = cropped.cropHeight;
@@ -233,9 +226,7 @@ export default function SignatureCleanerTool() {
             </div>
 
             {error && (
-              <div style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px' }}>
-                {error}
-              </div>
+              <div style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px' }}>{error}</div>
             )}
 
             {isEmpty && (
@@ -250,7 +241,8 @@ export default function SignatureCleanerTool() {
                   lineHeight: '1.4',
                 }}
               >
-                ⚠️ <strong>No ink strokes detected with current settings.</strong> The paper was completely erased. Try lowering the <em>Paper Threshold</em> slider or adjusting <em>Stroke Detail</em> to bring back faint pen ink.
+                ⚠️ <strong>No ink strokes detected with current settings.</strong> The paper was completely erased. Try lowering the{' '}
+                <em>Paper Threshold</em> slider or adjusting <em>Stroke Detail</em> to bring back faint pen ink.
               </div>
             )}
 
@@ -287,11 +279,7 @@ export default function SignatureCleanerTool() {
                   }}
                 >
                   {sourceImg && (
-                    <img
-                      src={sourceImg.src}
-                      alt="Original"
-                      style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
-                    />
+                    <img src={sourceImg.src} alt="Original" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                   )}
                 </div>
               </div>
@@ -309,11 +297,7 @@ export default function SignatureCleanerTool() {
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Cleaned Result</span>
-                  {resultBlob && (
-                    <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>
-                      {formatBytes(resultBlob.size)}
-                    </span>
-                  )}
+                  {resultBlob && <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>{formatBytes(resultBlob.size)}</span>}
                 </div>
                 <div
                   style={{
@@ -331,6 +315,8 @@ export default function SignatureCleanerTool() {
                 >
                   <canvas
                     ref={previewCanvasRef}
+                    role="img"
+                    aria-label="Cleaned signature preview"
                     style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                   />
                 </div>

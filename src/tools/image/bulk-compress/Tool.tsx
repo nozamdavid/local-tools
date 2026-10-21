@@ -49,8 +49,7 @@ export default function BulkCompressTool() {
     setError(null);
 
     const maxDim = maxDimensionOpt === 'original' ? undefined : parseInt(maxDimensionOpt, 10);
-    const chosenFormat: EncodableMime | undefined =
-      formatChoice === 'auto' ? undefined : formatChoice;
+    const chosenFormat: EncodableMime | undefined = formatChoice === 'auto' ? undefined : formatChoice;
 
     const outputItems: BatchResultItem[] = [];
 
@@ -107,22 +106,12 @@ export default function BulkCompressTool() {
 
           {processing ? (
             <div style={{ marginTop: '1.5rem' }}>
-              <ProgressBar
-                value={progress}
-                label={`Compressing images (${Math.round(progress * files.length)} of ${files.length})...`}
-              />
+              <ProgressBar value={progress} label={`Compressing images (${Math.round(progress * files.length)} of ${files.length})...`} />
             </div>
           ) : (
             <div style={{ marginTop: '1.5rem' }}>
               <Field label="Quality" hint="Quality slider (default 75). Lower values produce smaller files.">
-                <Slider
-                  value={quality}
-                  min={5}
-                  max={95}
-                  step={1}
-                  unit="%"
-                  onChange={setQuality}
-                />
+                <Slider value={quality} min={5} max={95} step={1} unit="%" onChange={setQuality} />
               </Field>
 
               <Field label="Max dimension" hint="Constrain the longest edge to reduce size further">

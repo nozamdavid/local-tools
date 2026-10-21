@@ -1,12 +1,6 @@
 import { PDFDocument, PDFName, PDFArray, PDFDict, StandardFonts, rgb } from 'pdf-lib';
 import { runQpdf } from '../_qpdf/qpdf';
-import {
-  openPdf,
-  copyPagesToPdf,
-  cleanDanglingLinks,
-  PasswordRequiredError,
-  IncorrectPasswordError,
-} from './pdfPages';
+import { openPdf, copyPagesToPdf, cleanDanglingLinks, PasswordRequiredError, IncorrectPasswordError } from './pdfPages';
 import { sanitizeHtml } from '../html-to-pdf/convert';
 import { createStage } from '../_render/render';
 import { neutralizeOfficeRels } from '../../../lib/inertMarkup';
@@ -131,11 +125,7 @@ export async function runVerification(): Promise<PageVerifyResults> {
 
     page1.node.set(
       PDFName.of('Annots'),
-      doc.context.obj([
-        doc.context.register(uriAnnot),
-        doc.context.register(hlAnnot),
-        doc.context.register(crossPageLink),
-      ])
+      doc.context.obj([doc.context.register(uriAnnot), doc.context.register(hlAnnot), doc.context.register(crossPageLink)]),
     );
 
     const twoPageBytes = await doc.save();

@@ -22,13 +22,7 @@ async function detectAudio(file: File, meta?: VideoMeta): Promise<boolean> {
     const tail = file.size > chunk ? await file.slice(-chunk).arrayBuffer() : new ArrayBuffer(0);
     const decoder = new TextDecoder('latin1');
     const text = decoder.decode(head) + decoder.decode(tail);
-    if (
-      text.includes('soun') ||
-      text.includes('mp4a') ||
-      text.includes('A_VORBIS') ||
-      text.includes('A_OPUS') ||
-      text.includes('A_AAC')
-    ) {
+    if (text.includes('soun') || text.includes('mp4a') || text.includes('A_VORBIS') || text.includes('A_OPUS') || text.includes('A_AAC')) {
       return true;
     }
   } catch {
@@ -141,7 +135,7 @@ export default function BoostVolumeTool() {
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes('matches no streams') || msg.includes('does not contain any stream')) {
-          throw new Error('This video does not have an audio track to boost.');
+          throw new Error('This video does not have an audio track to boost.', { cause: err });
         }
         throw err;
       }
@@ -170,11 +164,7 @@ export default function BoostVolumeTool() {
               filename={withSuffix(file.name, '-louder', 'mp4')}
               kind="video"
               originalSize={file.size}
-              beforePreview={
-                originalUrl ? (
-                  <video controls src={originalUrl} className="preview-media" playsInline />
-                ) : null
-              }
+              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
               onReset={handleReset}
             />
           ) : (
@@ -192,7 +182,10 @@ export default function BoostVolumeTool() {
                       Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution: <strong>{videoMeta.width}x{videoMeta.height}</strong>
+                      Resolution:{' '}
+                      <strong>
+                        {videoMeta.width}x{videoMeta.height}
+                      </strong>
                     </span>
                   </>
                 )}
@@ -220,19 +213,8 @@ export default function BoostVolumeTool() {
                   </div>
 
                   {!normalizeLoudness && (
-                    <Field
-                      label="Volume gain"
-                      hint="Values above 100% boost volume with a limiter to prevent clipping distortion."
-                    >
-                      <Slider
-                        value={gain}
-                        min={0}
-                        max={400}
-                        step={5}
-                        unit="%"
-                        onChange={setGain}
-                        disabled={normalizeLoudness}
-                      />
+                    <Field label="Volume gain" hint="Values above 100% boost volume with a limiter to prevent clipping distortion.">
+                      <Slider value={gain} min={0} max={400} step={5} unit="%" onChange={setGain} disabled={normalizeLoudness} />
                     </Field>
                   )}
 
@@ -240,11 +222,7 @@ export default function BoostVolumeTool() {
                     <Button variant="secondary" onClick={handleReset}>
                       Choose different file
                     </Button>
-                    <Button
-                      variant="primary"
-                      onClick={handleBoost}
-                      disabled={isSilent}
-                    >
+                    <Button variant="primary" onClick={handleBoost} disabled={isSilent}>
                       Boost volume
                     </Button>
                   </div>

@@ -17,7 +17,7 @@ export function getTargetPages(
     rangeStr?: string;
     selectedPages?: Set<number>; // 1-based or 0-based, let's standardize on 1-based
     excludeFirst?: boolean;
-  }
+  },
 ): number[] {
   let list: number[] = [];
   if (mode === 'all') {

@@ -11,12 +11,7 @@ import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { PageThumb } from '../_thumbs/PageThumb';
 import { usePdfSource } from '../_thumbs/usePdfSource';
-import {
-  getVisualPageDims,
-  mapVisualToPdf,
-  calcRotatedCenterVisualOrigin,
-  hexToRgb,
-} from '../_stamp/coords';
+import { getVisualPageDims, mapVisualToPdf, calcRotatedCenterVisualOrigin, hexToRgb } from '../_stamp/coords';
 import { getTargetPages } from '../_stamp/pageScope';
 import styles from './Tool.module.css';
 
@@ -51,10 +46,7 @@ export default function WatermarkTool() {
 
   const total = source.pages.length;
 
-  const targetPages =
-    scope === 'selected'
-      ? Array.from(selected).sort((a, b) => a - b)
-      : getTargetPages(scope, total, { rangeStr });
+  const targetPages = scope === 'selected' ? Array.from(selected).sort((a, b) => a - b) : getTargetPages(scope, total, { rangeStr });
 
   const targetSet = new Set(targetPages);
 
@@ -108,9 +100,7 @@ export default function WatermarkTool() {
         const ctx = canvas.getContext('2d');
         if (ctx) {
           ctx.drawImage(imgBitmap, 0, 0);
-          const blob = await new Promise<Blob | null>((resolve) =>
-            canvas.toBlob(resolve, 'image/png')
-          );
+          const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
           if (blob) {
             const pngBytes = new Uint8Array(await blob.arrayBuffer());
             embeddedImage = await pdf.embedPng(pngBytes);
@@ -132,18 +122,9 @@ export default function WatermarkTool() {
           const textWidth = font.widthOfTextAtSize(text, fontSize);
           const textHeight = fontSize * 0.7; // approximate cap-height
 
-          const origin = calcRotatedCenterVisualOrigin(
-            cx,
-            cy,
-            textWidth,
-            textHeight,
-            rotation
-          );
+          const origin = calcRotatedCenterVisualOrigin(cx, cy, textWidth, textHeight, rotation);
 
-          const placement = mapVisualToPdf(
-            { x: origin.x, y: origin.y, angle: rotation },
-            dims
-          );
+          const placement = mapVisualToPdf({ x: origin.x, y: origin.y, angle: rotation }, dims);
 
           page.drawText(text, {
             x: placement.x,
@@ -156,21 +137,11 @@ export default function WatermarkTool() {
           });
         } else if (type === 'image' && embeddedImage) {
           const imgWidth = dims.visualWidth * (imageScale / 100);
-          const imgHeight =
-            imgWidth * (embeddedImage.height / embeddedImage.width);
+          const imgHeight = imgWidth * (embeddedImage.height / embeddedImage.width);
 
-          const origin = calcRotatedCenterVisualOrigin(
-            cx,
-            cy,
-            imgWidth,
-            imgHeight,
-            rotation
-          );
+          const origin = calcRotatedCenterVisualOrigin(cx, cy, imgWidth, imgHeight, rotation);
 
-          const placement = mapVisualToPdf(
-            { x: origin.x, y: origin.y, angle: rotation },
-            dims
-          );
+          const placement = mapVisualToPdf({ x: origin.x, y: origin.y, angle: rotation }, dims);
 
           page.drawImage(embeddedImage, {
             x: placement.x,
@@ -191,19 +162,11 @@ export default function WatermarkTool() {
   };
 
   const file = source.file;
-  const outName = file
-    ? `${file.name.replace(/\.pdf$/i, '')}-watermarked.pdf`
-    : 'watermarked.pdf';
+  const outName = file ? `${file.name.replace(/\.pdf$/i, '')}-watermarked.pdf` : 'watermarked.pdf';
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
-      {source.password && (
-        <PasswordDialog
-          reason={source.password.reason}
-          onSubmit={source.password.submit}
-          onCancel={handleReset}
-        />
-      )}
+      {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
@@ -218,12 +181,7 @@ export default function WatermarkTool() {
           {job.error && <div className="error-banner">{job.error}</div>}
 
           {job.result ? (
-            <PdfPreview
-              blob={job.result}
-              filename={outName}
-              pageCount={total}
-              onReset={handleReset}
-            />
+            <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
           ) : (
             <div>
               <div className={styles.topRow}>
@@ -281,14 +239,7 @@ export default function WatermarkTool() {
                           </Field>
 
                           <Field label="Font Size (pt)">
-                            <Slider
-                              value={fontSize}
-                              min={12}
-                              max={120}
-                              step={2}
-                              unit="pt"
-                              onChange={setFontSize}
-                            />
+                            <Slider value={fontSize} min={12} max={120} step={2} unit="pt" onChange={setFontSize} />
                           </Field>
 
                           <Field label="Text Color">
@@ -322,23 +273,13 @@ export default function WatermarkTool() {
                               }}
                             />
                             {!imagePreview ? (
-                              <div
-                                className={styles.imageDropArea}
-                                onClick={() => fileInputRef.current?.click()}
-                              >
+                              <div className={styles.imageDropArea} onClick={() => fileInputRef.current?.click()}>
                                 <span>Click to select an image (PNG / JPG)</span>
                               </div>
                             ) : (
                               <div className={styles.imagePreviewWrapper}>
-                                <img
-                                  src={imagePreview}
-                                  alt="Watermark preview"
-                                  className={styles.imagePreviewThumb}
-                                />
-                                <Button
-                                  variant="secondary"
-                                  onClick={() => fileInputRef.current?.click()}
-                                >
+                                <img src={imagePreview} alt="Watermark preview" className={styles.imagePreviewThumb} />
+                                <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
                                   Change image
                                 </Button>
                               </div>
@@ -346,14 +287,7 @@ export default function WatermarkTool() {
                           </Field>
 
                           <Field label="Image Scale (% of page width)">
-                            <Slider
-                              value={imageScale}
-                              min={10}
-                              max={100}
-                              step={5}
-                              unit="%"
-                              onChange={setImageScale}
-                            />
+                            <Slider value={imageScale} min={10} max={100} step={5} unit="%" onChange={setImageScale} />
                           </Field>
                         </>
                       )}
@@ -370,22 +304,10 @@ export default function WatermarkTool() {
                       </Field>
 
                       <Field label="Rotation">
-                        <Slider
-                          value={rotation}
-                          min={-180}
-                          max={180}
-                          step={5}
-                          unit="°"
-                          onChange={setRotation}
-                        />
+                        <Slider value={rotation} min={-180} max={180} step={5} unit="°" onChange={setRotation} />
                         <div className={styles.quickAngles}>
                           {[-45, 0, 45, 90].map((deg) => (
-                            <button
-                              key={deg}
-                              type="button"
-                              className={styles.angleBtn}
-                              onClick={() => setRotation(deg)}
-                            >
+                            <button key={deg} type="button" className={styles.angleBtn} onClick={() => setRotation(deg)}>
                               {deg}°
                             </button>
                           ))}
@@ -393,36 +315,17 @@ export default function WatermarkTool() {
                       </Field>
 
                       <Field label="Page Scope">
-                        <div
-                          className={styles.scope}
-                          role="radiogroup"
-                          aria-label="Pages to watermark"
-                        >
+                        <div className={styles.scope} role="radiogroup" aria-label="Pages to watermark">
                           <label>
-                            <input
-                              type="radio"
-                              name="scope"
-                              checked={scope === 'all'}
-                              onChange={() => setScope('all')}
-                            />
+                            <input type="radio" name="scope" checked={scope === 'all'} onChange={() => setScope('all')} />
                             All pages
                           </label>
                           <label>
-                            <input
-                              type="radio"
-                              name="scope"
-                              checked={scope === 'range'}
-                              onChange={() => setScope('range')}
-                            />
+                            <input type="radio" name="scope" checked={scope === 'range'} onChange={() => setScope('range')} />
                             Page range
                           </label>
                           <label>
-                            <input
-                              type="radio"
-                              name="scope"
-                              checked={scope === 'selected'}
-                              onChange={() => setScope('selected')}
-                            />
+                            <input type="radio" name="scope" checked={scope === 'selected'} onChange={() => setScope('selected')} />
                             Pick pages
                           </label>
                         </div>
@@ -446,20 +349,10 @@ export default function WatermarkTool() {
                       <span className={styles.selectCount}>
                         {selected.size} of {total} selected
                       </span>
-                      <Button
-                        variant="secondary"
-                        onClick={() =>
-                          setSelected(
-                            new Set(Array.from({ length: total }, (_, i) => i + 1))
-                          )
-                        }
-                      >
+                      <Button variant="secondary" onClick={() => setSelected(new Set(Array.from({ length: total }, (_, i) => i + 1)))}>
                         Select all
                       </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={() => setSelected(new Set())}
-                      >
+                      <Button variant="secondary" onClick={() => setSelected(new Set())}>
                         Deselect all
                       </Button>
                     </div>
@@ -487,12 +380,7 @@ export default function WatermarkTool() {
                               onClick={(e) => e.stopPropagation()}
                             />
                           )}
-                          <PageThumb
-                            src={source.thumbs[index]}
-                            width={page.width}
-                            height={page.height}
-                            alt={`Page ${pNum}`}
-                          />
+                          <PageThumb src={source.thumbs[index]} width={page.width} height={page.height} alt={`Page ${pNum}`} />
                           <span className={styles.pageLabel}>Page {pNum}</span>
                         </div>
                       );
@@ -500,29 +388,18 @@ export default function WatermarkTool() {
                   </div>
 
                   {job.status === 'running' ? (
-                    <ProgressBar
-                      value={job.progress}
-                      label="Applying watermark…"
-                    />
+                    <ProgressBar value={job.progress} label="Applying watermark…" />
                   ) : (
-                    <div
-                      className="action-buttons"
-                      style={{ marginTop: '1.5rem' }}
-                    >
+                    <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                       <Button variant="secondary" onClick={handleReset}>
                         Choose different file
                       </Button>
                       <Button
                         variant="primary"
                         onClick={handleApply}
-                        disabled={
-                          targetPages.length === 0 ||
-                          (type === 'image' && !imageFile) ||
-                          (type === 'text' && !text.trim())
-                        }
+                        disabled={targetPages.length === 0 || (type === 'image' && !imageFile) || (type === 'text' && !text.trim())}
                       >
-                        Apply watermark to {targetPages.length}{' '}
-                        {targetPages.length === 1 ? 'page' : 'pages'}
+                        Apply watermark to {targetPages.length} {targetPages.length === 1 ? 'page' : 'pages'}
                       </Button>
                     </div>
                   )}
