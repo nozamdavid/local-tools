@@ -89,6 +89,8 @@ npm run lint
 npm run format:check
 ```
 
+Production runs from the static `dist/` build with an SPA fallback. Tangled CI is the build gate. Host selection and cache headers remain open; see [Architecture Decisions](docs/architecture-decisions.md).
+
 ---
 
 ## Documentation

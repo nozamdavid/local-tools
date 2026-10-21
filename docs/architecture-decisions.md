@@ -17,8 +17,8 @@ Status values:
 | [ADR-004](#adr-004-own-shared-code-by-scope) | Accepted | `src/lib` for cross-cutting code, media `_<group>` modules for domain code, no tool-to-tool imports |
 | [ADR-005](#adr-005-lazy-load-heavy-engines-and-use-workers) | Accepted | Load heavy engines on demand and run blocking WASM work in workers |
 | [ADR-006](#adr-006-ship-a-static-client-only-build) | Accepted | Produce a static Vite SPA with no application server runtime |
-| [ADR-007](#adr-007-choose-the-hosting-shape) | Proposed | Choose static hosting or a long-running preview, and record its operational cost |
-| [ADR-008](#adr-008-choose-the-ci-provider) | Proposed | Choose where typecheck, tests, lint and build run on push |
+| [ADR-007](#adr-007-serve-the-production-build-as-static-files) | Accepted | Serve `dist/` from a static host with SPA fallback; no long-running preview in production |
+| [ADR-008](#adr-008-use-tangled-ci) | Accepted | Run install, checks, tests and the production build in Tangled CI |
 | [ADR-009](#adr-009-set-production-cache-headers) | Proposed | Set immutable caching for hashed assets and no-cache for HTML |
 
 ## ADR-001: Keep user files in the browser
@@ -135,51 +135,66 @@ Tools may import shared modules. Shared modules must not import a tool folder, a
 - Deployments can be copied as a static directory; server secrets and server-side data stores are not part of the architecture.
 - `vite preview` is a local verification server, not the production architecture.
 - Browser support, memory limits and first-load size are product constraints.
-- The actual host, CI provider and production cache headers remain open decisions in ADR-007, ADR-008 and ADR-009.
+- Hosting is static (ADR-007) and CI runs on Tangled (ADR-008); production cache headers remain open in ADR-009.
 
-## ADR-007: Choose the hosting shape
+## ADR-007: Serve the production build as static files
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-21
 
-**Context.** The current notes describe Tailscale Serve mapping `:5443` to the Vite dev server on `127.0.0.1:5300`. The app can also be served as a static `dist/` directory. The project has not recorded which shape is the production one.
+**Context.** `npm run build` already produces a self-contained `dist/` directory. The project needed to choose between serving those files statically and keeping a long-running `vite preview` process. The current development service maps `:5443` to the Vite dev server on `127.0.0.1:5300`; that is a development setup, not a production shape.
 
-**Decision.** Not made yet. Options include:
+**Decision.** Production Loconvert is served as static files from `dist/` by a static host. The host must support an SPA fallback that serves `index.html` for client-side routes. A long-running Vite dev or preview server is not part of the production runtime.
 
-1. A static `dist/` behind Tailscale Serve, nginx or a static host.
-2. A long-running `vite preview` process behind Tailscale Serve.
-3. A managed static host with SPA fallback and header configuration.
+The exact host and its deployment configuration remain an implementation choice for the deployment task. Candidates include Tailscale Serve, nginx, Tangled Sites or a managed static host. Selection must account for tailnet or public access, SPA fallback, HTTPS, cache-header control, memory and cost, and rollback behavior.
 
-Criteria: tailnet-only or public access, memory cost, SPA fallback, HTTPS, cache-header control, restart and rollback behavior, and whether the host can run the required Node build step.
+**Consequences.**
 
-**Consequences of deferring.** Deployment documentation, production cache headers, CI deployment and rollback expectations remain incomplete. The choice also determines which header mechanism ADR-009 can use.
+- Production has no Node process to supervise and no application server to patch.
+- Deep links such as `/video/trim` must return `index.html` from the host, not a host-level 404.
+- Publishing a release means replacing the contents of the served `dist/` directory; keep the previous artifact for rollback.
+- Cache behavior is host-specific and remains open in ADR-009.
+- A CDN can be placed in front of the static build later. That evaluation is tracked in the backlog and must preserve the browser-only privacy boundary and the CSP allow-list.
+- Deployment documentation still needs the exact host, publish command, SPA fallback and restart or rollback steps.
 
-## ADR-008: Choose the CI provider
+## ADR-008: Use Tangled CI
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-21
 
-**Context.** `package.json` has scripts for tests, lint, format, typecheck and build, but no CI provider is recorded. The repository has a GitHub remote and signed commits; the project also uses Tangled conventions.
+**Context.** `package.json` exposes the checks needed for a build gate: `lint`, `format:check`, `test` and `build` (which runs `tsc -b` before Vite). The repository currently has a GitHub origin and no hosted CI. Tangled CI, built on spindle pipelines, is the chosen provider.
 
-**Decision.** Not made yet. Options include GitHub Actions, Tangled CI, or a local pre-push gate with no hosted CI.
+**Decision.** Tangled CI is the automated gate for pushes and pull requests to `main`. The pipeline will live in `.tangled/workflows/` and run on the hosted spindle. The minimum gate is:
 
-Criteria: repository host, secret management, runner memory for browser tests and production builds, signed-commit support, cost, and whether the provider can run Playwright browser checks.
+- `npm ci`
+- `npm run lint`
+- `npm run format:check`
+- `npm test`
+- `npm run build`
 
-**Consequences of deferring.** Pushes are not automatically gated by typecheck, tests, lint or build. The verification documented in this repository is reproducible manually, but a regression can reach `main` before anyone runs it.
+A Tangled remote or mirror must receive the same commits as the GitHub origin; Tangled CI triggers from the repository hosted on its knot. Browser and Playwright checks remain a manual verification step until a Tangled runner is shown to support the required browsers and memory.
+
+**Consequences.**
+
+- CI needs Node and enough memory for the TypeScript build and Vite bundle; the Nixery engine can provide Node from nixpkgs.
+- Pushing only to GitHub will not trigger Tangled CI. Both destinations must be updated, or a mirror must be configured.
+- No repository secrets are required for the checks above.
+- A failing check blocks a release; the pipeline configuration and mirror setup are tracked in the CI build task.
+- Pull-request checks can be added with the same workflow once the Tangled remote is active.
 
 ## ADR-009: Set production cache headers
 
 - **Status:** Proposed
 - **Date:** 2026-10-21
 
-**Context.** Vite emits content-hashed files under `assets/`. The preview server sends `Cache-Control: no-cache` for everything, so repeat visits still make conditional requests. [The performance audit](performance-verification.md) recommends immutable caching for hashed assets and no-cache for the HTML entry point.
+**Context.** Vite emits content-hashed files under `assets/`. Static hosting is now accepted (ADR-007), but the exact host is still open. The preview server sends `Cache-Control: no-cache` for everything, so repeat visits still make conditional requests. [The performance audit](performance-verification.md) recommends immutable caching for hashed assets and no-cache for the HTML entry point.
 
 **Decision.** Not made yet. The recommended policy is:
 
 - `/assets/*`: `Cache-Control: public, max-age=31536000, immutable`
 - `/index.html` and the SPA fallback: `Cache-Control: no-cache`
 
-The implementation mechanism depends on ADR-007 and may be a `_headers` file, a Cloudflare rule, nginx configuration, or the static host's control panel.
+The implementation mechanism depends on the exact static host chosen under ADR-007 and may be a `_headers` file, a Cloudflare rule, nginx configuration, or the static host's control panel.
 
 **Consequences of deferring.** Repeat visits pay avoidable round trips. Setting the policy incorrectly can pin a stale `index.html` or serve mismatched assets, so it needs verification after the host is chosen.
 
