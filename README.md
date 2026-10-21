@@ -10,7 +10,7 @@
 
 ## Features
 
-- **🔒 Client-Side Privacy:** Your documents, photos, audio, and videos are processed locally in your browser. Supported formats execute in client memory without uploading file data to external servers.
+- **🔒 Client-Side Privacy:** Your documents, photos, audio, videos, and 3D models are processed locally in your browser. Supported formats execute in client memory without uploading file data to external servers.
 - **📁 Universal File Tools:**
   - **Format Converter:** Convert between supported image, audio, video, document, and data formats.
   - **Spreadsheets & Data:** CSV Viewer with multi-column search and pagination, TXT to CSV with delimiter detection and quote/multiline support, and bidirectional JSON ↔ CSV (using union headers and JSON-stringified nested values).
@@ -29,6 +29,14 @@
 - **🎬 Video & Audio Suite:**
   - **Video to MP3 & Audio Extraction:** Local audio extraction and volume boost via FFmpeg WASM.
   - **Video Editing:** Trim, crop, loop, speed, resize, merge, and subtitles.
+- **🧊 3D Mesh & CAD Suite:**
+  - **3D Format Converter (`/3d/convert`):** Client-side conversion between STL, OBJ, PLY, and 3MF mesh formats, plus CAD import (STEP/STP, IGES/IGS, BREP) tessellated to meshes.
+  - **Mesh Simplifier & Decimator (`/3d/simplify`):** Edge-collapse polygon reduction powered by `meshoptimizer` WASM with error tolerance bounds and border locking.
+  - **Mesh Inspector & Topology Analyzer (`/3d/inspect`):** Dimensions, bounding box, surface area, signed volume (divergence theorem), watertightness, and non-manifold/boundary edge counts.
+  - **Transform & Unit Scaler (`/3d/transform`):** Scale presets (e.g. inches to mm), Euler XYZ rotation, auto-centering, and grounding to build plate ($Z_{\min} = 0$).
+  - **Normals & Winding Reorienter (`/3d/normals`):** Invert triangle face winding globally to fix inverted normals and slicing errors.
+  - **Component Splitter (`/3d/split`):** Decompose disconnected shells into separate component meshes with single-file and ZIP archive download.
+  - **Mesh Merger (`/3d/merge`):** Combine and flatten multiple 3D models into a single unified container mesh.
 
 ---
 
@@ -42,8 +50,10 @@
   - AVIF (`@jsquash/avif`)
   - QPDF WASM (`@neslinesli93/qpdf-wasm`)
   - PDF manipulation (`pdf-lib`, `pdfjs-dist`)
+  - 3D processing & CAD (`three`, `meshoptimizer`, `occt-import-js` OpenCASCADE WASM, `jszip`, `fast-xml-parser`)
   - On-device AI (`@huggingface/transformers` ONNX WASM & WebGPU)
-  - OCR (`tesseract.js`)\n  - Office formats (`docx`, `docx-preview`, `exceljs`, `pptx-preview`)
+  - OCR (`tesseract.js`)
+  - Office formats (`docx`, `docx-preview`, `exceljs`, `pptx-preview`)
 
 ---
 
@@ -68,6 +78,7 @@ npx tsc -b
 ## Documentation
 
 - [Design System](docs/design-system.md) (live at `/design`)
+- [3D Tools & Pipeline Specification](docs/3d-tools.md) (live at `/3d`)
 - [Tool Coverage & Source Mapping](docs/tool-coverage.md)
 - [Final Integration & Verification Report](docs/final-verification.md)
 - [AVIF Fallback Verification Report](docs/avif-verification.md)

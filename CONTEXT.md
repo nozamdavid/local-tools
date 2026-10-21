@@ -13,7 +13,8 @@
   - Video tools: `src/tools/<id>/Tool.tsx` (registry id is `<id>`, route is `/video/<id>`).
   - Image tools: `src/tools/image/<slug>/Tool.tsx` (registry id is `img-<slug>`, route is `/image/<slug>`).
   - PDF tools: `src/tools/pdf/<slug>/Tool.tsx` (registry id is `pdf-<slug>`, route is `/pdf/<slug>`).
-- Shared modules for a group of tools live in `src/tools/<media>/_<group>/` (for example `image/_pdf`, `image/_convert`, `pdf/_pages`, `pdf/_qpdf`, `pdf/_render`).
+  - 3D tools: `src/tools/3d/<slug>/Tool.tsx` (registry id is `three-<slug>`, route is `/3d/<slug>`).
+- Shared modules for a group of tools live in `src/tools/<media>/_<group>/` (for example `image/_pdf`, `image/_convert`, `pdf/_pages`, `pdf/_qpdf`, `pdf/_render`, `3d/_mesh`, `3d/_cad`, `3d/_ui`).
 - **Tool styling:** Follow the design system (`docs/design-system.md`, live at `/design`). Use shared components from `src/components`, global classes from `src/design/components.css`, and semantic tokens from `src/design/tokens.css`. A local `Tool.module.css` is for tool-specific layout only: no hex colours, no legacy `--color-*` variables, and no `@media (prefers-color-scheme)`.
 - **Protected Files:** Sub-agents must not edit shared files outside their assigned scope.
 
@@ -28,7 +29,7 @@ loconvert/
 ├── public/                 # Static files served by Vite
 ├── src/
 │   ├── main.tsx            # Application entry
-│   ├── App.tsx             # Router: /, /file, /video, /image, /pdf, tool routes & redirects
+│   ├── App.tsx             # Router: /, /file, /video, /image, /pdf, /3d, tool routes & redirects
 │   ├── styles.css          # Imports design layers + app shell/page layouts
 │   ├── design/             # Design system: tokens.css, base.css, components.css, theme.ts, media.ts
 │   ├── components/         # Shared UI components
@@ -58,7 +59,7 @@ loconvert/
 │   │   └── zip.ts          # zipFiles()
 │   ├── pages/
 │   │   ├── Home.tsx        # Hero, drop-any-file suggestions, popular tools, browse by type
-│   │   ├── MediaIndex.tsx  # /file, /video, /image, /pdf pages with filter + category chips
+│   │   ├── MediaIndex.tsx  # /file, /video, /image, /pdf, /3d pages with filter + category chips
 │   │   └── DesignSystem.tsx# /design living style guide
 │   └── tools/
 │       ├── registry.ts     # Tool registry definitions, categories & lookup helpers
@@ -66,20 +67,31 @@ loconvert/
 │       ├── <slug>/         # Top-level file tools (txt-to-csv, csv-viewer, etc.)
 │       ├── image/          # Image tools (img-<slug>)
 │       ├── pdf/            # PDF tools (pdf-<slug>)
+│       ├── 3d/             # 3D mesh & CAD tools (three-<slug>)
+│       │   ├── _mesh/      # Shared mesh worker, formats (STL/OBJ/PLY/3MF), topology, simplify
+│       │   ├── _cad/       # Shared CAD worker & client (occt-import-js OpenCASCADE WASM)
+│       │   ├── _ui/        # Shared 3D workbench, MeshViewer WebGL viewport, controls
+│       │   ├── convert/    # 3D Format Converter (/3d/convert)
+│       │   ├── simplify/   # 3D Mesh Simplifier & Decimator (/3d/simplify)
+│       │   ├── inspect/    # 3D Mesh Inspector & Topology Analyzer (/3d/inspect)
+│       │   ├── transform/  # 3D Mesh Transform & Unit Scaler (/3d/transform)
+│       │   ├── normals/    # 3D Normals & Face Winding Reorienter (/3d/normals)
+│       │   ├── split/      # 3D Mesh Component Splitter (/3d/split)
+│       │   └── merge/      # 3D Mesh Merger (/3d/merge)
 │       └── <id>/           # Video tools (compress, trim, etc.)
 ```
 
 ## Tool Registry Contract (`src/tools/registry.ts`)
-Every tool has one entry in `TOOL_METAS` (built with `fileTool(...)`, `video(...)`, `image(...)`, or `pdf(...)` helpers). `tools: ToolDef[]` adds the lazy component, resolved via `import.meta.glob`. Tool components are exported as `default`.
+Every tool has one entry in `TOOL_METAS` (built with `fileTool(...)`, `video(...)`, `image(...)`, `pdf(...)`, or `three(...)` helpers). `tools: ToolDef[]` adds the lazy component, resolved via `import.meta.glob`. Tool components are exported as `default`.
 
 ```ts
-export type Media = 'video' | 'image' | 'pdf' | 'file';
+export type Media = 'video' | 'image' | 'pdf' | 'file' | '3d';
 
 interface ToolMeta {
-  id: string;            // file: slug ('txt-to-csv'); video: id ('compress'); image: 'img-<slug>'; pdf: 'pdf-<slug>'
+  id: string;            // file: slug ('txt-to-csv'); video: id ('compress'); image: 'img-<slug>'; pdf: 'pdf-<slug>'; 3d: 'three-<slug>'
   slug: string;          // URL segment and folder name
   media: Media;
-  path: string;          // '/<slug>' for file; '/video/<id>'; '/image/<slug>'; '/pdf/<slug>'
+  path: string;          // '/<slug>' for file; '/video/<id>'; '/image/<slug>'; '/pdf/<slug>'; '/3d/<slug>'
   title: string;
   description: string;   // one sentence
   icon: string;          // emoji
@@ -94,12 +106,13 @@ Exports: `categories`, `TOOL_METAS`, `tools`, `getToolMeta(id)`, `toolsByMedia(m
 
 ### Routes
 - `/`: Home (includes promoted universal converter and category sections).
-- `/file`, `/video`, `/image`, `/pdf`: Category-grouped indexes.
+- `/file`, `/video`, `/image`, `/pdf`, `/3d`: Category-grouped indexes.
 - `/design`: Design system reference.
 - `/<slug>`: File tools (e.g. `/file-converter`, `/csv-viewer`, `/mhtml-to-html`, `/gpx-kml`, `/batch-rename`, `/file-inspector`, `/video-health`, `/css-viewer`, `/txt-to-csv`, `/json-csv`).
 - `/video/<id>`: Video tools.
 - `/image/<slug>`: Image tools.
 - `/pdf/<slug>`: PDF tools.
+- `/3d/<slug>`: 3D mesh & CAD tools (`/3d/convert`, `/3d/simplify`, `/3d/inspect`, `/3d/transform`, `/3d/normals`, `/3d/split`, `/3d/merge`).
 - Legacy `/<id>`: Redirects to `/video/<id>`.
 
 ### Categories
@@ -131,8 +144,11 @@ Exports: `categories`, `TOOL_METAS`, `tools`, `getToolMeta(id)`, `toolsByMedia(m
 | pdf | `pdf-edit` | Edit | Rotate, crop, number, watermark, annotate, and fill forms |
 | pdf | `pdf-security` | Security | Lock, unlock, sign, redact, and compare PDFs |
 | pdf | `pdf-ai` | AI | Summarize and translate PDFs with on-device AI |
+| 3d | `3d-format` | Format | Convert between 3D model formats |
+| 3d | `3d-edit` | Edit | Simplify, transform, reorient, split and merge 3D models |
+| 3d | `3d-inspect` | Inspect | Measure dimensions, volume, area and inspect mesh topology |
 
-## Shared Library APIs (`src/lib`)
+## Shared Library APIs (`src/lib` & `src/tools/3d`)
 
 ### `src/lib/jxl.ts`
 - `isJxlSignature(bytes: Uint8Array): boolean`: Recognizes raw codestream `0xFF 0x0A` and 12-byte container signatures.
@@ -162,6 +178,19 @@ Exports: `categories`, `TOOL_METAS`, `tools`, `getToolMeta(id)`, `toolsByMedia(m
 - `runQpdf(inputBytes, args): Promise<Uint8Array>`: Executes QPDF WASM inside a dedicated Web Worker.
 - `encryptPdf(bytes, userPassword, ownerPassword?, allowPrint?, allowCopy?, allowModify?): Promise<Uint8Array>`: Encrypts PDF with AES-256.
 - `decryptPdf(bytes, password): Promise<Uint8Array>`: Decrypts password-protected PDF.
+
+### `src/tools/3d/_mesh/client.ts`
+- `importModel(file: File): Promise<MeshModel>`: Dispatches file parsing to `mesh.worker.ts` or routes CAD files to `_cad/client.ts`. Preserves caller buffers via structured cloning.
+- `inspectModel(model: MeshModel): Promise<MeshStats>`: Evaluates bounding box, surface area, signed volume (divergence theorem), watertightness, and non-manifold/boundary edge counts in Web Worker.
+- `processModel(model: MeshModel, operation: MeshOperation): Promise<MeshModel>`: Dispatches simplification (`meshoptimizer` WASM with error and border bounds), transform (scale, rotate, center, ground), or face winding inversion to Web Worker.
+- `splitModel(model: MeshModel): Promise<MeshModel[]>`: Decomposes disconnected mesh shells using Union-Find in Web Worker.
+- `mergeModels(models: MeshModel[]): Promise<MeshModel>`: Combines and flattens multiple mesh buffers into a single unified container in Web Worker.
+- `exportModel(model: MeshModel, format: MeshFormat): Promise<Blob>`: Serializes `MeshModel` to STL, OBJ, PLY, or 3MF Blob.
+- `cancelMeshJobs(): void`: Cancels active worker jobs, terminates worker, and clears pending promises.
+
+### `src/tools/3d/_cad/client.ts`
+- `importCadModel(file: File, quality?: CadQuality): Promise<MeshModel>`: Tessellates STEP, IGES, or BREP files into a normalized millimeter `MeshModel` using `occt-import-js` (OpenCASCADE WASM) in a dedicated Web Worker (`cad.worker.ts`).
+- `cancelCadJobs(): void`: Cancels pending CAD conversion jobs and terminates worker.
 
 ## Project Tracking (Taproot)
 
