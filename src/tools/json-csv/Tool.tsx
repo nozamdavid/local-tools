@@ -436,7 +436,9 @@ export default function JsonCsvTool() {
               </div>
             </div>
 
-            <pre className={styles.previewText}>{conversion.outputText}</pre>
+            <pre className={styles.previewText} tabIndex={0} aria-label="Converted output preview">
+              {conversion.outputText}
+            </pre>
 
             <div className={styles.actions}>
               <Button variant="primary" onClick={handleDownloadSingle}>

@@ -128,3 +128,57 @@ Verification command: `node /tmp/lc-e2e/a11y-12.mjs final` against the dev serve
 The scan was repeated after the lint and formatting pass against the production build served on port 5304: `BASE_URL=http://localhost:5304 node /tmp/lc-e2e/a11y-12.mjs prod-final`. It again reported 48 scans and zero violations of any impact; raw results are in `/tmp/lc-e2e/out-a11y/axe12-prod-final.json`.
 
 Still not covered: screen-reader output, Firefox and Safari, zoom/text-spacing overrides, touch target size, and tool states after a file is loaded. The pointer-only interactions listed above are unchanged.
+
+## Follow-up: 12 tool routes
+
+Taproot node: `lc-a11y`. This closes the tool-page items listed under Known issues above. It does not claim conformance with WCAG or any other standard.
+
+Routes scanned (axe-core, Playwright Chromium, dev server at `http://localhost:5300`, all rules including best-practice): `/image/barcode-generator`, `/image/qr-code-generator`, `/image/hex-rgb-converter`, `/image/label-designer`, `/image/meme-generator`, `/image/color-contrast`, `/video/media-speed`, `/csv-viewer`, `/txt-to-csv`, `/json-csv`, `/gpx-kml`, `/css-viewer`. Matrix: 12 routes × 2 viewports (1280×900, 390×844) × 2 themes = 48 scans per pass, initial state. A second pass of 48 scans loaded a fixture or changed a control first (below).
+
+Results (violating nodes over 48 initial-state scans):
+
+| Rule | Impact | Before | After |
+| --- | --- | ---: | ---: |
+| `label` | critical | 48 | 0 |
+| `select-name` | critical | 4 | 0 |
+| `label-title-only` | serious | 12 | 0 |
+| `color-contrast` | serious | 40 | 0 |
+| `scrollable-region-focusable` | serious | 2 | 0 |
+| `heading-order` | moderate | 4 | 0 |
+| **Total** | | **110** | **0** |
+
+By impact: critical 52 → 0, serious 54 → 0, moderate 4 → 0. The loaded-state pass found 10 more scans with violations, which are fixed: 0 remain across its 48 scans, and no console errors were logged on any scan.
+
+The "before" scan ran on the working tree as I found it. Most of the fixes for these routes were already in the tree by the time I re-scanned (commit `021ae93`: field labels and `aria-label`s, `--accent-text` for active tabs and badges, a focusable table region on media-speed, css-viewer heading levels). This pass added the four fixes the loaded-state scan showed were still missing:
+
+- `csv-viewer`: the "Rows per page" select had no name (`aria-label`).
+- `gpx-kml` and `json-csv`: the scrollable output `<pre>` is focusable (`tabIndex=0`) and named "Converted output preview".
+- `label-designer`: the "Copy" button text uses `--accent-text` instead of `--accent` (3.98:1 in dark).
+
+Loaded-state flow per tool (scripts: `/tmp/lc-e2e/a11y-12.mjs`, `flow12.mjs`; results in `/tmp/lc-e2e/out-a11y/`):
+
+| Route | Flow |
+| --- | --- |
+| `/csv-viewer` | Paste a 3-row CSV |
+| `/txt-to-csv` | Paste `a b c` / `1 2 3` |
+| `/json-csv` | Paste a 2-object JSON array |
+| `/gpx-kml` | Upload a small GPX with one waypoint and a 2-point track |
+| `/css-viewer` | Paste two CSS rules |
+| `/image/barcode-generator` | Type `12345678` |
+| `/image/qr-code-generator` | Type a URL |
+| `/image/hex-rgb-converter` | Enter `#336699` |
+| `/image/label-designer` | Click the first add button |
+| `/image/meme-generator` | Upload a small PNG |
+| `/image/color-contrast` | Enter `#222222` as the first colour |
+| `/video/media-speed` | Enter `2` in the first number input |
+
+Result: 0 serious or critical violations in both viewports and both themes. `npx tsc --noEmit -p .` exits 0.
+
+Both passes were repeated against the final production build at `http://localhost:5304` after rebuilding: 48 initial-state scans and 48 loaded-state scans, zero violations. Raw results are in `/tmp/lc-e2e/out-a11y/axe12-followup-prod.json` and `/tmp/lc-e2e/out-a11y/flow12-prod.txt`.
+
+Still open:
+
+- Several tool stylesheets keep hex colours on purpose-built white "paper" previews (`qr-code-generator`, `barcode-generator`, `label-designer`, `hex-rgb-converter`, `css-viewer`). They were not changed in this pass.
+- Only the flows above were exercised. Other states (every tab, every export format, `meme-generator` text overlays, the label-designer canvas) were not scanned, and drag interactions in label-designer have no keyboard path that I checked.
+- The `/image/profile-resizer` heading-order item from the earlier list is outside these 12 routes and was not rechecked.
+- No screen reader testing.

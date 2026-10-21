@@ -287,6 +287,7 @@ export default function CsvViewerTool() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Rows per page:</span>
                 <Select
+                  aria-label="Rows per page"
                   value={String(pageSize)}
                   onChange={(e) => {
                     setPageSize(Number(e.target.value));

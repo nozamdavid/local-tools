@@ -535,7 +535,7 @@ export default function LabelDesignerTool() {
                         <button
                           type="button"
                           className={styles.smallBtn}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent)' }}
+                          style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-text)' }}
                           onClick={() => duplicateElement(selectedElement.id)}
                           title="Duplicate element"
                         >

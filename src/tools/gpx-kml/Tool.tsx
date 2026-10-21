@@ -232,7 +232,9 @@ export default function GpxKmlTool() {
               <div>{conversion.summary.disclosure}</div>
             </div>
 
-            <pre className={styles.previewText}>{conversion.outputText.slice(0, 1500)}...</pre>
+            <pre className={styles.previewText} tabIndex={0} aria-label="Converted output preview">
+              {conversion.outputText.slice(0, 1500)}...
+            </pre>
 
             <div className={styles.actions}>
               <Button variant="primary" onClick={handleDownload}>
