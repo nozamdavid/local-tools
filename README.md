@@ -40,6 +40,14 @@
 
 ---
 
+## Known limitations
+
+- WebM conversion writes an opaque VP8 stream (`yuv420p`), so transparent WebM input loses its alpha channel in every tested browser.
+- Subtitle burn-in exports a playable file without visible subtitles in WebKit 27.2. Chromium and Firefox render the subtitles correctly.
+- The cross-browser matrix covers desktop Chromium, Firefox and WebKit only. Mobile browsers and Safari hardware were not tested.
+
+---
+
 ## Tech Stack
 
 - **Framework:** React 19, TypeScript, Vite
