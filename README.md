@@ -93,6 +93,7 @@ npm run format:check
 
 ## Documentation
 
+- [Architecture Decisions](docs/architecture-decisions.md)
 - [Design System](docs/design-system.md) (live at `/design`)
 - [3D Tools & Pipeline Specification](docs/3d-tools.md) (live at `/3d`)
 - [Tool Coverage & Source Mapping](docs/tool-coverage.md)

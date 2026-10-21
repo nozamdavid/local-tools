@@ -9,6 +9,12 @@
 - All media transcoding, analysis, and generation must execute 100% locally on-device via WebAssembly / WebCodecs / WebGPU / in-browser JS.
 - Do not add remote hosts to the CSP in `index.html`.
 
+## Architecture Decisions
+
+Recurring architecture choices and their rationale live in [docs/architecture-decisions.md](docs/architecture-decisions.md). Read it before changing the privacy boundary, the CSP allow-list, the registry or route shape, the tool folder layout, shared-library ownership, the build/deployment model, or the lazy-loading policy.
+
+Add a new ADR, or supersede an existing one, in the same change that alters one of those boundaries. Use Accepted, Proposed, Superseded or Deprecated status and include context, decision, consequences and date. Small local implementation choices do not need an ADR.
+
 ## Tool Scope & Collaboration Contract
 
 - **Isolation:** Each tool lives strictly within its own folder.
