@@ -1,0 +1,324 @@
+import { useEffect, useState, useRef } from 'react';
+import { ToolPage } from '../../../components/ToolPage';
+import { FileDrop } from '../../../components/FileDrop';
+import { Button, Alert, Badge } from '../../../components/Controls';
+import { getToolMeta } from '../../registry';
+import {
+  MeshViewer,
+  use3DWorkbench,
+  WorkbenchHeader,
+  WorkbenchWarnings,
+  ExportCard,
+  ACCEPT_MESH_EXTENSIONS,
+  type MeshStats,
+} from '../_ui';
+import { inspectModel } from '../_mesh/client';
+import { CheckCircle2, AlertOctagon, Ruler, Info } from 'lucide-react';
+import styles from '../_ui/Workbench.module.css';
+
+export default function InspectTool() {
+  const meta = getToolMeta('three-inspect');
+  const title = meta.title !== 'three-inspect' ? meta.title : '3D Mesh Inspector & Topology Analyzer';
+  const description =
+    meta.description ||
+    'Measure physical dimensions, surface area, volume, and inspect watertight manifold topology.';
+
+  const {
+    file,
+    currentModel,
+    loading,
+    importError,
+    exporting,
+    exportFormat,
+    setExportFormat,
+    loadFiles,
+    cancelProcessing,
+    reset,
+    handleExport,
+  } = use3DWorkbench({ multiple: false });
+
+  const [stats, setStats] = useState<MeshStats | null>(null);
+  const [analyzing, setAnalyzing] = useState<boolean>(false);
+  const [analysisError, setAnalysisError] = useState<string | null>(null);
+
+  const inspectJobRef = useRef<number>(0);
+
+  useEffect(() => {
+    if (!currentModel) {
+      setStats(null);
+      setAnalysisError(null);
+      return;
+    }
+
+    const currentJob = ++inspectJobRef.current;
+    setAnalyzing(true);
+    setAnalysisError(null);
+
+    inspectModel(currentModel)
+      .then((res) => {
+        if (currentJob === inspectJobRef.current) {
+          setStats(res);
+        }
+      })
+      .catch((err) => {
+        if (currentJob === inspectJobRef.current) {
+          setAnalysisError(err instanceof Error ? err.message : String(err));
+        }
+      })
+      .finally(() => {
+        if (currentJob === inspectJobRef.current) {
+          setAnalyzing(false);
+        }
+      });
+  }, [currentModel]);
+
+  const formatCoord = (n: number) => n.toFixed(2);
+
+  return (
+    <ToolPage title={title} description={description} currentId="three-inspect">
+      <div className={styles.workbench}>
+        {!currentModel ? (
+          <>
+            <FileDrop
+              accept={ACCEPT_MESH_EXTENSIONS}
+              multiple={false}
+              label="Drop a 3D model or CAD file to inspect (.stl, .obj, .ply, .3mf, .step, .stp, .iges, .igs, .brep)"
+              hint="Check boundary edges, non-manifold geometry, surface area, and physical volume. CAD files are tessellated locally to meshes upon import."
+              onFiles={loadFiles}
+            />
+            {loading && (
+              <div style={{ textAlign: 'center', padding: 'var(--space-6)' }}>
+                <span className="spinner" aria-hidden="true" />
+                <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-muted)' }}>Loading 3D model...</p>
+                <div style={{ marginTop: 'var(--space-2)' }}>
+                  <Button variant="ghost" size="sm" onClick={cancelProcessing}>
+                    Cancel import
+                  </Button>
+                </div>
+              </div>
+            )}
+            {importError && (
+              <Alert tone="danger" title="Could not open model">
+                {importError}
+              </Alert>
+            )}
+          </>
+        ) : (
+          <>
+            <WorkbenchHeader file={file} model={currentModel} onReset={reset} />
+            <WorkbenchWarnings warnings={currentModel.warnings} />
+
+            {analysisError && (
+              <Alert tone="danger" title="Analysis Error">
+                {analysisError}
+              </Alert>
+            )}
+
+            <div className={styles.modelGrid}>
+              <div className={styles.viewerCol}>
+                <MeshViewer model={currentModel} />
+              </div>
+
+              <div className={styles.controlsCol}>
+                {/* Watertight Status Badge */}
+                {stats && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: 'var(--space-3) var(--space-4)',
+                      background: 'var(--surface-raised)',
+                      border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-md)',
+                    }}
+                  >
+                    <span style={{ fontWeight: 'var(--weight-semibold)', fontSize: 'var(--text-md)' }}>
+                      Watertight Topology
+                    </span>
+                    {stats.watertight ? (
+                      <Badge tone="success" icon={<CheckCircle2 size={14} />}>
+                        Watertight (Closed 2-Manifold)
+                      </Badge>
+                    ) : (
+                      <Badge tone="warning" icon={<AlertOctagon size={14} />}>
+                        Open / Non-Manifold
+                      </Badge>
+                    )}
+                  </div>
+                )}
+
+                {/* Dimensions Card */}
+                <div className={styles.card}>
+                  <h3 className={styles.cardTitle}>
+                    <span>Bounding Box Dimensions</span>
+                    <Ruler size={16} aria-hidden="true" />
+                  </h3>
+                  {analyzing ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <span className="spinner" aria-hidden="true" />
+                      <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                        Computing bounds...
+                      </span>
+                    </div>
+                  ) : stats ? (
+                    <>
+                      <div className={styles.statRow}>
+                        <span className={styles.statLabel}>Size (X × Y × Z)</span>
+                        <span className={styles.statValue}>
+                          {formatCoord(stats.bounds.size[0])} × {formatCoord(stats.bounds.size[1])} ×{' '}
+                          {formatCoord(stats.bounds.size[2])} mm
+                        </span>
+                      </div>
+                      <div className={styles.statRow}>
+                        <span className={styles.statLabel}>Min Bounds</span>
+                        <span className={styles.statValue}>
+                          [{formatCoord(stats.bounds.min[0])}, {formatCoord(stats.bounds.min[1])},{' '}
+                          {formatCoord(stats.bounds.min[2])}]
+                        </span>
+                      </div>
+                      <div className={styles.statRow}>
+                        <span className={styles.statLabel}>Max Bounds</span>
+                        <span className={styles.statValue}>
+                          [{formatCoord(stats.bounds.max[0])}, {formatCoord(stats.bounds.max[1])},{' '}
+                          {formatCoord(stats.bounds.max[2])}]
+                        </span>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+
+                {/* Geometric Measurements */}
+                <div className={styles.card}>
+                  <h3 className={styles.cardTitle}>
+                    <span>Measurements</span>
+                    <Info size={16} aria-hidden="true" />
+                  </h3>
+                  {analyzing ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+                      <span className="spinner" aria-hidden="true" />
+                      <span style={{ color: 'var(--text-muted)', fontSize: 'var(--text-sm)' }}>
+                        Computing surface area and volume...
+                      </span>
+                    </div>
+                  ) : stats ? (
+                    <>
+                      <div className={styles.statRow}>
+                        <span className={styles.statLabel}>Surface Area</span>
+                        <span className={styles.statValue}>
+                          {stats.surfaceArea.toFixed(1)} mm²{' '}
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>
+                            ({(stats.surfaceArea / 100).toFixed(2)} cm²)
+                          </span>
+                        </span>
+                      </div>
+                      <div className={styles.statRow}>
+                        <span className={styles.statLabel}>Volume</span>
+                        <span className={styles.statValue}>
+                          {stats.volume !== null ? (
+                            <>
+                              {stats.volume.toFixed(1)} mm³{' '}
+                              <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>
+                                ({(stats.volume / 1000).toFixed(2)} cm³ / ml)
+                              </span>
+                            </>
+                          ) : (
+                            <span style={{ color: 'var(--warning)', fontStyle: 'italic' }}>
+                              N/A (Mesh is open or non-manifold)
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', marginTop: 'var(--space-1)' }}>
+                        <em>
+                          Note: Volume requires a closed, watertight mesh. A watertight mesh does not guarantee 3D
+                          printability (e.g. wall thickness, structural integrity, or slicer clearances).
+                        </em>
+                      </div>
+                    </>
+                  ) : null}
+                </div>
+
+                {/* Topology & Mesh Health */}
+                <div className={styles.card}>
+                  <h3 className={styles.cardTitle}>
+                    <span>Topology Diagnostics</span>
+                  </h3>
+                  <p className={styles.cardSub}>Detailed breakdown of vertex, edge, and face continuity.</p>
+
+                  {stats && (
+                    <>
+                      <div className={styles.statRow}>
+                        <span className={styles.statLabel}>Triangles</span>
+                        <span className={styles.statValue}>{stats.triangles.toLocaleString()}</span>
+                      </div>
+                      <div className={styles.statRow}>
+                        <span className={styles.statLabel}>Vertices</span>
+                        <span className={styles.statValue}>{stats.vertices.toLocaleString()}</span>
+                      </div>
+                      <div className={styles.statRow}>
+                        <span className={styles.statLabel}>Connected Components</span>
+                        <span className={styles.statValue}>
+                          {stats.components}{' '}
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>
+                            {stats.components === 1 ? '(single solid shell)' : '(disconnected parts)'}
+                          </span>
+                        </span>
+                      </div>
+                      <div className={styles.statRow}>
+                        <span className={styles.statLabel}>Boundary Edges (Holes)</span>
+                        <span
+                          className={styles.statValue}
+                          style={{ color: stats.boundaryEdges > 0 ? 'var(--warning)' : 'inherit' }}
+                        >
+                          {stats.boundaryEdges.toLocaleString()}{' '}
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>
+                            (edges with 1 face)
+                          </span>
+                        </span>
+                      </div>
+                      <div className={styles.statRow}>
+                        <span className={styles.statLabel}>Non-Manifold Edges</span>
+                        <span
+                          className={styles.statValue}
+                          style={{ color: stats.nonManifoldEdges > 0 ? 'var(--danger)' : 'inherit' }}
+                        >
+                          {stats.nonManifoldEdges.toLocaleString()}{' '}
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>
+                            (edges with &gt;2 faces)
+                          </span>
+                        </span>
+                      </div>
+                      <div className={styles.statRow}>
+                        <span className={styles.statLabel}>Degenerate Triangles</span>
+                        <span
+                          className={styles.statValue}
+                          style={{ color: stats.degenerateTriangles > 0 ? 'var(--warning)' : 'inherit' }}
+                        >
+                          {stats.degenerateTriangles.toLocaleString()}{' '}
+                          <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>
+                            (zero-area faces)
+                          </span>
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Export Card */}
+                <ExportCard
+                  model={currentModel}
+                  exportFormat={exportFormat}
+                  onFormatChange={setExportFormat}
+                  onExport={() => handleExport(currentModel, exportFormat)}
+                  exporting={exporting}
+                  label="Export Inspected Model"
+                />
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </ToolPage>
+  );
+}

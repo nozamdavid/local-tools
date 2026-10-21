@@ -1,4 +1,4 @@
-import { FileText, Film, Files, Image, type LucideIcon } from 'lucide-react';
+import { Box, FileText, Film, Files, Image, type LucideIcon } from 'lucide-react';
 import type { Media } from '../tools/registry';
 
 export interface MediaInfo {
@@ -45,6 +45,14 @@ export const MEDIA_LIST: MediaInfo[] = [
     description: 'Convert formats, view spreadsheets, inspect and rename files.',
     path: '/file',
     icon: Files,
+  },
+  {
+    media: '3d',
+    label: '3D',
+    title: '3D tools',
+    description: 'Convert, inspect, simplify, transform, split and merge 3D models.',
+    path: '/3d',
+    icon: Box,
   },
 ];
 

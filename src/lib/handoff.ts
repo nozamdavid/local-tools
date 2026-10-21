@@ -56,6 +56,7 @@ export function matchesAccept(file: File, accept?: string): boolean {
   if (!accept || accept.trim() === '' || accept.trim() === '*') return true;
   const ext = `.${extensionOf(file.name)}`;
   const mime = mimeOf(file);
+  const c = classifyFile(file);
 
   return accept
     .split(',')
@@ -63,9 +64,49 @@ export function matchesAccept(file: File, accept?: string): boolean {
     .some((token) => {
       if (!token) return false;
       if (token === '*' || token === '*/*') return true;
-      if (token.startsWith('.')) return token === ext;
-      if (token.endsWith('/*')) return mime.startsWith(token.slice(0, -1));
-      return token === mime;
+      if (token.startsWith('.')) {
+        if (token === ext) return true;
+        if (c.is3d && token === `.${c.format}`) return true;
+        return false;
+      }
+      if (token.endsWith('/*')) {
+        if (token === 'model/*') return c.is3d;
+        if (mime.startsWith(token.slice(0, -1))) return true;
+        return false;
+      }
+      if (token === mime) return true;
+      if (c.format === 'obj' && (token === 'model/obj' || token === 'text/obj' || token === 'application/x-tgif')) return true;
+      if (c.format === 'stl' && (token === 'model/stl' || token === 'application/sla')) return true;
+      if (
+        c.format === 'step' &&
+        (token === 'model/step' ||
+          token === 'application/step' ||
+          token === 'model/x-step' ||
+          token === 'model/x.step')
+      )
+        return true;
+      if (
+        c.format === 'iges' &&
+        (token === 'model/iges' ||
+          token === 'application/iges' ||
+          token === 'model/x-iges' ||
+          token === 'model/x.iges')
+      )
+        return true;
+      if (
+        c.format === 'brep' &&
+        (token === 'model/brep' ||
+          token === 'model/x-brep' ||
+          token === 'application/x-brep')
+      )
+        return true;
+      if (
+        c.format === '3mf' &&
+        (token === 'model/3mf' ||
+          token === 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml')
+      )
+        return true;
+      return false;
     });
 }
 
@@ -80,10 +121,12 @@ export type FileKind =
   | 'web'
   | 'data'
   | 'text'
+  | '3d'
   | 'other';
 
 export function fileKind(file: File): FileKind {
   const c = classifyFile(file);
+  if (c.is3d) return '3d';
   if (c.isPdf) return 'pdf';
   if (c.isDocx || c.isLegacyOffice) return 'word';
   if (c.isXlsx) return 'excel';
@@ -102,6 +145,15 @@ export function isToolEligible(toolId: string, file: File): boolean {
   const meta = getToolMeta(toolId);
   return isToolEligibleForFile(meta, file);
 }
+
+const THREE_SINGLE_TOOLS = [
+  'three-convert',
+  'three-simplify',
+  'three-inspect',
+  'three-transform',
+  'three-normals',
+  'three-split',
+];
 
 /** Primary format-specific tools to rank first for single files. */
 const PRIMARY_SINGLE_TOOLS: Record<string, string[]> = {
@@ -134,6 +186,14 @@ const PRIMARY_SINGLE_TOOLS: Record<string, string[]> = {
   docx: ['pdf-word-to-pdf', 'img-docx-to-jpg', 'img-docx-to-png', 'file-converter'],
   xlsx: ['pdf-excel-to-pdf'],
   pptx: ['pdf-powerpoint-to-pdf'],
+
+  stl: THREE_SINGLE_TOOLS,
+  obj: THREE_SINGLE_TOOLS,
+  ply: THREE_SINGLE_TOOLS,
+  '3mf': THREE_SINGLE_TOOLS,
+  step: THREE_SINGLE_TOOLS,
+  iges: THREE_SINGLE_TOOLS,
+  brep: THREE_SINGLE_TOOLS,
 
   html: ['pdf-html-to-pdf'],
   mhtml: ['mhtml-to-html'],
@@ -171,6 +231,7 @@ export function suggestToolsForFiles(files: File[]): ToolMeta[] {
       'pdf-merge',
       'pdf-compare',
       'merge',
+      'three-merge',
       'img-bulk-convert',
       'img-image-to-pdf',
       'pdf-jpg-to-pdf',

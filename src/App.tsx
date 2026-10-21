@@ -27,6 +27,7 @@ export function App() {
           <Route path="/video" element={<MediaIndex media="video" />} />
           <Route path="/image" element={<MediaIndex media="image" />} />
           <Route path="/pdf" element={<MediaIndex media="pdf" />} />
+          <Route path="/3d" element={<MediaIndex media="3d" />} />
           <Route path="/design" element={<DesignSystem />} />
           {tools.map((tool) => {
             const Component = tool.component;

@@ -726,6 +726,11 @@
   --tone-soft: var(--media-pdf-soft);
 }
 
+[data-media='3d'] {
+  --tone: var(--media-3d);
+  --tone-soft: var(--media-3d-soft);
+}
+
 /* ================= File drop ================= */
 
 .file-drop {

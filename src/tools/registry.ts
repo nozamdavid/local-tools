@@ -1,6 +1,6 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
 
-export type Media = 'video' | 'image' | 'pdf' | 'file';
+export type Media = 'video' | 'image' | 'pdf' | 'file' | '3d';
 
 export type CategoryId =
   | 'file-convert'
@@ -28,7 +28,10 @@ export type CategoryId =
   | 'pdf-from'
   | 'pdf-edit'
   | 'pdf-security'
-  | 'pdf-ai';
+  | 'pdf-ai'
+  | '3d-format'
+  | '3d-edit'
+  | '3d-inspect';
 
 export interface Category {
   id: CategoryId;
@@ -86,6 +89,10 @@ export const categories: Category[] = [
   { id: 'pdf-edit', media: 'pdf', title: 'Edit', description: 'Rotate, crop, number, watermark, annotate and fill forms' },
   { id: 'pdf-security', media: 'pdf', title: 'Security', description: 'Lock, unlock, sign, redact and compare PDFs' },
   { id: 'pdf-ai', media: 'pdf', title: 'AI', description: 'Summarize and translate PDFs with on-device AI' },
+
+  { id: '3d-format', media: '3d', title: 'Convert', description: 'Convert between STL, OBJ, PLY, 3MF and CAD formats' },
+  { id: '3d-edit', media: '3d', title: 'Edit & transform', description: 'Simplify, transform, reverse normals, split and merge 3D meshes' },
+  { id: '3d-inspect', media: '3d', title: 'Inspect', description: 'Measure dimensions, volume, surface area and topology' },
 ];
 
 function fileTool(
@@ -134,6 +141,18 @@ function pdf(
   popular?: boolean,
 ): ToolMeta {
   return { id: `pdf-${slug}`, slug, media: 'pdf', path: `/pdf/${slug}`, title, description, icon, category, tags, ...(popular ? { popular } : {}) };
+}
+
+function three(
+  slug: string,
+  title: string,
+  description: string,
+  icon: string,
+  category: CategoryId,
+  tags: string[],
+  popular?: boolean,
+): ToolMeta {
+  return { id: `three-${slug}`, slug, media: '3d', path: `/3d/${slug}`, title, description, icon, category, tags, ...(popular ? { popular } : {}) };
 }
 
 export const TOOL_METAS: ToolMeta[] = [
@@ -389,18 +408,91 @@ export const TOOL_METAS: ToolMeta[] = [
   // PDF: AI
   pdf('summarize', 'Summarize PDF', 'Summarize a document with on-device AI', '🧠', 'pdf-ai', ['pdf', 'ai', 'text', 'summary']),
   pdf('translate', 'Translate PDF', 'Translate PDF text with on-device AI', '🌍', 'pdf-ai', ['pdf', 'ai', 'text', 'translate']),
+
+  // 3D: Format converters
+  three(
+    'convert',
+    '3D Format Converter',
+    'Convert between 3D mesh formats (STL, OBJ, PLY, 3MF) and import CAD files (STEP, IGES, BREP)',
+    '🔄',
+    '3d-format',
+    ['convert', '3d', 'mesh', 'stl', 'obj', 'ply', '3mf', 'cad', 'step', 'iges', 'brep'],
+    true,
+  ),
+
+  // 3D: Edit & transform
+  three(
+    'simplify',
+    '3D Mesh Simplifier',
+    'Reduce polygon count and file size while preserving geometric fidelity',
+    '📉',
+    '3d-edit',
+    ['simplify', 'decimate', 'optimize', 'polygon', 'mesh', '3d', 'stl', 'obj', '3mf'],
+    true,
+  ),
+  three(
+    'transform',
+    '3D Mesh Transform',
+    'Scale, rotate, center, and ground 3D models with unit conversions',
+    '📐',
+    '3d-edit',
+    ['transform', 'scale', 'rotate', 'units', 'center', 'ground', '3d', 'mesh'],
+  ),
+  three(
+    'normals',
+    '3D Face Winding & Normals Inverter',
+    'Invert triangle face winding globally to fix inside-out geometry and slicing errors.',
+    '🔁',
+    '3d-edit',
+    ['normals', 'winding', 'invert', 'flip', 'faces', 'repair', '3d', 'mesh'],
+  ),
+  three(
+    'split',
+    '3D Component Splitter',
+    'Split disconnected shells into individual parts and export separately or as ZIP',
+    '✂️',
+    '3d-edit',
+    ['split', 'separate', 'shells', 'components', 'parts', '3d', 'mesh', 'zip'],
+  ),
+  three(
+    'merge',
+    '3D Mesh Merger',
+    'Combine multiple 3D models into a single unified mesh file',
+    '🧩',
+    '3d-edit',
+    ['merge', 'combine', 'join', 'batch', '3d', 'mesh'],
+  ),
+
+  // 3D: Inspect
+  three(
+    'inspect',
+    '3D Mesh Inspector',
+    'Inspect bounding box, surface area, volume, and manifold watertight topology',
+    '🔍',
+    '3d-inspect',
+    ['inspect', 'dimensions', 'volume', 'area', 'watertight', 'manifold', '3d', 'mesh'],
+    true,
+  ),
 ];
 
 const videoLoaders = import.meta.glob<{ default: ComponentType }>('./*/Tool.tsx');
 const imageLoaders = import.meta.glob<{ default: ComponentType }>('./image/*/Tool.tsx');
 const pdfLoaders = import.meta.glob<{ default: ComponentType }>('./pdf/*/Tool.tsx');
+const threeLoaders = import.meta.glob<{ default: ComponentType }>('./3d/*/Tool.tsx');
 
 function loaderFor(meta: ToolMeta): () => Promise<{ default: ComponentType }> {
   const key =
     meta.media === 'video' || meta.media === 'file'
       ? `./${meta.slug}/Tool.tsx`
       : `./${meta.media}/${meta.slug}/Tool.tsx`;
-  const loaders = meta.media === 'image' ? imageLoaders : meta.media === 'pdf' ? pdfLoaders : videoLoaders;
+  const loaders =
+    meta.media === 'image'
+      ? imageLoaders
+      : meta.media === 'pdf'
+        ? pdfLoaders
+        : meta.media === '3d'
+          ? threeLoaders
+          : videoLoaders;
   const loader = loaders[key];
   if (!loader) {
     console.warn(`Tool component deferred or missing: ${key}`);

@@ -124,6 +124,8 @@
   --media-image-soft: light-dark(#e8f7f0, rgb(18 161 114 / 0.16));
   --media-pdf: light-dark(var(--red-600), var(--red-300));
   --media-pdf-soft: light-dark(#fdeeee, rgb(229 56 59 / 0.16));
+  --media-3d: var(--accent);
+  --media-3d-soft: var(--accent-soft);
 
   /* Checkerboard for transparent image previews */
   --checker-a: light-dark(#ffffff, #1b1e25);

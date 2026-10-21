@@ -67,6 +67,17 @@ export const EXT_MIME: Record<string, string> = {
   odp: 'application/vnd.oasis.opendocument.presentation',
   rtf: 'application/rtf',
 
+  // 3D & CAD
+  stl: 'model/stl',
+  obj: 'model/obj',
+  ply: 'model/ply',
+  '3mf': 'model/3mf',
+  step: 'model/step',
+  stp: 'model/step',
+  iges: 'model/iges',
+  igs: 'model/iges',
+  brep: 'model/x-brep',
+
   // Web, Data, Text
   html: 'text/html',
   htm: 'text/html',
@@ -123,6 +134,14 @@ export type CanonicalFormat =
   | 'xlsx'
   | 'pptx'
   | 'legacy-office'
+  | 'stl'
+  | 'obj'
+  | 'ply'
+  | '3mf'
+  | 'step'
+  | 'iges'
+  | 'brep'
+  | 'model-other'
   | 'html'
   | 'mhtml'
   | 'css'
@@ -158,6 +177,7 @@ export interface FileClassification {
   isAnyImage: boolean;
   isVideo: boolean;
   isAudio: boolean;
+  is3d: boolean;
   isPdf: boolean;
   isDocx: boolean;
   isXlsx: boolean;
@@ -286,7 +306,42 @@ export function classifyFile(file: File): FileClassification {
     format = 'legacy-office';
   }
 
-  // 5. Web, Data, Text
+  // 5. 3D & CAD Models (evaluated before Web/Text so .obj with text/plain classifies as 3D)
+  else if (ext === 'stl' || mime === 'model/stl' || mime === 'application/sla') {
+    format = 'stl';
+  } else if (ext === 'obj' || mime === 'model/obj' || mime === 'text/obj' || mime === 'application/x-tgif') {
+    format = 'obj';
+  } else if (ext === 'ply' || mime === 'model/ply') {
+    format = 'ply';
+  } else if (
+    ext === '3mf' ||
+    mime === 'model/3mf' ||
+    mime === 'application/vnd.ms-package.3dmanufacturing-3dmodel+xml'
+  ) {
+    format = '3mf';
+  } else if (
+    ['step', 'stp'].includes(ext) ||
+    mime === 'model/step' ||
+    mime === 'application/step' ||
+    mime === 'model/x.step' ||
+    mime === 'model/x-step'
+  ) {
+    format = 'step';
+  } else if (
+    ['iges', 'igs'].includes(ext) ||
+    mime === 'model/iges' ||
+    mime === 'application/iges' ||
+    mime === 'model/x.iges' ||
+    mime === 'model/x-iges'
+  ) {
+    format = 'iges';
+  } else if (ext === 'brep' || mime === 'model/brep' || mime === 'model/x-brep' || mime === 'application/x-brep') {
+    format = 'brep';
+  } else if (mime.startsWith('model/')) {
+    format = 'model-other';
+  }
+
+  // 6. Web, Data, Text
   else if (
     ['mhtml', 'mht', 'mime'].includes(ext) ||
     mime === 'message/rfc822' ||
@@ -356,6 +411,16 @@ export function classifyFile(file: File): FileClassification {
     'audio-other',
   ].includes(format);
 
+  const is3d = [
+    'stl',
+    'obj',
+    'ply',
+    '3mf',
+    'step',
+    'iges',
+    'brep',
+  ].includes(format);
+
   return {
     ext,
     mime,
@@ -364,6 +429,7 @@ export function classifyFile(file: File): FileClassification {
     isAnyImage,
     isVideo,
     isAudio,
+    is3d,
     isPdf: format === 'pdf',
     isDocx: format === 'docx',
     isXlsx: format === 'xlsx',
@@ -534,6 +600,12 @@ export function isToolEligibleForFile(tool: ToolMeta, file: File): boolean {
     return c.isStandardImage;
   }
 
+  // 3D Tools
+  if (tool.media === '3d') {
+    if (tool.id === 'three-merge') return false; // multi-file only
+    return c.is3d;
+  }
+
   // 6. File Tools (MHTML, GPX/KML, CSS, CSV, JSON, TXT)
   if (tool.id === 'mhtml-to-html') return c.isMhtml;
   if (tool.id === 'gpx-kml') return c.isGpx || c.isKml;
@@ -569,6 +641,11 @@ export function isToolEligibleForBatch(tool: ToolMeta, files: File[]): boolean {
   // Video Merge (min 2 videos)
   if (tool.id === 'merge' && tool.media === 'video') {
     return count >= 2 && classes.every((c) => c.isVideo);
+  }
+
+  // 3D Mesh Merge (min 2 3D files)
+  if (tool.id === 'three-merge') {
+    return count >= 2 && classes.every((c) => c.is3d);
   }
 
   // JSON <-> CSV (batches must share direction: either all JSON, or all CSV/TSV)

@@ -53,6 +53,7 @@ const MEDIA_WORDS: Record<ToolMeta['media'], string> = {
   video: 'video videos audio',
   image: 'image images',
   pdf: 'pdf document',
+  '3d': '3d model mesh cad geometry stl obj ply 3mf step iges brep',
 };
 
 const INDEX: Indexed[] = TOOL_METAS.map((tool) => {

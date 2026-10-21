@@ -641,6 +641,114 @@ export function runHandoffVerification(): VerificationSummary {
     const csvRows = parseCsv(csvText, { delimiter: effectiveCsvDelim });
     assert(csvRows.length === 2 && csvRows[0].length === 2 && csvRows[0][0] === 'city', 'CSV correctly parses 2 columns');
   });
+
+  // 30. 3D & CAD single models: suggest six single tools, exclude three-merge
+  runTest('3D and CAD single models: suggest six single tools, exclude three-merge', () => {
+    const singleFormats = [
+      { name: 'part.stl', type: 'model/stl' },
+      { name: 'model.obj', type: 'model/obj' },
+      { name: 'scan.ply', type: 'model/ply' },
+      { name: 'object.3mf', type: 'model/3mf' },
+      { name: 'assembly.step', type: 'model/step' },
+      { name: 'component.stp', type: 'model/step' },
+      { name: 'design.iges', type: 'model/iges' },
+      { name: 'surface.igs', type: 'model/iges' },
+      { name: 'solid.brep', type: 'model/x-brep' },
+    ];
+
+    const expectedSix = [
+      'three-convert',
+      'three-simplify',
+      'three-inspect',
+      'three-transform',
+      'three-normals',
+      'three-split',
+    ];
+
+    for (const item of singleFormats) {
+      const file = new File(['dummy content'], item.name, { type: item.type });
+      const ids = suggestToolsForFiles([file]).map((t) => t.id);
+
+      assert(hasNoDuplicates(ids), `${item.name} suggestions contain duplicates: ${ids.join(', ')}`);
+
+      for (const expectedTool of expectedSix) {
+        assert(ids.includes(expectedTool), `${item.name} must include ${expectedTool}`);
+      }
+
+      assert(!ids.includes('three-merge'), `${item.name} must NOT include three-merge for single file`);
+
+      const forbidden = ['convert', 'compress', 'img-convert', 'pdf-merge'];
+      for (const fId of forbidden) {
+        assert(!ids.includes(fId), `${item.name} must NOT contain unrelated tool ${fId}`);
+      }
+    }
+  });
+
+  // 31. OBJ text/plain & MIME-only FileDrop matching
+  runTest('3D classification and matchesAccept: OBJ text/plain and MIME-only FileDrop matching', () => {
+    // OBJ with text/plain (common browser drop behavior)
+    const textPlainObj = new File(['# OBJ file\nv 0 0 0\n'], 'model.obj', { type: 'text/plain' });
+    const objIds = suggestToolsForFiles([textPlainObj]).map((t) => t.id);
+    assert(objIds.includes('three-convert'), 'OBJ with text/plain must classify as 3D and include three-convert');
+    assert(matchesAccept(textPlainObj, '.stl,.obj,.ply,.3mf'), 'OBJ with text/plain matches .obj in accept');
+
+    // Extensionless files with recognized 3D MIME
+    const mimeStl = new File(['solid test'], 'raw_stl_stream', { type: 'model/stl' });
+    const stlIds = suggestToolsForFiles([mimeStl]).map((t) => t.id);
+    assert(stlIds.includes('three-convert'), 'Extensionless model/stl must suggest 3D tools');
+    assert(matchesAccept(mimeStl, '.stl,.obj,.ply,model/stl'), 'Extensionless model/stl matches accept');
+
+    const mimeObj = new File(['v 1 2 3'], 'raw_obj_stream', { type: 'text/obj' });
+    const mimeObjIds = suggestToolsForFiles([mimeObj]).map((t) => t.id);
+    assert(mimeObjIds.includes('three-convert'), 'Extensionless text/obj must suggest 3D tools');
+    assert(matchesAccept(mimeObj, '.obj,model/obj,model/*'), 'Extensionless text/obj matches accept');
+
+    const mimeStep = new File(['ISO-10303-21;'], 'raw_cad_stream', { type: 'model/step' });
+    const stepIds = suggestToolsForFiles([mimeStep]).map((t) => t.id);
+    assert(stepIds.includes('three-convert'), 'Extensionless model/step must suggest 3D tools');
+    assert(matchesAccept(mimeStep, '.step,.stp,model/step'), 'Extensionless model/step matches accept');
+  });
+
+  // 32. Multi-file: all-models batch vs mixed model + other batch
+  runTest('3D multi-file batches: all-models suggests only three-merge + batch-rename, mixed suggests only batch-rename', () => {
+    const stl = new File(['dummy stl'], 'part1.stl', { type: 'model/stl' });
+    const obj = new File(['dummy obj'], 'part2.obj', { type: 'model/obj' });
+    const allModelsIds = suggestToolsForFiles([stl, obj]).map((t) => t.id);
+
+    assert(hasNoDuplicates(allModelsIds), `All-models batch has duplicates: ${allModelsIds.join(', ')}`);
+    assert(allModelsIds.length === 2, `All-models batch must suggest exactly 2 tools, got: ${allModelsIds.join(', ')}`);
+    assert(allModelsIds.includes('three-merge'), 'All-models batch must include three-merge');
+    assert(allModelsIds.includes('batch-rename'), 'All-models batch must include batch-rename');
+
+    const png = new File(['dummy image'], 'texture.png', { type: 'image/png' });
+    const mixedBatchIds = suggestToolsForFiles([stl, png]).map((t) => t.id);
+    assert(mixedBatchIds.length === 1 && mixedBatchIds[0] === 'batch-rename', `Mixed model + image batch must ONLY suggest batch-rename, got: ${mixedBatchIds.join(', ')}`);
+
+    const pdf = new File(['dummy pdf'], 'spec.pdf', { type: 'application/pdf' });
+    const mixedPdfIds = suggestToolsForFiles([obj, pdf]).map((t) => t.id);
+    assert(mixedPdfIds.length === 1 && mixedPdfIds[0] === 'batch-rename', `Mixed model + pdf batch must ONLY suggest batch-rename, got: ${mixedPdfIds.join(', ')}`);
+  });
+
+  // 33. Unknown binary safety: firmware.bin suggests NO 3D tools
+  runTest('Unknown binary safety: firmware.bin does not suggest any 3D tools', () => {
+    const binFile = new File(['\x00\x01\x02\x03'], 'firmware.bin', { type: 'application/octet-stream' });
+    const ids = suggestToolsForFiles([binFile]).map((t) => t.id);
+
+    const threeTools = [
+      'three-convert',
+      'three-simplify',
+      'three-inspect',
+      'three-transform',
+      'three-normals',
+      'three-split',
+      'three-merge',
+    ];
+
+    for (const toolId of threeTools) {
+      assert(!ids.includes(toolId), `Unknown binary must NOT suggest 3D tool ${toolId}`);
+    }
+    assert(ids.includes('file-inspector'), 'Unknown binary should retain file-inspector');
+  });
   const passedCount = results.filter((r) => r.passed).length;
   const failedCount = results.filter((r) => !r.passed).length;
 
@@ -651,4 +759,14 @@ export function runHandoffVerification(): VerificationSummary {
     failedCount,
     results,
   };
+}
+
+if (typeof process !== 'undefined' && process.argv && process.argv[1]?.includes('verify')) {
+  const summary = runHandoffVerification();
+  console.log(`\n--- Handoff Verification: ${summary.passedCount}/${summary.total} tests passed ---`);
+  for (const r of summary.results) {
+    console.log(`${r.passed ? '✓ PASS' : '✗ FAIL'}: ${r.name}`);
+    if (r.error) console.error(`   Error: ${r.error}`);
+  }
+  if (!summary.passed) process.exit(1);
 }
