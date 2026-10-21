@@ -43,6 +43,7 @@
 ## Tech Stack
 
 - **Framework:** React 19, TypeScript, Vite
+- **Testing & tooling:** Vitest, ESLint, Prettier
 - **UI:** Token-based design system (`src/design`), light/dark themes, Geist fonts bundled locally, `lucide-react` icons
 - **Codecs & Runtimes:**
   - FFmpeg WASM (`@ffmpeg/ffmpeg`)
@@ -71,6 +72,13 @@ npm run build
 
 # Standalone type check without bundling
 npx tsc -b
+
+# Unit tests
+npm test
+
+# Lint and format checks
+npm run lint
+npm run format:check
 ```
 
 ---
@@ -81,6 +89,11 @@ npx tsc -b
 - [3D Tools & Pipeline Specification](docs/3d-tools.md) (live at `/3d`)
 - [Tool Coverage & Source Mapping](docs/tool-coverage.md)
 - [Final Integration & Verification Report](docs/final-verification.md)
+- [Quality & Error Recovery Verification](docs/quality-verification.md)
+- [Accessibility Verification](docs/a11y-verification.md)
+- [Bundle & Load Audit](docs/performance-verification.md)
+- [Cross-Browser Matrix](docs/browser-matrix.md)
+- [Test, Lint & Formatting Toolchain](docs/tooling-verification.md)
 - [AVIF Fallback Verification Report](docs/avif-verification.md)
 - [PDF Security & Sandbox Verification](docs/pdf-verification.md)
 - [Architecture & Development Guidelines](CONTEXT.md)

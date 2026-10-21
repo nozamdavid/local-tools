@@ -1,13 +1,16 @@
 # Loconvert Developer & Agent Context
 
 ## Privacy Rule (Hard Requirement)
+
 **User files never leave the browser.**
+
 - No file uploads, no external APIs, no remote processing, no analytics.
 - Client libraries, static assets, and AI model weights may be downloaded from allowable CDNs/Hugging Face as permitted by CSP.
 - All media transcoding, analysis, and generation must execute 100% locally on-device via WebAssembly / WebCodecs / WebGPU / in-browser JS.
 - Do not add remote hosts to the CSP in `index.html`.
 
 ## Tool Scope & Collaboration Contract
+
 - **Isolation:** Each tool lives strictly within its own folder.
   - File tools: `src/tools/<slug>/Tool.tsx` (registry id is `<slug>`, route is `/<slug>`).
   - Video tools: `src/tools/<id>/Tool.tsx` (registry id is `<id>`, route is `/video/<id>`).
@@ -19,6 +22,7 @@
 - **Protected Files:** Sub-agents must not edit shared files outside their assigned scope.
 
 ## Folder Layout
+
 ```
 loconvert/
 ├── index.html              # HTML entry point with Content-Security-Policy
@@ -82,29 +86,33 @@ loconvert/
 ```
 
 ## Tool Registry Contract (`src/tools/registry.ts`)
+
 Every tool has one entry in `TOOL_METAS` (built with `fileTool(...)`, `video(...)`, `image(...)`, `pdf(...)`, or `three(...)` helpers). `tools: ToolDef[]` adds the lazy component, resolved via `import.meta.glob`. Tool components are exported as `default`.
 
 ```ts
 export type Media = 'video' | 'image' | 'pdf' | 'file' | '3d';
 
 interface ToolMeta {
-  id: string;            // file: slug ('txt-to-csv'); video: id ('compress'); image: 'img-<slug>'; pdf: 'pdf-<slug>'; 3d: 'three-<slug>'
-  slug: string;          // URL segment and folder name
+  id: string; // file: slug ('txt-to-csv'); video: id ('compress'); image: 'img-<slug>'; pdf: 'pdf-<slug>'; 3d: 'three-<slug>'
+  slug: string; // URL segment and folder name
   media: Media;
-  path: string;          // '/<slug>' for file; '/video/<id>'; '/image/<slug>'; '/pdf/<slug>'; '/3d/<slug>'
+  path: string; // '/<slug>' for file; '/video/<id>'; '/image/<slug>'; '/pdf/<slug>'; '/3d/<slug>'
   title: string;
-  description: string;   // one sentence
-  icon: string;          // emoji
+  description: string; // one sentence
+  icon: string; // emoji
   category: CategoryId;
   tags: string[];
   popular?: boolean;
 }
-interface ToolDef extends ToolMeta { component: LazyExoticComponent<ComponentType> }
+interface ToolDef extends ToolMeta {
+  component: LazyExoticComponent<ComponentType>;
+}
 ```
 
 Exports: `categories`, `TOOL_METAS`, `tools`, `getToolMeta(id)`, `toolsByMedia(media)`, `toolsByCategory(categoryId)`, `toolsByTag(tag)`, `allTags()`.
 
 ### Routes
+
 - `/`: Home (includes promoted universal converter and category sections).
 - `/file`, `/video`, `/image`, `/pdf`, `/3d`: Category-grouped indexes.
 - `/design`: Design system reference.
@@ -116,41 +124,43 @@ Exports: `categories`, `TOOL_METAS`, `tools`, `getToolMeta(id)`, `toolsByMedia(m
 - Legacy `/<id>`: Redirects to `/video/<id>`.
 
 ### Categories
-| Media | Id | Title | Description |
-| --- | --- | --- | --- |
-| file | `file-convert` | Format converters | Convert between file formats including MHTML, GPX and KML |
-| file | `file-data` | Data & spreadsheets | Convert, inspect, and view CSV, JSON, and text spreadsheets |
-| file | `file-utility` | File utilities | Inspect file headers, verify hashes, rename files and check video health |
-| video | `video-edit` | Edit | Trim, crop, loop, speed up, resize, merge and overlay videos |
-| video | `video-convert` | Convert & compress | Change video formats and shrink file sizes |
-| video | `video-audio` | Audio | Extract, remove, boost or add audio tracks |
-| video | `video-ai` | AI | Transcripts, subtitles and background removal with on-device AI |
-| video | `video-utility` | Utilities | Inspect media files and calculate playback speeds |
-| image | `image-optimize` | Resize & compress | Make images smaller in dimensions or file size |
-| image | `image-convert` | Format converters | Convert between JPG, PNG, WEBP, GIF, BMP, AVIF, JXL and more |
-| image | `image-edit` | Editing | Crop, adjust, annotate, watermark, blur, and remove backgrounds |
-| image | `image-transform` | Transform & layout | Rotate, flip, round, pad, merge and build collages |
-| image | `image-effects` | Effects | Sketch, grayscale, invert and meme effects |
-| image | `image-pdf` | PDF & documents | Turn images, PDFs and Word files into each other |
-| image | `image-social` | Social media | Presets for covers, banners, stories, thumbnails and avatars |
-| image | `image-bulk` | Bulk processing | Resize, compress and convert many images at once |
-| image | `image-color` | Colour | Pick colours, build palettes and check contrast |
-| image | `image-metadata` | Metadata & developer | EXIF data, favicons and Base64 encoding |
-| image | `image-generate` | Generators | Create QR codes, barcodes and printable labels |
-| pdf | `pdf-organize` | Organize | Merge, split, reorder, and remove pages |
-| pdf | `pdf-optimize` | Optimize | Compress, repair, and OCR scanned PDFs |
-| pdf | `pdf-to` | Convert to PDF | Turn images, Word, Excel, PowerPoint, and HTML into PDF |
-| pdf | `pdf-from` | Convert from PDF | Turn PDFs into images, Word, Excel, PowerPoint, and Markdown |
-| pdf | `pdf-edit` | Edit | Rotate, crop, number, watermark, annotate, and fill forms |
-| pdf | `pdf-security` | Security | Lock, unlock, sign, redact, and compare PDFs |
-| pdf | `pdf-ai` | AI | Summarize and translate PDFs with on-device AI |
-| 3d | `3d-format` | Format | Convert between 3D model formats |
-| 3d | `3d-edit` | Edit | Simplify, transform, reorient, split and merge 3D models |
-| 3d | `3d-inspect` | Inspect | Measure dimensions, volume, area and inspect mesh topology |
+
+| Media | Id                | Title                | Description                                                              |
+| ----- | ----------------- | -------------------- | ------------------------------------------------------------------------ |
+| file  | `file-convert`    | Format converters    | Convert between file formats including MHTML, GPX and KML                |
+| file  | `file-data`       | Data & spreadsheets  | Convert, inspect, and view CSV, JSON, and text spreadsheets              |
+| file  | `file-utility`    | File utilities       | Inspect file headers, verify hashes, rename files and check video health |
+| video | `video-edit`      | Edit                 | Trim, crop, loop, speed up, resize, merge and overlay videos             |
+| video | `video-convert`   | Convert & compress   | Change video formats and shrink file sizes                               |
+| video | `video-audio`     | Audio                | Extract, remove, boost or add audio tracks                               |
+| video | `video-ai`        | AI                   | Transcripts, subtitles and background removal with on-device AI          |
+| video | `video-utility`   | Utilities            | Inspect media files and calculate playback speeds                        |
+| image | `image-optimize`  | Resize & compress    | Make images smaller in dimensions or file size                           |
+| image | `image-convert`   | Format converters    | Convert between JPG, PNG, WEBP, GIF, BMP, AVIF, JXL and more             |
+| image | `image-edit`      | Editing              | Crop, adjust, annotate, watermark, blur, and remove backgrounds          |
+| image | `image-transform` | Transform & layout   | Rotate, flip, round, pad, merge and build collages                       |
+| image | `image-effects`   | Effects              | Sketch, grayscale, invert and meme effects                               |
+| image | `image-pdf`       | PDF & documents      | Turn images, PDFs and Word files into each other                         |
+| image | `image-social`    | Social media         | Presets for covers, banners, stories, thumbnails and avatars             |
+| image | `image-bulk`      | Bulk processing      | Resize, compress and convert many images at once                         |
+| image | `image-color`     | Colour               | Pick colours, build palettes and check contrast                          |
+| image | `image-metadata`  | Metadata & developer | EXIF data, favicons and Base64 encoding                                  |
+| image | `image-generate`  | Generators           | Create QR codes, barcodes and printable labels                           |
+| pdf   | `pdf-organize`    | Organize             | Merge, split, reorder, and remove pages                                  |
+| pdf   | `pdf-optimize`    | Optimize             | Compress, repair, and OCR scanned PDFs                                   |
+| pdf   | `pdf-to`          | Convert to PDF       | Turn images, Word, Excel, PowerPoint, and HTML into PDF                  |
+| pdf   | `pdf-from`        | Convert from PDF     | Turn PDFs into images, Word, Excel, PowerPoint, and Markdown             |
+| pdf   | `pdf-edit`        | Edit                 | Rotate, crop, number, watermark, annotate, and fill forms                |
+| pdf   | `pdf-security`    | Security             | Lock, unlock, sign, redact, and compare PDFs                             |
+| pdf   | `pdf-ai`          | AI                   | Summarize and translate PDFs with on-device AI                           |
+| 3d    | `3d-format`       | Format               | Convert between 3D model formats                                         |
+| 3d    | `3d-edit`         | Edit                 | Simplify, transform, reorient, split and merge 3D models                 |
+| 3d    | `3d-inspect`      | Inspect              | Measure dimensions, volume, area and inspect mesh topology               |
 
 ## Shared Library APIs (`src/lib` & `src/tools/3d`)
 
 ### `src/lib/jxl.ts`
+
 - `isJxlSignature(bytes: Uint8Array): boolean`: Recognizes raw codestream `0xFF 0x0A` and 12-byte container signatures.
 - `isJxlFile(blob: Blob): Promise<boolean>`: Content-based detection independent of filename or MIME type.
 - `decodeJxl(buffer): Promise<ImageData>`: Offloads decoding to `jxl.worker.ts`.
@@ -160,11 +170,13 @@ Exports: `categories`, `TOOL_METAS`, `tools`, `getToolMeta(id)`, `toolsByMedia(m
 - `encodeJxlCanvas(canvas, options?): Promise<Blob>`: Encodes canvas to JXL blob with quality and lossless options.
 
 ### `src/lib/ffmpeg.ts`
+
 - `getFFmpeg(): Promise<FFmpeg>`: Lazy singleton returning the loaded FFmpeg instance using local core and wasm URLs.
 - `runFFmpeg(opts): Promise<Blob>`: Queued job executor with MEMFS isolation.
 - `mimeFromName(filename: string): string`: Returns standard MIME types.
 
 ### `src/lib/image.ts`
+
 - `IMAGE_ACCEPT`: `accept` string for file inputs (jpg, png, webp, gif, bmp, avif, heic, heif, jxl, svg).
 - `loadImage(file: Blob): Promise<HTMLImageElement>`: Decodes through an object URL (revoked after decode).
 - `decodeImage(file: File): Promise<HTMLImageElement>`: Handles JPG, PNG, WebP, AVIF, HEIC/HEIF (`heic-to/csp`), SVG, and JPEG XL (`decodeJxlToBlob`).
@@ -175,11 +187,13 @@ Exports: `categories`, `TOOL_METAS`, `tools`, `getToolMeta(id)`, `toolsByMedia(m
 - `encodeGif(canvas): Promise<Blob>`: Single-frame GIF through FFmpeg.
 
 ### `src/tools/pdf/_qpdf/qpdf.ts`
+
 - `runQpdf(inputBytes, args): Promise<Uint8Array>`: Executes QPDF WASM inside a dedicated Web Worker.
 - `encryptPdf(bytes, userPassword, ownerPassword?, allowPrint?, allowCopy?, allowModify?): Promise<Uint8Array>`: Encrypts PDF with AES-256.
 - `decryptPdf(bytes, password): Promise<Uint8Array>`: Decrypts password-protected PDF.
 
 ### `src/tools/3d/_mesh/client.ts`
+
 - `importModel(file: File): Promise<MeshModel>`: Dispatches file parsing to `mesh.worker.ts` or routes CAD files to `_cad/client.ts`. Preserves caller buffers via structured cloning.
 - `inspectModel(model: MeshModel): Promise<MeshStats>`: Evaluates bounding box, surface area, signed volume (divergence theorem), watertightness, and non-manifold/boundary edge counts in Web Worker.
 - `processModel(model: MeshModel, operation: MeshOperation): Promise<MeshModel>`: Dispatches simplification (`meshoptimizer` WASM with error and border bounds), transform (scale, rotate, center, ground), or face winding inversion to Web Worker.
@@ -189,6 +203,7 @@ Exports: `categories`, `TOOL_METAS`, `tools`, `getToolMeta(id)`, `toolsByMedia(m
 - `cancelMeshJobs(): void`: Cancels active worker jobs, terminates worker, and clears pending promises.
 
 ### `src/tools/3d/_cad/client.ts`
+
 - `importCadModel(file: File, quality?: CadQuality): Promise<MeshModel>`: Tessellates STEP, IGES, or BREP files into a normalized millimeter `MeshModel` using `occt-import-js` (OpenCASCADE WASM) in a dedicated Web Worker (`cad.worker.ts`).
 - `cancelCadJobs(): void`: Cancels pending CAD conversion jobs and terminates worker.
 
