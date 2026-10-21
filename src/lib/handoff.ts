@@ -39,6 +39,7 @@ export function takePendingFiles(path: string, accept?: string, multiple = false
 const EXT_MIME: Record<string, string> = {
   jpg: 'image/jpeg',
   jpeg: 'image/jpeg',
+  jpe: 'image/jpeg',
   png: 'image/png',
   webp: 'image/webp',
   gif: 'image/gif',
@@ -133,6 +134,36 @@ const NOT_FOR_IMAGES = new Set([
 
 const NOT_FOR_PDFS = new Set(['pdf-jpg-to-pdf', 'pdf-word-to-pdf', 'pdf-powerpoint-to-pdf', 'pdf-excel-to-pdf', 'pdf-html-to-pdf', 'pdf-scan-to-pdf']);
 
+/**
+ * Direction-specific source converters and their required input formats.
+ * Generic converters (e.g. img-convert, img-image-to-webp, img-image-to-svg)
+ * are not listed here and remain eligible for all supported files of their kind.
+ */
+const DIRECTIONAL_INPUT_FORMATS: Record<string, string[]> = {
+  'img-png-to-jpg': ['png'],
+  'img-jpg-to-png': ['jpg', 'jpeg', 'jpe'],
+  'img-webp-to-jpg': ['webp'],
+  'img-webp-to-png': ['webp'],
+  'img-heic-to-jpg': ['heic', 'heif'],
+  'img-svg-to-png': ['svg'],
+  'pdf-jpg-to-pdf': ['jpg', 'jpeg', 'jpe'],
+};
+
+/** Checks whether a tool is eligible to accept the given file based on directional input requirements. */
+export function isToolEligible(toolId: string, file: File): boolean {
+  const expectedFormats = DIRECTIONAL_INPUT_FORMATS[toolId];
+  if (!expectedFormats) return true;
+
+  const ext = extensionOf(file.name);
+  if (ext && expectedFormats.includes(ext)) return true;
+
+  const mime = mimeOf(file);
+  return expectedFormats.some((fmt) => {
+    const expectedMime = EXT_MIME[fmt];
+    return (expectedMime && mime === expectedMime) || mime.includes(fmt);
+  });
+}
+
 /** Ids that fit a specific extension best, shown first. */
 const BY_EXTENSION: Record<string, string[]> = {
   heic: ['img-heic-to-jpg'],
@@ -142,6 +173,7 @@ const BY_EXTENSION: Record<string, string[]> = {
   png: ['img-png-to-jpg'],
   jpg: ['img-jpg-to-png', 'pdf-jpg-to-pdf'],
   jpeg: ['img-jpg-to-png', 'pdf-jpg-to-pdf'],
+  jpe: ['img-jpg-to-png', 'pdf-jpg-to-pdf'],
   ico: ['img-icon-converter'],
   docx: ['pdf-word-to-pdf', 'img-docx-to-jpg', 'img-docx-to-png'],
   xlsx: ['pdf-excel-to-pdf'],
@@ -184,11 +216,11 @@ export function suggestToolsForFiles(files: File[]): ToolMeta[] {
   const first = files[0];
   const ids: string[] = [];
   const push = (id: string) => {
-    if (!ids.includes(id) && TOOL_METAS.some((t) => t.id === id)) ids.push(id);
+    if (!ids.includes(id) && isToolEligible(id, first) && TOOL_METAS.some((t) => t.id === id)) ids.push(id);
   };
 
   (BY_EXTENSION[extensionOf(first.name)] ?? []).forEach(push);
-  const fits = TOOL_METAS.filter(BY_KIND[fileKind(first)]);
+  const fits = TOOL_METAS.filter((t) => BY_KIND[fileKind(first)](t) && isToolEligible(t.id, first));
   fits.filter((t) => t.popular).forEach((t) => push(t.id));
   fits.forEach((t) => push(t.id));
   if (files.length > 1) push('batch-rename');
