@@ -4,7 +4,7 @@ import { FileDrop } from '../../../components/FileDrop';
 import { Field, Select, Button } from '../../../components/Controls';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { getToolMeta } from '../../registry';
-import { decodeImage, imageToCanvas, encodeIco, IMAGE_ACCEPT } from '../../../lib/image';
+import { decodeImage, encodeIco, IMAGE_ACCEPT } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
 import { zipFiles } from '../../../lib/zip';
 import { formatBytes } from '../../../lib/format';
@@ -13,7 +13,7 @@ import { peekPendingFiles } from '../../../lib/handoff';
 import { classifyFile } from '../../../lib/toolInputs';
 import { parseIcoDirectory, frameToPngBlob } from '../_utility/ico';
 
-type Mode = 'ico-to-png' | 'png-to-ico';
+type Mode = 'ico-to-png' | 'image-to-ico';
 
 interface ExtractedFrameItem {
   id: string;
@@ -31,7 +31,25 @@ interface GeneratedIcoItem {
   sizes: string;
 }
 
-const MULTI_RES_SIZES = [16, 32, 48, 64, 128, 256];
+const RECOMMENDED_SIZES = [16, 32, 48];
+const ALL_SIZES = [16, 32, 48, 64, 128, 256];
+const SINGLE_SIZES = ALL_SIZES;
+
+function imageToIconCanvas(img: HTMLImageElement, size: number): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = size;
+  canvas.height = size;
+
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('Canvas 2D is not available in this browser.');
+
+  const scale = Math.min(size / img.naturalWidth, size / img.naturalHeight);
+  const width = img.naturalWidth * scale;
+  const height = img.naturalHeight * scale;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, (size - width) / 2, (size - height) / 2, width, height);
+  return canvas;
+}
 
 function ExtractedItemRow({ item }: { item: ExtractedFrameItem }) {
   const url = useObjectUrl(item.blob);
@@ -98,18 +116,18 @@ function ExtractedItemRow({ item }: { item: ExtractedFrameItem }) {
 
 export default function IconConverterTool() {
   const meta = getToolMeta('img-icon-converter');
-  const title = meta.title && meta.title !== 'img-icon-converter' ? meta.title : 'Icon Converter';
-  const description =
-    meta.description || 'Extract all frames from ICO files to PNG, or build multi-resolution Windows ICO icons (16 to 256 px).';
+  const title = meta.title && meta.title !== 'img-icon-converter' ? meta.title : 'Image to Favicon / ICO';
+  const description = meta.description || 'Convert images to favicon.ico at your chosen resolution, or extract frames from ICO files.';
 
   const [mode, setMode] = useState<Mode>(() => {
     const pending = peekPendingFiles('/image/icon-converter');
     if (pending && pending.length > 0) {
       const c = classifyFile(pending[0]);
-      return c.format === 'ico' ? 'ico-to-png' : 'png-to-ico';
+      return c.format === 'ico' ? 'ico-to-png' : 'image-to-ico';
     }
-    return 'ico-to-png';
+    return 'image-to-ico';
   });
+  const [resolution, setResolution] = useState('recommended');
 
   const [processing, setProcessing] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
@@ -129,16 +147,21 @@ export default function IconConverterTool() {
 
       const classes = files.map(classifyFile);
       const hasIco = classes.some((c) => c.format === 'ico');
-      const hasRaster = classes.some((c) => ['jpg', 'png', 'webp'].includes(c.format));
+      const hasImage = classes.some((c) => c.isStandardImage);
 
-      if (hasIco && hasRaster) {
+      if (hasIco && hasImage) {
         setError(
-          'Mixed input formats: cannot process ICO and raster images in the same batch. Please upload either ICO files or raster images.',
+          'Mixed input formats: cannot process ICO and image files in the same batch. Please upload either ICO files or supported images.',
         );
         return;
       }
 
-      const targetMode: Mode = hasIco ? 'ico-to-png' : hasRaster ? 'png-to-ico' : mode;
+      if (!hasIco && !hasImage) {
+        setError('Please upload an ICO file or a supported image format.');
+        return;
+      }
+
+      const targetMode: Mode = hasIco ? 'ico-to-png' : 'image-to-ico';
       setMode(targetMode);
 
       setProcessing(true);
@@ -184,35 +207,47 @@ export default function IconConverterTool() {
           }
           setExtractedFrames(items);
         } else {
-          // Raster to Multi-resolution ICO
+          // Image to ICO
           const icoItems: GeneratedIcoItem[] = [];
+          const nameCounts = new Map<string, number>();
+          const usedNames = new Set<string>();
+          const sizes = resolution === 'recommended' ? RECOMMENDED_SIZES : resolution === 'all' ? ALL_SIZES : [Number(resolution)];
 
           for (let fIdx = 0; fIdx < files.length; fIdx++) {
             const file = files[fIdx];
             const img = await decodeImage(file);
 
-            // Render 6 standard Windows icon resolutions
-            const canvases = MULTI_RES_SIZES.map((size) => imageToCanvas(img, size, size));
+            const canvases = sizes.map((size) => imageToIconCanvas(img, size));
             const icoBlob = await encodeIco(canvases);
-            const baseName = file.name.replace(/\.[^.]+$/, '');
+            const baseName = file.name.replace(/\.[^.]+$/, '') || 'image';
+            let outputName = 'favicon.ico';
+            if (files.length > 1) {
+              let count = nameCounts.get(baseName) || 0;
+              do {
+                outputName = `${baseName}${count === 0 ? '' : `-${count + 1}`}.ico`;
+                count += 1;
+              } while (usedNames.has(outputName.toLowerCase()));
+              nameCounts.set(baseName, count);
+              usedNames.add(outputName.toLowerCase());
+            }
 
             icoItems.push({
-              name: `${baseName}.ico`,
+              name: outputName,
               blob: icoBlob,
-              sizes: '16, 32, 48, 64, 128, 256',
+              sizes: sizes.join(', '),
             });
             setProgress(((fIdx + 1) / files.length) * 100);
           }
 
           setGeneratedIcos(icoItems);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         setError(err instanceof Error ? err.message : 'Error processing icon conversion');
       } finally {
         setProcessing(false);
       }
     },
-    [mode],
+    [resolution],
   );
 
   const handleDownloadAllZip = async () => {
@@ -220,11 +255,11 @@ export default function IconConverterTool() {
       if (mode === 'ico-to-png' && extractedFrames.length > 0) {
         const zipBlob = await zipFiles(extractedFrames.map((f) => ({ name: f.name, blob: f.blob })));
         downloadBlob(zipBlob, 'extracted-icon-frames.zip');
-      } else if (mode === 'png-to-ico' && generatedIcos.length > 0) {
+      } else if (mode === 'image-to-ico' && generatedIcos.length > 0) {
         const zipBlob = await zipFiles(generatedIcos.map((ico) => ({ name: ico.name, blob: ico.blob })));
-        downloadBlob(zipBlob, 'multi-resolution-icons.zip');
+        downloadBlob(zipBlob, 'favicons.zip');
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Failed to generate ZIP');
     }
   };
@@ -254,7 +289,7 @@ export default function IconConverterTool() {
             hint={
               mode === 'ico-to-png'
                 ? 'Extracts every single embedded resolution and frame inside .ICO files into individual transparent PNGs.'
-                : 'Converts any raster image into a complete multi-resolution Windows .ICO with 6 standard resolutions.'
+                : 'Converts any supported image into a Windows .ICO with your selected resolution set.'
             }
           >
             <Select
@@ -266,11 +301,31 @@ export default function IconConverterTool() {
               }}
               options={[
                 { value: 'ico-to-png', label: 'Extract frames: ICO → PNG (Extracts 16, 32, 48, 64, 128, 256...)' },
-                { value: 'png-to-ico', label: 'Create multi-resolution: PNG → ICO (Generates 16, 32, 48, 64, 128, 256 px)' },
+                { value: 'image-to-ico', label: 'Create favicon / ICO from an image' },
               ]}
             />
           </Field>
         </div>
+
+        {mode === 'image-to-ico' && !hasResults && (
+          <div style={{ background: 'var(--surface)', padding: '1.25rem', borderRadius: '12px' }}>
+            <Field
+              label="ICO resolution"
+              hint="Recommended includes 16×16, 32×32, and 48×48 px. The image stays centered with its aspect ratio preserved."
+            >
+              <Select
+                value={resolution}
+                disabled={processing}
+                onChange={(e) => setResolution(e.target.value)}
+                options={[
+                  { value: 'recommended', label: 'Recommended multi-size (16, 32, 48 px)' },
+                  ...SINGLE_SIZES.map((size) => ({ value: String(size), label: `Single size (${size}×${size} px)` })),
+                  { value: 'all', label: 'All sizes (16, 32, 48, 64, 128, 256 px)' },
+                ]}
+              />
+            </Field>
+          </div>
+        )}
 
         {error && (
           <div style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.85rem 1rem', borderRadius: '8px' }}>
@@ -286,12 +341,14 @@ export default function IconConverterTool() {
             label={
               mode === 'ico-to-png'
                 ? 'Choose one or more .ICO files or drag them here'
-                : 'Choose one or more image files (PNG, JPG, WebP) to build .ICO'
+                : 'Choose one or more supported image files to create favicon.ico'
             }
             hint={
               mode === 'ico-to-png'
                 ? 'Decodes both PNG streams and standard DIB frames with AND transparency masks.'
-                : 'Generates Windows-compatible multi-resolution icon with 16, 32, 48, 64, 128, and 256 px frames.'
+                : `Creates ICO frame${resolution === 'recommended' || resolution === 'all' ? 's' : ''} at ${
+                    resolution === 'recommended' ? '16, 32, and 48' : resolution === 'all' ? '16, 32, 48, 64, 128, and 256' : resolution
+                  } px, with transparent padding around the image as needed.`
             }
             onFiles={handleFiles}
           />
@@ -352,8 +409,8 @@ export default function IconConverterTool() {
           </div>
         )}
 
-        {/* Results for PNG -> ICO */}
-        {mode === 'png-to-ico' && generatedIcos.length > 0 && (
+        {/* Results for image -> ICO */}
+        {mode === 'image-to-ico' && generatedIcos.length > 0 && (
           <div
             style={{
               background: 'var(--surface)',
@@ -366,9 +423,14 @@ export default function IconConverterTool() {
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Generated Multi-Resolution Icons</h3>
+                <h3 style={{ margin: 0, fontSize: '1.1rem' }}>Generated Favicons / ICO Files</h3>
                 <span style={{ fontSize: '0.85rem', opacity: 0.75 }}>
-                  Embedded resolutions: 16×16, 32×32, 48×48, 64×64, 128×128, 256×256
+                  Embedded resolutions:{' '}
+                  {generatedIcos[0].sizes
+                    .split(', ')
+                    .map((size) => `${size}×${size}`)
+                    .join(', ')}{' '}
+                  px
                 </span>
               </div>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
@@ -398,10 +460,13 @@ export default function IconConverterTool() {
                 >
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
                     <span style={{ fontWeight: 600 }}>{ico.name}</span>
-                    <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>6 frames (16 to 256 px) · {formatBytes(ico.blob.size)}</span>
+                    <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>
+                      {ico.sizes.split(', ').length} frame{ico.sizes.split(', ').length === 1 ? '' : 's'} ({ico.sizes} px) ·{' '}
+                      {formatBytes(ico.blob.size)}
+                    </span>
                   </div>
                   <Button variant="primary" onClick={() => downloadBlob(ico.blob, ico.name)}>
-                    Download ICO
+                    {generatedIcos.length === 1 ? 'Download favicon.ico' : 'Download ICO'}
                   </Button>
                 </div>
               ))}

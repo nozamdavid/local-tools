@@ -6,6 +6,7 @@ import { decodeImage, loadImage, imageToCanvas, canvasToBlob, encodeBmp, encodeG
 import { encodeJxlCanvas } from '../../lib/jxl';
 import { loadPdfDocument, renderPdfPageToBlob } from '../image/_pdf/pdfRenderer';
 import { renderDocxToImages } from '../image/_pdf/docxRenderer';
+import { convertOfficeDocument } from './office';
 
 export interface ConvertOptions {
   file: File;
@@ -25,6 +26,175 @@ export type ConvertResult = { type: 'single'; name: string; blob: Blob } | { typ
 function getBaseName(filename: string): string {
   const dot = filename.lastIndexOf('.');
   return dot >= 0 ? filename.slice(0, dot) : filename;
+}
+
+const NATIVE_OFFICE_DOCUMENTS = new Set([
+  'odt',
+  'ott',
+  'odm',
+  'fodt',
+  'ods',
+  'ots',
+  'fods',
+  'odp',
+  'otp',
+  'fodp',
+  'odg',
+  'otg',
+  'fodg',
+  'odf',
+  'epub',
+  'vsdx',
+]);
+const MAX_XLSX_EXPORT_ROWS = 10_000;
+const MAX_XLSX_EXPORT_CELLS = 100_000;
+
+function cachedCellValue(cell: import('exceljs').Cell): string | number | boolean | null {
+  const value: unknown = cell.value;
+  if (value === null || value === undefined) return null;
+  if (value instanceof Date) return value.toISOString();
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value;
+
+  if (typeof value === 'object') {
+    const record = value as Record<string, unknown>;
+    if ('result' in record) {
+      const result = record.result;
+      if (result === null || result === undefined) return null;
+      if (result instanceof Date) return result.toISOString();
+      if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') return result;
+      return null;
+    }
+    if ('formula' in record || 'sharedFormula' in record) return null;
+    if (Array.isArray(record.richText)) {
+      return record.richText.map((part) => (part && typeof part === 'object' && 'text' in part ? String(part.text) : '')).join('');
+    }
+    if (typeof record.text === 'string') return record.text;
+    if (record.error !== undefined) return String(record.error);
+  }
+
+  return cell.text || null;
+}
+
+function worksheetRows(
+  worksheet: import('exceljs').Worksheet,
+  budget: { rows: number; cells: number },
+): (string | number | boolean | null)[][] {
+  if (budget.rows + worksheet.rowCount > MAX_XLSX_EXPORT_ROWS) {
+    throw new Error(`Spreadsheet export exceeds the ${MAX_XLSX_EXPORT_ROWS.toLocaleString()}-row limit.`);
+  }
+  budget.rows += worksheet.rowCount;
+
+  const rows: (string | number | boolean | null)[][] = [];
+  worksheet.eachRow({ includeEmpty: false }, (row, rowNumber) => {
+    budget.cells += row.cellCount;
+    if (budget.cells > MAX_XLSX_EXPORT_CELLS) {
+      throw new Error(`Spreadsheet export exceeds the ${MAX_XLSX_EXPORT_CELLS.toLocaleString()}-cell limit.`);
+    }
+    const values: (string | number | boolean | null)[] = [];
+    for (let column = 1; column <= row.cellCount; column++) {
+      values.push(cachedCellValue(row.getCell(column)));
+    }
+    rows[rowNumber - 1] = values;
+  });
+  return rows;
+}
+
+function quoteDelimitedValue(value: string | number | boolean | null, delimiter: string): string {
+  const text = value === null ? '' : String(value);
+  if (text.includes(delimiter) || /["\r\n]/.test(text)) return `"${text.replace(/"/g, '""')}"`;
+  return text;
+}
+
+async function convertXlsxData(file: File, targetId: string, outName: string): Promise<ConvertResult> {
+  const { default: ExcelJS } = await import('exceljs');
+  const workbook = new ExcelJS.Workbook();
+  try {
+    await workbook.xlsx.load(await file.arrayBuffer());
+  } catch {
+    throw new Error('Could not read the spreadsheet. The file may be corrupt.');
+  }
+
+  const budget = { rows: 0, cells: 0 };
+  if (targetId === 'json') {
+    const worksheets = Object.fromEntries(workbook.worksheets.map((worksheet) => [worksheet.name, worksheetRows(worksheet, budget)]));
+    return { type: 'single', name: outName, blob: new Blob([JSON.stringify(worksheets, null, 2)], { type: 'application/json' }) };
+  }
+
+  const worksheet = workbook.worksheets[0];
+  if (!worksheet) throw new Error('The spreadsheet contains no worksheets to export.');
+  const delimiter = targetId === 'csv' ? ',' : '\t';
+  const rows = worksheetRows(worksheet, budget).map((row) => row.map((value) => quoteDelimitedValue(value, delimiter)).join(delimiter));
+  const mime = targetId === 'csv' ? 'text/csv' : targetId === 'tsv' ? 'text/tab-separated-values' : 'text/plain';
+  return { type: 'single', name: outName, blob: new Blob([rows.join('\n')], { type: mime }) };
+}
+
+function resolvePackagePath(baseDir: string, target: string): string {
+  const segments = target.startsWith('/') ? [] : baseDir.split('/').filter(Boolean);
+  for (const segment of target.replace(/^\//, '').split('/')) {
+    if (segment === '..') segments.pop();
+    else if (segment && segment !== '.') segments.push(segment);
+  }
+  return segments.join('/');
+}
+
+async function extractPptxText(file: File): Promise<string> {
+  const { default: JSZip } = await import('jszip');
+  const zip = await JSZip.loadAsync(file);
+  const presentationFile = zip.file('ppt/presentation.xml');
+  const relationshipsFile = zip.file('ppt/_rels/presentation.xml.rels');
+  if (!presentationFile || !relationshipsFile) throw new Error('Invalid PPTX presentation.');
+
+  const parser = new DOMParser();
+  const presentation = parser.parseFromString(await presentationFile.async('text'), 'application/xml');
+  const relationships = parser.parseFromString(await relationshipsFile.async('text'), 'application/xml');
+  if (presentation.querySelector('parsererror') || relationships.querySelector('parsererror')) {
+    throw new Error('Could not read the presentation slide order.');
+  }
+
+  const targets = new Map<string, string>();
+  for (const relationship of Array.from(relationships.getElementsByTagNameNS('*', 'Relationship'))) {
+    if (relationship.getAttribute('TargetMode')?.toLowerCase() === 'external') continue;
+    const id = relationship.getAttribute('Id');
+    const target = relationship.getAttribute('Target');
+    if (id && target) targets.set(id, target);
+  }
+
+  const slideIds = Array.from(presentation.getElementsByTagNameNS('*', 'sldId'));
+  const slidePaths = slideIds
+    .map((slideId) => {
+      const relationshipId =
+        slideId.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships', 'id') || slideId.getAttribute('r:id');
+      const target = relationshipId ? targets.get(relationshipId) : undefined;
+      return target ? resolvePackagePath('ppt', target) : null;
+    })
+    .filter((path): path is string => !!path);
+
+  if (slidePaths.length === 0) {
+    slidePaths.push(
+      ...Object.keys(zip.files)
+        .filter((path) => /^ppt\/slides\/slide\d+\.xml$/.test(path))
+        .sort((a, b) => Number(a.match(/slide(\d+)/)?.[1]) - Number(b.match(/slide(\d+)/)?.[1])),
+    );
+  }
+  if (slidePaths.length === 0) throw new Error('No slides were found in this presentation.');
+
+  const slideText: string[] = [];
+  for (let index = 0; index < slidePaths.length; index++) {
+    const slideFile = zip.file(slidePaths[index]);
+    if (!slideFile) continue;
+    const slide = parser.parseFromString(await slideFile.async('text'), 'application/xml');
+    const paragraphs = Array.from(slide.getElementsByTagNameNS('*', 'p'));
+    const lines = paragraphs.map((paragraph) =>
+      Array.from(paragraph.getElementsByTagNameNS('*', 't'))
+        .map((run) => run.textContent || '')
+        .join(''),
+    );
+    const text = (lines.length > 0 ? lines : Array.from(slide.getElementsByTagNameNS('*', 't')).map((run) => run.textContent || ''))
+      .filter((line) => line.trim())
+      .join('\n');
+    slideText.push(`--- Slide ${index + 1} ---\n${text}`);
+  }
+  return slideText.join('\n\n');
 }
 
 async function loadSvgCanvas(file: File, scaleStr: '1x' | '2x' | '4x'): Promise<HTMLCanvasElement> {
@@ -76,6 +246,11 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
   } = options;
   const baseName = getBaseName(file.name);
   const outName = `${baseName}.${target.ext}`;
+
+  if (detected.family === 'document' && NATIVE_OFFICE_DOCUMENTS.has(detected.id)) {
+    const blob = await convertOfficeDocument(file, detected.id, target.id);
+    return { type: 'single', name: outName, blob };
+  }
 
   // -------------------------------------------------------------
   // PATH 1: Image Input
@@ -305,7 +480,7 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
         onProgress?.(i / pdfDoc.numPages);
         const page = await pdfDoc.getPage(i);
         const content = await page.getTextContent();
-        const str = content.items.map((it: any) => it.str ?? '').join(' ');
+        const str = content.items.map((item) => ('str' in item ? item.str : '')).join(' ');
         textChunks.push(`--- Page ${i} ---\n${str}`);
       }
       const fullText = textChunks.join('\n\n');
@@ -337,9 +512,39 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
   }
 
   // -------------------------------------------------------------
-  // PATH 4: DOCX Document Input
+  // PATH 4: XLSX and PPTX document inputs
   // -------------------------------------------------------------
-  if (detected.id === 'docx') {
+  if (detected.id === 'xlsx') {
+    if (target.id === 'pdf') {
+      const [{ excelToPdf }, { DEFAULT_PAGE_SETUP }] = await Promise.all([
+        import('../pdf/excel-to-pdf/convert'),
+        import('../pdf/_render/render'),
+      ]);
+      const result = await excelToPdf(file, DEFAULT_PAGE_SETUP, onProgress || (() => undefined));
+      return { type: 'single', name: outName, blob: result.blob };
+    }
+    return convertXlsxData(file, target.id, outName);
+  }
+
+  if (detected.id === 'pptx') {
+    if (target.id === 'pdf') {
+      const [{ powerpointToPdf }, { DEFAULT_PAGE_SETUP }] = await Promise.all([
+        import('../pdf/powerpoint-to-pdf/convert'),
+        import('../pdf/_render/render'),
+      ]);
+      const result = await powerpointToPdf(file, DEFAULT_PAGE_SETUP, onProgress || (() => undefined));
+      return { type: 'single', name: outName, blob: result.blob };
+    }
+    if (target.id === 'txt') {
+      const text = await extractPptxText(file);
+      return { type: 'single', name: outName, blob: new Blob([text], { type: 'text/plain' }) };
+    }
+  }
+
+  // -------------------------------------------------------------
+  // PATH 5: DOCX / DOTX Document Input
+  // -------------------------------------------------------------
+  if (detected.id === 'docx' || detected.id === 'dotx') {
     if (target.id === 'html') {
       const { renderAsync } = await import('docx-preview');
       const container = document.createElement('div');
@@ -400,7 +605,7 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
   }
 
   // -------------------------------------------------------------
-  // PATH 5: Text / Structured Data Input
+  // PATH 6: Text / Structured Data Input
   // -------------------------------------------------------------
   if (detected.family === 'text') {
     const rawText = await file.text();

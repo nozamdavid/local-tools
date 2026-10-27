@@ -12,14 +12,14 @@
 
 - **🔒 Client-Side Privacy:** Your documents, photos, audio, videos, and 3D models are processed locally in your browser. Supported formats execute in client memory without uploading file data to external servers.
 - **📁 Universal File Tools:**
-  - **Format Converter:** Convert between supported image, audio, video, document, and data formats.
+  - **Format Converter:** Convert between supported image, audio, video, document, and data formats. Supported document workflows focus on client-side content and structural export: OpenDocument files (ODT, OTT, ODM, FODT, ODS, OTS, FODS, ODP, OTP, FODP, ODG, OTG, FODG, ODF) to text, HTML, and PDF, with Calc spreadsheets (ODS, OTS, FODS) additionally to CSV, TSV, and JSON; EPUB to text, HTML, and PDF; VSDX diagram textual labels; XLSX to PDF, CSV, TSV, JSON, and TXT; PPTX to PDF and TXT; and DOCX, including DOTX templates handled identically to DOCX. PDF is supported as a native document format. Legacy binary DOC, DOT, WPS, XLS, XLT, PPT, PPS, VSD, and PUB files, RTF, and OpenDocument ODB and OXT files are recognized for identification and inspection only, with no conversion offered.
   - **Spreadsheets & Data:** CSV Viewer with multi-column search and pagination, TXT to CSV with delimiter detection and quote/multiline support, and bidirectional JSON ↔ CSV (using union headers and JSON-stringified nested values).
   - **File Utilities:** File Inspector (binary magic bytes, hex view, hashes), Batch File Rename (numbering, patterns, case transforms, ZIP export), Video Health Inspector (container atom boundaries, truncation, and browser playability), CSS Viewer (sandboxed live preview, presets, partial browser diagnostics).
   - **Web & Geo Formats:** MHTML to HTML unpacker, GPX ↔ KML GPS track converter.
 - **🖼️ Image Tools & Modern Codecs:**
   - **JPEG XL (JXL):** Lossless and quality-controlled lossy encode/decode in a dedicated Web Worker with in-browser preview fallback.
   - **AVIF ↔ PNG / JPG / WebP:** On-device image conversion, resizing, and compression with native canvas encoding and lazy bundled local `@jsquash/avif` WASM fallback.
-  - **Vector & Icons:** Image to SVG (embedded raster and pixel-vector shapes), Icon Converter (multi-resolution `.ico` bundles and frame extraction).
+  - **Vector & Icons:** Image to SVG (embedded raster and pixel-vector shapes), Image to Favicon / ICO (supported image formats, recommended or custom resolutions, and ICO frame extraction).
   - **Editing & Privacy:** Signature Cleaner (transparent ink extraction with threshold/detail controls and stamp color protection), Blur & Solid Redaction (permanent irreversible blackout).
 - **📄 PDF & Office Suite:**
   - **Word to PDF / Excel to PDF / PowerPoint to PDF:** Client-side document conversion rendered inside an isolated Content Security Policy (CSP) iframe sandbox (subject to browser layout and font rendering constraints).
@@ -42,6 +42,8 @@
 
 ## Known limitations
 
+- **Document conversion fidelity & scope:** Document and office conversions perform client-side content, text, and tabular data extraction. They do not claim full LibreOffice or Microsoft Office layout, macro, or typographical rendering fidelity.
+- **Legacy office & unsupported engines:** Legacy binary formats (`.doc`, `.dot`, `.rtf`, `.wps`, `.xls`, `.xlt`, `.ppt`, `.pps`, `.vsd`, `.pub`) as well as OpenDocument database (`.odb`) and extension package (`.oxt`) formats are recognized for identification and file inspection with explicit no-engine limits; no on-device legacy Office runtime, relational database engine (`.odb`), or plugin execution environment (`.oxt`) is bundled or claimed.
 - WebM conversion writes an opaque VP8 stream (`yuv420p`), so transparent WebM input loses its alpha channel in every tested browser.
 - Subtitle burn-in exports a playable file without visible subtitles in WebKit 27.2. Chromium and Firefox render the subtitles correctly.
 - The cross-browser matrix covers desktop Chromium, Firefox and WebKit only. Mobile browsers and Safari hardware were not tested.

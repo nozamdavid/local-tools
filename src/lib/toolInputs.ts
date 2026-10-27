@@ -54,18 +54,42 @@ export const EXT_MIME: Record<string, string> = {
   wma: 'audio/x-ms-wma',
   weba: 'audio/webm',
 
-  // Documents
+  // OpenDocument
+  odt: 'application/vnd.oasis.opendocument.text',
+  ott: 'application/vnd.oasis.opendocument.text-template',
+  odm: 'application/vnd.oasis.opendocument.text-master',
+  fodt: 'application/vnd.oasis.opendocument.text-flat-xml',
+  ods: 'application/vnd.oasis.opendocument.spreadsheet',
+  ots: 'application/vnd.oasis.opendocument.spreadsheet-template',
+  fods: 'application/vnd.oasis.opendocument.spreadsheet-flat-xml',
+  odp: 'application/vnd.oasis.opendocument.presentation',
+  otp: 'application/vnd.oasis.opendocument.presentation-template',
+  fodp: 'application/vnd.oasis.opendocument.presentation-flat-xml',
+  odg: 'application/vnd.oasis.opendocument.graphics',
+  otg: 'application/vnd.oasis.opendocument.graphics-template',
+  fodg: 'application/vnd.oasis.opendocument.graphics-flat-xml',
+  odf: 'application/vnd.oasis.opendocument.formula',
+  odb: 'application/vnd.oasis.opendocument.database',
+  oxt: 'application/vnd.openofficeorg.extension',
+
+  // Documents & Office
   pdf: 'application/pdf',
   docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  dot: 'application/msword',
+  dotx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.template',
   doc: 'application/msword',
-  xls: 'application/vnd.ms-excel',
-  ppt: 'application/vnd.ms-powerpoint',
-  odt: 'application/vnd.oasis.opendocument.text',
-  ods: 'application/vnd.oasis.opendocument.spreadsheet',
-  odp: 'application/vnd.oasis.opendocument.presentation',
   rtf: 'application/rtf',
+  wps: 'application/vnd.ms-works',
+  xls: 'application/vnd.ms-excel',
+  xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  xlt: 'application/vnd.ms-excel',
+  ppt: 'application/vnd.ms-powerpoint',
+  pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+  pps: 'application/vnd.ms-powerpoint',
+  epub: 'application/epub+zip',
+  vsd: 'application/vnd.visio',
+  vsdx: 'application/vnd.ms-visio.drawing',
+  pub: 'application/vnd.ms-publisher',
 
   // 3D & CAD
   stl: 'model/stl',
@@ -133,7 +157,10 @@ export type CanonicalFormat =
   | 'docx'
   | 'xlsx'
   | 'pptx'
+  | 'opendocument'
   | 'legacy-office'
+  | 'epub'
+  | 'vsdx'
   | 'stl'
   | 'obj'
   | 'ply'
@@ -182,7 +209,10 @@ export interface FileClassification {
   isDocx: boolean;
   isXlsx: boolean;
   isPptx: boolean;
+  isOpenDocument: boolean;
   isLegacyOffice: boolean;
+  isEpub: boolean;
+  isVsdx: boolean;
   isHtml: boolean;
   isMhtml: boolean;
   isCss: boolean;
@@ -279,19 +309,36 @@ export function classifyFile(file: File): FileClassification {
   // 4. Documents & Office
   else if (ext === 'pdf' || mime === 'application/pdf') {
     format = 'pdf';
-  } else if (ext === 'docx' || mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+  } else if (
+    ['docx', 'dotx'].includes(ext) ||
+    mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+    mime === 'application/vnd.openxmlformats-officedocument.wordprocessingml.template'
+  ) {
     format = 'docx';
   } else if (ext === 'xlsx' || mime === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
     format = 'xlsx';
   } else if (ext === 'pptx' || mime === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
     format = 'pptx';
+  } else if (ext === 'epub' || mime === 'application/epub+zip') {
+    format = 'epub';
+  } else if (ext === 'vsdx' || mime === 'application/vnd.ms-visio.drawing') {
+    format = 'vsdx';
   } else if (
-    ['doc', 'xls', 'ppt', 'odt', 'ods', 'odp', 'rtf'].includes(ext) ||
+    ['odt', 'ott', 'odm', 'fodt', 'ods', 'ots', 'fods', 'odp', 'otp', 'fodp', 'odg', 'otg', 'fodg', 'odf', 'odb', 'oxt'].includes(ext) ||
+    mime.startsWith('application/vnd.oasis.opendocument') ||
+    mime === 'application/vnd.openofficeorg.extension' ||
+    mime.startsWith('application/vnd.sun.xml')
+  ) {
+    format = 'opendocument';
+  } else if (
+    ['doc', 'dot', 'rtf', 'wps', 'xls', 'xlt', 'ppt', 'pps', 'vsd', 'pub'].includes(ext) ||
     mime === 'application/msword' ||
     mime === 'application/vnd.ms-excel' ||
     mime === 'application/vnd.ms-powerpoint' ||
-    mime.startsWith('application/vnd.oasis.opendocument') ||
-    mime === 'application/rtf'
+    mime === 'application/rtf' ||
+    mime === 'application/vnd.ms-works' ||
+    mime === 'application/vnd.visio' ||
+    mime === 'application/vnd.ms-publisher'
   ) {
     format = 'legacy-office';
   }
@@ -375,7 +422,10 @@ export function classifyFile(file: File): FileClassification {
     isDocx: format === 'docx',
     isXlsx: format === 'xlsx',
     isPptx: format === 'pptx',
+    isOpenDocument: format === 'opendocument',
     isLegacyOffice: format === 'legacy-office',
+    isEpub: format === 'epub',
+    isVsdx: format === 'vsdx',
     isHtml: format === 'html',
     isMhtml: format === 'mhtml',
     isCss: format === 'css',
@@ -431,6 +481,12 @@ const FILE_CONVERTER_FORMATS = new Set<CanonicalFormat>([
   'webm-audio',
   'pdf',
   'docx',
+  'xlsx',
+  'pptx',
+  'opendocument',
+  'legacy-office',
+  'epub',
+  'vsdx',
   'json',
   'csv',
   'tsv',
@@ -528,8 +584,8 @@ export function isToolEligibleForFile(tool: ToolMeta, file: File): boolean {
     if (tool.id === 'img-exif-remover') return c.isStandardImage && c.format !== 'svg';
     if (tool.id === 'img-photo-to-sketch') return c.isStandardImage && c.format !== 'svg';
 
-    // Icon converter: ICO or raster images
-    if (tool.id === 'img-icon-converter') return c.format === 'ico' || ['jpg', 'png', 'webp'].includes(c.format);
+    // Icon converter: ICO or supported source images
+    if (tool.id === 'img-icon-converter') return c.format === 'ico' || c.isStandardImage;
 
     // ICO only supports icon-converter, file-converter, file-inspector
     if (c.format === 'ico') return false;
@@ -628,8 +684,7 @@ export function isToolEligibleForBatch(tool: ToolMeta, files: File[]): boolean {
 
   if (tool.id === 'img-icon-converter') {
     const allIco = classes.every((c) => c.format === 'ico');
-    const allRaster = classes.every((c) => ['jpg', 'png', 'webp'].includes(c.format));
-    return allIco || allRaster;
+    return allIco || allStandardImages;
   }
 
   // All other single-file tools cannot consume batches

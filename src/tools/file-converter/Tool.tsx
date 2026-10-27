@@ -10,6 +10,7 @@ import { formatBytes } from '../../lib/format';
 import { detectFormat, type DetectedFormat, type FormatFamily } from './detect';
 import { getTargetFormats, type TargetFormat } from './matrix';
 import { executeConversion } from './engines';
+import { OFFICE_FORMATS } from './office';
 import styles from './Tool.module.css';
 
 const FAMILY_ICONS: Record<FormatFamily, string> = {
@@ -57,6 +58,7 @@ export default function FileConverterTool() {
   const dpiId = useId();
   const svgScaleId = useId();
   const bitrateId = useId();
+  const hasAvailableTargets = targetFamilies ? Object.values(targetFamilies).some((targets) => targets.length > 0) : false;
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
@@ -147,7 +149,7 @@ export default function FileConverterTool() {
         <FileDrop
           accept="*"
           label="Choose any file or drag it here"
-          hint="Detects real file format from content signatures. 100% on-device private conversion."
+          hint="Detects media, PDF, DOCX/DOTX, XLSX, PPTX, EPUB, OpenDocument, and legacy Office formats. Conversion availability varies by document type; processing stays on-device."
           onFiles={handleFiles}
         />
       ) : (
@@ -218,6 +220,24 @@ export default function FileConverterTool() {
                     </div>
                   </div>
                 )}
+                {(detected.detectionNote || OFFICE_FORMATS[detected.id]?.limitation) && (
+                  <div className={styles.mismatchBanner}>
+                    <span className={styles.mismatchIcon}>ℹ️</span>
+                    <div>
+                      {OFFICE_FORMATS[detected.id]?.limitation && (
+                        <>
+                          <strong>Conversion limitation:</strong> {OFFICE_FORMATS[detected.id].limitation}
+                        </>
+                      )}
+                      {detected.detectionNote && (
+                        <>
+                          {OFFICE_FORMATS[detected.id]?.limitation && <br />}
+                          <strong>Detection note:</strong> {detected.detectionNote}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* 3. Unknown/Unsupported Format Message */}
@@ -225,11 +245,12 @@ export default function FileConverterTool() {
                 <div className={styles.unsupportedCard}>
                   <div className={styles.unsupportedTitle}>Unsupported file format</div>
                   <p className={styles.unsupportedText}>
-                    This file could not be recognized as a supported media or document type. Supported formats include:
+                    This file could not be recognized. Detected formats include:
                     <br />• <strong>Images:</strong> PNG, JPG, WebP, GIF, BMP, TIFF, ICO, AVIF, HEIC, JXL, SVG
                     <br />• <strong>Videos:</strong> MP4, WebM, MKV, AVI, MOV, FLV, MPEG-TS, 3GP, WMV, OGV
                     <br />• <strong>Audio:</strong> MP3, WAV, M4A, FLAC, OGG, Opus, AIFF, WMA
-                    <br />• <strong>Documents:</strong> PDF, Word (DOCX)
+                    <br />• <strong>Documents:</strong> PDF, DOCX/DOTX, XLSX, PPTX, EPUB, OpenDocument (ODT/ODS/ODP and related formats),
+                    and legacy Office files; some are recognized for identification only
                     <br />• <strong>Text &amp; Data:</strong> JSON, CSV, TSV, Plain Text
                   </p>
                   <div>
@@ -238,8 +259,19 @@ export default function FileConverterTool() {
                     </Button>
                   </div>
                 </div>
+              ) : /* 4. Supported: Target Format Selector */
+              !hasAvailableTargets && detected.family === 'document' ? (
+                <div className={styles.unsupportedCard}>
+                  <div className={styles.unsupportedTitle}>Conversion unavailable</div>
+                  <p className={styles.unsupportedText}>
+                    This document format is recognized, but it has no available conversion targets.
+                    {OFFICE_FORMATS[detected.id]?.limitation && ` ${OFFICE_FORMATS[detected.id].limitation}`}
+                  </p>
+                  <Button variant="secondary" onClick={handleReset}>
+                    Choose a different file
+                  </Button>
+                </div>
               ) : (
-                /* 4. Supported: Target Format Selector */
                 <div>
                   <div className={styles.sectionTitle}>Convert to:</div>
                   <div className={styles.targetGrid}>

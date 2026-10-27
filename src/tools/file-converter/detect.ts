@@ -1,4 +1,5 @@
 import { fileTypeFromBuffer } from 'file-type';
+import { OFFICE_FORMATS } from './office';
 
 export type FormatFamily = 'image' | 'video' | 'audio' | 'document' | 'text' | 'unknown';
 
@@ -10,9 +11,18 @@ export interface DetectedFormat {
   ext: string;
   extensionMismatch: boolean;
   actualExtension: string;
+  detectionNote?: string;
 }
 
+const OFFICE_FORMAT_METAS = Object.fromEntries(
+  Object.entries(OFFICE_FORMATS).map(([id, format]) => [
+    id,
+    { label: format.label, family: format.family, mime: format.mime, ext: format.ext, aliases: format.aliases },
+  ]),
+);
+
 const FORMAT_METAS: Record<string, { label: string; family: FormatFamily; mime: string; ext: string; aliases: string[] }> = {
+  ...OFFICE_FORMAT_METAS,
   // Images
   png: { label: 'PNG Image', family: 'image', mime: 'image/png', ext: 'png', aliases: ['png'] },
   jpg: { label: 'JPEG Image', family: 'image', mime: 'image/jpeg', ext: 'jpg', aliases: ['jpg', 'jpeg', 'jpe', 'jif', 'jfif'] },
@@ -192,14 +202,124 @@ function checkPlainText(uint8: Uint8Array): boolean {
   }
 }
 
-async function checkDocx(file: File): Promise<boolean> {
+const ODF_MIME_IDS: Record<string, string> = {
+  'application/vnd.oasis.opendocument.text': 'odt',
+  'application/vnd.oasis.opendocument.text-template': 'ott',
+  'application/vnd.oasis.opendocument.text-master': 'odm',
+  'application/vnd.oasis.opendocument.spreadsheet': 'ods',
+  'application/vnd.oasis.opendocument.spreadsheet-template': 'ots',
+  'application/vnd.oasis.opendocument.presentation': 'odp',
+  'application/vnd.oasis.opendocument.presentation-template': 'otp',
+  'application/vnd.oasis.opendocument.graphics': 'odg',
+  'application/vnd.oasis.opendocument.graphics-template': 'otg',
+  'application/vnd.oasis.opendocument.formula': 'odf',
+  'application/vnd.oasis.opendocument.database': 'odb',
+};
+
+const LEGACY_OLE_IDS = new Set(['doc', 'dot', 'xls', 'xlt', 'ppt', 'pps', 'vsd', 'pub', 'wps']);
+const OFFICE_CONTENT_EVIDENCE_IDS = new Set([
+  'odt',
+  'ott',
+  'odm',
+  'ods',
+  'ots',
+  'odp',
+  'otp',
+  'odg',
+  'otg',
+  'odf',
+  'odb',
+  'oxt',
+  'docx',
+  'dotx',
+  'xlsx',
+  'pptx',
+  'epub',
+  'vsdx',
+  'pdf',
+]);
+const FLAT_ODF_IDS = new Set(['fodt', 'fods', 'fodp', 'fodg']);
+const LEGACY_OLE_ID_BY_EXTENSION = new Map(
+  Object.entries(OFFICE_FORMATS)
+    .filter(([id]) => LEGACY_OLE_IDS.has(id))
+    .flatMap(([id, format]) => format.aliases.map((alias) => [alias, id] as const)),
+);
+
+function isZipSignature(uint8: Uint8Array): boolean {
+  return uint8.length >= 2 && uint8[0] === 0x50 && uint8[1] === 0x4b;
+}
+
+function isOleSignature(uint8: Uint8Array): boolean {
+  return (
+    uint8.length >= 8 &&
+    uint8[0] === 0xd0 &&
+    uint8[1] === 0xcf &&
+    uint8[2] === 0x11 &&
+    uint8[3] === 0xe0 &&
+    uint8[4] === 0xa1 &&
+    uint8[5] === 0xb1 &&
+    uint8[6] === 0x1a &&
+    uint8[7] === 0xe1
+  );
+}
+
+function detectFlatOdf(text: string): string | null {
+  const namespace = 'urn:oasis:names:tc:opendocument:xmlns:office:1.0';
+  const declarations = Array.from(text.matchAll(/xmlns(?::([\w.-]+))?=["']([^"']+)["']/g));
+  const declaration = declarations.find((match) => match[2] === namespace);
+  if (!declaration) return null;
+
+  const prefix = declaration[1] ? `${declaration[1].replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}:` : '';
+  const root = new RegExp(`<\\s*${prefix}document(?:-content)?(?=[\\s/>])`).test(text);
+  if (!root) return null;
+
+  const body = text.match(
+    new RegExp(`<\\s*${prefix}body(?=[\\s/>])[\\s\\S]*?<\\s*${prefix}(text|spreadsheet|presentation|drawing)(?=[\\s/>])`),
+  );
+  if (!body) return null;
+
+  return ({ text: 'fodt', spreadsheet: 'fods', presentation: 'fodp', drawing: 'fodg' } as const)[
+    body[1] as 'text' | 'spreadsheet' | 'presentation' | 'drawing'
+  ];
+}
+
+async function detectOfficeZip(file: File): Promise<string | null> {
   try {
     const { default: JSZip } = await import('jszip');
     const zip = await JSZip.loadAsync(file);
-    return !!zip.file('word/document.xml');
+    const mimetype = (await zip.file('mimetype')?.async('text'))?.trim().toLowerCase();
+    if (mimetype === 'application/epub+zip') return 'epub';
+    if (mimetype && ODF_MIME_IDS[mimetype]) return ODF_MIME_IDS[mimetype];
+
+    const contentTypes = await zip.file('[Content_Types].xml')?.async('text');
+    if (zip.file('word/document.xml')) {
+      if (contentTypes?.includes('wordprocessingml.template.main+xml')) return 'dotx';
+      if (!contentTypes || contentTypes.includes('wordprocessingml.document.main+xml')) return 'docx';
+    }
+    if (zip.file('xl/workbook.xml') && (!contentTypes || contentTypes.includes('spreadsheetml.sheet.main+xml'))) return 'xlsx';
+    if (zip.file('ppt/presentation.xml') && (!contentTypes || contentTypes.includes('presentationml.presentation.main+xml'))) return 'pptx';
+    if (zip.file('visio/document.xml') && (!contentTypes || contentTypes.includes('visio.drawing.main+xml'))) return 'vsdx';
+
+    if (zip.file('description.xml') && zip.file('META-INF/manifest.xml')) {
+      return 'oxt';
+    }
   } catch {
-    return false;
+    // Truncated or malformed archives continue through the content and extension fallbacks.
   }
+  return null;
+}
+
+function officeIdForExtension(extension: string): string | null {
+  for (const [id, format] of Object.entries(OFFICE_FORMATS)) {
+    if (format.family === 'document' && format.aliases.includes(extension)) return id;
+  }
+  return null;
+}
+
+function fallbackOfficeIdForExtension(extension: string): string | null {
+  const id = officeIdForExtension(extension);
+  if (!id || LEGACY_OLE_IDS.has(id) || OFFICE_CONTENT_EVIDENCE_IDS.has(id) || FLAT_ODF_IDS.has(id)) return null;
+  return id;
 }
 
 async function probeStreamsWithFFmpeg(file: File): Promise<{ hasVideo: boolean; hasAudio: boolean }> {
@@ -239,11 +359,28 @@ export async function detectFormat(file: File): Promise<DetectedFormat> {
   const headSlice = file.slice(0, 65536);
   const headBuffer = await headSlice.arrayBuffer();
   const uint8 = new Uint8Array(headBuffer);
+  const zipSignature = isZipSignature(uint8);
+  const oleSignature = isOleSignature(uint8);
 
   let rawId: string | null = null;
+  let detectionNote: string | undefined;
+
+  // Inspect container signatures before extensions so renamed archives cannot masquerade as documents.
+  if (zipSignature) {
+    rawId = (await detectOfficeZip(file)) || 'zip';
+  } else if (oleSignature) {
+    rawId = LEGACY_OLE_ID_BY_EXTENSION.get(actualExt) || 'cfb';
+  } else {
+    try {
+      const headText = new TextDecoder('utf-8', { fatal: false }).decode(uint8);
+      rawId = detectFlatOdf(headText);
+    } catch {
+      // Continue with the regular signature and extension checks.
+    }
+  }
 
   // 0. Check JXL signature (raw codestream FF 0A or 12-byte container)
-  if (isJxlHeader(uint8)) {
+  if (!rawId && isJxlHeader(uint8)) {
     rawId = 'jxl';
   }
 
@@ -256,20 +393,18 @@ export async function detectFormat(file: File): Promise<DetectedFormat> {
   }
 
   // 2. Sniff via file-type
-  if (!rawId) {
-    const ftResult = await fileTypeFromBuffer(uint8);
-    if (ftResult) {
-      const ext = ftResult.ext.toLowerCase();
-      if (ext === 'tif') rawId = 'tiff';
-      else if (ext === 'jpg' || ext === 'jpeg') rawId = 'jpg';
-      else if (ext === 'aif' || ext === 'aiff') rawId = 'aiff';
-      else if (ext === 'zip' || ext === 'docx') {
-        const isDocx = await checkDocx(file);
-        if (isDocx) rawId = 'docx';
+  if (!rawId && !zipSignature && !oleSignature) {
+    try {
+      const ftResult = await fileTypeFromBuffer(uint8);
+      if (ftResult) {
+        const ext = ftResult.ext.toLowerCase();
+        if (ext === 'tif') rawId = 'tiff';
+        else if (ext === 'jpg' || ext === 'jpeg') rawId = 'jpg';
+        else if (ext === 'aif' || ext === 'aiff') rawId = 'aiff';
         else rawId = ext;
-      } else {
-        rawId = ext;
       }
+    } catch {
+      // Short or truncated input is handled by the text and extension fallbacks below.
     }
   }
 
@@ -292,39 +427,45 @@ export async function detectFormat(file: File): Promise<DetectedFormat> {
   }
 
   // 4. Content checks for formats not covered by file-type (SVG, JSON, CSV/TSV, TXT)
-  if (!rawId || rawId === 'xml' || rawId === 'zip') {
-    // If ZIP and wasn't confirmed as docx earlier, check DOCX again
-    if (rawId === 'zip' || (uint8[0] === 0x50 && uint8[1] === 0x4b && uint8[2] === 0x03 && uint8[3] === 0x04)) {
-      const isDocx = await checkDocx(file);
-      if (isDocx) rawId = 'docx';
+  if (!rawId || rawId === 'xml') {
+    let headText = '';
+    try {
+      headText = new TextDecoder('utf-8', { fatal: false }).decode(uint8);
+    } catch {
+      /* ignore */
     }
 
-    if (!rawId || rawId === 'xml') {
-      let headText = '';
-      try {
-        headText = new TextDecoder('utf-8', { fatal: false }).decode(uint8);
-      } catch {
-        /* ignore */
-      }
-
-      if (headText) {
-        if (checkSvg(headText)) {
-          rawId = 'svg';
-        } else if (rawId === 'xml') {
-          rawId = 'txt';
-        } else if (file.size < 5000000 && checkJson(await file.text())) {
-          rawId = 'json';
-        } else {
-          const csvTsv = checkCsvOrTsv(headText);
-          if (csvTsv) {
-            rawId = csvTsv;
-          } else if (checkPlainText(uint8)) {
-            rawId = 'txt';
-          }
-        }
+    if (headText) {
+      if (checkSvg(headText)) {
+        rawId = 'svg';
       } else if (rawId === 'xml') {
         rawId = 'txt';
+      } else if (file.size < 5000000 && checkJson(await file.text())) {
+        rawId = 'json';
+      } else {
+        const csvTsv = checkCsvOrTsv(headText);
+        if (csvTsv) {
+          rawId = csvTsv;
+        } else if (checkPlainText(uint8)) {
+          if (actualExt === 'csv' || actualExt === 'tsv') {
+            rawId = actualExt;
+          } else {
+            rawId = fallbackOfficeIdForExtension(actualExt) || 'txt';
+            if (rawId !== 'txt') {
+              detectionNote = 'The file contents did not confirm this format; it was inferred from the filename extension.';
+            }
+          }
+        }
       }
+    }
+  }
+
+  // An extension can name an otherwise unsupported document, but never override a known container.
+  if (!rawId && !oleSignature) {
+    const officeId = fallbackOfficeIdForExtension(actualExt);
+    if (officeId) {
+      rawId = officeId;
+      detectionNote = 'The file contents did not confirm this format; it was inferred from the filename extension.';
     }
   }
 
@@ -332,15 +473,16 @@ export async function detectFormat(file: File): Promise<DetectedFormat> {
   const meta = rawId && FORMAT_METAS[rawId] ? FORMAT_METAS[rawId] : null;
 
   if (!meta) {
-    const isMismatch = Boolean(rawId && rawId !== 'unknown' && actualExt.length > 0 && actualExt !== rawId);
+    const isMismatch = Boolean(rawId && rawId !== 'unknown' && rawId !== 'cfb' && actualExt.length > 0 && actualExt !== rawId);
     return {
       id: rawId || 'unknown',
-      label: rawId ? `${rawId.toUpperCase()} File` : 'Unknown Format',
+      label: rawId === 'cfb' ? 'Compound File Binary container' : rawId ? `${rawId.toUpperCase()} File` : 'Unknown Format',
       family: 'unknown',
-      mime: file.type || 'application/octet-stream',
+      mime: rawId === 'cfb' ? 'application/x-ole-storage' : file.type || 'application/octet-stream',
       ext: rawId || '',
       extensionMismatch: isMismatch,
       actualExtension: actualExt,
+      detectionNote,
     };
   }
 
@@ -354,5 +496,6 @@ export async function detectFormat(file: File): Promise<DetectedFormat> {
     ext: meta.ext,
     extensionMismatch: isMismatch,
     actualExtension: actualExt,
+    detectionNote,
   };
 }

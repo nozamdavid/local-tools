@@ -61,6 +61,7 @@ export function matchesAccept(file: File, accept?: string): boolean {
       if (token.startsWith('.')) {
         if (token === ext) return true;
         if (c.is3d && token === `.${c.format}`) return true;
+        if (c.isDocx && token === '.docx') return true;
         return false;
       }
       if (token.endsWith('/*')) {
@@ -69,6 +70,7 @@ export function matchesAccept(file: File, accept?: string): boolean {
         return false;
       }
       if (token === mime) return true;
+      if (c.isDocx && token === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return true;
       if (c.format === 'obj' && (token === 'model/obj' || token === 'text/obj' || token === 'application/x-tgif')) return true;
       if (c.format === 'stl' && (token === 'model/stl' || token === 'application/sla')) return true;
       if (
@@ -93,9 +95,13 @@ export function fileKind(file: File): FileKind {
   const c = classifyFile(file);
   if (c.is3d) return '3d';
   if (c.isPdf) return 'pdf';
-  if (c.isDocx || c.isLegacyOffice) return 'word';
-  if (c.isXlsx) return 'excel';
-  if (c.isPptx) return 'powerpoint';
+  // ODB (database) and OXT (extension package) are not word category
+  if (c.ext === 'odb') return 'data';
+  if (c.ext === 'oxt') return 'other';
+  if (['vsd', 'vsdx', 'pub'].includes(c.ext)) return 'other';
+  if (c.isDocx || ['doc', 'dot', 'rtf', 'wps', 'odt', 'ott', 'odm', 'fodt'].includes(c.ext)) return 'word';
+  if (c.isXlsx || ['xls', 'xlt', 'ods', 'ots', 'fods'].includes(c.ext)) return 'excel';
+  if (c.isPptx || ['ppt', 'pps', 'odp', 'otp', 'fodp'].includes(c.ext)) return 'powerpoint';
   if (c.isHtml || c.isMhtml || c.isCss) return 'web';
   if (c.isJson || c.isCsv || c.isTsv || c.isGpx || c.isKml) return 'data';
   if (c.isAnyImage) return 'image';
@@ -142,8 +148,12 @@ const PRIMARY_SINGLE_TOOLS: Record<string, string[]> = {
   pdf: ['pdf-split', 'pdf-compress', 'pdf-pdf-to-jpg', 'pdf-pdf-to-word', 'img-pdf-to-image'],
 
   docx: ['pdf-word-to-pdf', 'img-docx-to-jpg', 'img-docx-to-png', 'file-converter'],
-  xlsx: ['pdf-excel-to-pdf'],
-  pptx: ['pdf-powerpoint-to-pdf'],
+  xlsx: ['pdf-excel-to-pdf', 'file-converter'],
+  pptx: ['pdf-powerpoint-to-pdf', 'file-converter'],
+  opendocument: ['file-converter', 'file-inspector'],
+  'legacy-office': ['file-converter', 'file-inspector'],
+  epub: ['file-converter', 'file-inspector'],
+  vsdx: ['file-converter', 'file-inspector'],
 
   stl: THREE_SINGLE_TOOLS,
   obj: THREE_SINGLE_TOOLS,
@@ -164,7 +174,6 @@ const PRIMARY_SINGLE_TOOLS: Record<string, string[]> = {
   gpx: ['gpx-kml'],
   kml: ['gpx-kml'],
 
-  'legacy-office': ['file-inspector'],
   unknown: ['file-inspector'],
 };
 
@@ -191,6 +200,7 @@ export function suggestToolsForFiles(files: File[]): ToolMeta[] {
       'merge',
       'three-merge',
       'img-bulk-convert',
+      'img-icon-converter',
       'img-image-to-pdf',
       'pdf-jpg-to-pdf',
       'img-bulk-resize',
@@ -221,6 +231,7 @@ export function suggestToolsForFiles(files: File[]): ToolMeta[] {
 
   // 1. Primary format-specific tools first
   (PRIMARY_SINGLE_TOOLS[c.format] ?? []).filter((id) => eligibleIds.has(id)).forEach(push);
+  if (c.isStandardImage) push('img-icon-converter');
 
   // 2. Popular eligible tools
   eligible.filter((t) => t.popular && t.id !== 'file-converter' && t.id !== 'file-inspector').forEach((t) => push(t.id));

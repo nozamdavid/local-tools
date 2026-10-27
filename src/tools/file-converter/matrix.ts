@@ -1,5 +1,6 @@
 import type { FormatFamily, DetectedFormat } from './detect';
 import { checkAvifSupport } from '../image/_convert/convert';
+import { OFFICE_FORMATS } from './office';
 
 export interface TargetFormat {
   id: string;
@@ -145,6 +146,13 @@ export async function getTargetFormats(detected: DetectedFormat, file?: File): P
     add('jpg');
     add('txt');
     add('html');
+  }
+
+  // Other office document targets come from the shared format metadata.
+  else if (OFFICE_FORMATS[inputId] && inputId !== 'csv' && inputId !== 'tsv') {
+    for (const targetId of OFFICE_FORMATS[inputId].targets) {
+      add(targetId);
+    }
   }
 
   // 6. Text (JSON, CSV, TSV, TXT)

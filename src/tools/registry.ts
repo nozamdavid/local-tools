@@ -213,10 +213,10 @@ export const TOOL_METAS: ToolMeta[] = [
   fileTool(
     'file-converter',
     'File format converter',
-    'Convert any file format to image, video, audio, document or text',
+    'Convert supported files, extract OpenDocument content to text, HTML or PDF, export spreadsheet data, and identify some legacy formats that need LibreOffice export',
     '🔄',
     'file-convert',
-    ['convert', 'format', 'audio', 'document', 'docx', 'jxl'],
+    ['libreoffice', 'openoffice', 'opendocument', 'odf', 'odt', 'ods', 'odp', 'spreadsheet'],
     true,
   ),
   fileTool(
@@ -449,13 +449,14 @@ export const TOOL_METAS: ToolMeta[] = [
     ['convert', 'svg', 'vector', 'png', 'jpg'],
     true,
   ),
-  image('icon-converter', 'Icon Converter', 'Convert images to multi-resolution Windows ICO or unpack ICO frames', '⭐', 'image-convert', [
-    'convert',
-    'ico',
-    'png',
-    'favicon',
-    'resize',
-  ]),
+  image(
+    'icon-converter',
+    'Image to Favicon / ICO',
+    'Convert supported JPG, PNG, WebP, GIF, BMP, AVIF, HEIC, JXL, and SVG images to favicon.ico at recommended or custom resolutions, or extract ICO frames',
+    '⭐',
+    'image-convert',
+    ['convert', 'favicon', 'ico', 'icon', 'png', 'svg', 'resize', 'webp'],
+  ),
 
   // Image: Editing
   image(
