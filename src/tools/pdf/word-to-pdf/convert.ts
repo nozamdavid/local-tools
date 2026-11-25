@@ -9,14 +9,21 @@ import {
   sanitizeRenderedDom,
   type PageSetup,
 } from '../_render/render';
-import { neutralizeOfficeRels } from '../../../lib/inertMarkup';
+import { DOCX_PREPARATION_ERROR, prepareDocxBuffer } from '../../_office/prepareDocx';
+
+export { prepareDocxBuffer } from '../../_office/prepareDocx';
 
 export const LEGACY_DOC_MESSAGE =
   'Legacy .doc files are not supported. Open the file in Word or LibreOffice, save it as .docx, and try again.';
 
 /** Returns an error message when the file is not a usable DOCX, otherwise null. */
 export async function checkDocx(file: File): Promise<string | null> {
-  const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+  const header = await file
+    .slice(0, 4)
+    .arrayBuffer()
+    .catch(() => null);
+  if (!header) return DOCX_PREPARATION_ERROR;
+  const head = new Uint8Array(header);
   const isOle = head[0] === 0xd0 && head[1] === 0xcf && head[2] === 0x11 && head[3] === 0xe0;
   if (isOle || /\.doc$/i.test(file.name)) return LEGACY_DOC_MESSAGE;
 
@@ -30,23 +37,6 @@ interface RenderedPage {
   canvas: HTMLCanvasElement;
   width: number;
   height: number;
-}
-
-/** Neutralizes external relationship targets in the DOCX archive to prevent remote fetches. */
-export async function prepareDocxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
-  try {
-    const JSZip = (await import('jszip')).default;
-    const zip = await JSZip.loadAsync(buffer);
-    for (const [filename, file] of Object.entries(zip.files)) {
-      if (filename.endsWith('.rels')) {
-        const relsXml = await file.async('text');
-        zip.file(filename, neutralizeOfficeRels(relsXml));
-      }
-    }
-    return await zip.generateAsync({ type: 'arraybuffer' });
-  } catch {
-    return buffer;
-  }
 }
 
 /**
@@ -95,7 +85,7 @@ export async function wordToPdf(file: File, setup: PageSetup, onProgress: (ratio
   const problem = await checkDocx(file);
   if (problem) throw new Error(problem);
 
-  const cleanBuffer = await prepareDocxBuffer(await file.arrayBuffer());
+  const cleanBuffer = await prepareDocxBuffer(file);
   const docx = await import('docx-preview');
   const { stage, dispose } = createStage(816);
 

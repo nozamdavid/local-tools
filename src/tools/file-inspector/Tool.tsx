@@ -4,10 +4,11 @@ import { FileDrop } from '../../components/FileDrop';
 import { Button } from '../../components/Controls';
 import { ProgressBar } from '../../components/ProgressBar';
 import { getToolMeta } from '../registry';
+import { useI18n } from '../../lib/i18n';
 import { downloadBlob } from '../../lib/download';
 import { formatBytes } from '../../lib/format';
 import { computeFileDigests, type FileDigests } from '../_file-utility/hash';
-import { detectFormat, type DetectedFormat } from '../file-converter/detect';
+import { detectFormat, translateDetectedFormatLabel, type DetectedFormat } from '../file-converter/detect';
 import exifr from 'exifr';
 import styles from './Tool.module.css';
 
@@ -28,11 +29,12 @@ interface FileInspection {
 }
 
 export default function FileInspectorTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('file-inspector');
-  const title = meta.title !== 'file-inspector' ? meta.title : 'File Inspector & Checksum Verifier';
+  const title = meta.title !== 'file-inspector' ? meta.title : t('File Inspector & Checksum Verifier');
   const description =
     meta.description ||
-    'Inspect file signatures, hex byte offsets, metadata, EXIF, and verify MD5/SHA checksums completely in your browser.';
+    t('Inspect file signatures, hex byte offsets, metadata, EXIF, and verify MD5/SHA checksums completely in your browser.');
 
   const [inspection, setInspection] = useState<FileInspection | null>(null);
   const [hashing, setHashing] = useState<boolean>(false);
@@ -40,6 +42,8 @@ export default function FileInspectorTool() {
   const [expectedChecksum, setExpectedChecksum] = useState<string>('');
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => abortControllerRef.current?.abort(), []);
 
   // Clean up object URL when component unmounts or inspection changes
   useEffect(() => {
@@ -90,6 +94,8 @@ export default function FileInspectorTool() {
     }
     const abortCtrl = new AbortController();
     abortControllerRef.current = abortCtrl;
+    setHashing(false);
+    setHashProgress(0);
 
     // Read first 4096 bytes for signature detection and first 256 for hex dump
     const slice4k = await file.slice(0, 4096).arrayBuffer();
@@ -104,6 +110,7 @@ export default function FileInspectorTool() {
     } catch {
       detected = null;
     }
+    if (abortCtrl.signal.aborted) return;
 
     // Extension comparison
     const extensionMismatch = detected ? detected.extensionMismatch : false;
@@ -115,26 +122,33 @@ export default function FileInspectorTool() {
     } catch {
       exifData = null;
     }
+    if (abortCtrl.signal.aborted) return;
 
     // Media dimensions / preview if image
     let previewUrl: string | undefined = undefined;
     let mediaDims: { width: number; height: number; duration?: number } | undefined = undefined;
 
     if (file.type.startsWith('image/') || detected?.family === 'image') {
-      previewUrl = URL.createObjectURL(file);
+      const imageUrl = URL.createObjectURL(file);
+      previewUrl = imageUrl;
       try {
         const img = new Image();
-        img.src = previewUrl;
         await new Promise((res) => {
           img.onload = () => {
             mediaDims = { width: img.naturalWidth, height: img.naturalHeight };
             res(true);
           };
           img.onerror = () => res(false);
+          img.src = imageUrl;
         });
       } catch {
         // Ignore dimension probe errors
       }
+    }
+
+    if (abortCtrl.signal.aborted) {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      return;
     }
 
     setInspection({
@@ -158,15 +172,23 @@ export default function FileInspectorTool() {
     setHashProgress(0.05);
 
     try {
-      const digests = await computeFileDigests(file, (progress) => setHashProgress(progress), abortCtrl.signal);
-      setInspection((prev) => (prev ? { ...prev, digests } : null));
+      const digests = await computeFileDigests(
+        file,
+        (progress) => {
+          if (!abortCtrl.signal.aborted) setHashProgress(progress);
+        },
+        abortCtrl.signal,
+      );
+      if (!abortCtrl.signal.aborted) setInspection((prev) => (prev ? { ...prev, digests } : null));
     } catch (err: unknown) {
       if ((err as Error).name !== 'AbortError') {
         console.error('Hashing failed:', err);
       }
     } finally {
-      setHashing(false);
-      setHashProgress(0);
+      if (abortControllerRef.current === abortCtrl) {
+        setHashing(false);
+        setHashProgress(0);
+      }
     }
   };
 
@@ -350,24 +372,24 @@ export default function FileInspectorTool() {
       <div className={styles.container}>
         <FileDrop
           multiple={false}
-          label="Choose or drop any file to inspect"
-          hint="Calculates MD5/SHA checksums, examines byte signatures, and extracts metadata locally. No uploads."
+          label={t('Choose or drop any file to inspect')}
+          hint={t('Calculates MD5/SHA checksums, examines byte signatures, and extracts metadata locally. No uploads.')}
           onFiles={handleFiles}
         />
 
         {hashing && (
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.4rem', fontSize: '0.85rem' }}>
-              <span style={{ color: '#9ca3af' }}>Calculating cryptographic digests (MD5, SHA-1, SHA-256, SHA-384, SHA-512)...</span>
+              <span style={{ color: '#9ca3af' }}>{t('Calculating cryptographic digests (MD5, SHA-1, SHA-256, SHA-384, SHA-512)...')}</span>
               <button
                 type="button"
                 onClick={handleCancelHash}
                 style={{ background: 'none', border: 'none', color: '#f87171', cursor: 'pointer', fontSize: '0.82rem' }}
               >
-                Cancel
+                {t('Cancel')}
               </button>
             </div>
-            <ProgressBar value={hashProgress} />
+            <ProgressBar value={hashProgress} label={t('Calculating checksums…')} />
           </div>
         )}
 
@@ -386,33 +408,37 @@ export default function FileInspectorTool() {
                 <div>
                   {inspection.extensionMismatch ? (
                     <span className={styles.badgeMismatch}>
-                      ⚠️ Extension Mismatch: Apparent extension does not match file signature ({inspection.detectedFormat?.ext || 'unknown'}
-                      )
+                      ⚠️{' '}
+                      {t('Extension mismatch: apparent extension does not match file signature ({extension})', {
+                        extension: inspection.detectedFormat?.ext || t('unknown'),
+                      })}
                     </span>
                   ) : (
-                    <span className={styles.badgeMatch}>✓ File Extension Matches Detected Signature</span>
+                    <span className={styles.badgeMatch}>✓ {t('File extension matches detected signature')}</span>
                   )}
                 </div>
               </div>
 
               <div className={styles.gridStats}>
                 <div className={styles.statItem}>
-                  <div className={styles.statLabel}>Detected Signature</div>
-                  <div className={styles.statValue}>{inspection.detectedFormat?.label || 'Unknown Signature'}</div>
+                  <div className={styles.statLabel}>{t('Detected signature')}</div>
+                  <div className={styles.statValue}>
+                    {inspection.detectedFormat ? translateDetectedFormatLabel(inspection.detectedFormat.label, t) : t('Unknown signature')}
+                  </div>
                 </div>
                 <div className={styles.statItem}>
-                  <div className={styles.statLabel}>Format Family</div>
+                  <div className={styles.statLabel}>{t('Format family')}</div>
                   <div className={styles.statValue}>
                     {inspection.detectedFormat?.family ? inspection.detectedFormat.family.toUpperCase() : 'UNKNOWN'}
                   </div>
                 </div>
                 <div className={styles.statItem}>
-                  <div className={styles.statLabel}>MIME Type</div>
+                  <div className={styles.statLabel}>{t('MIME type')}</div>
                   <div className={styles.statValue}>{inspection.type}</div>
                 </div>
                 {inspection.mediaDimensions && (
                   <div className={styles.statItem}>
-                    <div className={styles.statLabel}>Dimensions</div>
+                    <div className={styles.statLabel}>{t('Dimensions')}</div>
                     <div className={styles.statValue}>
                       {inspection.mediaDimensions.width} x {inspection.mediaDimensions.height} px
                     </div>
@@ -423,25 +449,32 @@ export default function FileInspectorTool() {
 
             {/* Checksums & Compare Card */}
             <div className={styles.card}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Cryptographic Checksums</h3>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{t('Cryptographic checksums')}</h3>
 
               {/* Compare input */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600 }}>Compare with Expected Checksum / Digest:</label>
+                <label style={{ fontSize: '0.8rem', color: '#9ca3af', fontWeight: 600 }}>
+                  {t('Compare with expected checksum / digest:')}
+                </label>
                 <input
                   type="text"
                   className={styles.compareInput}
-                  placeholder="Paste expected MD5, SHA-1, SHA-256, SHA-384, or SHA-512 hash..."
+                  placeholder={t('Paste expected MD5, SHA-1, SHA-256, SHA-384, or SHA-512 hash...')}
                   value={expectedChecksum}
                   onChange={(e) => setExpectedChecksum(e.target.value)}
                 />
                 {matchResult && (
                   <div>
                     {matchResult.match ? (
-                      <span className={styles.compareStatusMatch}>✓ MATCH! Digest exactly matches {matchResult.algo} checksum.</span>
+                      <span className={styles.compareStatusMatch}>
+                        ✓ {t('Match! Digest exactly matches {algorithm} checksum.', { algorithm: matchResult.algo })}
+                      </span>
                     ) : (
                       <span className={styles.compareStatusMismatch}>
-                        ✗ MISMATCH: Input does not match any computed checksum ({matchResult.algo} length expected).
+                        ✗{' '}
+                        {t('Mismatch: input does not match any computed checksum ({algorithm} length expected).', {
+                          algorithm: matchResult.algo,
+                        })}
                       </span>
                     )}
                   </div>
@@ -451,20 +484,20 @@ export default function FileInspectorTool() {
               {/* Hashes Table */}
               <div className={styles.hashesList}>
                 {(['md5', 'sha1', 'sha256', 'sha384', 'sha512'] as const).map((algoKey) => {
-                  const val = inspection.digests ? inspection.digests[algoKey] : 'Computing...';
+                  const val = inspection.digests ? inspection.digests[algoKey] : t('Computing...');
                   const isMatch = expectedChecksum.trim().toLowerCase() === val.toLowerCase();
 
                   return (
                     <div key={algoKey} className={styles.hashRow}>
                       <div className={styles.hashHeader}>
                         <span className={styles.hashName}>{algoKey.toUpperCase()}</span>
-                        {isMatch && <span className={styles.compareStatusMatch}>✓ Match</span>}
+                        {isMatch && <span className={styles.compareStatusMatch}>✓ {t('Match')}</span>}
                       </div>
                       <div className={styles.hashValueRow}>
                         <span className={styles.hashValue}>{val}</span>
                         {inspection.digests && (
                           <button type="button" className={styles.hashCopyBtn} onClick={() => handleCopyDigest(algoKey, val)}>
-                            {copiedKey === algoKey ? '✓ Copied' : 'Copy'}
+                            {copiedKey === algoKey ? `✓ ${t('Copied')}` : t('Copy')}
                           </button>
                         )}
                       </div>
@@ -476,14 +509,14 @@ export default function FileInspectorTool() {
 
             {/* First 256 Bytes Hex & ASCII Dump */}
             <div className={styles.card}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>First 256 Bytes (Offset / Hex / ASCII)</h3>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{t('First 256 bytes (offset / hex / ASCII)')}</h3>
               <div className={styles.hexViewer}>{inspection.hexDump}</div>
             </div>
 
             {/* Safe Inert Media Preview */}
             {inspection.imagePreviewUrl && (
               <div className={styles.card}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Inert Image Preview</h3>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{t('Inert image preview')}</h3>
                 <div className={styles.previewContainer}>
                   <img src={inspection.imagePreviewUrl} alt={inspection.name} className={styles.imagePreview} />
                 </div>
@@ -493,10 +526,12 @@ export default function FileInspectorTool() {
             {/* If Document / Text preview */}
             {(inspection.type.includes('html') || inspection.type.includes('pdf') || inspection.name.endsWith('.pdf')) && (
               <div className={styles.card}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Document Security Isolation</h3>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{t('Document security isolation')}</h3>
                 <div className={styles.inertDocNotice}>
-                  🔒 HTML and PDF document previews are kept inert to prevent arbitrary script execution and plugin vulnerabilities.
-                  Inspection was performed strictly on binary structures.
+                  🔒{' '}
+                  {t(
+                    'HTML and PDF document previews are kept inert to prevent arbitrary script execution and plugin vulnerabilities. Inspection was performed strictly on binary structures.',
+                  )}
                 </div>
               </div>
             )}
@@ -504,7 +539,7 @@ export default function FileInspectorTool() {
             {/* EXIF Metadata Card if present */}
             {inspection.exif && Object.keys(inspection.exif).length > 0 && (
               <div className={styles.card}>
-                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>EXIF Metadata</h3>
+                <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{t('EXIF metadata')}</h3>
                 <div className={styles.gridStats}>
                   {Object.entries(inspection.exif)
                     .slice(0, 8)
@@ -520,23 +555,25 @@ export default function FileInspectorTool() {
 
             {/* Export and Action Buttons */}
             <div className={styles.card}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Export Diagnostic Report</h3>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{t('Export diagnostic report')}</h3>
               <div className={styles.btnGroup}>
                 <Button variant="primary" onClick={handleExportJson}>
-                  Export JSON
+                  {t('Export JSON')}
                 </Button>
                 <Button variant="secondary" onClick={handleExportTxt}>
-                  Export TXT
+                  {t('Export TXT')}
                 </Button>
                 <Button variant="secondary" onClick={handleExportHtml}>
-                  Export HTML
+                  {t('Export HTML')}
                 </Button>
               </div>
 
               {/* No Antivirus / Safety Claim Disclaimer */}
               <div className={styles.disclaimer}>
-                <strong>Security Notice:</strong> This tool performs cryptographic checksum calculation and structural header/signature
-                inspection. It does NOT provide antivirus scanning, vulnerability assessments, or malware safety guarantees.
+                <strong>{t('Security notice:')}</strong>{' '}
+                {t(
+                  'This tool performs cryptographic checksum calculation and structural header/signature inspection. It does NOT provide antivirus scanning, vulnerability assessments, or malware safety guarantees.',
+                )}
               </div>
             </div>
           </>

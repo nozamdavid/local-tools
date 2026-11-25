@@ -1,5 +1,7 @@
 import { PDFDocument } from 'pdf-lib';
-import { decodeImage } from '../../../lib/image';
+import exifr from 'exifr';
+import { canvasToBlob, decodeImage } from '../../../lib/image';
+import { translate } from '../../../lib/i18n';
 
 export type PageSizeOption = 'fit' | 'a4' | 'letter';
 export type OrientationOption = 'auto' | 'portrait' | 'landscape';
@@ -26,7 +28,7 @@ const MARGIN_POINTS: Record<MarginOption, number> = {
 
 export async function imagesToPdf(files: File[], options: ImageToPdfOptions): Promise<Blob> {
   if (files.length === 0) {
-    throw new Error('Please select at least one image.');
+    throw new Error(translate('Please select at least one image.'));
   }
 
   const pdfDoc = await PDFDocument.create();
@@ -34,18 +36,21 @@ export async function imagesToPdf(files: File[], options: ImageToPdfOptions): Pr
 
   for (let idx = 0; idx < files.length; idx++) {
     const file = files[idx];
+    let decoded: HTMLImageElement | undefined;
     options.onProgress?.(idx, files.length);
 
     // If split tall screenshots is active, we check if image is tall
     if (options.splitTallScreenshots) {
-      const img = await decodeImage(file);
+      const img = (decoded = await decodeImage(file));
       const imgWidth = img.naturalWidth || img.width;
       const imgHeight = img.naturalHeight || img.height;
-      const a4Ratio = 841.89 / 595.28;
+      const { width: pageWidth, height: pageHeight } = PAGE_DIMENSIONS.a4;
+      const printableWidth = pageWidth - marginPt * 2;
+      const printableHeight = pageHeight - marginPt * 2;
 
-      if (imgHeight / imgWidth > 1.45) {
-        // Split vertically into A4 proportion slices
-        const sliceHeight = Math.round(imgWidth * a4Ratio);
+      if (imgHeight / imgWidth > printableHeight / printableWidth) {
+        // Round down so the same scale fits every full slice inside the margins.
+        const sliceHeight = Math.max(1, Math.floor((imgWidth * printableHeight) / printableWidth));
         const sliceCount = Math.ceil(imgHeight / sliceHeight);
 
         for (let s = 0; s < sliceCount; s++) {
@@ -56,7 +61,7 @@ export async function imagesToPdf(files: File[], options: ImageToPdfOptions): Pr
           canvas.width = imgWidth;
           canvas.height = sHeight;
           const ctx = canvas.getContext('2d');
-          if (!ctx) throw new Error('Canvas 2D context unavailable');
+          if (!ctx) throw new Error(translate('Canvas 2D context unavailable'));
 
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -66,19 +71,19 @@ export async function imagesToPdf(files: File[], options: ImageToPdfOptions): Pr
           canvas.width = 0;
           canvas.height = 0;
 
-          if (!sliceBlob) throw new Error('Failed to encode image slice');
+          if (!sliceBlob) throw new Error(translate('Failed to encode image slice'));
           const sliceBytes = new Uint8Array(await sliceBlob.arrayBuffer());
           const embeddedSlice = await pdfDoc.embedJpg(sliceBytes);
 
           // Add A4 page
-          const page = pdfDoc.addPage([595.28, 841.89]);
-          const scale = 595.28 / imgWidth;
+          const page = pdfDoc.addPage([pageWidth, pageHeight]);
+          const scale = printableWidth / imgWidth;
           const drawH = sHeight * scale;
-          const y = 841.89 - drawH; // align to top
+          const y = pageHeight - marginPt - drawH; // align to top
           page.drawImage(embeddedSlice, {
-            x: 0,
+            x: marginPt,
             y,
-            width: 595.28,
+            width: printableWidth,
             height: drawH,
           });
         }
@@ -94,10 +99,13 @@ export async function imagesToPdf(files: File[], options: ImageToPdfOptions): Pr
     // Try direct embedding for JPEG/PNG
     if (file.type === 'image/jpeg' || /\.jpe?g$/i.test(file.name)) {
       try {
-        const bytes = new Uint8Array(await file.arrayBuffer());
-        embeddedImage = await pdfDoc.embedJpg(bytes);
-        imgWidth = embeddedImage.width;
-        imgHeight = embeddedImage.height;
+        const orientation = await exifr.orientation(file).catch(() => undefined);
+        if (!orientation || orientation === 1) {
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          embeddedImage = await pdfDoc.embedJpg(bytes);
+          imgWidth = embeddedImage.width;
+          imgHeight = embeddedImage.height;
+        }
       } catch {
         // fallback to decoding
       }
@@ -113,7 +121,7 @@ export async function imagesToPdf(files: File[], options: ImageToPdfOptions): Pr
     }
 
     if (!embeddedImage) {
-      const img = await decodeImage(file);
+      const img = decoded ?? (await decodeImage(file));
       imgWidth = img.naturalWidth || img.width;
       imgHeight = img.naturalHeight || img.height;
 
@@ -121,28 +129,17 @@ export async function imagesToPdf(files: File[], options: ImageToPdfOptions): Pr
       canvas.width = imgWidth;
       canvas.height = imgHeight;
       const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas 2D context unavailable');
+      if (!ctx) throw new Error(translate('Canvas 2D context unavailable'));
 
       ctx.drawImage(img, 0, 0);
 
-      const hasAlpha = file.type === 'image/png' || file.type === 'image/webp' || file.type === 'image/svg+xml';
-      let blob: Blob | null;
-
-      if (hasAlpha) {
-        blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/png'));
+      const preserveAlpha = /image\/(png|webp|svg\+xml)/i.test(file.type) || /\.(png|webp|svg)$/i.test(file.name);
+      const blob = await canvasToBlob(canvas, preserveAlpha ? 'image/png' : 'image/jpeg', 0.92).finally(() => {
         canvas.width = 0;
         canvas.height = 0;
-        if (!blob) throw new Error('Failed to encode canvas to PNG');
-        const bytes = new Uint8Array(await blob.arrayBuffer());
-        embeddedImage = await pdfDoc.embedPng(bytes);
-      } else {
-        blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', 0.92));
-        canvas.width = 0;
-        canvas.height = 0;
-        if (!blob) throw new Error('Failed to encode canvas to JPEG');
-        const bytes = new Uint8Array(await blob.arrayBuffer());
-        embeddedImage = await pdfDoc.embedJpg(bytes);
-      }
+      });
+      const bytes = new Uint8Array(await blob.arrayBuffer());
+      embeddedImage = preserveAlpha ? await pdfDoc.embedPng(bytes) : await pdfDoc.embedJpg(bytes);
     }
 
     // Determine page size and orientation

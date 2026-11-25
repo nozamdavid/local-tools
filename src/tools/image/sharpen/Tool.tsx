@@ -40,7 +40,7 @@ export default function SharpenTool() {
       defaultOptions={DEFAULT_OPTIONS}
       suffix="-sharpened"
       render={renderSharpen}
-      renderControls={(options, setOptions) => {
+      renderControls={(options, setOptions, { t }) => {
         const update = (key: keyof SharpenOptions, val: number) => {
           setOptions((prev) => ({ ...prev, [key]: val }));
         };
@@ -50,11 +50,11 @@ export default function SharpenTool() {
             <div className={styles.sliderWithReset}>
               <div className={styles.sliderHeader}>
                 <span className="field-label" style={{ marginBottom: 0 }}>
-                  Amount ({Math.round(options.amount * 100)}%)
+                  {t('Amount ({amount}%)', { amount: Math.round(options.amount * 100) })}
                 </span>
                 {options.amount !== DEFAULT_OPTIONS.amount && (
                   <button type="button" className={styles.resetMiniBtn} onClick={() => update('amount', DEFAULT_OPTIONS.amount)}>
-                    Reset
+                    {t('Reset')}
                   </button>
                 )}
               </div>
@@ -64,11 +64,11 @@ export default function SharpenTool() {
             <div className={styles.sliderWithReset}>
               <div className={styles.sliderHeader}>
                 <span className="field-label" style={{ marginBottom: 0 }}>
-                  Radius ({options.radius}px)
+                  {t('Radius ({radius}px)', { radius: options.radius })}
                 </span>
                 {options.radius !== DEFAULT_OPTIONS.radius && (
                   <button type="button" className={styles.resetMiniBtn} onClick={() => update('radius', DEFAULT_OPTIONS.radius)}>
-                    Reset
+                    {t('Reset')}
                   </button>
                 )}
               </div>
@@ -78,11 +78,11 @@ export default function SharpenTool() {
             <div className={styles.sliderWithReset}>
               <div className={styles.sliderHeader}>
                 <span className="field-label" style={{ marginBottom: 0 }}>
-                  Threshold ({options.threshold})
+                  {t('Threshold ({threshold})', { threshold: options.threshold })}
                 </span>
                 {options.threshold !== DEFAULT_OPTIONS.threshold && (
                   <button type="button" className={styles.resetMiniBtn} onClick={() => update('threshold', DEFAULT_OPTIONS.threshold)}>
-                    Reset
+                    {t('Reset')}
                   </button>
                 )}
               </div>

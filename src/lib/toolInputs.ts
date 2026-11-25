@@ -54,6 +54,11 @@ export const EXT_MIME: Record<string, string> = {
   wma: 'audio/x-ms-wma',
   weba: 'audio/webm',
 
+  // Archives and subtitles
+  zip: 'application/zip',
+  srt: 'application/x-subrip',
+  vtt: 'text/vtt',
+
   // OpenDocument
   odt: 'application/vnd.oasis.opendocument.text',
   ott: 'application/vnd.oasis.opendocument.text-template',
@@ -153,6 +158,7 @@ export type CanonicalFormat =
   | 'wma'
   | 'webm-audio'
   | 'audio-other'
+  | 'zip'
   | 'pdf'
   | 'docx'
   | 'xlsx'
@@ -179,6 +185,8 @@ export type CanonicalFormat =
   | 'log'
   | 'gpx'
   | 'kml'
+  | 'srt'
+  | 'vtt'
   | 'xml'
   | 'unknown';
 
@@ -191,7 +199,7 @@ export function mimeOf(file: File): string {
   const ext = extensionOf(file.name);
   const raw = (file.type || '').trim().toLowerCase();
   if (raw === '' || raw === 'application/octet-stream') {
-    return EXT_MIME[ext] || raw;
+    return Object.hasOwn(EXT_MIME, ext) ? EXT_MIME[ext] : raw;
   }
   return raw;
 }
@@ -204,6 +212,7 @@ export interface FileClassification {
   isAnyImage: boolean;
   isVideo: boolean;
   isAudio: boolean;
+  isSubtitle: boolean;
   is3d: boolean;
   isPdf: boolean;
   isDocx: boolean;
@@ -342,6 +351,10 @@ export function classifyFile(file: File): FileClassification {
   ) {
     format = 'legacy-office';
   }
+  // Check document packages before ZIP MIME so DOCX and ODF files stay documents.
+  else if (ext === 'zip' || mime === 'application/zip' || mime === 'application/x-zip-compressed') {
+    format = 'zip';
+  }
 
   // 5. 3D & CAD Models (evaluated before Web/Text so .obj with text/plain classifies as 3D)
   else if (ext === 'stl' || mime === 'model/stl' || mime === 'application/sla') {
@@ -381,6 +394,10 @@ export function classifyFile(file: File): FileClassification {
     format = 'html';
   } else if (ext === 'css' || mime === 'text/css') {
     format = 'css';
+  } else if (ext === 'vtt' || mime === 'text/vtt') {
+    format = 'vtt';
+  } else if (ext === 'srt' || mime === 'application/x-subrip' || mime === 'text/srt') {
+    format = 'srt';
   } else if (ext === 'json' || mime === 'application/json') {
     format = 'json';
   } else if (ext === 'csv' || mime === 'text/csv') {
@@ -417,6 +434,7 @@ export function classifyFile(file: File): FileClassification {
     isAnyImage,
     isVideo,
     isAudio,
+    isSubtitle: format === 'srt' || format === 'vtt',
     is3d,
     isPdf: format === 'pdf',
     isDocx: format === 'docx',
@@ -515,9 +533,16 @@ export function isToolEligibleForFile(tool: ToolMeta, file: File): boolean {
   }
 
   // 1. Audio / Speech tools
-  if (['video-to-text', 'subtitles', 'video-info', 'media-speed'].includes(tool.id)) {
+  if (tool.id === 'subtitles') {
+    return c.isVideo || c.isAudio || c.isSubtitle;
+  }
+
+  if (['video-to-text', 'video-info', 'media-speed'].includes(tool.id)) {
     return c.isVideo || c.isAudio;
   }
+
+  if (tool.id === 'audio-trim') return c.isAudio;
+  if (tool.id === 'zip-extract') return c.format === 'zip';
 
   // 2. Video container health
   if (tool.id === 'video-health') {
@@ -560,7 +585,7 @@ export function isToolEligibleForFile(tool: ToolMeta, file: File): boolean {
     }
 
     // Batch-only image tools
-    if (['img-bulk-resize', 'img-bulk-compress', 'img-bulk-convert', 'img-merge', 'img-collage'].includes(tool.id)) {
+    if (['img-bulk-resize', 'img-bulk-compress', 'img-bulk-convert', 'img-merge', 'img-collage', 'img-compare'].includes(tool.id)) {
       return false;
     }
 
@@ -570,6 +595,7 @@ export function isToolEligibleForFile(tool: ToolMeta, file: File): boolean {
     if (tool.id === 'img-webp-to-jpg' || tool.id === 'img-webp-to-png') return c.format === 'webp';
     if (tool.id === 'img-heic-to-jpg') return c.format === 'heic';
     if (tool.id === 'img-svg-to-png') return c.format === 'svg';
+    if (tool.id === 'img-svg-optimize') return c.format === 'svg';
 
     // Fixed-target WebP converter: not for WebP
     if (tool.id === 'img-image-to-webp') return c.isStandardImage && c.format !== 'webp';
@@ -654,6 +680,10 @@ export function isToolEligibleForBatch(tool: ToolMeta, files: File[]): boolean {
 
   // Image Multi-file Tools
   const allStandardImages = classes.every((c) => c.isStandardImage);
+
+  if (tool.id === 'img-compare') {
+    return count === 2 && classes.every((c) => ['jpg', 'png', 'webp', 'gif', 'bmp'].includes(c.format));
+  }
 
   if (tool.id === 'img-merge') {
     return count >= 2 && allStandardImages;

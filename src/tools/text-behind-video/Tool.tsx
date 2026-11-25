@@ -8,6 +8,7 @@ import { getToolMeta } from '../registry';
 import { getVideoMeta, type VideoMeta } from '../../lib/media';
 import { formatBytes, formatDuration, withSuffix } from '../../lib/format';
 import { useObjectUrl } from '../../lib/useObjectUrl';
+import { useI18n } from '../../lib/i18n';
 import { SegmentClient } from '../_segment/segmentClient';
 import { processVideo } from '../_segment/videoProcessor';
 import { drawTextLayers, drawSubjectOnTop, calculateTargetSize } from '../_segment/composite';
@@ -36,6 +37,7 @@ const FONT_WEIGHTS = [
 type FpsOption = '30' | '24' | '15';
 
 export default function TextBehindVideoTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('text-behind-video');
   const [file, setFile] = useState<File | null>(null);
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
@@ -158,7 +160,7 @@ export default function TextBehindVideoTool() {
 
     setLoadingPreview(true);
     setLoadingProgress(0);
-    setLoadingLabel('Loading video & initializing AI model...');
+    setLoadingLabel(t('Loading video & initializing AI model...'));
 
     const client = new SegmentClient();
     segmentClientRef.current = client;
@@ -166,7 +168,7 @@ export default function TextBehindVideoTool() {
     try {
       await new Promise<void>((resolve, reject) => {
         video.onloadedmetadata = () => resolve();
-        video.onerror = () => reject(new Error('Failed to load video file'));
+        video.onerror = () => reject(new Error(t('Failed to load video file')));
       });
 
       // Seek to first frame
@@ -182,11 +184,11 @@ export default function TextBehindVideoTool() {
       await client.init((p) => {
         if (p?.progress !== undefined) {
           setLoadingProgress(Math.min(0.99, p.progress / 100));
-          setLoadingLabel(`Loading AI model: ${Math.round(p.progress)}%`);
+          setLoadingLabel(t('Loading AI model: {percent}%', { percent: Math.round(p.progress) }));
         }
       });
 
-      setLoadingLabel('Segmenting subject on initial frame...');
+      setLoadingLabel(t('Segmenting subject on initial frame...'));
       setLoadingProgress(0.5);
 
       const targetSize = calculateTargetSize(video.videoWidth, video.videoHeight, resolution);
@@ -196,7 +198,7 @@ export default function TextBehindVideoTool() {
       scratch.width = targetSize.width;
       scratch.height = targetSize.height;
       const sCtx = scratch.getContext('2d', { willReadFrequently: true });
-      if (!sCtx) throw new Error('Could not create canvas context');
+      if (!sCtx) throw new Error(t('Could not create canvas context'));
 
       sCtx.drawImage(video, 0, 0, targetSize.width, targetSize.height);
       const frameData = sCtx.getImageData(0, 0, targetSize.width, targetSize.height);
@@ -208,7 +210,7 @@ export default function TextBehindVideoTool() {
       setLoadingPreview(false);
       setLoadingProgress(1);
     } catch (err: any) {
-      setError(err?.message || 'Failed to prepare video preview.');
+      setError(err?.message || t('Failed to prepare video preview.'));
       setLoadingPreview(false);
     } finally {
       client.terminate();
@@ -294,7 +296,7 @@ export default function TextBehindVideoTool() {
 
     setStatus('running');
     setProcessProgress(0);
-    setProcessLabel('Initializing AI segmentation engine...');
+    setProcessLabel(t('Initializing AI segmentation engine...'));
     setError(null);
 
     try {
@@ -317,7 +319,7 @@ export default function TextBehindVideoTool() {
             setProcessProgress(p.currentFrame / p.totalFrames);
           }
           const etaText = p.etaSeconds && p.etaSeconds > 0 ? ` (ETA: ${formatDuration(p.etaSeconds)})` : '';
-          setProcessLabel(`${p.statusText}${etaText}`);
+          setProcessLabel(`${t(p.statusText)}${etaText}`);
         },
         compositeFn: (ctx, info) => {
           // 1. Draw frame
@@ -334,15 +336,12 @@ export default function TextBehindVideoTool() {
       setResultBlob(blob);
       setStatus('done');
     } catch (err: any) {
-      if (err?.message === 'Cancelled' || abortController.signal.aborted) {
-        setStatus('idle');
-        return;
-      }
-      setError(err?.message || 'Failed to render text behind video.');
+      if (abortController.signal.aborted) return;
+      setError(err?.message || t('Failed to render text behind video.'));
       setStatus('error');
     } finally {
       segmentClient.terminate();
-      segmentClientRef.current = null;
+      if (segmentClientRef.current === segmentClient) segmentClientRef.current = null;
     }
   };
 
@@ -353,14 +352,14 @@ export default function TextBehindVideoTool() {
       {!file ? (
         <FileDrop
           accept="video/*"
-          label="Choose a video or drag it here"
-          hint="Place dynamic typography behind the subject in your video. 100% in-browser processing."
+          label={t('Choose a video or drag it here')}
+          hint={t('Place dynamic typography behind the subject in your video. 100% in-browser processing.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {error && <div className="error-banner">{error}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {error && <div className="error-banner">{t(error)}</div>}
 
           {status === 'done' && resultBlob ? (
             <ResultPanel
@@ -375,18 +374,18 @@ export default function TextBehindVideoTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name:')} <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {videoMeta && (
                   <>
                     <span className="meta-chip">
-                      Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
+                      {t('Duration:')} <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution:{' '}
+                      {t('Resolution:')}{' '}
                       <strong>
                         {videoMeta.width}x{videoMeta.height}
                       </strong>
@@ -401,10 +400,10 @@ export default function TextBehindVideoTool() {
                 </div>
               ) : status === 'running' ? (
                 <div className={styles.progressContainer}>
-                  <ProgressBar value={processProgress} label={processLabel || 'Processing video...'} />
+                  <ProgressBar value={processProgress} label={processLabel || t('Processing video...')} />
                   <div className={styles.cancelRow}>
                     <Button variant="secondary" onClick={handleCancel}>
-                      Cancel processing
+                      {t('Cancel processing')}
                     </Button>
                   </div>
                 </div>
@@ -413,15 +412,16 @@ export default function TextBehindVideoTool() {
                   {/* Left: Canvas Preview */}
                   <div className={styles.canvasWrapper}>
                     <div className={styles.canvasHint} id={canvasHintId}>
-                      Live Preview (Frame 1): Drag to reposition text behind subject. With the preview focused, use the arrow keys to move
-                      it (Shift for larger steps).
+                      {t(
+                        'Live Preview (Frame 1): Drag to reposition text behind subject. With the preview focused, use the arrow keys to move it (Shift for larger steps).',
+                      )}
                     </div>
                     <canvas
                       ref={previewCanvasRef}
                       className={styles.canvas}
                       tabIndex={0}
                       role="img"
-                      aria-label="Live preview of the first video frame with the text placed behind the subject"
+                      aria-label={t('Live preview of the first video frame with the text placed behind the subject')}
                       aria-describedby={canvasHintId}
                       onKeyDown={handleCanvasKeyDown}
                       onPointerDown={handlePointerDown}
@@ -431,47 +431,47 @@ export default function TextBehindVideoTool() {
 
                     <div className="action-buttons" style={{ marginTop: '1.5rem', width: '100%' }}>
                       <Button variant="secondary" onClick={handleReset}>
-                        Choose another video
+                        {t('Choose another video')}
                       </Button>
                       <Button variant="primary" onClick={handleProcessVideo}>
-                        Render full video
+                        {t('Render full video')}
                       </Button>
                     </div>
                   </div>
 
                   {/* Right: Controls */}
                   <div className={styles.controlsPanel}>
-                    <Field label="Text content">
+                    <Field label={t('Text content')}>
                       <input
                         type="text"
                         className="select"
                         style={{ padding: '8px 12px' }}
                         value={textLayer.text}
                         onChange={(e) => updateTextLayer({ text: e.target.value })}
-                        placeholder="Enter text..."
+                        placeholder={t('Enter text...')}
                       />
                     </Field>
 
-                    <Field label="Font family">
+                    <Field label={t('Font family')}>
                       <Select
                         id={fontId}
                         value={textLayer.fontFamily}
                         onChange={(e) => updateTextLayer({ fontFamily: e.target.value })}
-                        options={SYSTEM_FONTS}
+                        options={SYSTEM_FONTS.map((option) => ({ ...option, label: t(option.label) }))}
                       />
                     </Field>
 
                     <div className={styles.rowInputs}>
-                      <Field label="Font weight">
+                      <Field label={t('Font weight')}>
                         <Select
                           id={weightId}
                           value={textLayer.fontWeight}
                           onChange={(e) => updateTextLayer({ fontWeight: e.target.value })}
-                          options={FONT_WEIGHTS}
+                          options={FONT_WEIGHTS.map((option) => ({ ...option, label: t(option.label) }))}
                         />
                       </Field>
 
-                      <Field label="Color">
+                      <Field label={t('Color')}>
                         <div className={styles.colorPickerRow}>
                           <input
                             type="color"
@@ -489,7 +489,7 @@ export default function TextBehindVideoTool() {
                       </Field>
                     </div>
 
-                    <Field label="Font size">
+                    <Field label={t('Font size')}>
                       <Slider
                         value={textLayer.fontSize}
                         min={12}
@@ -500,7 +500,7 @@ export default function TextBehindVideoTool() {
                       />
                     </Field>
 
-                    <Field label="Letter spacing">
+                    <Field label={t('Letter spacing')}>
                       <Slider
                         value={textLayer.letterSpacing}
                         min={-5}
@@ -511,7 +511,7 @@ export default function TextBehindVideoTool() {
                       />
                     </Field>
 
-                    <Field label="Opacity">
+                    <Field label={t('Opacity')}>
                       <Slider
                         value={Math.round(textLayer.opacity * 100)}
                         min={0}
@@ -522,7 +522,7 @@ export default function TextBehindVideoTool() {
                       />
                     </Field>
 
-                    <Field label="Rotation">
+                    <Field label={t('Rotation')}>
                       <Slider
                         value={textLayer.rotation}
                         min={-180}
@@ -534,7 +534,7 @@ export default function TextBehindVideoTool() {
                     </Field>
 
                     <div className={styles.rowInputs}>
-                      <Field label="Framerate (fps)">
+                      <Field label={t('Framerate (fps)')}>
                         <Select
                           id={fpsId}
                           value={fps}
@@ -542,21 +542,21 @@ export default function TextBehindVideoTool() {
                           options={[
                             { value: '30', label: '30 fps' },
                             { value: '24', label: '24 fps' },
-                            { value: '15', label: '15 fps (Fast)' },
+                            { value: '15', label: t('15 fps (Fast)') },
                           ]}
                         />
                       </Field>
 
-                      <Field label="Resolution">
+                      <Field label={t('Resolution')}>
                         <Select
                           id={resId}
                           value={resolution}
                           onChange={(e) => setResolution(e.target.value as VideoMaxResolution)}
                           options={[
                             { value: '720p', label: '720p (HD)' },
-                            { value: '480p', label: '480p (SD - Fast)' },
+                            { value: '480p', label: t('480p (SD - Fast)') },
                             { value: '1080p', label: '1080p (Full HD)' },
-                            { value: 'original', label: 'Original' },
+                            { value: 'original', label: t('Original') },
                           ]}
                         />
                       </Field>

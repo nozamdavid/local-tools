@@ -6,6 +6,7 @@ import { Button, Field } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
+import { useI18n } from '../../../lib/i18n';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { baseName } from '../_pages/pdfPages';
 import { QpdfError, decryptPdf, isEncryptedPdf } from '../_qpdf/qpdf';
@@ -14,6 +15,7 @@ import styles from './Tool.module.css';
 type Inspection = 'checking' | 'encrypted' | 'plain' | 'unreadable';
 
 export default function UnlockPdfTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-unlock');
   const [file, setFile] = useState<File | null>(null);
   const [inspection, setInspection] = useState<Inspection>('checking');
@@ -36,7 +38,7 @@ export default function UnlockPdfTool() {
       .catch((err: unknown) => {
         if (!active) return;
         setInspection('unreadable');
-        setInspectError(err instanceof Error ? err.message : 'Failed to read the PDF.');
+        setInspectError(err instanceof Error ? t(err.message) : t('Failed to read the PDF.'));
       });
 
     return () => {
@@ -67,9 +69,9 @@ export default function UnlockPdfTool() {
           throw new Error(
             err.badPassword
               ? pass
-                ? 'Incorrect password. Check it and try again.'
-                : 'This PDF needs a password to open. Enter it above.'
-              : `Could not unlock this PDF: ${err.message}`,
+                ? t('Incorrect password. Check it and try again.')
+                : t('This PDF needs a password to open. Enter it above.')
+              : t('Could not unlock this PDF: {message}', { message: err.message }),
             { cause: err },
           );
         }
@@ -85,33 +87,35 @@ export default function UnlockPdfTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a protected PDF or drag it here"
-          hint="Passwords are only used in this tab and are never stored."
+          label={t('Choose a protected PDF or drag it here')}
+          hint={t('Passwords are only used in this tab and are never stored.')}
           onFiles={(files) => setFile(files[0] ?? null)}
         />
       ) : job.status === 'done' && job.result ? (
         <PdfPreview blob={job.result} filename={`${baseName(file.name)}-unlocked.pdf`} originalSize={file.size} onReset={reset} />
       ) : (
         <div>
-          {inspection === 'unreadable' && <div className="error-banner">Could not read this PDF: {inspectError}</div>}
+          {inspection === 'unreadable' && (
+            <div className="error-banner">{t('Could not read this PDF: {message}', { message: inspectError })}</div>
+          )}
           {inspection === 'plain' && (
             <div className="error-banner" role="status">
-              This PDF is not password protected, so there is nothing to remove.
+              {t('This PDF is not password protected, so there is nothing to remove.')}
             </div>
           )}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           <div className="meta-chips">
             <span className="meta-chip" title={file.name}>
-              File: <strong>{file.name}</strong>
+              {t('File:')} <strong>{file.name}</strong>
             </span>
             <span className="meta-chip">
-              Size: <strong>{formatBytes(file.size)}</strong>
+              {t('Size:')} <strong>{formatBytes(file.size)}</strong>
             </span>
-            {inspection === 'checking' && <span className="meta-chip">Checking…</span>}
+            {inspection === 'checking' && <span className="meta-chip">{t('Checking…')}</span>}
             {inspection === 'encrypted' && (
               <span className="meta-chip">
-                Status: <strong>Encrypted</strong>
+                {t('Status:')} <strong>{t('Encrypted')}</strong>
               </span>
             )}
           </div>
@@ -122,27 +126,30 @@ export default function UnlockPdfTool() {
               if (inspection === 'encrypted' && !busy) run();
             }}
           >
-            <Field label="Password" hint="Leave this empty if the PDF opens without a password but restricts printing, copying or editing.">
+            <Field
+              label={t('Password')}
+              hint={t('Leave this empty if the PDF opens without a password but restricts printing, copying or editing.')}
+            >
               <input
                 type="password"
                 className={styles.input}
                 value={password}
                 autoComplete="off"
-                placeholder="Enter the PDF password"
+                placeholder={t('Enter the PDF password')}
                 disabled={busy || inspection !== 'encrypted'}
                 onChange={(e) => setPassword(e.target.value)}
               />
             </Field>
 
             {busy ? (
-              <ProgressBar value={job.progress} label="Removing password…" />
+              <ProgressBar value={job.progress} label={t('Removing password…')} />
             ) : (
               <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                 <Button type="button" variant="secondary" onClick={reset}>
-                  Choose a different file
+                  {t('Choose a different file')}
                 </Button>
                 <Button type="submit" variant="primary" disabled={inspection !== 'encrypted'}>
-                  Unlock PDF
+                  {t('Unlock PDF')}
                 </Button>
               </div>
             )}

@@ -3,11 +3,13 @@ import JsBarcode from 'jsbarcode';
 import { ToolPage } from '../../../components/ToolPage';
 import { Field, Slider, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { downloadBlob } from '../../../lib/download';
 import { BARCODE_FORMATS, validateBarcode, type BarcodeFormat, type BarcodeValidationResult } from '../_generate/barcode';
 import styles from './Tool.module.css';
 
 export default function BarcodeGeneratorTool() {
+  const { t, locale } = useI18n();
   const meta = getToolMeta('img-barcode-generator');
 
   const [format, setFormat] = useState<BarcodeFormat>('CODE128');
@@ -32,7 +34,7 @@ export default function BarcodeGeneratorTool() {
   useEffect(() => {
     const res = validateBarcode(format, inputValue);
     setValidation(res);
-  }, [format, inputValue]);
+  }, [format, inputValue, locale]);
 
   // When switching formats, if input is completely incompatible or empty, provide the format's example
   const handleFormatChange = (newFormat: BarcodeFormat) => {
@@ -136,21 +138,21 @@ export default function BarcodeGeneratorTool() {
         <div className={styles.layout}>
           {/* Controls Column */}
           <div className={styles.panel}>
-            <Field label="Barcode Format" hint={currentDef?.description}>
+            <Field label={t('Barcode format')} hint={currentDef ? t(currentDef.description) : undefined}>
               <Select
                 id={formatSelectId}
                 value={format}
                 onChange={(e) => handleFormatChange(e.target.value as BarcodeFormat)}
-                options={BARCODE_FORMATS.map((f) => ({ value: f.id, label: f.label }))}
+                options={BARCODE_FORMATS.map((f) => ({ value: f.id, label: t(f.label) }))}
               />
             </Field>
 
-            <Field label="Barcode Value" hint={`Example: ${currentDef?.example || ''}`}>
+            <Field label={t('Barcode value')} hint={t('Example: {example}', { example: currentDef?.example || '' })}>
               <input
                 type="text"
                 className="input"
                 value={inputValue}
-                placeholder={currentDef?.placeholder || 'Enter value...'}
+                placeholder={t(currentDef?.placeholder || 'Enter value...')}
                 onChange={(e) => setInputValue(e.target.value)}
               />
             </Field>
@@ -160,7 +162,7 @@ export default function BarcodeGeneratorTool() {
                 <span>{validation.error}</span>
                 {validation.autoFixAvailable && (
                   <button type="button" className={styles.fixButton} onClick={handleFixCheckDigit}>
-                    Fix Check Digit
+                    {t('Fix check digit')}
                   </button>
                 )}
               </div>
@@ -171,63 +173,63 @@ export default function BarcodeGeneratorTool() {
             <hr style={{ border: 'none', borderTop: '1px solid var(--border)' }} />
 
             <div className={styles.twoCols}>
-              <Field label="Bar Width">
+              <Field label={t('Bar width')}>
                 <Slider min={1} max={4} step={1} unit="px" value={barWidth} onChange={setBarWidth} />
               </Field>
 
-              <Field label="Height">
+              <Field label={t('Height')}>
                 <Slider min={30} max={160} step={5} unit="px" value={height} onChange={setHeight} />
               </Field>
             </div>
 
             <div className={styles.twoCols}>
-              <Field label="Margin">
+              <Field label={t('Margin')}>
                 <Slider min={0} max={30} step={2} unit="px" value={margin} onChange={setMargin} />
               </Field>
 
-              <Field label="Show Text">
+              <Field label={t('Show text')}>
                 <div style={{ marginTop: '0.4rem' }}>
                   <label className={styles.checkboxLabel}>
                     <input type="checkbox" checked={showText} onChange={(e) => setShowText(e.target.checked)} />
-                    Display human-readable text
+                    {t('Display human-readable text')}
                   </label>
                 </div>
               </Field>
             </div>
 
             {showText && (
-              <Field label="Font Size">
+              <Field label={t('Font size')}>
                 <Slider min={10} max={30} step={1} unit="px" value={fontSize} onChange={setFontSize} />
               </Field>
             )}
 
             <div className={styles.twoCols}>
-              <Field label="Line Colour">
+              <Field label={t('Line colour')}>
                 <div className={styles.colorPickerRow}>
                   <input
                     type="color"
                     className={styles.colorInput}
                     value={lineColor}
-                    aria-label="Line colour"
+                    aria-label={t('Line colour')}
                     onChange={(e) => setLineColor(e.target.value)}
                   />
                   <span>{lineColor}</span>
                 </div>
               </Field>
 
-              <Field label="Background Colour">
+              <Field label={t('Background colour')}>
                 <div className={styles.colorPickerRow}>
                   <input
                     type="color"
                     className={styles.colorInput}
                     value={bgColor}
                     disabled={transparentBg}
-                    aria-label="Background colour"
+                    aria-label={t('Background colour')}
                     onChange={(e) => setBgColor(e.target.value)}
                   />
                   <label className={styles.checkboxLabel}>
                     <input type="checkbox" checked={transparentBg} onChange={(e) => setTransparentBg(e.target.checked)} />
-                    Transparent
+                    {t('Transparent')}
                   </label>
                 </div>
               </Field>
@@ -238,18 +240,18 @@ export default function BarcodeGeneratorTool() {
           <div className={styles.previewCard}>
             <div className={styles.previewWrapper}>
               {validation.valid ? (
-                <svg ref={svgRef} className={styles.previewSvg} role="img" aria-label="Barcode preview" />
+                <svg ref={svgRef} className={styles.previewSvg} role="img" aria-label={t('Barcode preview')} />
               ) : (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Enter a valid barcode to view preview</div>
+                <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>{t('Enter a valid barcode to view preview')}</div>
               )}
             </div>
 
             <div className={styles.actions}>
               <Button className={styles.actionBtn} disabled={!validation.valid} onClick={handleDownloadPng}>
-                Download PNG
+                {t('Download PNG')}
               </Button>
               <Button variant="secondary" className={styles.actionBtn} disabled={!validation.valid} onClick={handleDownloadSvg}>
-                Download SVG
+                {t('Download SVG')}
               </Button>
             </div>
           </div>

@@ -7,6 +7,7 @@ import { Field, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
+import { useI18n } from '../../../lib/i18n';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { PageThumb } from '../_thumbs/PageThumb';
@@ -15,13 +16,8 @@ import styles from './Tool.module.css';
 
 type Scope = 'all' | 'selected';
 
-const ANGLES = [
-  { value: '90', label: '90° clockwise (right)' },
-  { value: '180', label: '180° (upside down)' },
-  { value: '270', label: '90° counter-clockwise (left)' },
-];
-
 export default function RotateTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-rotate');
   const source = usePdfSource();
   const job = useJob();
@@ -34,6 +30,11 @@ export default function RotateTool() {
   const total = source.pages.length;
   const isTarget = (index: number) => (scope === 'all' ? true : selected.has(index));
   const targetCount = scope === 'all' ? total : selected.size;
+  const angles = [
+    { value: '90', label: t('90° clockwise (right)') },
+    { value: '180', label: t('180° (upside down)') },
+    { value: '270', label: t('90° counter-clockwise (left)') },
+  ];
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
@@ -90,14 +91,14 @@ export default function RotateTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Rotate every page or just the ones you pick."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Rotate every page or just the ones you pick.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.result ? (
             <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
@@ -106,40 +107,40 @@ export default function RotateTool() {
               <div className={styles.topRow}>
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    File: <strong>{file.name}</strong>
+                    {t('File:')} <strong>{file.name}</strong>
                   </span>
                   <span className="meta-chip">
-                    Size: <strong>{formatBytes(file.size)}</strong>
+                    {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                   </span>
                   {source.doc && (
                     <span className="meta-chip">
-                      Pages: <strong>{total}</strong>
+                      {t('Pages:')} <strong>{total}</strong>
                     </span>
                   )}
                 </div>
                 <Button variant="secondary" onClick={handleReset}>
-                  Change PDF
+                  {t('Change PDF')}
                 </Button>
               </div>
 
-              {source.loading && <p className={styles.status}>Opening PDF document…</p>}
+              {source.loading && <p className={styles.status}>{t('Opening PDF document…')}</p>}
 
               {source.doc && (
                 <>
                   <div className={styles.controls}>
-                    <Field label="Rotate">
-                      <Select id={angleId} value={String(angle)} onChange={(e) => setAngle(Number(e.target.value))} options={ANGLES} />
+                    <Field label={t('Rotate')}>
+                      <Select id={angleId} value={String(angle)} onChange={(e) => setAngle(Number(e.target.value))} options={angles} />
                     </Field>
 
-                    <Field label="Pages" hint="Rotation adds to each page's current orientation.">
-                      <div className={styles.scope} role="radiogroup" aria-label="Pages to rotate">
+                    <Field label={t('Pages')} hint={t("Rotation adds to each page's current orientation.")}>
+                      <div className={styles.scope} role="radiogroup" aria-label={t('Pages to rotate')}>
                         <label>
                           <input type="radio" name="scope" checked={scope === 'all'} onChange={() => setScope('all')} />
-                          All pages
+                          {t('All pages')}
                         </label>
                         <label>
                           <input type="radio" name="scope" checked={scope === 'selected'} onChange={() => setScope('selected')} />
-                          Selected pages
+                          {t('Selected pages')}
                         </label>
                       </div>
                     </Field>
@@ -147,14 +148,12 @@ export default function RotateTool() {
 
                   {scope === 'selected' && (
                     <div className={styles.selectRow}>
-                      <span className={styles.selectCount}>
-                        {selected.size} of {total} selected
-                      </span>
+                      <span className={styles.selectCount}>{t('{selected} of {total} selected', { selected: selected.size, total })}</span>
                       <Button variant="secondary" onClick={() => setSelected(new Set(source.pages.map((_, i) => i)))}>
-                        Select all
+                        {t('Select all')}
                       </Button>
                       <Button variant="secondary" onClick={() => setSelected(new Set())}>
-                        Deselect all
+                        {t('Deselect all')}
                       </Button>
                     </div>
                   )}
@@ -176,7 +175,7 @@ export default function RotateTool() {
                               type="checkbox"
                               className={styles.pageCheckbox}
                               checked={on}
-                              aria-label={`Select page ${index + 1}`}
+                              aria-label={t('Select page {number}', { number: index + 1 })}
                               onChange={() => toggle(index)}
                               onClick={(e) => e.stopPropagation()}
                             />
@@ -186,23 +185,23 @@ export default function RotateTool() {
                             width={page.width}
                             height={page.height}
                             rotation={on ? angle : 0}
-                            alt={`Page ${index + 1}`}
+                            alt={t('Page {number}', { number: index + 1 })}
                           />
-                          <span className={styles.pageLabel}>Page {index + 1}</span>
+                          <span className={styles.pageLabel}>{t('Page {number}', { number: index + 1 })}</span>
                         </div>
                       );
                     })}
                   </div>
 
                   {job.status === 'running' ? (
-                    <ProgressBar value={job.progress} label="Rotating pages…" />
+                    <ProgressBar value={job.progress} label={t('Rotating pages…')} />
                   ) : (
                     <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                       <Button variant="secondary" onClick={handleReset}>
-                        Choose different file
+                        {t('Choose different file')}
                       </Button>
                       <Button variant="primary" onClick={handleRotate} disabled={targetCount === 0}>
-                        Rotate {targetCount} {targetCount === 1 ? 'page' : 'pages'}
+                        {t('Rotate {count} {unit}', { count: targetCount, unit: targetCount === 1 ? t('page') : t('pages') })}
                       </Button>
                     </div>
                   )}

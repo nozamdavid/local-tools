@@ -4,6 +4,7 @@ import { FileDrop } from '../../../components/FileDrop';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
 import { ResultPanel } from '../../../components/ResultPanel';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { IMAGE_ACCEPT, decodeImage, canvasToBlob, type EncodableMime } from '../../../lib/image';
 import styles from './Tool.module.css';
 
@@ -179,6 +180,7 @@ function getCellPxRect(cell: CellDef, totalW: number, totalH: number, spacing: n
 
 export default function CollageTool() {
   const meta = getToolMeta('img-collage');
+  const { t } = useI18n();
   const [photos, setPhotos] = useState<TrayPhoto[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -456,18 +458,20 @@ export default function CollageTool() {
         <FileDrop
           accept={IMAGE_ACCEPT}
           multiple
-          label="Choose photos for your collage"
-          hint="Supports JPG, PNG, WebP, HEIC and SVG. Over 10 templates, pan & zoom per cell, up to 4096 px export."
+          label={t('Choose photos for your collage')}
+          hint={t('Supports JPG, PNG, WebP, HEIC and SVG. Includes over 10 templates, pan and zoom per cell, and export up to 4096 px.')}
           onFiles={loadPhotos}
         />
       ) : (
         <div className={styles.wrapper}>
-          {loadError && <div className="error-banner">{loadError}</div>}
+          {loadError && <div className="error-banner">{t(loadError)}</div>}
 
           {/* Photo Tray */}
           <div className={styles.traySection}>
             <div className={styles.trayHeader}>
-              <h3 style={{ fontSize: '0.9rem', fontWeight: 600 }}>Photo Tray ({photos.length}) — Drag photos onto cells below:</h3>
+              <h3 style={{ fontSize: '0.9rem', fontWeight: 600 }}>
+                {t('Photo tray ({count}) — Drag photos onto cells below:', { count: photos.length })}
+              </h3>
               <input
                 ref={addFilesInputRef}
                 type="file"
@@ -484,7 +488,7 @@ export default function CollageTool() {
                 style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }}
                 onClick={() => addFilesInputRef.current?.click()}
               >
-                + Add more photos
+                {t('+ Add more photos')}
               </Button>
             </div>
             <div className={styles.photoTray}>
@@ -496,10 +500,16 @@ export default function CollageTool() {
                   onDragStart={(e) => {
                     e.dataTransfer.setData('text/plain', p.id);
                   }}
-                  title="Drag this photo onto any cell below"
+                  title={t('Drag this photo onto any cell below')}
                 >
                   <img src={p.thumbUrl} alt="" className={styles.trayPhotoImg} />
-                  <button type="button" className={styles.trayRemoveBtn} onClick={() => removePhoto(p.id)} title="Remove from tray">
+                  <button
+                    type="button"
+                    className={styles.trayRemoveBtn}
+                    onClick={() => removePhoto(p.id)}
+                    title={t('Remove from tray')}
+                    aria-label={t('Remove from tray')}
+                  >
                     ✕
                   </button>
                 </div>
@@ -538,9 +548,9 @@ export default function CollageTool() {
                           const photoId = e.dataTransfer.getData('text/plain');
                           if (photoId) assignPhotoToCell(idx, photoId);
                         }}
-                        title={hasPhoto ? 'Drag to pan, mouse wheel to zoom' : 'Drop photo here'}
+                        title={hasPhoto ? t('Drag to pan, mouse wheel to zoom') : t('Drop photo here')}
                       >
-                        {!hasPhoto && <div className={styles.emptyCellBadge}>+ Drop photo</div>}
+                        {!hasPhoto && <div className={styles.emptyCellBadge}>{t('+ Drop photo')}</div>}
                       </div>
                     );
                   })}
@@ -551,7 +561,9 @@ export default function CollageTool() {
             {/* Active Cell Pan/Zoom Controls */}
             {cellStates[activeCellIndex]?.photoId && (
               <div style={{ width: '100%', maxWidth: '650px', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#60a5fa' }}>Cell {activeCellIndex + 1} zoom:</span>
+                <span style={{ fontSize: '0.85rem', fontWeight: 600, color: '#60a5fa' }}>
+                  {t('Cell {number} zoom:', { number: activeCellIndex + 1 })}
+                </span>
                 <div style={{ flex: 1 }}>
                   <Slider
                     value={cellStates[activeCellIndex]?.zoom || 1.0}
@@ -584,7 +596,7 @@ export default function CollageTool() {
                     })
                   }
                 >
-                  Reset cell
+                  {t('Reset cell')}
                 </Button>
               </div>
             )}
@@ -592,7 +604,7 @@ export default function CollageTool() {
 
           {/* Templates Selection (12 templates) */}
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Choose Template (12 options):</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('Choose a template (12 options)')}</h3>
             <div className={styles.templateGrid}>
               {TEMPLATES.map((tpl) => (
                 <button
@@ -615,7 +627,7 @@ export default function CollageTool() {
                       />
                     ))}
                   </div>
-                  <span>{tpl.name}</span>
+                  <span>{t(tpl.name)}</span>
                 </button>
               ))}
             </div>
@@ -623,30 +635,30 @@ export default function CollageTool() {
 
           {/* Customization Controls */}
           <div className={styles.controlsGrid}>
-            <Field label="Aspect ratio" hint="Overall shape of the collage.">
+            <Field label={t('Aspect ratio')} hint={t('Overall shape of the collage.')}>
               <Select
                 id={aspectSelectId}
                 value={aspect}
                 onChange={(e) => setAspect(e.target.value as Aspect)}
                 options={[
-                  { value: '1:1', label: '1:1 (Square - Instagram post)' },
-                  { value: '4:5', label: '4:5 (Portrait - Instagram post)' },
-                  { value: '16:9', label: '16:9 (Landscape - YouTube / Web)' },
-                  { value: '9:16', label: '9:16 (Story / Reels / TikTok)' },
-                  { value: '3:2', label: '3:2 (Classic 35mm photo)' },
+                  { value: '1:1', label: t('1:1 (Square — Instagram post)') },
+                  { value: '4:5', label: t('4:5 (Portrait — Instagram post)') },
+                  { value: '16:9', label: t('16:9 (Landscape — YouTube / web)') },
+                  { value: '9:16', label: t('9:16 (Story / Reels / TikTok)') },
+                  { value: '3:2', label: t('3:2 (Classic 35 mm photo)') },
                 ]}
               />
             </Field>
 
-            <Field label="Cell spacing (px)" hint="Gap distance between photos.">
+            <Field label={t('Cell spacing (px)')} hint={t('Gap distance between photos.')}>
               <Slider value={spacing} min={0} max={40} step={2} unit="px" onChange={setSpacing} />
             </Field>
 
-            <Field label="Corner roundness (px)" hint="Rounds the edges of each photo.">
+            <Field label={t('Corner roundness (px)')} hint={t('Rounds the edges of each photo.')}>
               <Slider value={radius} min={0} max={40} step={2} unit="px" onChange={setRadius} />
             </Field>
 
-            <Field label="Background colour" hint="Colour shown in the spacing gaps.">
+            <Field label={t('Background colour')} hint={t('Colour shown in the spacing gaps.')}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <input
                   type="color"
@@ -658,27 +670,27 @@ export default function CollageTool() {
               </div>
             </Field>
 
-            <Field label="Export resolution" hint="Longest side in pixels.">
+            <Field label={t('Export resolution')} hint={t('Longest side in pixels.')}>
               <Select
                 id={longSideSelectId}
                 value={String(exportLongSide)}
                 onChange={(e) => setExportLongSide(parseInt(e.target.value, 10))}
                 options={[
-                  { value: '1080', label: '1080 px (Social / Fast)' },
-                  { value: '2048', label: '2048 px (High Definition - Recommended)' },
-                  { value: '4096', label: '4096 px (Ultra HD / Print)' },
+                  { value: '1080', label: t('1080 px (Social / fast)') },
+                  { value: '2048', label: t('2048 px (High definition — recommended)') },
+                  { value: '4096', label: t('4096 px (Ultra HD / print)') },
                 ]}
               />
             </Field>
 
-            <Field label="Export format" hint="JPG is recommended for photos.">
+            <Field label={t('Export format')} hint={t('JPG is recommended for photos.')}>
               <Select
                 id={formatSelectId}
                 value={exportFormat}
                 onChange={(e) => setExportFormat(e.target.value as 'jpg' | 'png')}
                 options={[
-                  { value: 'jpg', label: 'JPEG (quality 92)' },
-                  { value: 'png', label: 'PNG' },
+                  { value: 'jpg', label: t('JPEG (quality 92)') },
+                  { value: 'png', label: t('PNG') },
                 ]}
               />
             </Field>
@@ -686,10 +698,10 @@ export default function CollageTool() {
 
           <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
             <Button variant="secondary" onClick={handleReset}>
-              Start over
+              {t('Start over')}
             </Button>
             <Button variant="primary" onClick={handleExport} disabled={exporting}>
-              {exporting ? 'Generating Collage…' : `Export Collage (${exportLongSide}px)`}
+              {exporting ? t('Generating collage…') : t('Export collage ({width}px)', { width: exportLongSide })}
             </Button>
           </div>
         </div>

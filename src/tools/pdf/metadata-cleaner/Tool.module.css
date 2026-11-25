@@ -1,0 +1,68 @@
+.fieldSection {
+  margin-top: var(--space-5);
+}
+
+.fieldSection h2,
+.report h2 {
+  margin: 0 0 var(--space-3);
+  color: var(--text);
+  font-size: var(--text-lg);
+  font-weight: 600;
+}
+
+.fieldList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fieldItem {
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+
+.muted,
+.xmpNote {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.xmpNote {
+  margin-top: var(--space-3);
+}
+
+.scopeNote,
+.report {
+  margin-top: var(--space-5);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-sunken);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.scopeNote p,
+.report p {
+  margin: 0;
+}
+
+.scopeNote p + p,
+.report p + p {
+  margin-top: var(--space-2);
+}
+
+.report {
+  margin: 0 0 var(--space-5);
+}
+
+.report strong {
+  color: var(--text);
+}

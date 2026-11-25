@@ -1,5 +1,7 @@
 import exifr from 'exifr';
 import { decodeImage, imageToCanvas, canvasToBlob, type EncodableMime } from '../../../lib/image';
+import { translate } from '../../../lib/i18n';
+import { replaceExt } from '../../../lib/format';
 
 export interface StripResult {
   filename: string;
@@ -11,7 +13,7 @@ export interface StripResult {
 
 export function stripJpeg(buf: Uint8Array, keepIcc: boolean = true): { data: Uint8Array; removed: string[] } {
   if (buf[0] !== 0xff || buf[1] !== 0xd8) {
-    throw new Error('Not a valid JPEG image.');
+    throw new Error(translate('Not a valid JPEG image.'));
   }
 
   const pieces: Uint8Array[] = [buf.subarray(0, 2)]; // SOI
@@ -42,10 +44,11 @@ export function stripJpeg(buf: Uint8Array, keepIcc: boolean = true): { data: Uin
       continue;
     }
 
-    if (offset + 2 > buf.length) break;
+    if (offset + 2 > buf.length) throw new Error(translate('Not a valid JPEG image.'));
     const len = (buf[offset] << 8) | buf[offset + 1];
     const markerStart = offset - 2;
     const markerEnd = offset + len;
+    if (len < 2 || markerEnd > buf.length) throw new Error(translate('Not a valid JPEG image.'));
 
     let drop = false;
     if (marker === 0xe1) {
@@ -82,19 +85,22 @@ export function stripJpeg(buf: Uint8Array, keepIcc: boolean = true): { data: Uin
 export function stripPng(buf: Uint8Array): { data: Uint8Array; removed: string[] } {
   const pngSig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
   for (let i = 0; i < 8; i++) {
-    if (buf[i] !== pngSig[i]) throw new Error('Not a valid PNG image.');
+    if (buf[i] !== pngSig[i]) throw new Error(translate('Not a valid PNG image.'));
   }
 
   const pieces: Uint8Array[] = [buf.subarray(0, 8)];
   let offset = 8;
   const removed: string[] = [];
   const textDecoder = new TextDecoder();
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
   const dropTypes = new Set(['tEXt', 'iTXt', 'zTXt', 'eXIf']);
 
-  while (offset + 8 <= buf.length) {
-    const len = (buf[offset] << 24) | (buf[offset + 1] << 16) | (buf[offset + 2] << 8) | buf[offset + 3];
+  while (true) {
+    if (offset + 12 > buf.length) throw new Error(translate('Not a valid PNG image.'));
+    const len = view.getUint32(offset);
     const type = textDecoder.decode(buf.subarray(offset + 4, offset + 8));
     const totalChunkLen = 12 + len;
+    if (offset + totalChunkLen > buf.length) throw new Error(translate('Not a valid PNG image.'));
 
     if (dropTypes.has(type)) {
       const label = `${type} chunk`;
@@ -121,18 +127,23 @@ export function stripPng(buf: Uint8Array): { data: Uint8Array; removed: string[]
 export function stripWebp(buf: Uint8Array): { data: Uint8Array; removed: string[] } {
   const textDecoder = new TextDecoder();
   if (textDecoder.decode(buf.subarray(0, 4)) !== 'RIFF' || textDecoder.decode(buf.subarray(8, 12)) !== 'WEBP') {
-    throw new Error('Not a valid WEBP image.');
+    throw new Error(translate('Not a valid WEBP image.'));
   }
 
   const chunks: Uint8Array[] = [];
   let offset = 12;
   const removed: string[] = [];
   let vp8xChunk: Uint8Array | null = null;
+  const view = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  const end = view.getUint32(4, true) + 8;
+  if (end < 12 || end > buf.length) throw new Error(translate('Not a valid WEBP image.'));
 
-  while (offset + 8 <= buf.length) {
+  while (offset < end) {
+    if (offset + 8 > end) throw new Error(translate('Not a valid WEBP image.'));
     const fourCC = textDecoder.decode(buf.subarray(offset, offset + 4));
-    const size = buf[offset + 4] | (buf[offset + 5] << 8) | (buf[offset + 6] << 16) | (buf[offset + 7] << 24);
+    const size = view.getUint32(offset + 4, true);
     const paddedSize = size + (size % 2);
+    if (offset + 8 + paddedSize > end) throw new Error(translate('Not a valid WEBP image.'));
     const chunkBytes = buf.subarray(offset, offset + 8 + paddedSize);
 
     if (fourCC === 'EXIF') {
@@ -182,27 +193,24 @@ export async function stripFileMetadata(file: File, options: { applyOrientation:
 
   // Check if orientation needs to be applied
   if (options.applyOrientation) {
-    try {
-      const orientation = await exifr.orientation(file);
-      if (orientation && orientation > 1) {
-        // Decode image (browser applies orientation), draw to canvas and re-encode
-        const img = await decodeImage(file);
-        const canvas = imageToCanvas(img);
-        let outMime: EncodableMime = 'image/jpeg';
-        if (mime.includes('png') || name.endsWith('.png')) outMime = 'image/png';
-        else if (mime.includes('webp') || name.endsWith('.webp')) outMime = 'image/webp';
+    const orientation = await exifr.orientation(file).catch(() => undefined);
+    if (orientation && orientation > 1) {
+      // The browser applies the orientation while decoding.
+      const img = await decodeImage(file);
+      const canvas = imageToCanvas(img);
+      let outMime: EncodableMime = 'image/png';
+      if (mime === 'image/jpeg' || /\.jpe?g$/.test(name)) outMime = 'image/jpeg';
+      else if (mime === 'image/webp' || name.endsWith('.webp')) outMime = 'image/webp';
 
-        const blob = await canvasToBlob(canvas, outMime, 0.95);
-        return {
-          filename: file.name,
-          blob,
-          originalSize: file.size,
-          removed: ['Applied orientation rotation', 'All metadata removed'],
-          lossless: false,
-        };
-      }
-    } catch {
-      // orientation extraction failed, proceed with byte-level strip
+      const blob = await canvasToBlob(canvas, outMime, 0.95);
+      const ext = outMime === 'image/jpeg' ? 'jpg' : outMime.slice('image/'.length);
+      return {
+        filename: name.endsWith(`.${ext}`) || (ext === 'jpg' && name.endsWith('.jpeg')) ? file.name : replaceExt(file.name, ext),
+        blob,
+        originalSize: file.size,
+        removed: ['Applied orientation rotation', 'All metadata removed'],
+        lossless: false,
+      };
     }
   }
 
@@ -251,13 +259,9 @@ export async function stripFileMetadata(file: File, options: { applyOrientation:
   // Other formats: re-encode via canvas
   const img = await decodeImage(file);
   const canvas = imageToCanvas(img);
-  let outMime: EncodableMime = 'image/png';
-  if (mime === 'image/jpeg' || name.endsWith('.jpg') || name.endsWith('.jpeg')) {
-    outMime = 'image/jpeg';
-  }
-  const blob = await canvasToBlob(canvas, outMime, 0.95);
+  const blob = await canvasToBlob(canvas, 'image/png');
   return {
-    filename: file.name,
+    filename: replaceExt(file.name, 'png'),
     blob,
     originalSize: file.size,
     removed: ['Stripped via canvas re-encode'],

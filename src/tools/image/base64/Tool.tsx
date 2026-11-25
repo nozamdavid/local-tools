@@ -3,6 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Field } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { formatBytes } from '../../../lib/format';
 import { downloadBlob } from '../../../lib/download';
 import { loadImage } from '../../../lib/image';
@@ -29,6 +30,7 @@ interface DecodeResult {
 }
 
 export default function Base64Tool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-base64');
   const [activeTab, setActiveTab] = useState<'encode' | 'decode'>('encode');
 
@@ -76,7 +78,7 @@ export default function Base64Tool() {
       });
     };
     reader.onerror = () => {
-      setEncodeError('Failed to read image as Base64.');
+      setEncodeError(t('Failed to read image as Base64.'));
     };
     reader.readAsDataURL(file);
   };
@@ -105,7 +107,7 @@ export default function Base64Tool() {
     setDecodeError(null);
     const cleaned = pasteInput.trim().replace(/^['"]|['"]$/g, '');
     if (!cleaned) {
-      setDecodeError('Please paste a Base64 string or Data URI.');
+      setDecodeError(t('Please paste a Base64 string or Data URI.'));
       return;
     }
 
@@ -120,7 +122,7 @@ export default function Base64Tool() {
           mime = matches[1];
           b64 = matches[2];
         } else {
-          throw new Error('Invalid data URI format.');
+          throw new Error(t('Invalid data URI format.'));
         }
       }
 
@@ -159,7 +161,9 @@ export default function Base64Tool() {
       });
     } catch (err) {
       setDecodeError(
-        err instanceof Error ? `Could not decode Base64: ${err.message}` : 'Could not decode Base64 string. Please verify the format.',
+        err instanceof Error
+          ? t('Could not decode Base64: {error}', { error: err.message })
+          : t('Could not decode Base64 string. Please verify the format.'),
       );
     }
   };
@@ -175,10 +179,10 @@ export default function Base64Tool() {
       <div className={styles.container}>
         <div className={styles.modeTabs}>
           <Button variant={activeTab === 'encode' ? 'primary' : 'secondary'} onClick={() => setActiveTab('encode')}>
-            Image to Base64
+            {t('Image to Base64')}
           </Button>
           <Button variant={activeTab === 'decode' ? 'primary' : 'secondary'} onClick={() => setActiveTab('decode')}>
-            Base64 to Image (Decode)
+            {t('Base64 to image (decode)')}
           </Button>
         </div>
 
@@ -189,8 +193,8 @@ export default function Base64Tool() {
             {!encodeResult ? (
               <FileDrop
                 accept="image/*"
-                label="Drop an image here to encode as Base64"
-                hint="Supports JPG, PNG, WEBP, SVG, GIF and more."
+                label={t('Drop an image here to encode as Base64')}
+                hint={t('Supports JPG, PNG, WEBP, SVG, GIF and more.')}
                 onFiles={handleFiles}
               />
             ) : (
@@ -203,24 +207,28 @@ export default function Base64Tool() {
                     marginBottom: '1rem',
                   }}
                 >
-                  <div style={{ fontWeight: 600, fontSize: '1rem' }}>Encoded: {encodeResult.filename}</div>
+                  <div style={{ fontWeight: 600, fontSize: '1rem' }}>
+                    {t('Encoded')}: {encodeResult.filename}
+                  </div>
                   <Button variant="secondary" onClick={handleResetEncode}>
-                    Choose different image
+                    {t('Choose different image')}
                   </Button>
                 </div>
 
                 <div className={styles.statsRow}>
                   <div className={styles.statItem}>
-                    <span className={styles.statLabel}>Original image size</span>
+                    <span className={styles.statLabel}>{t('Original image size')}</span>
                     <span className={styles.statValue}>{formatBytes(encodeResult.originalSize)}</span>
                   </div>
                   <div className={styles.statItem}>
-                    <span className={styles.statLabel}>Base64 data size</span>
+                    <span className={styles.statLabel}>{t('Base64 data size')}</span>
                     <span className={styles.statValue}>{formatBytes(encodeResult.base64Length)}</span>
                   </div>
                   <div className={styles.statItem}>
-                    <span className={styles.statLabel}>Data size overhead</span>
-                    <span className={`${styles.statValue} ${styles.overheadBadge}`}>+{encodeResult.overheadPercent}% larger</span>
+                    <span className={styles.statLabel}>{t('Data size overhead')}</span>
+                    <span className={`${styles.statValue} ${styles.overheadBadge}`}>
+                      {t('+{percent}% larger', { percent: encodeResult.overheadPercent })}
+                    </span>
                   </div>
                 </div>
 
@@ -228,21 +236,21 @@ export default function Base64Tool() {
                   {/* Data URI */}
                   <div className={styles.snippetCard}>
                     <div className={styles.snippetHeader}>
-                      <span className={styles.snippetTitle}>Data URI</span>
+                      <span className={styles.snippetTitle}>{t('Data URI')}</span>
                       <div className={styles.snippetActions}>
                         <Button
                           variant="secondary"
                           onClick={() => downloadTextFile(encodeResult.dataUri, 'datauri')}
                           style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
                         >
-                          Download .txt
+                          {t('Download .txt')}
                         </Button>
                         <Button
                           variant="secondary"
                           onClick={() => copySnippet(encodeResult.dataUri, 'datauri')}
                           style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
                         >
-                          {copiedKey === 'datauri' ? 'Copied!' : 'Copy Data URI'}
+                          {copiedKey === 'datauri' ? t('Copied!') : t('Copy Data URI')}
                         </Button>
                       </div>
                     </div>
@@ -252,21 +260,21 @@ export default function Base64Tool() {
                   {/* Raw Base64 */}
                   <div className={styles.snippetCard}>
                     <div className={styles.snippetHeader}>
-                      <span className={styles.snippetTitle}>Raw Base64 string</span>
+                      <span className={styles.snippetTitle}>{t('Raw Base64 string')}</span>
                       <div className={styles.snippetActions}>
                         <Button
                           variant="secondary"
                           onClick={() => downloadTextFile(encodeResult.rawBase64, 'base64')}
                           style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
                         >
-                          Download .txt
+                          {t('Download .txt')}
                         </Button>
                         <Button
                           variant="secondary"
                           onClick={() => copySnippet(encodeResult.rawBase64, 'raw')}
                           style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
                         >
-                          {copiedKey === 'raw' ? 'Copied!' : 'Copy Base64'}
+                          {copiedKey === 'raw' ? t('Copied!') : t('Copy Base64')}
                         </Button>
                       </div>
                     </div>
@@ -276,13 +284,13 @@ export default function Base64Tool() {
                   {/* HTML img tag */}
                   <div className={styles.snippetCard}>
                     <div className={styles.snippetHeader}>
-                      <span className={styles.snippetTitle}>HTML &lt;img&gt; snippet</span>
+                      <span className={styles.snippetTitle}>{t('HTML <img> snippet')}</span>
                       <Button
                         variant="secondary"
                         onClick={() => copySnippet(encodeResult.imgSnippet, 'img')}
                         style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
                       >
-                        {copiedKey === 'img' ? 'Copied!' : 'Copy snippet'}
+                        {copiedKey === 'img' ? t('Copied!') : t('Copy snippet')}
                       </Button>
                     </div>
                     <textarea readOnly className={styles.snippetTextarea} value={encodeResult.imgSnippet} />
@@ -291,13 +299,13 @@ export default function Base64Tool() {
                   {/* CSS Background */}
                   <div className={styles.snippetCard}>
                     <div className={styles.snippetHeader}>
-                      <span className={styles.snippetTitle}>CSS background snippet</span>
+                      <span className={styles.snippetTitle}>{t('CSS background snippet')}</span>
                       <Button
                         variant="secondary"
                         onClick={() => copySnippet(encodeResult.cssSnippet, 'css')}
                         style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
                       >
-                        {copiedKey === 'css' ? 'Copied!' : 'Copy snippet'}
+                        {copiedKey === 'css' ? t('Copied!') : t('Copy snippet')}
                       </Button>
                     </div>
                     <textarea readOnly className={styles.snippetTextarea} value={encodeResult.cssSnippet} />
@@ -311,20 +319,20 @@ export default function Base64Tool() {
             {decodeError && <div className="error-banner">{decodeError}</div>}
 
             <div className={styles.reverseInputCard}>
-              <Field label="Paste Base64 string or Data URI" hint="Accepts data:image/...;base64,... or raw base64 string.">
+              <Field label={t('Paste Base64 string or Data URI')} hint={t('Accepts a data URI or raw Base64 string.')}>
                 <textarea
                   id={textareaId}
                   className={styles.snippetTextarea}
                   style={{ height: '140px' }}
                   value={pasteInput}
                   onChange={(e) => setPasteInput(e.target.value)}
-                  placeholder="Paste data:image/png;base64,iVBORw0KGgo... or raw Base64"
+                  placeholder={`Paste data:image/png;base64,iVBORw0KGgo... ${t('or raw Base64')}`}
                 />
               </Field>
 
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <Button variant="primary" onClick={handleDecode} disabled={!pasteInput.trim()}>
-                  Decode to Image
+                  {t('Decode to image')}
                 </Button>
                 {pasteInput && (
                   <Button
@@ -335,7 +343,7 @@ export default function Base64Tool() {
                       setDecodeError(null);
                     }}
                   >
-                    Clear
+                    {t('Clear')}
                   </Button>
                 )}
               </div>
@@ -344,30 +352,30 @@ export default function Base64Tool() {
             {decodeResult && (
               <div className={styles.reversePreviewGrid} style={{ marginTop: '1.5rem' }}>
                 <div className={styles.previewThumbWrapper}>
-                  <img src={decodeResult.previewUrl} alt="Decoded preview" className={styles.previewImg} />
+                  <img src={decodeResult.previewUrl} alt={t('Decoded preview')} className={styles.previewImg} />
                 </div>
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', justifyContent: 'center' }}>
-                  <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Successfully Decoded</div>
+                  <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>{t('Successfully decoded')}</div>
 
                   <div className="meta-chips">
                     <span className="meta-chip">
-                      Format: <strong>{decodeResult.mime}</strong>
+                      {t('Format')}: <strong>{decodeResult.mime}</strong>
                     </span>
                     <span className="meta-chip">
-                      Dimensions:{' '}
+                      {t('Dimensions')}:{' '}
                       <strong>
                         {decodeResult.width}×{decodeResult.height} px
                       </strong>
                     </span>
                     <span className="meta-chip">
-                      Size: <strong>{formatBytes(decodeResult.size)}</strong>
+                      {t('Size')}: <strong>{formatBytes(decodeResult.size)}</strong>
                     </span>
                   </div>
 
                   <div style={{ marginTop: '0.5rem' }}>
                     <Button variant="primary" onClick={downloadDecoded}>
-                      Download decoded image
+                      {t('Download decoded image')}
                     </Button>
                   </div>
                 </div>

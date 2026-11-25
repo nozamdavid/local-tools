@@ -5,10 +5,11 @@ import { ProgressBar } from '../../components/ProgressBar';
 import { ResultPanel } from '../../components/ResultPanel';
 import { Field, Select, Button } from '../../components/Controls';
 import { getToolMeta } from '../registry';
-import { getVideoMeta, type VideoMeta } from '../../lib/media';
+import { detectVideoAudio, getVideoMeta, type VideoMeta } from '../../lib/media';
 import { formatBytes, formatDuration } from '../../lib/format';
 import { runFFmpeg } from '../../lib/ffmpeg';
 import { useJob } from '../../lib/useJob';
+import { useI18n } from '../../lib/i18n';
 import styles from './Tool.module.css';
 
 type ResolutionOption = 'match' | '1080p' | '720p';
@@ -26,24 +27,8 @@ function ensureEven(num: number): number {
   return Math.max(2, even);
 }
 
-async function detectAudio(file: File, meta?: VideoMeta): Promise<boolean> {
-  if (meta?.hasAudio === true) {
-    return true;
-  }
-  try {
-    const slice = await file.slice(0, 2 * 1024 * 1024).arrayBuffer();
-    const bytes = new Uint8Array(slice);
-    const text = new TextDecoder('latin1').decode(bytes);
-    if (text.includes('soun') || text.includes('mp4a') || text.includes('A_VORBIS') || text.includes('A_OPUS') || text.includes('A_AAC')) {
-      return true;
-    }
-  } catch {
-    // fallback
-  }
-  return false;
-}
-
 export default function MergeTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('merge');
   const [items, setItems] = useState<MergeItem[]>([]);
   const [resolution, setResolution] = useState<ResolutionOption>('match');
@@ -66,10 +51,10 @@ export default function MergeTool() {
     for (const item of newItems) {
       try {
         const vMeta = await getVideoMeta(item.file);
-        const hasAudio = await detectAudio(item.file, vMeta);
+        const hasAudio = await detectVideoAudio(item.file, vMeta);
         setItems((current) => current.map((it) => (it.id === item.id ? { ...it, meta: vMeta, hasAudio } : it)));
       } catch {
-        const hasAudio = await detectAudio(item.file);
+        const hasAudio = await detectVideoAudio(item.file);
         setItems((current) => current.map((it) => (it.id === item.id ? { ...it, hasAudio } : it)));
       }
     }
@@ -97,8 +82,11 @@ export default function MergeTool() {
     setItems((prev) => prev.filter((it) => it.id !== id));
   };
 
+  const checkingClips = items.some((item) => item.hasAudio === undefined);
+  const canMerge = items.length >= 2 && !checkingClips;
+
   const handleMerge = () => {
-    if (items.length < 2) return;
+    if (!canMerge) return;
 
     job.run(async (setProgress) => {
       let targetW = 1920;
@@ -201,26 +189,26 @@ export default function MergeTool() {
         <FileDrop
           accept="video/*"
           multiple={true}
-          label="Choose multiple videos or drag them here"
-          hint="Merge multiple clips into a single video with normalized resolution and audio."
+          label={t('Choose multiple videos or drag them here')}
+          hint={t('Merge multiple clips into a single video with normalized resolution and audio.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result ? (
             <ResultPanel blob={job.result} filename="merged.mp4" kind="video" originalSize={totalSize} onReset={handleReset} />
           ) : (
             <div>
               <div className="toolbar">
-                <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>Clips to merge ({items.length})</span>
+                <span style={{ fontSize: '0.95rem', fontWeight: 600 }}>{t('Clips to merge ({count})', { count: items.length })}</span>
                 <Button
                   variant="secondary"
                   onClick={() => addFilesInputRef.current?.click()}
                   style={{ fontSize: '0.85rem', padding: '0.4rem 0.8rem' }}
                 >
-                  + Add more files
+                  + {t('Add more files')}
                 </Button>
                 <input
                   ref={addFilesInputRef}
@@ -254,15 +242,15 @@ export default function MergeTool() {
                             {item.meta.width}x{item.meta.height}
                           </>
                         )}
-                        {item.hasAudio === false && ' • (Silent)'}
+                        {item.hasAudio === false && ` • ${t('(Silent)')}`}
                       </span>
                     </div>
 
                     <div className={styles.itemActions}>
                       <button
                         type="button"
-                        aria-label="Move up"
-                        title="Move up"
+                        aria-label={t('Move up')}
+                        title={t('Move up')}
                         className={styles.iconBtn}
                         disabled={index === 0}
                         onClick={() => moveItem(index, 'up')}
@@ -271,8 +259,8 @@ export default function MergeTool() {
                       </button>
                       <button
                         type="button"
-                        aria-label="Move down"
-                        title="Move down"
+                        aria-label={t('Move down')}
+                        title={t('Move down')}
                         className={styles.iconBtn}
                         disabled={index === items.length - 1}
                         onClick={() => moveItem(index, 'down')}
@@ -281,8 +269,8 @@ export default function MergeTool() {
                       </button>
                       <button
                         type="button"
-                        aria-label="Remove"
-                        title="Remove"
+                        aria-label={t('Remove')}
+                        title={t('Remove')}
                         className={`${styles.iconBtn} ${styles.removeBtn}`}
                         onClick={() => removeItem(item.id)}
                       >
@@ -294,31 +282,31 @@ export default function MergeTool() {
               </div>
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Merging videos..." />
+                <ProgressBar value={job.progress} label={t('Merging videos...')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
                   <Field
-                    label="Output resolution"
-                    hint="Clips with different resolutions or aspect ratios will be scaled and fitted with black bars."
+                    label={t('Output resolution')}
+                    hint={t('Clips with different resolutions or aspect ratios will be scaled and fitted with black bars.')}
                   >
                     <Select
                       id={resolutionId}
                       value={resolution}
                       onChange={(e) => setResolution(e.target.value as ResolutionOption)}
                       options={[
-                        { value: 'match', label: 'Match first video' },
-                        { value: '1080p', label: '1080p (Full HD)' },
-                        { value: '720p', label: '720p (HD)' },
+                        { value: 'match', label: t('Match first video') },
+                        { value: '1080p', label: t('1080p (Full HD)') },
+                        { value: '720p', label: t('720p (HD)') },
                       ]}
                     />
                   </Field>
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Clear all
+                      {t('Clear all')}
                     </Button>
-                    <Button variant="primary" onClick={handleMerge} disabled={items.length < 2}>
-                      {items.length < 2 ? 'Add at least 2 videos' : 'Merge videos'}
+                    <Button variant="primary" onClick={handleMerge} disabled={!canMerge}>
+                      {items.length < 2 ? t('Add at least 2 videos') : checkingClips ? t('Reading video dimensions...') : t('Merge videos')}
                     </Button>
                   </div>
                 </div>

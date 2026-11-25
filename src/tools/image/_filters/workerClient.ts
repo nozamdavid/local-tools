@@ -28,8 +28,13 @@ class FilterWorkerClient {
           }
         }
       };
-      this.worker.onerror = (err) => {
-        console.error('Filter worker error:', err);
+      this.worker.onerror = (event) => {
+        this.worker?.terminate();
+        this.worker = null;
+        for (const { reject } of this.pending.values()) {
+          reject(new Error(event.message || 'Image filter worker failed.'));
+        }
+        this.pending.clear();
       };
     }
     return this.worker;
@@ -57,7 +62,12 @@ class FilterWorkerClient {
         data: copy,
         options,
       };
-      worker.postMessage(msg, [copy.buffer]);
+      try {
+        worker.postMessage(msg, [copy.buffer]);
+      } catch (error) {
+        this.pending.delete(id);
+        reject(error);
+      }
     });
   }
 }

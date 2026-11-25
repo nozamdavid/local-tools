@@ -1,4 +1,4 @@
-import { useState, useId, useRef } from 'react';
+import { useState, useId, useRef, useEffect } from 'react';
 import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { ProgressBar } from '../../components/ProgressBar';
@@ -19,8 +19,10 @@ import {
   type WhisperChunk,
 } from '../_whisper';
 import styles from './Tool.module.css';
+import { useI18n } from '../../lib/i18n';
 
 export default function VideoToTextTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('video-to-text');
   const [file, setFile] = useState<File | null>(null);
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
@@ -44,6 +46,16 @@ export default function VideoToTextTool() {
   const [copied, setCopied] = useState<boolean>(false);
 
   const activeJobRef = useRef<WhisperTranscriptionJob | null>(null);
+  const metadataRequestRef = useRef(0);
+
+  useEffect(
+    () => () => {
+      metadataRequestRef.current++;
+      activeJobRef.current?.abort();
+      activeJobRef.current = null;
+    },
+    [],
+  );
 
   const modelId = useId();
   const languageId = useId();
@@ -53,6 +65,7 @@ export default function VideoToTextTool() {
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
+    const requestId = ++metadataRequestRef.current;
     setFile(selected);
     setMetaError(null);
     setErrorMessage(null);
@@ -63,13 +76,14 @@ export default function VideoToTextTool() {
 
     try {
       const vMeta = await getVideoMeta(selected);
-      setVideoMeta(vMeta);
+      if (requestId === metadataRequestRef.current) setVideoMeta(vMeta);
     } catch {
       // Audio-only files or videos without standard container metadata
     }
   };
 
   const handleReset = () => {
+    metadataRequestRef.current++;
     if (activeJobRef.current) {
       activeJobRef.current.abort();
       activeJobRef.current = null;
@@ -103,21 +117,23 @@ export default function VideoToTextTool() {
         task,
         videoDuration: videoMeta?.duration,
         onProgress: (state) => {
-          setProgressState(state);
+          if (activeJobRef.current === job) setProgressState(state);
         },
       });
 
+      if (activeJobRef.current !== job) return;
       setChunks(result.chunks);
       setTranscript(toPlainText(result.chunks));
       setShowTimestamps(false);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      if (msg !== 'Transcription cancelled') {
-        setErrorMessage(msg);
+      if (activeJobRef.current === job) {
+        setErrorMessage(err instanceof Error ? err.message : String(err));
       }
     } finally {
-      setIsRunning(false);
-      activeJobRef.current = null;
+      if (activeJobRef.current === job) {
+        setIsRunning(false);
+        activeJobRef.current = null;
+      }
     }
   };
 
@@ -157,25 +173,25 @@ export default function VideoToTextTool() {
       {!file ? (
         <FileDrop
           accept="video/*,audio/*"
-          label="Choose a video or audio file"
-          hint="Supports MP4, MOV, WebM, MKV, MP3, WAV, AAC, M4A and more."
+          label={t('Choose a video or audio file')}
+          hint={t('Supports MP4, MOV, WebM, MKV, MP3, WAV, AAC, M4A and more.')}
           onFiles={handleFiles}
         />
       ) : (
         <div className={styles.container}>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {errorMessage && <div className="error-banner">{errorMessage}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {errorMessage && <div className="error-banner">{t(errorMessage)}</div>}
 
           <div className="meta-chips">
             <span className="meta-chip">
-              File: <strong>{file.name}</strong>
+              {t('File:')} <strong>{file.name}</strong>
             </span>
             <span className="meta-chip">
-              Size: <strong>{formatBytes(file.size)}</strong>
+              {t('Size:')} <strong>{formatBytes(file.size)}</strong>
             </span>
             {videoMeta && videoMeta.duration > 0 && (
               <span className="meta-chip">
-                Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
+                {t('Duration:')} <strong>{formatDuration(videoMeta.duration)}</strong>
               </span>
             )}
           </div>
@@ -184,7 +200,7 @@ export default function VideoToTextTool() {
             <div style={{ marginTop: '1rem' }}>
               <ProgressBar
                 value={progressState.phase === 'transcribing' ? 0.95 : progressState.ratio}
-                label={progressState.label || 'Processing...'}
+                label={t(progressState.label || 'Processing...')}
               />
             </div>
           ) : chunks ? (
@@ -197,11 +213,11 @@ export default function VideoToTextTool() {
                     checked={showTimestamps}
                     onChange={(e) => handleToggleTimestamps(e.target.checked)}
                   />
-                  <span>Show timestamps</span>
+                  <span>{t('Show timestamps')}</span>
                 </label>
 
                 <div className={styles.wordCount}>
-                  {wordCount} words &bull; {charCount} characters
+                  {t('{words} words • {characters} characters', { words: wordCount, characters: charCount })}
                 </div>
               </div>
 
@@ -209,22 +225,22 @@ export default function VideoToTextTool() {
                 className={styles.textarea}
                 value={transcript}
                 onChange={(e) => setTranscript(e.target.value)}
-                placeholder="Transcript text..."
+                placeholder={t('Transcript text...')}
               />
 
               <div className={styles.actionRow} style={{ justifyContent: 'space-between' }}>
                 <div className={styles.actionRow}>
                   <Button variant="secondary" onClick={handleReset}>
-                    Transcribe another file
+                    {t('Transcribe another file')}
                   </Button>
                 </div>
 
                 <div className={styles.actionRow}>
                   <Button variant="secondary" onClick={handleCopy}>
-                    {copied ? '✓ Copied!' : 'Copy text'}
+                    {copied ? `✓ ${t('Copied!')}` : t('Copy text')}
                   </Button>
                   <Button variant="primary" onClick={handleDownloadTxt}>
-                    Download .txt
+                    {t('Download .txt')}
                   </Button>
                 </div>
               </div>
@@ -232,30 +248,35 @@ export default function VideoToTextTool() {
           ) : (
             <div style={{ marginTop: '1rem' }}>
               <div className={styles.optionsGrid}>
-                <Field label="Whisper Model" hint="Tiny runs fastest with low memory; Small provides higher accuracy.">
+                <Field label={t('Whisper Model')} hint={t('Tiny runs fastest with low memory; Small provides higher accuracy.')}>
                   <Select
                     id={modelId}
                     value={model}
                     onChange={(e) => setModel(e.target.value as WhisperModel)}
                     options={WHISPER_MODELS.map((m) => ({
                       value: m.value,
-                      label: m.label,
+                      label: t(m.label),
                     }))}
                   />
                 </Field>
 
-                <Field label="Language" hint="Select spoken language or let Whisper detect automatically.">
-                  <Select id={languageId} value={language} onChange={(e) => setLanguage(e.target.value)} options={WHISPER_LANGUAGES} />
+                <Field label={t('Language')} hint={t('Select spoken language or let Whisper detect automatically.')}>
+                  <Select
+                    id={languageId}
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    options={WHISPER_LANGUAGES.map((option) => ({ ...option, label: t(option.label) }))}
+                  />
                 </Field>
 
-                <Field label="Task" hint="Transcribe original audio or translate directly into English.">
+                <Field label={t('Task')} hint={t('Transcribe original audio or translate directly into English.')}>
                   <Select
                     id={taskId}
                     value={task}
                     onChange={(e) => setTask(e.target.value as WhisperTask)}
                     options={[
-                      { value: 'transcribe', label: 'Transcribe (same language)' },
-                      { value: 'translate', label: 'Translate to English' },
+                      { value: 'transcribe', label: t('Transcribe (same language)') },
+                      { value: 'translate', label: t('Translate to English') },
                     ]}
                   />
                 </Field>
@@ -263,10 +284,10 @@ export default function VideoToTextTool() {
 
               <div className="action-buttons" style={{ marginTop: '2rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
-                  Choose different file
+                  {t('Choose different file')}
                 </Button>
                 <Button variant="primary" onClick={handleTranscribe}>
-                  Transcribe
+                  {t('Transcribe')}
                 </Button>
               </div>
             </div>

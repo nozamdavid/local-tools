@@ -1,5 +1,6 @@
 import QRCode from 'qrcode';
 import JsBarcode from 'jsbarcode';
+import { translate } from '../../../lib/i18n';
 
 export type ElementType = 'text' | 'rect' | 'line' | 'image' | 'qr' | 'barcode';
 
@@ -177,7 +178,7 @@ export async function renderLabelToCanvas(
   canvas.height = Math.max(1, Math.round(heightMm * pxPerMm));
 
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Could not get 2D canvas context');
+  if (!ctx) throw new Error(translate('Could not get 2D canvas context'));
 
   // Background is pure white
   ctx.fillStyle = '#ffffff';

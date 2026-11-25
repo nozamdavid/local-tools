@@ -13,8 +13,10 @@ import { applyFormValues, extractFormFields } from '../_edit/forms';
 import type { FormFieldInfo } from '../_edit/types';
 import { usePdfSource } from '../_thumbs/usePdfSource';
 import styles from './Tool.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 export default function FormsTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-forms');
   const source = usePdfSource();
   const job = useJob();
@@ -127,14 +129,14 @@ export default function FormsTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Enumerate and fill text fields, checkboxes, radio buttons, and dropdowns. 100% in-browser."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Enumerate and fill text fields, checkboxes, radio buttons, and dropdowns. 100% in-browser.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.result ? (
             <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
@@ -143,43 +145,46 @@ export default function FormsTool() {
               <div className={styles.topRow}>
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    File: <strong>{file.name}</strong>
+                    {t('File:')} <strong>{file.name}</strong>
                   </span>
                   <span className="meta-chip">
-                    Size: <strong>{formatBytes(file.size)}</strong>
+                    {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                   </span>
                   {source.doc && (
                     <span className="meta-chip">
-                      Pages: <strong>{total}</strong>
+                      {t('Pages:')} <strong>{total}</strong>
                     </span>
                   )}
                 </div>
                 <Button variant="secondary" onClick={handleReset}>
-                  Change PDF
+                  {t('Change PDF')}
                 </Button>
               </div>
 
               <div className={styles.noticeBanner}>
-                <strong>AcroForm field editor:</strong> Edit fillable PDF form fields directly in your browser. Choose whether to keep
-                fields editable or flatten them permanently.
+                <strong>{t('AcroForm field editor:')}</strong>{' '}
+                {t(
+                  'Edit fillable PDF form fields directly in your browser. Choose whether to keep fields editable or flatten them permanently.',
+                )}
               </div>
 
-              {(source.loading || loadingFields) && <p className={styles.status}>Scanning PDF for interactive form fields…</p>}
+              {(source.loading || loadingFields) && <p className={styles.status}>{t('Scanning PDF for interactive form fields…')}</p>}
 
               {/* No Form Fields Found Screen */}
               {!loadingFields && fields && fields.length === 0 && (
                 <div className={styles.noFieldsBox}>
                   <div className={styles.noFieldsIcon}>🧾</div>
-                  <h3 className={styles.noFieldsTitle}>No Interactive Form Fields Found</h3>
+                  <h3 className={styles.noFieldsTitle}>{t('No Interactive Form Fields Found')}</h3>
                   <p className={styles.noFieldsDesc}>
-                    This document does not contain fillable AcroForm fields. It may be a scanned document, a flat static form, or an
-                    XML-based XFA form.
+                    {t(
+                      'This document does not contain fillable AcroForm fields. It may be a scanned document, a flat static form, or an XML-based XFA form.',
+                    )}
                   </p>
                   <p className={styles.noFieldsDesc}>
-                    If you need to fill out this document, you can use the <strong>Edit PDF</strong> tool to place text and checkmark
-                    annotations directly onto the pages.
+                    {t('If you need to fill out this document, you can use the')} <strong>{t('Edit PDF')}</strong>{' '}
+                    {t('tool to place text and checkmark annotations directly onto the pages.')}
                   </p>
-                  <Button onClick={() => navigate('/pdf/edit')}>Go to Edit PDF Tool</Button>
+                  <Button onClick={() => navigate('/pdf/edit')}>{t('Go to Edit PDF Tool')}</Button>
                 </div>
               )}
 
@@ -187,7 +192,7 @@ export default function FormsTool() {
               {!loadingFields && fields && fields.length > 0 && (
                 <div className={styles.formsContainer}>
                   <div className={styles.fieldsCard}>
-                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem' }}>Form Fields ({fields.length})</h3>
+                    <h3 style={{ margin: '0 0 0.5rem', fontSize: '1.1rem' }}>{t('Form Fields ({count})', { count: fields.length })}</h3>
 
                     {fields.map((field) => {
                       const val = formValues[field.name];
@@ -196,7 +201,9 @@ export default function FormsTool() {
                         <div key={field.name} className={styles.fieldItem}>
                           <label className={styles.fieldLabel}>
                             {field.name}
-                            {field.isReadOnly && <span style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}> (read-only)</span>}
+                            {field.isReadOnly && (
+                              <span style={{ fontWeight: 'normal', color: 'var(--text-muted)' }}> ({t('read-only')})</span>
+                            )}
                           </label>
 
                           {field.type === 'text' &&
@@ -225,7 +232,7 @@ export default function FormsTool() {
                                 onChange={(e) => handleCheckChange(field.name, e.target.checked)}
                                 disabled={field.isReadOnly}
                               />
-                              <span>Check / Select</span>
+                              <span>{t('Check / Select')}</span>
                             </label>
                           )}
 
@@ -291,20 +298,21 @@ export default function FormsTool() {
                         style={{ marginTop: '0.2rem' }}
                       />
                       <div className={styles.flattenText}>
-                        <span className={styles.flattenTitle}>Flatten form fields</span>
+                        <span className={styles.flattenTitle}>{t('Flatten form fields')}</span>
                         <span className={styles.flattenDesc}>
-                          Recommended for finalized forms. Bakes the entered values directly into the page content and prevents further
-                          editing or tampering.
+                          {t(
+                            'Recommended for finalized forms. Bakes the entered values directly into the page content and prevents further editing or tampering.',
+                          )}
                         </span>
                       </div>
                     </label>
                   </div>
 
                   {job.status === 'running' ? (
-                    <ProgressBar value={job.progress} label="Filling form fields..." />
+                    <ProgressBar value={job.progress} label={t('Filling form fields...')} />
                   ) : (
                     <Button variant="primary" onClick={handleSave}>
-                      Fill and Save PDF
+                      {t('Fill and Save PDF')}
                     </Button>
                   )}
                 </div>

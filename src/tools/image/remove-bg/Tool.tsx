@@ -10,6 +10,7 @@ import { withSuffix } from '../../../lib/format';
 import { hexToRgb, rgbToHex, detectCornerColor } from '../_generate/color';
 import { removeSolidBackground, applyAiMask } from '../_generate/canvas';
 import { SegmentClient } from '../../_segment/segmentClient';
+import { useI18n } from '../../../lib/i18n';
 import styles from './Tool.module.css';
 
 type Mode = 'solid' | 'ai';
@@ -18,6 +19,7 @@ type ViewMode = 'result' | 'compare' | 'original';
 
 export default function RemoveBgTool() {
   const meta = getToolMeta('img-remove-bg');
+  const { t } = useI18n();
 
   const [file, setFile] = useState<File | null>(null);
   const [sourceImg, setSourceImg] = useState<HTMLImageElement | null>(null);
@@ -40,7 +42,7 @@ export default function RemoveBgTool() {
   const [aiFeather, setAiFeather] = useState<number>(2);
   const [aiMask, setAiMask] = useState<Uint8ClampedArray | null>(null);
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
-  const [aiProgress, setAiProgress] = useState<{ text: string; percent: number } | null>(null);
+  const [aiProgress, setAiProgress] = useState<{ text: string; percent: number; modelPercent?: number } | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
 
   // Background Replacement Settings
@@ -99,7 +101,7 @@ export default function RemoveBgTool() {
     if (!sourceData) return;
     setIsAiLoading(true);
     setAiError(null);
-    setAiProgress({ text: 'Initializing AI background removal model...', percent: 10 });
+    setAiProgress({ text: 'Initializing AI background removal model…', percent: 10 });
 
     try {
       if (!segmentClientRef.current) {
@@ -109,24 +111,24 @@ export default function RemoveBgTool() {
       await segmentClientRef.current.init((progress) => {
         if (progress.status === 'downloading') {
           const pct = progress.progress ? Math.round(progress.progress) : 30;
-          setAiProgress({ text: `Downloading model weights (${pct}%)...`, percent: Math.min(80, 20 + pct * 0.6) });
+          setAiProgress({ text: 'Downloading model weights ({percent}%)…', percent: Math.min(80, 20 + pct * 0.6), modelPercent: pct });
         } else if (progress.status === 'ready') {
-          setAiProgress({ text: 'Model ready. Detecting subject...', percent: 85 });
+          setAiProgress({ text: 'Model ready. Detecting subject…', percent: 85 });
         }
       });
 
-      setAiProgress({ text: 'Segmenting subject from background...', percent: 90 });
+      setAiProgress({ text: 'Segmenting subject from background…', percent: 90 });
       const { mask } = await segmentClientRef.current.segmentFrame(sourceData.data, sourceData.width, sourceData.height);
 
       setAiMask(mask);
       setAiProgress(null);
     } catch (err: any) {
       console.error('AI segmentation failed:', err);
-      setAiError(err.message || 'AI segmentation failed to run.');
+      setAiError('AI segmentation failed to run.');
     } finally {
       setIsAiLoading(false);
     }
-  }, [sourceData]);
+  }, [sourceData, t]);
 
   // When switching to AI mode, run segmentation if not yet computed
   useEffect(() => {
@@ -276,8 +278,8 @@ export default function RemoveBgTool() {
         {!sourceData ? (
           <FileDrop
             accept={IMAGE_ACCEPT}
-            label="Drop an image here to remove background"
-            hint="Supports JPG, PNG, WEBP, SVG, HEIC. 100% in-browser processing."
+            label={t('Drop an image here to remove background')}
+            hint={t('Supports JPG, PNG, WebP, SVG and HEIC.')}
             onFiles={handleFiles}
           />
         ) : (
@@ -291,21 +293,21 @@ export default function RemoveBgTool() {
                   className={`${styles.modeTab} ${mode === 'solid' ? styles.modeTabActive : ''}`}
                   onClick={() => setMode('solid')}
                 >
-                  Solid Colour
+                  {t('Solid colour')}
                 </button>
                 <button
                   type="button"
                   className={`${styles.modeTab} ${mode === 'ai' ? styles.modeTabActive : ''}`}
                   onClick={() => setMode('ai')}
                 >
-                  AI Subject Detection
+                  {t('AI subject detection')}
                 </button>
               </div>
 
               {/* Solid Mode Controls */}
               {mode === 'solid' && (
                 <>
-                  <Field label="Background Colour" hint="Click anywhere on the preview image to pick colour">
+                  <Field label={t('Background colour')} hint={t('Click anywhere on the preview image to pick a colour')}>
                     <div className={styles.colorPickerRow}>
                       <input
                         type="color"
@@ -315,28 +317,28 @@ export default function RemoveBgTool() {
                       />
                       <span>{bgColorHex}</span>
                       <Button variant="secondary" className={styles.smallBtn} onClick={handleAutoDetectColor}>
-                        Auto-Detect
+                        {t('Auto-detect')}
                       </Button>
                     </div>
                   </Field>
 
-                  <Field label="Tolerance">
+                  <Field label={t('Tolerance')}>
                     <Slider min={0} max={60} step={1} unit="%" value={tolerance} onChange={setTolerance} />
                   </Field>
 
-                  <Field label="Edge Softness">
+                  <Field label={t('Edge softness')}>
                     <Slider min={0} max={20} step={1} unit="px" value={softness} onChange={setSoftness} />
                   </Field>
 
                   <div className={styles.twoCols}>
                     <label className={styles.checkboxLabel}>
                       <input type="checkbox" checked={contiguous} onChange={(e) => setContiguous(e.target.checked)} />
-                      Flood fill from edges
+                      {t('Flood fill from edges')}
                     </label>
 
                     <label className={styles.checkboxLabel}>
                       <input type="checkbox" checked={despill} onChange={(e) => setDespill(e.target.checked)} />
-                      Edge despill
+                      {t('Edge despill')}
                     </label>
                   </div>
                 </>
@@ -347,31 +349,31 @@ export default function RemoveBgTool() {
                 <>
                   {isAiLoading && aiProgress && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <ProgressBar value={aiProgress.percent / 100} label={aiProgress.text} />
+                      <ProgressBar value={aiProgress.percent / 100} label={t(aiProgress.text, { percent: aiProgress.modelPercent ?? 0 })} />
                     </div>
                   )}
 
                   {aiError && (
                     <div style={{ color: 'var(--danger)', fontSize: '0.875rem' }}>
-                      {aiError}
+                      {t(aiError)}
                       <Button variant="secondary" className={styles.smallBtn} style={{ marginTop: '0.5rem' }} onClick={runAiSegmentation}>
-                        Retry AI Detection
+                        {t('Retry AI detection')}
                       </Button>
                     </div>
                   )}
 
                   {aiMask && (
                     <>
-                      <Field label="Detection Threshold">
+                      <Field label={t('Detection threshold')}>
                         <Slider min={20} max={240} step={2} value={aiThreshold} onChange={setAiThreshold} />
                       </Field>
 
-                      <Field label="Edge Feathering">
+                      <Field label={t('Edge feathering')}>
                         <Slider min={0} max={15} step={1} unit="px" value={aiFeather} onChange={setAiFeather} />
                       </Field>
 
                       <Button variant="secondary" className={styles.smallBtn} onClick={runAiSegmentation}>
-                        Re-run AI Detection
+                        {t('Re-run AI detection')}
                       </Button>
                     </>
                   )}
@@ -381,21 +383,21 @@ export default function RemoveBgTool() {
               <hr style={{ border: 'none', borderTop: '1px solid var(--border)' }} />
 
               {/* Background Replacement Options */}
-              <Field label="Background Output">
+              <Field label={t('Background output')}>
                 <Select
                   id={bgSelectId}
                   value={bgReplacement}
                   onChange={(e) => setBgReplacement(e.target.value as BgReplacement)}
                   options={[
-                    { value: 'transparent', label: 'Transparent (None)' },
-                    { value: 'color', label: 'Solid Colour Fill' },
-                    { value: 'blur', label: 'Blurred Original Background' },
+                    { value: 'transparent', label: t('Transparent (none)') },
+                    { value: 'color', label: t('Solid colour fill') },
+                    { value: 'blur', label: t('Blurred original background') },
                   ]}
                 />
               </Field>
 
               {bgReplacement === 'color' && (
-                <Field label="Fill Colour">
+                <Field label={t('Fill colour')}>
                   <div className={styles.colorPickerRow}>
                     <input
                       type="color"
@@ -409,7 +411,7 @@ export default function RemoveBgTool() {
               )}
 
               <Button variant="secondary" onClick={handleReset}>
-                Choose Different Image
+                {t('Choose different image')}
               </Button>
             </div>
 
@@ -426,21 +428,21 @@ export default function RemoveBgTool() {
                     className={`${styles.viewBtn} ${viewMode === 'result' ? styles.viewBtnActive : ''}`}
                     onClick={() => setViewMode('result')}
                   >
-                    Result
+                    {t('Result')}
                   </button>
                   <button
                     type="button"
                     className={`${styles.viewBtn} ${viewMode === 'compare' ? styles.viewBtnActive : ''}`}
                     onClick={() => setViewMode('compare')}
                   >
-                    Compare Split
+                    {t('Compare split')}
                   </button>
                   <button
                     type="button"
                     className={`${styles.viewBtn} ${viewMode === 'original' ? styles.viewBtnActive : ''}`}
                     onClick={() => setViewMode('original')}
                   >
-                    Original
+                    {t('Original')}
                   </button>
                 </div>
               </div>
@@ -451,14 +453,14 @@ export default function RemoveBgTool() {
                     ref={previewCanvasRef}
                     className={styles.canvas}
                     role="img"
-                    aria-label="Result with the background removed. Use the colour field in the controls to choose a solid background."
+                    aria-label={t('Result with the background removed. Use the colour field in the controls to choose a solid background.')}
                     onClick={handleCanvasClick}
-                    title={mode === 'solid' ? 'Click to pick background color' : undefined}
+                    title={mode === 'solid' ? t('Click to pick background colour') : undefined}
                     style={{ cursor: mode === 'solid' ? 'crosshair' : 'default' }}
                   />
                 )}
 
-                {viewMode === 'original' && sourceImg && <img src={sourceImg.src} alt="Original" className={styles.canvas} />}
+                {viewMode === 'original' && sourceImg && <img src={sourceImg.src} alt={t('Original')} className={styles.canvas} />}
 
                 {viewMode === 'compare' && sourceImg && (
                   <div
@@ -474,7 +476,9 @@ export default function RemoveBgTool() {
                       ref={compareCanvasRef}
                       className={styles.canvas}
                       role="img"
-                      aria-label="Before and after comparison. The divider follows the pointer; switch to Original or Result for keyboard use."
+                      aria-label={t(
+                        'Before and after comparison. The divider follows the pointer; switch to Original or Result for keyboard use.',
+                      )}
                     />
 
                     {/* Top Clipped Original Image */}
@@ -490,7 +494,7 @@ export default function RemoveBgTool() {
                     >
                       <img
                         src={sourceImg.src}
-                        alt="Original"
+                        alt={t('Original')}
                         style={{
                           width: `${(100 / compareSplit) * 100}%`,
                           height: '100%',
@@ -511,10 +515,10 @@ export default function RemoveBgTool() {
               {/* Download Buttons */}
               <div className={styles.actions}>
                 <Button className={styles.actionBtn} onClick={() => handleDownload('png')}>
-                  Download PNG
+                  {t('Download PNG')}
                 </Button>
                 <Button variant="secondary" className={styles.actionBtn} onClick={() => handleDownload('webp')}>
-                  Download WEBP
+                  {t('Download WebP')}
                 </Button>
               </div>
             </div>

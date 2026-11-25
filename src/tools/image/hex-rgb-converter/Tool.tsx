@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { Button, Slider } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import {
   type RGBA,
   formatHex,
@@ -40,6 +41,7 @@ const PRESETS = [
 ];
 
 export default function HexRgbConverterTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-hex-rgb-converter');
 
   const [rgba, setRgba] = useState<RGBA>({ r: 59, g: 130, b: 246, a: 1 });
@@ -216,18 +218,18 @@ export default function HexRgbConverterTool() {
                 className={styles.nativePicker}
                 value={formatHex(rgba, 6)}
                 onChange={handleNativePicker}
-                title="Open native color picker"
-                aria-label="Open native colour picker"
+                title={t('Open native colour picker')}
+                aria-label={t('Open native colour picker')}
               />
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Click to open colour picker</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Click to open colour picker')}</span>
             </div>
 
             <div className={styles.alphaSliderWrapper}>
               <div className={styles.alphaLabel}>
-                <span>Opacity:</span>
+                <span>{t('Opacity')}:</span>
                 <span>{Math.round(rgba.a * 100)}%</span>
               </div>
-              <Slider min={0} max={100} step={1} value={Math.round(rgba.a * 100)} onChange={handleAlphaChange} aria-label="Opacity" />
+              <Slider min={0} max={100} step={1} value={Math.round(rgba.a * 100)} onChange={handleAlphaChange} aria-label={t('Opacity')} />
             </div>
           </div>
 
@@ -240,14 +242,14 @@ export default function HexRgbConverterTool() {
                 value={hexInput}
                 onChange={(e) => handleHexChange(e.target.value)}
                 placeholder="#3b82f6 or #38f"
-                aria-label="HEX colour"
+                aria-label={t('HEX colour')}
               />
               <Button
                 variant="secondary"
                 onClick={() => copyValue(hexInput, 'hex')}
                 style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
               >
-                {copiedKey === 'hex' ? 'Copied' : 'Copy'}
+                {copiedKey === 'hex' ? t('Copied') : t('Copy')}
               </Button>
             </div>
 
@@ -259,14 +261,14 @@ export default function HexRgbConverterTool() {
                 value={rgbInput}
                 onChange={(e) => handleRgbChange(e.target.value)}
                 placeholder="rgb(59, 130, 246)"
-                aria-label="RGB colour"
+                aria-label={t('RGB colour')}
               />
               <Button
                 variant="secondary"
                 onClick={() => copyValue(rgbInput, 'rgb')}
                 style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
               >
-                {copiedKey === 'rgb' ? 'Copied' : 'Copy'}
+                {copiedKey === 'rgb' ? t('Copied') : t('Copy')}
               </Button>
             </div>
 
@@ -278,14 +280,14 @@ export default function HexRgbConverterTool() {
                 value={hslInput}
                 onChange={(e) => handleHslChange(e.target.value)}
                 placeholder="hsl(217, 91%, 60%)"
-                aria-label="HSL colour"
+                aria-label={t('HSL colour')}
               />
               <Button
                 variant="secondary"
                 onClick={() => copyValue(hslInput, 'hsl')}
                 style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
               >
-                {copiedKey === 'hsl' ? 'Copied' : 'Copy'}
+                {copiedKey === 'hsl' ? t('Copied') : t('Copy')}
               </Button>
             </div>
 
@@ -297,14 +299,14 @@ export default function HexRgbConverterTool() {
                 value={hsvInput}
                 onChange={(e) => handleHsvChange(e.target.value)}
                 placeholder="hsv(217, 76%, 96%)"
-                aria-label="HSV colour"
+                aria-label={t('HSV colour')}
               />
               <Button
                 variant="secondary"
                 onClick={() => copyValue(hsvInput, 'hsv')}
                 style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
               >
-                {copiedKey === 'hsv' ? 'Copied' : 'Copy'}
+                {copiedKey === 'hsv' ? t('Copied') : t('Copy')}
               </Button>
             </div>
 
@@ -316,26 +318,26 @@ export default function HexRgbConverterTool() {
                 value={cmykInput}
                 onChange={(e) => handleCmykChange(e.target.value)}
                 placeholder="cmyk(76%, 47%, 0%, 4%)"
-                aria-label="CMYK colour"
+                aria-label={t('CMYK colour')}
               />
               <Button
                 variant="secondary"
                 onClick={() => copyValue(cmykInput, 'cmyk')}
                 style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
               >
-                {copiedKey === 'cmyk' ? 'Copied' : 'Copy'}
+                {copiedKey === 'cmyk' ? t('Copied') : t('Copy')}
               </Button>
             </div>
 
             <div className={styles.formatRow}>
-              <span className={styles.formatLabel}>CSS Name</span>
+              <span className={styles.formatLabel}>{t('CSS name')}</span>
               <input
                 type="text"
                 className={styles.formatInput}
                 value={namedInput}
                 onChange={(e) => handleNamedChange(e.target.value)}
-                placeholder="e.g. royalblue, coral"
-                aria-label="CSS named colour"
+                placeholder={t('For example: {first}, {second}', { first: 'royalblue', second: 'coral' })}
+                aria-label={t('CSS named colour')}
               />
               <Button
                 variant="secondary"
@@ -343,19 +345,19 @@ export default function HexRgbConverterTool() {
                 disabled={!namedInput}
                 style={{ padding: '0.4rem 0.75rem', fontSize: '0.8rem' }}
               >
-                {copiedKey === 'named' ? 'Copied' : 'Copy'}
+                {copiedKey === 'named' ? t('Copied') : t('Copy')}
               </Button>
             </div>
           </div>
         </div>
 
         <div className={styles.presetsSection}>
-          <span className={styles.presetsTitle}>Quick colour presets</span>
+          <span className={styles.presetsTitle}>{t('Quick colour presets')}</span>
           <div className={styles.presetsList}>
             {PRESETS.map((p) => (
               <button key={p.name} type="button" className={styles.presetButton} onClick={() => applyPreset(p.hex)}>
                 <span className={styles.presetDot} style={{ backgroundColor: p.hex }} />
-                <span>{p.name}</span>
+                <span>{t(p.name)}</span>
               </button>
             ))}
           </div>

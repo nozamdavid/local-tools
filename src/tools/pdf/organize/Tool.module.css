@@ -85,6 +85,42 @@
   gap: 0.2rem;
 }
 
+.pageCard > details {
+  width: 100%;
+}
+
+.secondaryActions {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.secondaryActions button {
+  min-height: 2rem;
+  padding: 0.3rem 0.4rem;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.76rem;
+}
+
+.secondaryActions button:last-child {
+  grid-column: 1 / -1;
+}
+
+.secondaryActions button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.secondaryActions button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
 .cardActions button {
   width: 1.7rem;
   height: 1.7rem;

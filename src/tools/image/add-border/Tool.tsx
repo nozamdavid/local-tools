@@ -131,11 +131,11 @@ export default function AddBorderTool() {
       defaultOptions={DEFAULT_OPTIONS}
       suffix="-border"
       render={renderAddBorder}
-      renderControls={(options, setOptions) => {
+      renderControls={(options, setOptions, { t }) => {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <Field label="Border type">
+              <Field label={t('Border type')}>
                 <Select
                   value={options.style}
                   onChange={(e) =>
@@ -145,14 +145,14 @@ export default function AddBorderTool() {
                     }))
                   }
                   options={[
-                    { value: 'solid', label: 'Solid color' },
-                    { value: 'gradient', label: 'Gradient' },
-                    { value: 'dashed', label: 'Dashed line' },
+                    { value: 'solid', label: t('Solid color') },
+                    { value: 'gradient', label: t('Gradient') },
+                    { value: 'dashed', label: t('Dashed line') },
                   ]}
                 />
               </Field>
 
-              <Field label="Border position">
+              <Field label={t('Border position')}>
                 <Select
                   value={options.position}
                   onChange={(e) =>
@@ -162,13 +162,13 @@ export default function AddBorderTool() {
                     }))
                   }
                   options={[
-                    { value: 'outside', label: 'Outside image (expands size)' },
-                    { value: 'inside', label: 'Inside image (overlay edge)' },
+                    { value: 'outside', label: t('Outside image (expands size)') },
+                    { value: 'inside', label: t('Inside image (overlay edge)') },
                   ]}
                 />
               </Field>
 
-              <Field label={`Border width (${options.width}px)`}>
+              <Field label={t('Border width ({width}px)', { width: options.width })}>
                 <Slider
                   value={options.width}
                   min={1}
@@ -179,7 +179,7 @@ export default function AddBorderTool() {
                 />
               </Field>
 
-              <Field label={`Corner radius (${options.radius}px)`}>
+              <Field label={t('Corner radius ({radius}px)', { radius: options.radius })}>
                 <Slider
                   value={options.radius}
                   min={0}
@@ -192,7 +192,7 @@ export default function AddBorderTool() {
             </div>
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-              <Field label={options.style === 'gradient' ? 'Start colour' : 'Border colour'}>
+              <Field label={options.style === 'gradient' ? t('Start colour') : t('Border colour')}>
                 <input
                   type="color"
                   value={options.color1}
@@ -203,7 +203,7 @@ export default function AddBorderTool() {
 
               {options.style === 'gradient' && (
                 <>
-                  <Field label="End colour">
+                  <Field label={t('End colour')}>
                     <input
                       type="color"
                       value={options.color2}
@@ -212,7 +212,7 @@ export default function AddBorderTool() {
                     />
                   </Field>
 
-                  <Field label={`Gradient angle (${options.gradientAngle}°)`}>
+                  <Field label={t('Gradient angle ({angle}°)', { angle: options.gradientAngle })}>
                     <Slider
                       value={options.gradientAngle}
                       min={0}
@@ -227,7 +227,7 @@ export default function AddBorderTool() {
 
               {options.style === 'dashed' && (
                 <>
-                  <Field label={`Dash length (${options.dashLength}px)`}>
+                  <Field label={t('Dash length ({length}px)', { length: options.dashLength })}>
                     <Slider
                       value={options.dashLength}
                       min={5}
@@ -237,7 +237,7 @@ export default function AddBorderTool() {
                       onChange={(v) => setOptions((prev) => ({ ...prev, dashLength: v }))}
                     />
                   </Field>
-                  <Field label={`Dash gap (${options.dashGap}px)`}>
+                  <Field label={t('Dash gap ({gap}px)', { gap: options.dashGap })}>
                     <Slider
                       value={options.dashGap}
                       min={2}

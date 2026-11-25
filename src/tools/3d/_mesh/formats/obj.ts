@@ -14,32 +14,31 @@ export function parseOBJ(text: string, name = 'model'): MeshModel {
   const rawPositions: number[] = [];
   const rawIndices: number[] = [];
 
-  const lines = text.split(/\r?\n/);
+  const lines = text.split(/\r\n|\r|\n/);
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line || line.startsWith('#')) continue;
+  for (const sourceLine of lines) {
+    const line = sourceLine.split('#', 1)[0].trim();
+    if (!line) continue;
+    const [keyword, ...parts] = line.split(/\s+/);
 
-    if (line.startsWith('mtllib ') || line.startsWith('usemtl ')) {
+    if (keyword === 'mtllib' || keyword === 'usemtl') {
       hasMaterials = true;
       continue;
     }
 
-    if (line.startsWith('vt ')) {
+    if (keyword === 'vt') {
       hasUVs = true;
       continue;
     }
 
-    if (line.startsWith('v ')) {
-      const parts = line.substring(2).trim().split(/\s+/);
+    if (keyword === 'v') {
       if (parts.length >= 3) {
         rawPositions.push(parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]));
       }
       continue;
     }
 
-    if (line.startsWith('f ')) {
-      const parts = line.substring(2).trim().split(/\s+/);
+    if (keyword === 'f') {
       if (parts.length < 3) continue;
 
       const totalVerticesSoFar = rawPositions.length / 3;
@@ -51,14 +50,18 @@ export function parseOBJ(text: string, name = 'model'): MeshModel {
         const vertexStr = slashIdx === -1 ? token : token.substring(0, slashIdx);
         const vIdx = parseInt(vertexStr, 10);
 
-        if (isNaN(vIdx)) continue;
+        if (!/^[+-]?\d+$/.test(vertexStr) || vIdx === 0) {
+          throw new Error(`Corrupt OBJ file: invalid face index "${vertexStr}".`);
+        }
 
         if (vIdx > 0) {
           // 1-based index
           faceIndices.push(vIdx - 1);
         } else if (vIdx < 0) {
           // Relative negative index
-          faceIndices.push(totalVerticesSoFar + vIdx);
+          const relativeIndex = totalVerticesSoFar + vIdx;
+          if (relativeIndex < 0) throw new Error(`Corrupt OBJ file: relative face index ${vIdx} is out of bounds.`);
+          faceIndices.push(relativeIndex);
         }
       }
 

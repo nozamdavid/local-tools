@@ -35,14 +35,32 @@ export async function applyAnnotations(doc: PDFDocument, annotations: Annotation
   for (const [pageNum, pageAnns] of byPage.entries()) {
     if (pageNum < 1 || pageNum > pages.length) continue;
     const page = pages[pageNum - 1];
+    // PDF.js previews the CropBox intersected with the MediaBox. Keep exports
+    // in that same visible coordinate space, including nonzero box origins.
+    const media = page.getMediaBox();
+    const crop = page.getCropBox();
+    const left = Math.max(media.x, crop.x);
+    const bottom = Math.max(media.y, crop.y);
+    const right = Math.min(media.x + media.width, crop.x + crop.width);
+    const top = Math.min(media.y + media.height, crop.y + crop.height);
+    const box = right > left && top > bottom ? { x: left, y: bottom, width: right - left, height: top - bottom } : media;
     const dims = getVisualPageDims(page);
+    dims.pdfWidth = box.width;
+    dims.pdfHeight = box.height;
+    const sideways = dims.rotation === 90 || dims.rotation === 270;
+    dims.visualWidth = sideways ? box.height : box.width;
+    dims.visualHeight = sideways ? box.width : box.height;
+    const place = (x: number, y: number) => {
+      const point = mapVisualToPdf({ x, y, angle: 0 }, dims);
+      return { ...point, x: point.x + box.x, y: point.y + box.y };
+    };
 
     for (const ann of pageAnns) {
       const xv = dims.visualWidth * (ann.xPercent / 100);
       const yv = dims.visualHeight * (ann.yPercent / 100);
       const wv = dims.visualWidth * (ann.widthPercent / 100);
       const hv = dims.visualHeight * (ann.heightPercent / 100);
-      const placement = mapVisualToPdf({ x: xv, y: yv, angle: 0 }, dims);
+      const placement = place(xv, yv);
 
       if (ann.type === 'rect') {
         const fillColor = ann.fillColor ? hexToRgb(ann.fillColor) : undefined;
@@ -70,9 +88,10 @@ export async function applyAnnotations(doc: PDFDocument, annotations: Annotation
         }
         // Baseline adjustment: In visual coordinates, placement.y is the bottom of the box.
         // We offset by roughly 20% of font size to keep the text inside the bounds.
+        const baseline = place(xv, yv + ann.fontSize * 0.15);
         page.drawText(ann.text, {
-          x: placement.x,
-          y: placement.y + ann.fontSize * 0.15,
+          x: baseline.x,
+          y: baseline.y,
           size: ann.fontSize,
           font,
           color: hexToRgb(ann.color),

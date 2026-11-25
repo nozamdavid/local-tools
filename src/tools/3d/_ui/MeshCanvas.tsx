@@ -4,6 +4,8 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { MeshModel } from './types';
 import { Alert } from '../../../components/Controls';
 import { Box, Eye, Maximize2 } from 'lucide-react';
+import { useI18n } from '../../../lib/i18n';
+import { translate3DMessage } from './Workbench';
 import styles from './MeshViewer.module.css';
 
 export interface MeshCanvasProps {
@@ -22,6 +24,7 @@ function checkWebGL2(): boolean {
 }
 
 export function MeshCanvas({ model, className }: MeshCanvasProps) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
 
@@ -294,15 +297,16 @@ export function MeshCanvas({ model, className }: MeshCanvasProps) {
     <div className={`${styles.viewerContainer} ${className || ''}`} ref={containerRef}>
       {!hasWebGL ? (
         <div className={styles.fallbackNotice}>
-          <Alert tone="warning" title="WebGL 2 Unavailable">
-            Hardware-accelerated 3D rendering (WebGL 2.0) is not available in your browser or device. You can still inspect, process, and
-            convert models using the controls below.
+          <Alert tone="warning" title={t('WebGL 2 Unavailable')}>
+            {t(
+              'Hardware-accelerated 3D rendering (WebGL 2.0) is not available in your browser or device. You can still inspect, process, and convert models using the controls below.',
+            )}
           </Alert>
         </div>
       ) : loadError ? (
         <div className={styles.fallbackNotice}>
-          <Alert tone="danger" title="Viewer Error">
-            {loadError}
+          <Alert tone="danger" title={t('Viewer Error')}>
+            {translate3DMessage(loadError, t)}
           </Alert>
         </div>
       ) : (
@@ -312,38 +316,38 @@ export function MeshCanvas({ model, className }: MeshCanvasProps) {
             {loading && (
               <div className={styles.loadingSpinner}>
                 <span className="spinner" aria-hidden="true" />
-                <span>Initializing 3D Viewport...</span>
+                <span>{t('Initializing 3D Viewport...')}</span>
               </div>
             )}
           </div>
 
           {!loading && (
             <>
-              <div className={styles.toolbar} role="toolbar" aria-label="3D Viewport Controls">
+              <div className={styles.toolbar} role="toolbar" aria-label={t('3D Viewport Controls')}>
                 <button
                   type="button"
                   className={`${styles.toolbarBtn} ${wireframe ? styles.toolbarBtnActive : ''}`}
                   onClick={toggleWireframe}
-                  title="Toggle wireframe mode"
+                  title={t('Toggle wireframe mode')}
                   aria-pressed={wireframe}
                 >
                   <Eye size={14} aria-hidden="true" />
-                  <span>Wireframe</span>
+                  <span>{t('Wireframe')}</span>
                 </button>
-                <button type="button" className={styles.toolbarBtn} onClick={triggerFit} title="Fit model to view">
+                <button type="button" className={styles.toolbarBtn} onClick={triggerFit} title={t('Fit model to view')}>
                   <Maximize2 size={14} aria-hidden="true" />
-                  <span>Fit</span>
+                  <span>{t('Fit')}</span>
                 </button>
               </div>
 
               <div className={styles.overlayStats}>
                 <span>
                   <Box size={13} style={{ display: 'inline', verticalAlign: '-1px', marginRight: 4 }} aria-hidden="true" />
-                  <strong>{triCount.toLocaleString()}</strong> triangles
+                  <strong>{triCount.toLocaleString()}</strong> {t('triangles')}
                 </span>
                 <span>•</span>
                 <span>
-                  <strong>{vertCount.toLocaleString()}</strong> vertices
+                  <strong>{vertCount.toLocaleString()}</strong> {t('vertices')}
                 </span>
               </div>
             </>

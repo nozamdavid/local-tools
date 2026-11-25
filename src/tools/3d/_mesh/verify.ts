@@ -599,6 +599,28 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
     assert(caughtMalformed, 'Should reject malformed XML');
   });
 
+  await test('3MF rejects a face index that falls into the next object', async () => {
+    const mesh = (id: number, lastIndex: number) => `
+  <object id="${id}"><mesh>
+    <vertices><vertex x="0" y="0" z="0"/><vertex x="1" y="0" z="0"/><vertex x="0" y="1" z="0"/></vertices>
+    <triangles><triangle v1="0" v2="1" v3="${lastIndex}"/></triangles>
+  </mesh></object>`;
+    const zip = new JSZip();
+    zip.file(
+      '3D/3dmodel.model',
+      `<model><resources>${mesh(1, 3)}${mesh(2, 2)}</resources>
+  <build><item objectid="1"/><item objectid="2"/></build></model>`,
+    );
+    const buffer = await zip.generateAsync({ type: 'arraybuffer' });
+    let rejected = false;
+    try {
+      await parse3MF(buffer);
+    } catch (error) {
+      rejected = error instanceof Error && error.message.includes('Invalid 3MF vertex index');
+    }
+    assert(rejected, 'The index must be bounded by its own mesh before merging instances');
+  });
+
   // 13. Affine Transform Edge Cases & Normal Flip (Risk 5)
   await test('13. Affine Transform Zero/NaN/Inf Rejection & Face Winding Only', () => {
     const cube = createCubeModel(10);

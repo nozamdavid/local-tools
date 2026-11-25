@@ -6,11 +6,13 @@ import { ResultPanel } from '../../../components/ResultPanel';
 import { BatchResults, type BatchResultItem } from '../../../components/BatchResults';
 import { Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
 import { renderDocxToImages } from '../_pdf/docxRenderer';
 
 export default function DocxToJpgTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-docx-to-jpg');
   const [file, setFile] = useState<File | null>(null);
   const [items, setItems] = useState<BatchResultItem[] | null>(null);
@@ -51,13 +53,13 @@ export default function DocxToJpgTool() {
       {!file ? (
         <FileDrop
           accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          label="Choose a Word (.docx) document or drag it here"
-          hint="Renders Word documents into high-resolution JPG images."
+          label={t('Choose a Word (.docx) document or drag it here')}
+          hint={t('Renders Word documents into high-resolution JPG images.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {items && items.length > 0 ? (
             items.length === 1 ? (
@@ -69,10 +71,10 @@ export default function DocxToJpgTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Document: <strong>{file.name}</strong>
+                  {t('Document')}: <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size')}: <strong>{formatBytes(file.size)}</strong>
                 </span>
               </div>
 
@@ -85,22 +87,25 @@ export default function DocxToJpgTool() {
                   margin: '1.25rem 0',
                 }}
               >
-                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.35rem' }}>ℹ️ Conversion details & limitations</div>
+                <div style={{ fontWeight: 600, fontSize: '0.9rem', marginBottom: '0.35rem' }}>
+                  ℹ️ {t('Conversion details & limitations')}
+                </div>
                 <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                  Documents are rendered client-side at 2× retina scale for crisp text. Fonts not installed on your device will fall back to
-                  standard system fonts. Complex Word macros or external links are ignored for security and privacy.
+                  {t(
+                    'Documents are rendered on your device at 2× resolution for crisp text. Fonts not installed on your device will fall back to standard system fonts. Complex Word macros or external links are ignored for security and privacy.',
+                  )}
                 </p>
               </div>
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Rendering Word document to JPG..." />
+                <ProgressBar value={job.progress} label={t('Rendering Word document to JPG...')} />
               ) : (
                 <div className="action-buttons" style={{ marginTop: '2rem' }}>
                   <Button variant="secondary" onClick={handleReset}>
-                    Choose different file
+                    {t('Choose different file')}
                   </Button>
                   <Button variant="primary" onClick={handleConvert}>
-                    Convert to JPG
+                    {t('Convert to JPG')}
                   </Button>
                 </div>
               )}

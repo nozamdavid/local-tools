@@ -6,16 +6,10 @@
   gap: 0.75rem;
 }
 
-.noticeBanner {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-left: 4px solid var(--accent);
-  padding: 0.75rem 1rem;
-  border-radius: var(--radius-sm);
-  margin-top: 1rem;
-  font-size: 0.88rem;
-  color: var(--text);
-  line-height: 1.4;
+.limitation {
+  margin: 1rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
 }
 
 .status {
@@ -64,6 +58,12 @@
   gap: 0.5rem;
 }
 
+.previewHint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+}
+
 .previewContainer {
   position: relative;
   background: #e9ecef;
@@ -102,6 +102,10 @@
   pointer-events: auto;
 }
 
+.placementLayer {
+  cursor: crosshair;
+}
+
 .drawingCanvas {
   position: absolute;
   top: 0;
@@ -115,8 +119,7 @@
 .annotationItem {
   position: absolute;
   box-sizing: border-box;
-  transform: translateY(-100%); /* because yPercent is from bottom */
-  cursor: move;
+  pointer-events: none;
   border: 1px dashed rgba(0, 100, 255, 0.6);
   user-select: none;
 }
@@ -167,6 +170,12 @@
   color: var(--text);
   font-size: 0.9rem;
   box-sizing: border-box;
+}
+
+.coordinateFields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
 }
 
 .colorPickerRow {

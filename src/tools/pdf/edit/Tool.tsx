@@ -9,11 +9,14 @@ import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { getToolMeta } from '../../registry';
 import { applyAnnotations } from '../_edit/annotate';
+import { fitAnnotationBox } from '../_edit/placement';
 import type { Annotation, AnnotationType } from '../_edit/types';
 import { usePdfSource } from '../_thumbs/usePdfSource';
 import styles from './Tool.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 export default function EditTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-edit');
   const source = usePdfSource();
   const job = useJob();
@@ -156,10 +159,7 @@ export default function EditTool() {
       fontSize: textSize,
       color: textColor,
       backgroundColor: hasBgColor ? textBgColor : undefined,
-      xPercent: textX,
-      yPercent: textY,
-      widthPercent: Math.min(60, textContent.length * 1.5),
-      heightPercent: 4,
+      ...fitAnnotationBox(textX, textY, Math.min(60, textContent.length * 1.5), 4),
     }));
 
     setAnnotations((prev) => [...prev, ...newItems]);
@@ -169,16 +169,12 @@ export default function EditTool() {
     if (!uploadedImgUrl) return;
     const targetPages = pageScope === 'all' ? Array.from({ length: total }, (_, i) => i + 1) : [previewPage];
 
-    const hPercent = imgWidth * imgAspect;
     const newItems: Annotation[] = targetPages.map((p) => ({
       id: `img-${Date.now()}-${Math.random()}`,
       type: 'image',
       pageNum: p,
       dataUrl: uploadedImgUrl,
-      xPercent: imgX,
-      yPercent: imgY,
-      widthPercent: imgWidth,
-      heightPercent: hPercent,
+      ...fitAnnotationBox(imgX, imgY, imgWidth, (imgWidth * imgAspect * source.pages[p - 1].width) / source.pages[p - 1].height),
     }));
 
     setAnnotations((prev) => [...prev, ...newItems]);
@@ -194,10 +190,7 @@ export default function EditTool() {
       fillColor: hasFill ? rectFill : undefined,
       strokeColor: rectStroke,
       strokeWidth: rectStrokeWidth,
-      xPercent: rectX,
-      yPercent: rectY,
-      widthPercent: rectWidth,
-      heightPercent: rectHeight,
+      ...fitAnnotationBox(rectX, rectY, rectWidth, rectHeight),
     }));
 
     setAnnotations((prev) => [...prev, ...newItems]);
@@ -225,6 +218,28 @@ export default function EditTool() {
 
   const removeAnnotation = (id: string) => {
     setAnnotations((prev) => prev.filter((a) => a.id !== id));
+  };
+
+  const placeFromPreview = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (activeTab === 'drawing') return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const x = Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100));
+    const y = Math.min(100, Math.max(0, ((rect.bottom - e.clientY) / rect.height) * 100));
+    if (activeTab === 'text') {
+      const box = fitAnnotationBox(x, y, Math.min(60, textContent.length * 1.5), 4);
+      setTextX(box.xPercent);
+      setTextY(box.yPercent);
+    } else if (activeTab === 'image') {
+      const page = source.pages[previewPage - 1];
+      const box = fitAnnotationBox(x, y, imgWidth, (imgWidth * imgAspect * page.width) / page.height);
+      setImgX(box.xPercent);
+      setImgY(box.yPercent);
+    } else {
+      const box = fitAnnotationBox(x, y, rectWidth, rectHeight);
+      setRectX(box.xPercent);
+      setRectY(box.yPercent);
+    }
   };
 
   const handleApply = () => {
@@ -256,14 +271,14 @@ export default function EditTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Add text, images, rectangles and freehand drawings to your PDF pages. 100% in-browser."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Add text, images, rectangles or freehand marks to selected pages.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.result ? (
             <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
@@ -272,28 +287,25 @@ export default function EditTool() {
               <div className={styles.topRow}>
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    File: <strong>{file.name}</strong>
+                    {t('File:')} <strong>{file.name}</strong>
                   </span>
                   <span className="meta-chip">
-                    Size: <strong>{formatBytes(file.size)}</strong>
+                    {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                   </span>
                   {source.doc && (
                     <span className="meta-chip">
-                      Pages: <strong>{total}</strong>
+                      {t('Pages:')} <strong>{total}</strong>
                     </span>
                   )}
                 </div>
                 <Button variant="secondary" onClick={handleReset}>
-                  Change PDF
+                  {t('Change PDF')}
                 </Button>
               </div>
 
-              <div className={styles.noticeBanner}>
-                <strong>Annotations overlay only:</strong> This tool places visual annotations (text, uploaded images, shapes, and freehand
-                marks) over selected PDF pages. It does not modify or reflow the original underlying PDF text.
-              </div>
+              <p className={styles.limitation}>{t('Adds visible overlays; original PDF text stays unchanged.')}</p>
 
-              {source.loading && <p className={styles.status}>Opening PDF document…</p>}
+              {source.loading && <p className={styles.status}>{t('Opening PDF document…')}</p>}
 
               {source.doc && (
                 <div className={styles.editorGrid}>
@@ -301,29 +313,34 @@ export default function EditTool() {
                   <div className={styles.previewColumn}>
                     <div className={styles.pageNav}>
                       <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>
-                        Page {previewPage} of {total}
+                        {t('Page {current} of {total}', { current: previewPage, total })}
                       </span>
                       <div className={styles.pageNavButtons}>
                         <Button variant="secondary" disabled={previewPage <= 1} onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}>
-                          Prev
+                          {t('Prev')}
                         </Button>
                         <Button
                           variant="secondary"
                           disabled={previewPage >= total}
                           onClick={() => setPreviewPage((p) => Math.min(total, p + 1))}
                         >
-                          Next
+                          {t('Next')}
                         </Button>
                       </div>
                     </div>
 
+                    {activeTab !== 'drawing' && <p className={styles.previewHint}>{t('Click the page to set its position.')}</p>}
+
                     <div className={styles.previewContainer}>
                       {previewThumb ? (
                         <div className={styles.pageImgWrapper}>
-                          <img src={previewThumb} alt={`Page ${previewPage} preview`} className={styles.pageImg} />
+                          <img src={previewThumb} alt={t('Page {number} preview', { number: previewPage })} className={styles.pageImg} />
 
                           {/* Render current page's annotations overlay */}
-                          <div className={styles.overlayLayer}>
+                          <div
+                            className={`${styles.overlayLayer} ${activeTab !== 'drawing' ? styles.placementLayer : ''}`}
+                            onClick={placeFromPreview}
+                          >
                             {currentPageAnns.map((ann) => {
                               const bottomPercent = ann.yPercent;
                               const leftPercent = ann.xPercent;
@@ -372,7 +389,7 @@ export default function EditTool() {
                                   <img
                                     key={ann.id}
                                     src={ann.dataUrl}
-                                    alt="annotation"
+                                    alt={t('Annotation')}
                                     className={styles.annotationItem}
                                     style={{
                                       bottom: `${bottomPercent}%`,
@@ -396,7 +413,7 @@ export default function EditTool() {
                                 width={600}
                                 height={800}
                                 role="img"
-                                aria-label="Freehand drawing area over the page. Drawing needs a mouse, touch or pen."
+                                aria-label={t('Freehand drawing area over the page. Drawing needs a mouse, touch or pen.')}
                                 className={styles.drawingCanvas}
                                 onPointerDown={startDrawing}
                                 onPointerMove={draw}
@@ -407,7 +424,7 @@ export default function EditTool() {
                           </div>
                         </div>
                       ) : (
-                        <div style={{ color: 'var(--text-muted)' }}>Loading page preview…</div>
+                        <div style={{ color: 'var(--text-muted)' }}>{t('Loading page preview…')}</div>
                       )}
                     </div>
                   </div>
@@ -416,120 +433,177 @@ export default function EditTool() {
                   <div className={styles.controlsColumn}>
                     <div className={styles.tabGroup}>
                       <button
+                        type="button"
+                        aria-pressed={activeTab === 'text'}
                         className={`${styles.tabBtn} ${activeTab === 'text' ? styles.tabBtnActive : ''}`}
                         onClick={() => setActiveTab('text')}
                       >
-                        ✍️ Text
+                        ✍️ {t('Text')}
                       </button>
                       <button
+                        type="button"
+                        aria-pressed={activeTab === 'image'}
                         className={`${styles.tabBtn} ${activeTab === 'image' ? styles.tabBtnActive : ''}`}
                         onClick={() => setActiveTab('image')}
                       >
-                        🖼️ Image
+                        🖼️ {t('Image')}
                       </button>
                       <button
+                        type="button"
+                        aria-pressed={activeTab === 'rect'}
                         className={`${styles.tabBtn} ${activeTab === 'rect' ? styles.tabBtnActive : ''}`}
                         onClick={() => setActiveTab('rect')}
                       >
-                        ⬜ Rectangle
+                        ⬜ {t('Rectangle')}
                       </button>
                       <button
+                        type="button"
+                        aria-pressed={activeTab === 'drawing'}
                         className={`${styles.tabBtn} ${activeTab === 'drawing' ? styles.tabBtnActive : ''}`}
                         onClick={() => setActiveTab('drawing')}
                       >
-                        ✏️ Draw
+                        ✏️ {t('Draw')}
                       </button>
                     </div>
 
-                    <Field label="Apply to">
-                      <div style={{ display: 'flex', gap: '1rem' }}>
-                        <label>
-                          <input type="radio" name="pageScope" checked={pageScope === 'current'} onChange={() => setPageScope('current')} />{' '}
-                          Current page ({previewPage})
-                        </label>
-                        <label>
-                          <input type="radio" name="pageScope" checked={pageScope === 'all'} onChange={() => setPageScope('all')} /> All
-                          pages ({total})
-                        </label>
-                      </div>
-                    </Field>
+                    {activeTab !== 'drawing' && (
+                      <Field label={t('Apply to')}>
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                          <label>
+                            <input
+                              type="radio"
+                              name="pageScope"
+                              checked={pageScope === 'current'}
+                              onChange={() => setPageScope('current')}
+                            />{' '}
+                            {t('Current page ({number})', { number: previewPage })}
+                          </label>
+                          <label>
+                            <input type="radio" name="pageScope" checked={pageScope === 'all'} onChange={() => setPageScope('all')} />{' '}
+                            {t('All pages ({count})', { count: total })}
+                          </label>
+                        </div>
+                      </Field>
+                    )}
 
                     {/* Tab: Text */}
                     {activeTab === 'text' && (
                       <div className={styles.card}>
-                        <Field label="Annotation Text">
+                        <Field label={t('Annotation Text')}>
                           <input
                             type="text"
                             className={styles.input}
                             value={textContent}
                             onChange={(e) => setTextContent(e.target.value)}
-                            placeholder="Enter text..."
+                            placeholder={t('Enter text...')}
                           />
                         </Field>
 
-                        <Field label="Font Size">
+                        <Field label={t('Font Size')}>
                           <Slider value={textSize} min={8} max={64} step={1} unit="pt" onChange={setTextSize} />
                         </Field>
 
-                        <div className={styles.colorPickerRow}>
-                          <Field label="Text Color">
-                            <input
-                              type="color"
-                              className={styles.colorInput}
-                              value={textColor}
-                              onChange={(e) => setTextColor(e.target.value)}
-                            />
-                          </Field>
-
-                          <Field label="Background Highlight">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <input type="checkbox" checked={hasBgColor} onChange={(e) => setHasBgColor(e.target.checked)} />
-                              {hasBgColor && (
+                        <details className="tool-options">
+                          <summary>{t('Position / Annotation style')}</summary>
+                          <div className="tool-options-body">
+                            <div className={styles.coordinateFields}>
+                              <Field label={t('X position (%)')}>
+                                <input
+                                  type="number"
+                                  className={styles.input}
+                                  min={0}
+                                  max={100}
+                                  step={0.1}
+                                  value={textX}
+                                  onChange={(e) => setTextX(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                                />
+                              </Field>
+                              <Field label={t('Y position from bottom (%)')}>
+                                <input
+                                  type="number"
+                                  className={styles.input}
+                                  min={0}
+                                  max={100}
+                                  step={0.1}
+                                  value={textY}
+                                  onChange={(e) => setTextY(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                                />
+                              </Field>
+                            </div>
+                            <div className={styles.colorPickerRow}>
+                              <Field label={t('Text color')}>
                                 <input
                                   type="color"
                                   className={styles.colorInput}
-                                  value={textBgColor}
-                                  onChange={(e) => setTextBgColor(e.target.value)}
+                                  value={textColor}
+                                  onChange={(e) => setTextColor(e.target.value)}
                                 />
-                              )}
+                              </Field>
+                              <Field label={t('Highlight')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <input type="checkbox" checked={hasBgColor} onChange={(e) => setHasBgColor(e.target.checked)} />
+                                  {hasBgColor && (
+                                    <input
+                                      type="color"
+                                      className={styles.colorInput}
+                                      value={textBgColor}
+                                      onChange={(e) => setTextBgColor(e.target.value)}
+                                    />
+                                  )}
+                                </div>
+                              </Field>
                             </div>
-                          </Field>
-                        </div>
+                          </div>
+                        </details>
 
-                        <Field label="Horizontal Position (X %)">
-                          <Slider value={textX} min={0} max={90} step={1} unit="%" onChange={setTextX} />
-                        </Field>
-
-                        <Field label="Vertical Position (Y % from bottom)">
-                          <Slider value={textY} min={5} max={95} step={1} unit="%" onChange={setTextY} />
-                        </Field>
-
-                        <Button onClick={addTextAnnotation}>Add Text Annotation</Button>
+                        <Button onClick={addTextAnnotation}>{t('Add Text Annotation')}</Button>
                       </div>
                     )}
 
                     {/* Tab: Image */}
                     {activeTab === 'image' && (
                       <div className={styles.card}>
-                        <Field label="Choose Image (PNG, JPG, WebP)">
+                        <Field label={t('Choose Image (PNG, JPG, WebP)')}>
                           <input type="file" accept="image/*" onChange={handleImageUpload} className={styles.input} />
                         </Field>
 
                         {uploadedImgUrl && (
                           <>
-                            <Field label="Width (%)">
+                            <Field label={t('Width (%)')}>
                               <Slider value={imgWidth} min={5} max={80} step={1} unit="%" onChange={setImgWidth} />
                             </Field>
 
-                            <Field label="Horizontal Position (X %)">
-                              <Slider value={imgX} min={0} max={90} step={1} unit="%" onChange={setImgX} />
-                            </Field>
+                            <details className="tool-options">
+                              <summary>{t('Position / Annotation style')}</summary>
+                              <div className="tool-options-body">
+                                <div className={styles.coordinateFields}>
+                                  <Field label={t('X position (%)')}>
+                                    <input
+                                      type="number"
+                                      className={styles.input}
+                                      min={0}
+                                      max={100}
+                                      step={0.1}
+                                      value={imgX}
+                                      onChange={(e) => setImgX(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                                    />
+                                  </Field>
+                                  <Field label={t('Y position from bottom (%)')}>
+                                    <input
+                                      type="number"
+                                      className={styles.input}
+                                      min={0}
+                                      max={100}
+                                      step={0.1}
+                                      value={imgY}
+                                      onChange={(e) => setImgY(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                                    />
+                                  </Field>
+                                </div>
+                              </div>
+                            </details>
 
-                            <Field label="Vertical Position (Y % from bottom)">
-                              <Slider value={imgY} min={5} max={95} step={1} unit="%" onChange={setImgY} />
-                            </Field>
-
-                            <Button onClick={addImageAnnotation}>Add Image Annotation</Button>
+                            <Button onClick={addImageAnnotation}>{t('Add Image Annotation')}</Button>
                           </>
                         )}
                       </div>
@@ -539,52 +613,71 @@ export default function EditTool() {
                     {activeTab === 'rect' && (
                       <div className={styles.card}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
-                          <Field label="Width (%)">
+                          <Field label={t('Width (%)')}>
                             <Slider value={rectWidth} min={5} max={90} step={1} unit="%" onChange={setRectWidth} />
                           </Field>
-                          <Field label="Height (%)">
+                          <Field label={t('Height (%)')}>
                             <Slider value={rectHeight} min={2} max={80} step={1} unit="%" onChange={setRectHeight} />
                           </Field>
                         </div>
 
-                        <div className={styles.colorPickerRow}>
-                          <Field label="Border Color">
-                            <input
-                              type="color"
-                              className={styles.colorInput}
-                              value={rectStroke}
-                              onChange={(e) => setRectStroke(e.target.value)}
-                            />
-                          </Field>
-
-                          <Field label="Fill">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              <input type="checkbox" checked={hasFill} onChange={(e) => setHasFill(e.target.checked)} />
-                              {hasFill && (
+                        <details className="tool-options">
+                          <summary>{t('Position / Annotation style')}</summary>
+                          <div className="tool-options-body">
+                            <div className={styles.coordinateFields}>
+                              <Field label={t('X position (%)')}>
+                                <input
+                                  type="number"
+                                  className={styles.input}
+                                  min={0}
+                                  max={100}
+                                  step={0.1}
+                                  value={rectX}
+                                  onChange={(e) => setRectX(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                                />
+                              </Field>
+                              <Field label={t('Y position from bottom (%)')}>
+                                <input
+                                  type="number"
+                                  className={styles.input}
+                                  min={0}
+                                  max={100}
+                                  step={0.1}
+                                  value={rectY}
+                                  onChange={(e) => setRectY(Math.min(100, Math.max(0, Number(e.target.value) || 0)))}
+                                />
+                              </Field>
+                            </div>
+                            <div className={styles.colorPickerRow}>
+                              <Field label={t('Border color')}>
                                 <input
                                   type="color"
                                   className={styles.colorInput}
-                                  value={rectFill}
-                                  onChange={(e) => setRectFill(e.target.value)}
+                                  value={rectStroke}
+                                  onChange={(e) => setRectStroke(e.target.value)}
                                 />
-                              )}
+                              </Field>
+                              <Field label={t('Fill')}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <input type="checkbox" checked={hasFill} onChange={(e) => setHasFill(e.target.checked)} />
+                                  {hasFill && (
+                                    <input
+                                      type="color"
+                                      className={styles.colorInput}
+                                      value={rectFill}
+                                      onChange={(e) => setRectFill(e.target.value)}
+                                    />
+                                  )}
+                                </div>
+                              </Field>
                             </div>
-                          </Field>
-                        </div>
+                            <Field label={t('Border width (px)')}>
+                              <Slider value={rectStrokeWidth} min={1} max={10} step={1} unit="px" onChange={setRectStrokeWidth} />
+                            </Field>
+                          </div>
+                        </details>
 
-                        <Field label="Border Width (px)">
-                          <Slider value={rectStrokeWidth} min={1} max={10} step={1} unit="px" onChange={setRectStrokeWidth} />
-                        </Field>
-
-                        <Field label="Horizontal Position (X %)">
-                          <Slider value={rectX} min={0} max={90} step={1} unit="%" onChange={setRectX} />
-                        </Field>
-
-                        <Field label="Vertical Position (Y % from bottom)">
-                          <Slider value={rectY} min={5} max={95} step={1} unit="%" onChange={setRectY} />
-                        </Field>
-
-                        <Button onClick={addRectAnnotation}>Add Rectangle</Button>
+                        <Button onClick={addRectAnnotation}>{t('Add Rectangle')}</Button>
                       </div>
                     )}
 
@@ -592,30 +685,34 @@ export default function EditTool() {
                     {activeTab === 'drawing' && (
                       <div className={styles.card}>
                         <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', margin: 0 }}>
-                          Draw directly over the page preview on the left using your mouse or touch.
+                          {t('Draw directly over the page preview on the left using your mouse or touch.')}
                         </p>
 
-                        <div className={styles.colorPickerRow}>
-                          <Field label="Pen Color">
-                            <input
-                              type="color"
-                              className={styles.colorInput}
-                              value={penColor}
-                              onChange={(e) => setPenColor(e.target.value)}
-                            />
-                          </Field>
-
-                          <Field label="Pen Width">
-                            <Slider value={penWidth} min={1} max={16} step={1} unit="px" onChange={setPenWidth} />
-                          </Field>
-                        </div>
+                        <details className="tool-options">
+                          <summary>{t('Annotation style')}</summary>
+                          <div className="tool-options-body">
+                            <div className={styles.colorPickerRow}>
+                              <Field label={t('Pen color')}>
+                                <input
+                                  type="color"
+                                  className={styles.colorInput}
+                                  value={penColor}
+                                  onChange={(e) => setPenColor(e.target.value)}
+                                />
+                              </Field>
+                              <Field label={t('Pen width')}>
+                                <Slider value={penWidth} min={1} max={16} step={1} unit="px" onChange={setPenWidth} />
+                              </Field>
+                            </div>
+                          </div>
+                        </details>
 
                         <div style={{ display: 'flex', gap: '0.5rem' }}>
                           <Button variant="secondary" onClick={clearDrawing} disabled={!hasDrawnStrokes}>
-                            Clear Drawing
+                            {t('Clear Drawing')}
                           </Button>
                           <Button onClick={addDrawingAnnotation} disabled={!hasDrawnStrokes}>
-                            Add Drawing to Page
+                            {t('Add Drawing to Page')}
                           </Button>
                         </div>
                       </div>
@@ -623,27 +720,29 @@ export default function EditTool() {
 
                     {/* Annotations List */}
                     <div className={styles.card}>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>Added Annotations ({annotations.length})</div>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>
+                        {t('Added Annotations ({count})', { count: annotations.length })}
+                      </div>
 
                       {annotations.length === 0 ? (
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
-                          No annotations added yet. Use the tools above to place text, images, rectangles, or drawings.
+                          {t('No annotations added yet. Use the tools above to place text, images, rectangles, or drawings.')}
                         </p>
                       ) : (
                         <div className={styles.annList}>
                           {annotations.map((ann, idx) => (
                             <div key={ann.id} className={styles.annListItem}>
                               <span>
-                                <strong>#{idx + 1}</strong> [Page {ann.pageNum}]{' '}
+                                <strong>#{idx + 1}</strong> [{t('Page {number}', { number: ann.pageNum })}]{' '}
                                 {ann.type === 'text'
                                   ? `Text "${ann.text.substring(0, 16)}"`
                                   : ann.type === 'rect'
-                                    ? 'Rectangle'
+                                    ? t('Rectangle')
                                     : ann.type === 'image'
-                                      ? 'Image'
-                                      : 'Freehand mark'}
+                                      ? t('Image')
+                                      : t('Freehand mark')}
                               </span>
-                              <button className={styles.deleteBtn} onClick={() => removeAnnotation(ann.id)} title="Remove">
+                              <button className={styles.deleteBtn} onClick={() => removeAnnotation(ann.id)} title={t('Remove')}>
                                 ✕
                               </button>
                             </div>
@@ -653,10 +752,10 @@ export default function EditTool() {
                     </div>
 
                     {job.status === 'running' ? (
-                      <ProgressBar value={job.progress} label="Applying annotations..." />
+                      <ProgressBar value={job.progress} label={t('Applying annotations...')} />
                     ) : (
                       <Button variant="primary" disabled={annotations.length === 0} onClick={handleApply}>
-                        Apply Annotations & Save PDF
+                        {t('Apply Annotations & Save PDF')}
                       </Button>
                     )}
                   </div>

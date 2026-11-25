@@ -4,6 +4,7 @@ import { ShieldCheck, Upload } from 'lucide-react';
 import { matchesAccept, takePendingFiles } from '../lib/handoff';
 import { Button, Kbd } from './Controls';
 import { useFocusFallback } from './useFocusFallback';
+import { useI18n } from '../lib/i18n';
 
 export interface FileDropProps {
   accept?: string;
@@ -23,22 +24,28 @@ export function FileDrop({
   onFiles,
 }: FileDropProps) {
   const [isDragOver, setIsDragOver] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<{ source: string; params?: Record<string, string | number> } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   useFocusFallback(rootRef);
   const dragDepth = useRef(0);
   const labelId = useId();
   const hintId = useId();
+  const privacyId = useId();
   const { pathname } = useLocation();
+  const { t } = useI18n();
   const onFilesRef = useRef(onFiles);
   onFilesRef.current = onFiles;
 
   function deliver(files: File[]) {
     if (files.length === 0) return;
     const accepted = files.filter((f) => matchesAccept(f, accept));
-    if (accepted.length === 0) {
-      setNotice(`${files[0].name} isn't a supported file type for this tool.`);
+    if (accepted.length !== files.length) {
+      const rejected = files.filter((f) => !accepted.includes(f));
+      setNotice({
+        source: "{files} aren't supported by this tool. Choose supported files to continue.",
+        params: { files: rejected.map((f) => f.name).join(', ') },
+      });
       return;
     }
     setNotice(null);
@@ -49,8 +56,12 @@ export function FileDrop({
   useEffect(() => {
     const handed = takePendingFiles(pathname, accept, multiple);
     if (!handed) return;
-    if (handed.accepted.length > 0) onFilesRef.current(handed.accepted);
-    else if (handed.rejected.length > 0) setNotice(`${handed.rejected[0].name} can't be opened by this tool. Choose a different file.`);
+    if (handed.rejected.length > 0)
+      setNotice({
+        source: "{files} can't be opened by this tool. Choose supported files to continue.",
+        params: { files: handed.rejected.map((f) => f.name).join(', ') },
+      });
+    else if (handed.accepted.length > 0) onFilesRef.current(handed.accepted);
   }, [pathname, accept, multiple]);
 
   // Paste files (e.g. a screenshot) while the drop zone is on screen.
@@ -108,7 +119,7 @@ export function FileDrop({
       ref={rootRef}
       role="group"
       aria-labelledby={labelId}
-      aria-describedby={hint ? hintId : undefined}
+      aria-describedby={[hint ? hintId : null, privacyId].filter(Boolean).join(' ')}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -120,39 +131,39 @@ export function FileDrop({
         <Upload />
       </span>
       <div className="file-drop-label" id={labelId}>
-        {isDragOver ? 'Release to open' : label}
+        {t(isDragOver ? 'Release to open' : label)}
       </div>
       {hint && (
         <div className="file-drop-hint" id={hintId}>
-          {hint}
+          {t(hint)}
         </div>
       )}
 
       <div className="file-drop-actions">
         <Button
           variant="primary"
-          aria-describedby={labelId}
+          aria-describedby={[labelId, hint ? hintId : null, privacyId].filter(Boolean).join(' ')}
           onClick={(e) => {
             e.stopPropagation();
             openPicker();
           }}
         >
-          {multiple ? 'Choose files' : 'Choose file'}
+          {t(multiple ? 'Choose files' : 'Choose file')}
         </Button>
         <span className="file-drop-paste">
-          or paste with <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd> <Kbd>V</Kbd>
+          {t('or paste with')} <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd> <Kbd>V</Kbd>
         </span>
       </div>
 
       {notice && (
-        <div className="field-error" role="alert" style={{ marginTop: 'var(--space-3)' }}>
-          {notice}
+        <div className="field-error" role="alert">
+          {t(notice.source, notice.params)}
         </div>
       )}
 
       <div className="file-drop-privacy">
         <ShieldCheck aria-hidden="true" />
-        Processed on this device. Nothing is uploaded.
+        <span id={privacyId}>{t('Processed on this device. Nothing is uploaded.')}</span>
       </div>
     </div>
   );

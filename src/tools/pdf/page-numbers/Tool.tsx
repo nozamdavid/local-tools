@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { degrees, StandardFonts } from 'pdf-lib';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import type { PDFDocument } from 'pdf-lib';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { ProgressBar } from '../../../components/ProgressBar';
@@ -7,33 +7,21 @@ import { Field, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
+import { useI18n } from '../../../lib/i18n';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { PageThumb } from '../_thumbs/PageThumb';
 import { usePdfSource } from '../_thumbs/usePdfSource';
-import { getVisualPageDims, mapVisualToPdf, hexToRgb } from '../_stamp/coords';
-import { getTargetPages } from '../_stamp/pageScope';
+import { createPageNumberDrawer, type PageNumberSettings } from '../_stamp/annotations';
+import { getTargetPagesResult } from '../_stamp/pageScope';
+import { renderEditedPdfPage, STAMP_PREVIEW_MAX_DIMENSION } from '../_stamp/preview';
+import { renderPdfThumbnail } from '../../image/_pdf/pdfRenderer';
 import styles from './Tool.module.css';
 
 type Position = 'bottom-center' | 'bottom-right' | 'bottom-left' | 'top-center' | 'top-right' | 'top-left';
 
-const POSITIONS = [
-  { value: 'bottom-center', label: 'Bottom Center' },
-  { value: 'bottom-right', label: 'Bottom Right' },
-  { value: 'bottom-left', label: 'Bottom Left' },
-  { value: 'top-center', label: 'Top Center' },
-  { value: 'top-right', label: 'Top Right' },
-  { value: 'top-left', label: 'Top Left' },
-];
-
-const FORMATS = [
-  { value: '{n}', label: 'Number only (1, 2, ...)' },
-  { value: 'Page {n}', label: 'Page 1, Page 2, ...' },
-  { value: 'Page {n} of {total}', label: 'Page 1 of 10' },
-  { value: '{n} / {total}', label: '1 / 10' },
-];
-
 export default function PageNumbersTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-page-numbers');
   const source = usePdfSource();
   const job = useJob();
@@ -47,36 +35,156 @@ export default function PageNumbersTool() {
   const [scope, setScope] = useState<'all' | 'range'>('all');
   const [rangeStr, setRangeStr] = useState('');
   const [excludeFirst, setExcludeFirst] = useState(false);
+  const [previewPage, setPreviewPage] = useState(1);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState(false);
+  const previewPdf = useRef<{ file: File; promise: Promise<PDFDocument> } | null>(null);
+  const previewGeneration = useRef(0);
+  const positions = [
+    { value: 'bottom-center', label: t('Bottom Center') },
+    { value: 'bottom-right', label: t('Bottom Right') },
+    { value: 'bottom-left', label: t('Bottom Left') },
+    { value: 'top-center', label: t('Top Center') },
+    { value: 'top-right', label: t('Top Right') },
+    { value: 'top-left', label: t('Top Left') },
+  ];
+  const formats = [
+    { value: '{n}', label: t('Number only (1, 2, ...)') },
+    { value: 'Page {n}', label: t('Page 1, Page 2, ...') },
+    { value: 'Page {n} of {total}', label: t('Page 1 of 10') },
+    { value: '{n} / {total}', label: t('1 / 10') },
+  ];
 
   const total = source.pages.length;
 
-  const targetPages = getTargetPages(scope, total, {
+  const { pages: targetPages, error: rangeError } = getTargetPagesResult(scope, total, {
     rangeStr,
     excludeFirst,
   });
 
   const targetSet = new Set(targetPages);
+  const targetPageKey = targetPages.join(',');
+
+  const loadForPreview = useCallback(() => {
+    const file = source.file;
+    if (!file) return source.loadForEditing();
+    if (previewPdf.current?.file === file) return previewPdf.current.promise;
+
+    const entry = { file, promise: source.loadForEditing() };
+    previewPdf.current = entry;
+    void entry.promise.catch(() => {
+      if (previewPdf.current === entry) previewPdf.current = null;
+    });
+    return entry.promise;
+  }, [source.file, source.loadForEditing]);
+
+  useEffect(() => {
+    if (!targetPageKey) return;
+    const targetNumbers = targetPageKey.split(',').map(Number);
+    const firstTargetPage = Number(targetPageKey.split(',')[0]);
+    const targets = new Set(targetNumbers);
+    setPreviewPage((current) => (targets.has(current) ? current : firstTargetPage));
+  }, [targetPageKey]);
+
+  useEffect(() => {
+    const generation = ++previewGeneration.current;
+    const isStale = () => generation !== previewGeneration.current;
+    setPreviewUrl(null);
+    setPreviewError(false);
+    if (!source.doc || rangeError || job.status === 'running' || job.status === 'done' || previewPage < 1 || previewPage > total) {
+      if (job.status === 'done') setPreviewUrl(null);
+      setPreviewLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    const controller = new AbortController();
+    setPreviewLoading(true);
+    const timeout = window.setTimeout(async () => {
+      try {
+        const previewTargets = targetPageKey ? targetPageKey.split(',').map(Number) : [];
+        const targetIndex = previewTargets.indexOf(previewPage);
+        let url: string;
+        if (targetIndex < 0) {
+          url = await renderPdfThumbnail(source.doc!, previewPage, STAMP_PREVIEW_MAX_DIMENSION, controller.signal);
+        } else {
+          const settings: PageNumberSettings = { position, format, fontSize, margin, color };
+          url = await renderEditedPdfPage(
+            loadForPreview,
+            previewPage,
+            async (pdf, page) => {
+              const drawPageNumber = await createPageNumberDrawer(pdf, settings);
+              drawPageNumber(page, startNumber + targetIndex, previewTargets.length);
+            },
+            isStale,
+            controller.signal,
+          );
+        }
+        if (!cancelled && !isStale()) setPreviewUrl(url);
+      } catch {
+        if (!cancelled && !isStale()) setPreviewError(true);
+      } finally {
+        if (!cancelled && !isStale()) setPreviewLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      controller.abort();
+      if (previewGeneration.current === generation) previewGeneration.current++;
+      window.clearTimeout(timeout);
+    };
+  }, [
+    source.doc,
+    loadForPreview,
+    job.status,
+    previewPage,
+    total,
+    targetPageKey,
+    rangeError,
+    position,
+    format,
+    startNumber,
+    fontSize,
+    margin,
+    color,
+  ]);
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
+    previewGeneration.current++;
+    previewPdf.current = null;
     job.reset();
+    setPreviewPage(1);
+    setScope('all');
+    setRangeStr('');
+    setExcludeFirst(false);
     await source.open(files[0]);
   };
 
   const handleReset = () => {
+    previewGeneration.current++;
+    previewPdf.current = null;
     source.reset();
     job.reset();
+    setPreviewPage(1);
+    setScope('all');
+    setRangeStr('');
+    setExcludeFirst(false);
   };
 
   const handleApply = () => {
     if (targetPages.length === 0) return;
 
+    previewPdf.current = null;
+    previewGeneration.current++;
     job.run(async (setProgress) => {
       setProgress(0.1);
       const pdf = await source.loadForEditing();
-      const font = await pdf.embedFont(StandardFonts.Helvetica);
       const pages = pdf.getPages();
       const totalDocPages = pages.length;
+      const drawPageNumber = await createPageNumberDrawer(pdf, { position, format, fontSize, margin, color });
 
       setProgress(0.3);
 
@@ -85,55 +193,9 @@ export default function PageNumbersTool() {
         if (!targetSet.has(pNum)) continue;
 
         const page = pages[pNum - 1];
-        const dims = getVisualPageDims(page);
         const currentNum = startNumber + countIndex;
         countIndex++;
-
-        const text = format.replace('{n}', String(currentNum)).replace('{total}', String(targetPages.length));
-
-        const textWidth = font.widthOfTextAtSize(text, fontSize);
-
-        // Visual position coordinates (origin visual bottom-left)
-        let xv = 0;
-        let yv = 0;
-
-        switch (position) {
-          case 'bottom-center':
-            xv = (dims.visualWidth - textWidth) / 2;
-            yv = margin;
-            break;
-          case 'bottom-left':
-            xv = margin;
-            yv = margin;
-            break;
-          case 'bottom-right':
-            xv = dims.visualWidth - margin - textWidth;
-            yv = margin;
-            break;
-          case 'top-center':
-            xv = (dims.visualWidth - textWidth) / 2;
-            yv = dims.visualHeight - margin - fontSize;
-            break;
-          case 'top-left':
-            xv = margin;
-            yv = dims.visualHeight - margin - fontSize;
-            break;
-          case 'top-right':
-            xv = dims.visualWidth - margin - textWidth;
-            yv = dims.visualHeight - margin - fontSize;
-            break;
-        }
-
-        const placement = mapVisualToPdf({ x: xv, y: yv, angle: 0 }, dims);
-
-        page.drawText(text, {
-          x: placement.x,
-          y: placement.y,
-          size: fontSize,
-          font,
-          color: hexToRgb(color),
-          rotate: degrees(placement.rotateDegrees),
-        });
+        drawPageNumber(page, currentNum, targetPages.length);
       }
 
       setProgress(0.8);
@@ -153,14 +215,19 @@ export default function PageNumbersTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Add customizable page numbers to your PDF pages."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Add customizable page numbers to your PDF pages.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
+          {rangeError && (
+            <div className="error-banner" role="alert">
+              {t(rangeError)}
+            </div>
+          )}
 
           {job.result ? (
             <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
@@ -169,36 +236,36 @@ export default function PageNumbersTool() {
               <div className={styles.topRow}>
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    File: <strong>{file.name}</strong>
+                    {t('File:')} <strong>{file.name}</strong>
                   </span>
                   <span className="meta-chip">
-                    Size: <strong>{formatBytes(file.size)}</strong>
+                    {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                   </span>
                   {source.doc && (
                     <span className="meta-chip">
-                      Pages: <strong>{total}</strong>
+                      {t('Pages:')} <strong>{total}</strong>
                     </span>
                   )}
                 </div>
                 <Button variant="secondary" onClick={handleReset}>
-                  Change PDF
+                  {t('Change PDF')}
                 </Button>
               </div>
 
-              {source.loading && <p className={styles.status}>Opening PDF document…</p>}
+              {source.loading && <p className={styles.status}>{t('Opening PDF document…')}</p>}
 
               {source.doc && (
                 <>
                   <div className={styles.controls}>
-                    <Field label="Position">
-                      <Select value={position} onChange={(e) => setPosition(e.target.value as Position)} options={POSITIONS} />
+                    <Field label={t('Position')}>
+                      <Select value={position} onChange={(e) => setPosition(e.target.value as Position)} options={positions} />
                     </Field>
 
-                    <Field label="Format">
-                      <Select value={format} onChange={(e) => setFormat(e.target.value)} options={FORMATS} />
+                    <Field label={t('Format')}>
+                      <Select value={format} onChange={(e) => setFormat(e.target.value)} options={formats} />
                     </Field>
 
-                    <Field label="Start Number" hint="First page number to display">
+                    <Field label={t('Start Number')} hint={t('First page number to display')}>
                       <input
                         type="number"
                         className={styles.textInput}
@@ -208,7 +275,7 @@ export default function PageNumbersTool() {
                       />
                     </Field>
 
-                    <Field label="Font Size (pt)">
+                    <Field label={t('Font Size (pt)')}>
                       <input
                         type="number"
                         className={styles.textInput}
@@ -219,18 +286,18 @@ export default function PageNumbersTool() {
                       />
                     </Field>
 
-                    <Field label="Margin from edge (pt)">
+                    <Field label={t('Margin from edge (pt)')}>
                       <input
                         type="number"
                         className={styles.textInput}
                         min={10}
                         max={100}
                         value={margin}
-                        onChange={(e) => setMargin(Math.max(5, parseInt(e.target.value) || 30))}
+                        onChange={(e) => setMargin(Math.min(100, Math.max(5, parseInt(e.target.value) || 30)))}
                       />
                     </Field>
 
-                    <Field label="Text Color">
+                    <Field label={t('Text Color')}>
                       <input
                         type="color"
                         style={{
@@ -247,15 +314,15 @@ export default function PageNumbersTool() {
                       />
                     </Field>
 
-                    <Field label="Page Scope">
-                      <div className={styles.scope} role="radiogroup" aria-label="Page scope">
+                    <Field label={t('Page Scope')}>
+                      <div className={styles.scope} role="radiogroup" aria-label={t('Page scope')}>
                         <label>
                           <input type="radio" name="scope" checked={scope === 'all'} onChange={() => setScope('all')} />
-                          All pages
+                          {t('All pages')}
                         </label>
                         <label>
                           <input type="radio" name="scope" checked={scope === 'range'} onChange={() => setScope('range')} />
-                          Page range
+                          {t('Page range')}
                         </label>
                       </div>
 
@@ -264,7 +331,7 @@ export default function PageNumbersTool() {
                           type="text"
                           className={styles.textInput}
                           style={{ marginTop: '0.5rem' }}
-                          placeholder="e.g. 1-3, 5, 7-9"
+                          placeholder={t('e.g. 1-3, 5, 7-9')}
                           value={rangeStr}
                           onChange={(e) => setRangeStr(e.target.value)}
                         />
@@ -272,10 +339,60 @@ export default function PageNumbersTool() {
 
                       <label className={styles.checkboxRow}>
                         <input type="checkbox" checked={excludeFirst} onChange={(e) => setExcludeFirst(e.target.checked)} />
-                        Skip first page (cover page)
+                        {t('Skip first page (cover page)')}
                       </label>
                     </Field>
                   </div>
+
+                  <section className={styles.livePreview} aria-label={t('Live page number preview')}>
+                    <div className={styles.previewHeading}>
+                      <h2>{t('Live page number preview')}</h2>
+                      <div className={styles.pager}>
+                        <Button
+                          variant="secondary"
+                          onClick={() => setPreviewPage((page) => Math.max(1, page - 1))}
+                          disabled={previewPage <= 1}
+                          aria-label={t('Previous page')}
+                        >
+                          ‹
+                        </Button>
+                        <span>{t('Previewing page {page} of {total}', { page: previewPage, total })}</span>
+                        <Button
+                          variant="secondary"
+                          onClick={() => setPreviewPage((page) => Math.min(total, page + 1))}
+                          disabled={previewPage >= total}
+                          aria-label={t('Next page')}
+                        >
+                          ›
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div
+                      className={styles.previewPage}
+                      style={{
+                        aspectRatio: String((source.pages[previewPage - 1]?.width ?? 1) / (source.pages[previewPage - 1]?.height ?? 1)),
+                      }}
+                      aria-busy={previewLoading}
+                    >
+                      {previewUrl ? (
+                        <img src={previewUrl} alt={t('Page preview')} className={styles.previewPageImage} draggable={false} />
+                      ) : previewError ? (
+                        <span className={styles.previewMessage} role="alert">
+                          {t('Could not render this page number preview. Check the settings and try again.')}
+                        </span>
+                      ) : (
+                        <span className={styles.previewMessage} role="status">
+                          {t(previewLoading ? 'Rendering preview…' : 'Preparing page preview…')}
+                        </span>
+                      )}
+                    </div>
+                    <p className={styles.previewHint}>
+                      {targetSet.has(previewPage)
+                        ? t('The preview uses the selected number format, position, font size, color, and start number.')
+                        : t('This page is excluded from page numbering.')}
+                    </p>
+                  </section>
 
                   <div className={styles.previewGrid}>
                     {source.pages.map((page, index) => {
@@ -290,22 +407,30 @@ export default function PageNumbersTool() {
                       return (
                         <div key={index} className={`${styles.pageCard} ${isNumbered ? styles.pageCardNumbered : ''}`}>
                           {isNumbered && <span className={styles.pageBadge}>#{previewNumber}</span>}
-                          <PageThumb src={source.thumbs[index]} width={page.width} height={page.height} alt={`Page ${pNum}`} />
-                          <span className={styles.pageLabel}>Page {pNum}</span>
+                          <PageThumb
+                            src={source.thumbs[index]}
+                            width={page.width}
+                            height={page.height}
+                            alt={t('Page {number}', { number: pNum })}
+                          />
+                          <span className={styles.pageLabel}>{t('Page {number}', { number: pNum })}</span>
                         </div>
                       );
                     })}
                   </div>
 
                   {job.status === 'running' ? (
-                    <ProgressBar value={job.progress} label="Adding page numbers…" />
+                    <ProgressBar value={job.progress} label={t('Adding page numbers…')} />
                   ) : (
                     <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                       <Button variant="secondary" onClick={handleReset}>
-                        Choose different file
+                        {t('Choose different file')}
                       </Button>
                       <Button variant="primary" onClick={handleApply} disabled={targetPages.length === 0}>
-                        Add numbers to {targetPages.length} {targetPages.length === 1 ? 'page' : 'pages'}
+                        {t('Add numbers to {count} {unit}', {
+                          count: targetPages.length,
+                          unit: targetPages.length === 1 ? t('page') : t('pages'),
+                        })}
                       </Button>
                     </div>
                   )}

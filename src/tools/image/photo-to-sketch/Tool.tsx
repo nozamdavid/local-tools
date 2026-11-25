@@ -37,10 +37,10 @@ export default function PhotoToSketchTool() {
       defaultOptions={DEFAULT_OPTIONS}
       suffix="-sketch"
       render={renderSketch}
-      renderControls={(options, setOptions) => {
+      renderControls={(options, setOptions, { t }) => {
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-            <Field label="Artistic style">
+            <Field label={t('Artistic style')}>
               <Select
                 value={options.style}
                 onChange={(e) =>
@@ -50,16 +50,16 @@ export default function PhotoToSketchTool() {
                   }))
                 }
                 options={[
-                  { value: 'pencil', label: '✏️ Pencil sketch' },
-                  { value: 'color-sketch', label: '🎨 Colour sketch' },
-                  { value: 'cartoon', label: '🗯️ Cartoon (comic & edges)' },
-                  { value: 'sepia', label: '📜 Sepia vintage' },
-                  { value: 'oil', label: '🖌️ Oil painting (Kuwahara)' },
+                  { value: 'pencil', label: t('✏️ Pencil sketch') },
+                  { value: 'color-sketch', label: t('🎨 Colour sketch') },
+                  { value: 'cartoon', label: t('🗯️ Cartoon (comic & edges)') },
+                  { value: 'sepia', label: t('📜 Sepia vintage') },
+                  { value: 'oil', label: t('🖌️ Oil painting (Kuwahara)') },
                 ]}
               />
             </Field>
 
-            <Field label={`Effect intensity (${options.intensity}%)`}>
+            <Field label={t('Effect intensity ({intensity}%)', { intensity: options.intensity })}>
               <Slider
                 value={options.intensity}
                 min={10}

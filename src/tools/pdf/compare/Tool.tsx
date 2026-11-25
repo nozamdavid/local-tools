@@ -10,9 +10,10 @@ import { takePendingFiles } from '../../../lib/handoff';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { usePdfSource } from '../_thumbs/usePdfSource';
 import { PageThumb } from '../_thumbs/PageThumb';
-import { extractPdfText, type ExtractionResult } from '../_ai';
+import { usePdfText } from '../_ai/usePdfText';
 import { createSyntheticComparePdfs } from '../_ai/synthetic';
 import styles from './Tool.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 type CompareTab = 'visual' | 'text' | 'export';
 
@@ -25,6 +26,7 @@ interface PageAlignment {
 }
 
 export default function CompareTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-compare');
   const sourceA = usePdfSource(220);
   const sourceB = usePdfSource(220);
@@ -35,8 +37,8 @@ export default function CompareTool() {
   const [blendMode, setBlendMode] = useState<boolean>(false);
   const [scale, setScale] = useState<number>(1.0);
 
-  const [extractA, setExtractA] = useState<ExtractionResult | null>(null);
-  const [extractB, setExtractB] = useState<ExtractionResult | null>(null);
+  const { result: extractA } = usePdfText(sourceA.doc);
+  const { result: extractB } = usePdfText(sourceB.doc);
   const [copied, setCopied] = useState<boolean>(false);
 
   // Deliver handed pending PDF pair or single PDF from home page
@@ -52,29 +54,9 @@ export default function CompareTool() {
     }
   }, []);
 
-  // Extract text when docA is available
-  useEffect(() => {
-    if (sourceA.doc && !extractA) {
-      extractPdfText(sourceA.doc)
-        .then(setExtractA)
-        .catch(() => {});
-    }
-  }, [sourceA.doc, extractA]);
-
-  // Extract text when docB is available
-  useEffect(() => {
-    if (sourceB.doc && !extractB) {
-      extractPdfText(sourceB.doc)
-        .then(setExtractB)
-        .catch(() => {});
-    }
-  }, [sourceB.doc, extractB]);
-
   const handleReset = () => {
     sourceA.reset();
     sourceB.reset();
-    setExtractA(null);
-    setExtractB(null);
     setSelectedPageIndex(0);
     setSliderPos(50);
     setBlendMode(false);
@@ -207,15 +189,15 @@ export default function CompareTool() {
           <div className={styles.uploadGrid}>
             <div className={styles.uploadCard}>
               <div className={styles.cardHeader}>
-                <span className={styles.cardTitle}>Document A (Original)</span>
+                <span className={styles.cardTitle}>{t('Document A (Original)')}</span>
                 {sourceA.file && <span className="badge badge-success">{formatBytes(sourceA.file.size)}</span>}
               </div>
               {!sourceA.file ? (
                 <FileDrop
                   accept="application/pdf,.pdf"
                   multiple={true}
-                  label="Drop Document A (Base PDF)"
-                  hint="First document to compare against."
+                  label={t('Drop Document A (Base PDF)')}
+                  hint={t('First document to compare against.')}
                   onFiles={(files) => {
                     if (files[0]) sourceA.open(files[0]);
                     if (files[1] && !sourceB.file) sourceB.open(files[1]);
@@ -224,15 +206,15 @@ export default function CompareTool() {
               ) : (
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    File: <strong>{sourceA.file.name}</strong>
+                    {t('File:')} <strong>{sourceA.file.name}</strong>
                   </span>
                   {sourceA.pages.length > 0 && (
                     <span className="meta-chip">
-                      Pages: <strong>{sourceA.pages.length}</strong>
+                      {t('Pages:')} <strong>{sourceA.pages.length}</strong>
                     </span>
                   )}
                   <Button variant="secondary" onClick={() => sourceA.reset()}>
-                    Change
+                    {t('Change')}
                   </Button>
                 </div>
               )}
@@ -240,28 +222,28 @@ export default function CompareTool() {
 
             <div className={styles.uploadCard}>
               <div className={styles.cardHeader}>
-                <span className={styles.cardTitle}>Document B (Comparison)</span>
+                <span className={styles.cardTitle}>{t('Document B (Comparison)')}</span>
                 {sourceB.file && <span className="badge badge-success">{formatBytes(sourceB.file.size)}</span>}
               </div>
               {!sourceB.file ? (
                 <FileDrop
                   accept="application/pdf,.pdf"
-                  label="Drop Document B (New PDF)"
-                  hint="Second document to compare with Document A."
+                  label={t('Drop Document B (New PDF)')}
+                  hint={t('Second document to compare with Document A.')}
                   onFiles={(files) => files[0] && sourceB.open(files[0])}
                 />
               ) : (
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    File: <strong>{sourceB.file.name}</strong>
+                    {t('File:')} <strong>{sourceB.file.name}</strong>
                   </span>
                   {sourceB.pages.length > 0 && (
                     <span className="meta-chip">
-                      Pages: <strong>{sourceB.pages.length}</strong>
+                      {t('Pages:')} <strong>{sourceB.pages.length}</strong>
                     </span>
                   )}
                   <Button variant="secondary" onClick={() => sourceB.reset()}>
-                    Change
+                    {t('Change')}
                   </Button>
                 </div>
               )}
@@ -270,7 +252,7 @@ export default function CompareTool() {
 
           <div className={styles.sampleBtnRow}>
             <Button variant="secondary" onClick={handleLoadSample}>
-              Load Sample Comparison PDFs
+              {t('Load Sample Comparison PDFs')}
             </Button>
           </div>
         </div>
@@ -279,18 +261,18 @@ export default function CompareTool() {
           <div className={styles.topRow}>
             <div className="meta-chips">
               <span className="meta-chip">
-                Doc A: <strong>{sourceA.file?.name}</strong> ({sourceA.pages.length} p)
+                {t('Doc A:')} <strong>{sourceA.file?.name}</strong> ({t('{count} p', { count: sourceA.pages.length })})
               </span>
               <span className="meta-chip">
-                Doc B: <strong>{sourceB.file?.name}</strong> ({sourceB.pages.length} p)
+                {t('Doc B:')} <strong>{sourceB.file?.name}</strong> ({t('{count} p', { count: sourceB.pages.length })})
               </span>
-              <span className="badge badge-success">+{diffStats.added} lines</span>
+              <span className="badge badge-success">+{t('{count} lines', { count: diffStats.added })}</span>
               <span className="badge badge-danger" style={{ backgroundColor: 'var(--danger-soft)', color: 'var(--danger)' }}>
-                -{diffStats.removed} lines
+                -{t('{count} lines', { count: diffStats.removed })}
               </span>
             </div>
             <Button variant="secondary" onClick={handleReset}>
-              Change Documents
+              {t('Change Documents')}
             </Button>
           </div>
 
@@ -300,16 +282,16 @@ export default function CompareTool() {
               className={`${styles.tabBtn} ${activeTab === 'visual' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('visual')}
             >
-              Visual Page Comparison
+              {t('Visual Page Comparison')}
             </button>
             <button className={`${styles.tabBtn} ${activeTab === 'text' ? styles.tabBtnActive : ''}`} onClick={() => setActiveTab('text')}>
-              Text Differences
+              {t('Text Differences')}
             </button>
             <button
               className={`${styles.tabBtn} ${activeTab === 'export' ? styles.tabBtnActive : ''}`}
               onClick={() => setActiveTab('export')}
             >
-              Export Comparison (.txt)
+              {t('Export Comparison (.txt)')}
             </button>
           </div>
 
@@ -327,7 +309,12 @@ export default function CompareTool() {
                   className={`${styles.pageThumbCard} ${idx === selectedPageIndex ? styles.pageThumbCardActive : ''}`}
                   onClick={() => setSelectedPageIndex(idx)}
                 >
-                  <PageThumb src={sourceA.thumbs[idx] || sourceB.thumbs[idx]} width={w} height={h} alt={`Page ${idx + 1}`} />
+                  <PageThumb
+                    src={sourceA.thumbs[idx] || sourceB.thumbs[idx]}
+                    width={w}
+                    height={h}
+                    alt={t('Page {number}', { number: idx + 1 })}
+                  />
                   <span
                     className={`${styles.pageBadge} ${
                       align.status === 'deleted'
@@ -337,7 +324,11 @@ export default function CompareTool() {
                           : styles.badgeNormal
                     }`}
                   >
-                    {align.status === 'deleted' ? 'Deleted' : align.status === 'inserted' ? 'Inserted' : `Page ${idx + 1}`}
+                    {align.status === 'deleted'
+                      ? t('Deleted')
+                      : align.status === 'inserted'
+                        ? t('Inserted')
+                        : t('Page {number}', { number: idx + 1 })}
                   </span>
                 </div>
               );
@@ -349,7 +340,7 @@ export default function CompareTool() {
             <div className={styles.visualCompareBox}>
               <div className={styles.sliderBar}>
                 <span>
-                  <strong>Document A (0%)</strong>
+                  <strong>{t('Document A (0%)')}</strong>
                 </span>
                 <input
                   type="range"
@@ -358,10 +349,10 @@ export default function CompareTool() {
                   value={sliderPos}
                   onChange={(e) => setSliderPos(Number(e.target.value))}
                   className={styles.sliderInput}
-                  aria-label="Comparison slider"
+                  aria-label={t('Comparison slider')}
                 />
                 <span>
-                  <strong>Document B (100%)</strong>
+                  <strong>{t('Document B (100%)')}</strong>
                 </span>
                 <span className="badge badge-normal" style={{ minWidth: 45, textAlign: 'center' }}>
                   {sliderPos}%
@@ -369,32 +360,32 @@ export default function CompareTool() {
 
                 <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', marginLeft: 'auto', cursor: 'pointer' }}>
                   <input type="checkbox" checked={blendMode} onChange={(e) => setBlendMode(e.target.checked)} />
-                  Difference Blend Mode
+                  {t('Difference Blend Mode')}
                 </label>
 
                 <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <label htmlFor="zoom-scale">Zoom:</label>
+                  <label htmlFor="zoom-scale">{t('Zoom:')}</label>
                   <select
                     id="zoom-scale"
                     value={String(scale)}
                     onChange={(e) => setScale(Number(e.target.value))}
                     style={{ padding: '0.2rem 0.4rem', borderRadius: 4 }}
                   >
-                    <option value="1.0">1.0x (Normal)</option>
+                    <option value="1.0">{t('1.0x (Normal)')}</option>
                     <option value="1.25">1.25x</option>
-                    <option value="1.5">1.5x (Max)</option>
+                    <option value="1.5">{t('1.5x (Max)')}</option>
                   </select>
                 </div>
               </div>
 
               {activePageInfo?.status === 'deleted' && (
                 <div className="error-banner" style={{ marginBottom: '1rem' }}>
-                  ⚠️ This page exists in Document A but was <strong>removed / deleted in Document B</strong>.
+                  ⚠️ {t('This page exists in Document A but was')} <strong>{t('removed / deleted in Document B')}</strong>.
                 </div>
               )}
               {activePageInfo?.status === 'inserted' && (
                 <div className="badge badge-success" style={{ marginBottom: '1rem', display: 'inline-block' }}>
-                  ✨ This page is a <strong>newly inserted page in Document B</strong> (not present in Document A).
+                  ✨ {t('This page is a')} <strong>{t('newly inserted page in Document B')}</strong> {t('(not present in Document A).')}
                 </div>
               )}
 
@@ -402,7 +393,7 @@ export default function CompareTool() {
                 {thumbA && (
                   <img
                     src={thumbA}
-                    alt="Document A Page"
+                    alt={t('Document A Page')}
                     className={styles.visualLayer}
                     style={{
                       opacity: blendMode ? 1 : 1 - sliderPos / 100,
@@ -413,7 +404,7 @@ export default function CompareTool() {
                 {thumbB && (
                   <img
                     src={thumbB}
-                    alt="Document B Page"
+                    alt={t('Document B Page')}
                     className={styles.visualLayer}
                     style={{
                       opacity: blendMode ? 1 : sliderPos / 100,
@@ -430,11 +421,11 @@ export default function CompareTool() {
           {activeTab === 'text' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-                <h4 style={{ margin: 0 }}>Differences on Page {selectedPageIndex + 1}</h4>
+                <h4 style={{ margin: 0 }}>{t('Differences on Page {number}', { number: selectedPageIndex + 1 })}</h4>
                 <div className="meta-chips">
-                  <span className="badge badge-success">+{textDiffPage.filter((p) => p.added).length} added</span>
+                  <span className="badge badge-success">+{t('{count} added', { count: textDiffPage.filter((p) => p.added).length })}</span>
                   <span className="badge badge-danger" style={{ backgroundColor: 'var(--danger-soft)', color: 'var(--danger)' }}>
-                    -{textDiffPage.filter((p) => p.removed).length} removed
+                    -{t('{count} removed', { count: textDiffPage.filter((p) => p.removed).length })}
                   </span>
                 </div>
               </div>
@@ -465,14 +456,14 @@ export default function CompareTool() {
           {/* Tab 3: Export Comparison */}
           {activeTab === 'export' && (
             <div>
-              <h4 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Full Document Comparison Report</h4>
-              <textarea className={styles.exportTextarea} value={exportReport} readOnly aria-label="Exported comparison report" />
+              <h4 style={{ marginTop: 0, marginBottom: '0.75rem' }}>{t('Full Document Comparison Report')}</h4>
+              <textarea className={styles.exportTextarea} value={exportReport} readOnly aria-label={t('Exported comparison report')} />
               <div className="action-buttons" style={{ marginTop: '1rem' }}>
                 <Button variant="secondary" onClick={handleCopyReport}>
-                  {copied ? 'Copied!' : 'Copy Report'}
+                  {copied ? t('Copied!') : t('Copy Report')}
                 </Button>
                 <Button variant="primary" onClick={handleDownloadReport}>
-                  Download Comparison (.txt)
+                  {t('Download Comparison (.txt)')}
                 </Button>
               </div>
             </div>

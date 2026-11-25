@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '../../../components/Controls';
+import { useI18n } from '../../../lib/i18n';
 
 export interface PasswordDialogProps {
   reason?: number; // 1 = NEED_PASSWORD, 2 = INCORRECT_PASSWORD
@@ -8,6 +9,7 @@ export interface PasswordDialogProps {
 }
 
 export function PasswordDialog({ reason, onSubmit, onCancel }: PasswordDialogProps) {
+  const { t } = useI18n();
   const [password, setPassword] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -41,16 +43,16 @@ export function PasswordDialog({ reason, onSubmit, onCancel }: PasswordDialogPro
           boxShadow: 'var(--shadow-lg)',
         }}
       >
-        <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem', fontWeight: 600 }}>🔒 Password Protected PDF</h3>
+        <h3 style={{ fontSize: '1.2rem', marginBottom: '0.5rem', fontWeight: 600 }}>🔒 {t('Password-protected PDF')}</h3>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
-          {reason === 2 ? 'Incorrect password. Please try again.' : 'This PDF requires a password to open. Enter the password below.'}
+          {reason === 2 ? t('Incorrect password. Please try again.') : t('This PDF requires a password to open. Enter the password below.')}
         </p>
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: '1.25rem' }}>
             <input
               type="password"
-              placeholder="Enter password"
+              placeholder={t('Enter password')}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoFocus
@@ -69,10 +71,10 @@ export function PasswordDialog({ reason, onSubmit, onCancel }: PasswordDialogPro
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.75rem' }}>
             <Button type="button" variant="secondary" onClick={onCancel}>
-              Cancel
+              {t('Cancel')}
             </Button>
             <Button type="submit" variant="primary" disabled={!password}>
-              Unlock PDF
+              {t('Unlock PDF')}
             </Button>
           </div>
         </form>

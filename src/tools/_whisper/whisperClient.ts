@@ -1,6 +1,7 @@
 import { extractAudioPCM } from './extractAudio';
 import { chunksToCues } from './formats';
 import type { ProgressState, SubtitleCue, WhisperChunk, WhisperModel, WhisperTask, WorkerInMessage, WorkerOutMessage } from './types';
+import { translate } from '../../lib/i18n';
 
 export interface TranscribeOptions {
   model: WhisperModel;
@@ -17,61 +18,54 @@ export interface TranscribeResult {
 }
 
 export class WhisperTranscriptionJob {
-  private worker: Worker | null = null;
-  private aborted = false;
+  private controller = new AbortController();
 
   public abort() {
-    this.aborted = true;
-    if (this.worker) {
-      this.worker.terminate();
-      this.worker = null;
-    }
+    this.controller.abort(new Error(translate('Transcription cancelled')));
   }
 
   public async run(file: File | Blob, options: TranscribeOptions): Promise<TranscribeResult> {
     const { model, language, task, videoDuration, onProgress } = options;
+    const { signal } = this.controller;
+    signal.throwIfAborted();
 
     // Phase 1: Audio Extraction
     onProgress?.({
       phase: 'extracting',
       ratio: 0.1,
-      label: 'Extracting audio track...',
+      label: translate('Extracting audio track...'),
     });
 
-    const audioData = await extractAudioPCM(file, (ratio) => {
-      onProgress?.({
-        phase: 'extracting',
-        ratio: Math.min(0.99, ratio),
-        label: `Extracting audio track (${Math.round(ratio * 100)}%)...`,
-      });
-    });
+    const audioData = await extractAudioPCM(
+      file,
+      (ratio) => {
+        onProgress?.({
+          phase: 'extracting',
+          ratio: Math.min(0.99, ratio),
+          label: translate('Extracting audio track ({percent}%)...', { percent: Math.round(ratio * 100) }),
+        });
+      },
+      signal,
+    );
 
-    if (this.aborted) {
-      throw new Error('Transcription cancelled');
-    }
+    signal.throwIfAborted();
 
     onProgress?.({
       phase: 'downloading',
       ratio: 0,
-      label: 'Preparing Whisper model...',
+      label: translate('Preparing Whisper model...'),
     });
 
     // Phase 2 & 3: Web Worker transcription
-    return new Promise<TranscribeResult>((resolve, reject) => {
-      try {
-        const worker = new Worker(new URL('./worker.ts', import.meta.url), {
-          type: 'module',
-        });
-        this.worker = worker;
+    const worker = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module' });
+    let onAbort: (() => void) | undefined;
+    try {
+      return await new Promise<TranscribeResult>((resolve, reject) => {
+        signal.throwIfAborted();
+        onAbort = () => reject(signal.reason);
+        signal.addEventListener('abort', onAbort, { once: true });
 
         worker.onmessage = (e: MessageEvent<WorkerOutMessage>) => {
-          if (this.aborted) {
-            worker.terminate();
-            this.worker = null;
-            reject(new Error('Transcription cancelled'));
-            return;
-          }
-
           const data = e.data;
           if (!data) return;
 
@@ -81,7 +75,7 @@ export class WhisperTranscriptionJob {
               onProgress?.({
                 phase: 'downloading',
                 ratio: data.progress,
-                label: `Downloading model weights (${pct}%)...`,
+                label: translate('Downloading model weights ({percent}%)...', { percent: pct }),
               });
               break;
             }
@@ -92,19 +86,17 @@ export class WhisperTranscriptionJob {
                 onProgress?.({
                   phase: 'transcribing',
                   ratio: 1, // Indeterminate / active
-                  label: `Transcribing audio with Whisper${timeText}...`,
+                  label: translate('Transcribing audio with Whisper{time}...', { time: timeText }),
                   elapsedSeconds: s,
                 });
               }
               break;
             }
             case 'complete': {
-              worker.terminate();
-              this.worker = null;
               onProgress?.({
                 phase: 'done',
                 ratio: 1,
-                label: 'Transcription complete',
+                label: translate('Transcription complete'),
               });
               const cues = chunksToCues(data.chunks, videoDuration);
               resolve({
@@ -115,18 +107,26 @@ export class WhisperTranscriptionJob {
               break;
             }
             case 'error': {
-              worker.terminate();
-              this.worker = null;
-              reject(new Error(data.error || 'Failed to transcribe audio'));
+              reject(
+                new Error(
+                  data.error
+                    ? translate('Speech transcription failed: {message}', { message: data.error })
+                    : translate('Failed to transcribe audio'),
+                ),
+              );
               break;
             }
           }
         };
 
         worker.onerror = (err) => {
-          worker.terminate();
-          this.worker = null;
-          reject(new Error(err.message || 'Worker error during speech transcription'));
+          reject(
+            new Error(
+              translate('Speech transcription worker failed: {message}', {
+                message: err.message || translate('Worker error during speech transcription'),
+              }),
+            ),
+          );
         };
 
         const msg: WorkerInMessage = {
@@ -139,9 +139,10 @@ export class WhisperTranscriptionJob {
 
         // Transfer Float32Array buffer to worker for zero-copy efficiency
         worker.postMessage(msg, [audioData.buffer]);
-      } catch (workerErr) {
-        reject(workerErr);
-      }
-    });
+      });
+    } finally {
+      if (onAbort) signal.removeEventListener('abort', onAbort);
+      worker.terminate();
+    }
   }
 }

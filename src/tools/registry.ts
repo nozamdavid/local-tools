@@ -1,4 +1,5 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
+import { translate } from '../lib/i18n';
 
 export type Media = 'video' | 'image' | 'pdf' | 'file' | '3d';
 
@@ -110,7 +111,7 @@ export const categories: Category[] = [
   { id: 'pdf-security', media: 'pdf', title: 'Security', description: 'Lock, unlock, sign, redact and compare PDFs' },
   { id: 'pdf-ai', media: 'pdf', title: 'AI', description: 'Summarize and translate PDFs with on-device AI' },
 
-  { id: '3d-format', media: '3d', title: 'Convert', description: 'Convert between STL, OBJ, PLY, 3MF and CAD formats' },
+  { id: '3d-format', media: '3d', title: 'Convert', description: 'Convert STL, OBJ, PLY and 3MF meshes, or import CAD files' },
   { id: '3d-edit', media: '3d', title: 'Edit & transform', description: 'Simplify, transform, reverse normals, split and merge 3D meshes' },
   { id: '3d-inspect', media: '3d', title: 'Inspect', description: 'Measure dimensions, volume, surface area and topology' },
 ];
@@ -236,11 +237,20 @@ export const TOOL_METAS: ToolMeta[] = [
     'geo',
   ]),
 
+  fileTool(
+    'zip-extract',
+    'ZIP Inspector & Extractor',
+    'Inspect a ZIP archive and extract its files in your browser',
+    '📦',
+    'file-utility',
+    ['archive', 'zip', 'extract', 'inspect', 'unpack'],
+  ),
+
   // File: Data & spreadsheets
   fileTool(
     'csv-viewer',
     'CSV Viewer',
-    'Inspect, search, sort, filter and edit CSV spreadsheets in your browser',
+    'View and search CSV and TSV tables in your browser',
     '📊',
     'file-data',
     ['view', 'table', 'csv', 'tsv', 'search', 'filter'],
@@ -289,11 +299,10 @@ export const TOOL_METAS: ToolMeta[] = [
     'file-utility',
     ['metadata', 'developer', 'mp4', 'mov', 'mkv', 'avi'],
   ),
-  fileTool('css-viewer', 'CSS Viewer', 'Inspect, format, minify, and analyze CSS stylesheets', '🎨', 'file-utility', [
+  fileTool('css-viewer', 'CSS Viewer', 'Edit CSS and preview it with sample HTML', '🎨', 'file-utility', [
     'developer',
     'css',
-    'format',
-    'minify',
+    'preview',
     'code',
   ]),
 
@@ -345,6 +354,13 @@ export const TOOL_METAS: ToolMeta[] = [
   video('remove-audio', 'Mute', 'Remove the audio track', '🔇', 'video-audio', ['audio', 'mute', 'privacy', 'mp4', 'webm']),
   video('boost-volume', 'Boost', 'Make a video louder', '🔊', 'video-audio', ['audio', 'volume', 'mp4', 'mp3']),
   video('add-soundtrack', 'Add Soundtrack', 'Add background music', '🎶', 'video-audio', ['audio', 'merge', 'mp3', 'mp4']),
+  video('audio-trim', 'Trim Audio', 'Trim an audio file with a waveform preview', '🎚️', 'video-audio', [
+    'audio',
+    'trim',
+    'waveform',
+    'cut',
+    'mp3',
+  ]),
 
   // Video: AI
   video('video-to-text', 'Video to Text', 'Get a clean text transcript', '📝', 'video-ai', ['ai', 'text', 'transcript', 'audio']),
@@ -414,6 +430,13 @@ export const TOOL_METAS: ToolMeta[] = [
     true,
   ),
   image('crop', 'Crop Image', 'Crop with freeform or aspect ratio presets', '✂️', 'image-optimize', ['crop', 'social', 'jpg', 'png']),
+  image('svg-optimize', 'Optimize SVG', 'Clean and minify SVG markup while preserving the vector image', '✂️', 'image-optimize', [
+    'svg',
+    'optimize',
+    'minify',
+    'vector',
+    'compress',
+  ]),
 
   // Image: Format converters
   image(
@@ -493,6 +516,13 @@ export const TOOL_METAS: ToolMeta[] = [
     ['transparency', 'clean', 'privacy', 'png'],
     true,
   ),
+  image('compare', 'Compare Images', 'Compare two images side by side and inspect their visual differences', '🆚', 'image-edit', [
+    'compare',
+    'diff',
+    'side-by-side',
+    'before-after',
+    'visual',
+  ]),
   image('sharpen', 'Sharpen Image', 'Make soft photos crisper', '🔍', 'image-edit', ['filter', 'jpg', 'png']),
   image('border', 'Image Border', 'Wrap images in decorative frames', '🖼️', 'image-edit', ['border', 'draw', 'jpg', 'png']),
   image('add-border', 'Add Border', 'Add a solid, gradient or dashed border', '🔲', 'image-edit', ['border', 'color', 'jpg', 'png']),
@@ -790,6 +820,14 @@ export const TOOL_METAS: ToolMeta[] = [
   pdf('compress', 'Compress PDF', 'Reduce PDF file size', '🗜️', 'pdf-optimize', ['compress', 'shrink', 'optimize'], true),
   pdf('repair', 'Repair PDF', 'Recover content from damaged PDFs', '🛠️', 'pdf-optimize', ['repair', 'fix', 'optimize']),
   pdf('ocr', 'OCR PDF', 'Make scanned PDFs searchable and selectable', '🔤', 'pdf-optimize', ['ocr', 'text', 'ai', 'searchable']),
+  pdf(
+    'metadata-cleaner',
+    'PDF Metadata Cleaner',
+    'Clear standard PDF author, title, creator and date fields while preserving page content',
+    '🧹',
+    'pdf-security',
+    ['metadata', 'privacy', 'clean', 'remove', 'author'],
+  ),
 
   // PDF: Convert to PDF
   pdf('jpg-to-pdf', 'JPG to PDF', 'Combine images into a single PDF', '🖼️', 'pdf-to', ['convert', 'jpg', 'png', 'document'], true),
@@ -966,12 +1004,22 @@ function loaderFor(meta: ToolMeta): () => Promise<{ default: ComponentType }> {
 
 export const tools: ToolDef[] = TOOL_METAS.map((meta) => ({ ...meta, component: lazy(loaderFor(meta)) }));
 
+export function localizeToolMeta(meta: ToolMeta): ToolMeta {
+  const source = TOOL_METAS.find((tool) => tool.id === meta.id) ?? meta;
+  return { ...source, title: translate(source.title), description: translate(source.description) };
+}
+
+export function localizeCategory(category: Category): Category {
+  const source = categories.find((item) => item.id === category.id) ?? category;
+  return { ...source, title: translate(source.title), description: translate(source.description) };
+}
+
 export function getToolMeta(id: string): ToolMeta {
   const meta = TOOL_METAS.find((t) => t.id === id);
   if (!meta) {
     return { id, slug: id, media: 'video', path: '/', title: id, description: '', icon: '🔧', category: 'video-utility', tags: [] };
   }
-  return meta;
+  return localizeToolMeta(meta);
 }
 
 export function toolsByMedia(media: Media): ToolMeta[] {

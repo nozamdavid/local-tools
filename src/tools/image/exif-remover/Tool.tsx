@@ -5,11 +5,13 @@ import { Button } from '../../../components/Controls';
 import { BatchResults, type BatchResultItem } from '../../../components/BatchResults';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { formatBytes } from '../../../lib/format';
 import { stripFileMetadata, type StripResult } from './remover';
 import styles from './Tool.module.css';
 
 export default function ExifRemoverTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-exif-remover');
 
   const [files, setFiles] = useState<File[]>([]);
@@ -44,7 +46,7 @@ export default function ExifRemoverTool() {
       }
       setResults(out);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to strip metadata');
+      setError(err instanceof Error ? t(err.message) : t('Failed to strip metadata'));
     } finally {
       setProcessing(false);
     }
@@ -66,20 +68,20 @@ export default function ExifRemoverTool() {
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="img-exif-remover">
       <div className={styles.container}>
-        {error && <div className="error-banner">{error}</div>}
+        {error && <div className="error-banner">{t(error)}</div>}
 
         {files.length === 0 ? (
           <FileDrop
             accept="image/*,.jpg,.jpeg,.png,.webp,.heic,.heif,.tiff,.tif"
             multiple
-            label="Drop photos here to remove EXIF & metadata"
-            hint="Supports JPG, PNG, WEBP and more. Batch supported. 100% lossless byte stream rewriting."
+            label={t('Drop photos here to remove EXIF & metadata')}
+            hint={t('Supports JPG, PNG, WEBP and more. Batch supported. 100% lossless byte stream rewriting.')}
             onFiles={handleFiles}
           />
         ) : results.length > 0 ? (
           <div>
             <div className={styles.removedSummaryList}>
-              <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.25rem' }}>Metadata Removal Summary</div>
+              <div style={{ fontWeight: 600, fontSize: '1rem', marginBottom: '0.25rem' }}>{t('Metadata removal summary')}</div>
               {results.map((r, idx) => (
                 <div key={`${r.filename}-${idx}`} className={styles.removedCard}>
                   <div>
@@ -99,14 +101,14 @@ export default function ExifRemoverTool() {
                           fontWeight: 600,
                         }}
                       >
-                        Lossless (Identical pixels)
+                        {t('Lossless (identical pixels)')}
                       </span>
                     )}
                   </div>
                   <div className={styles.removedTags}>
                     {r.removed.map((tag, tIdx) => (
                       <span key={tIdx} className={styles.removedTag}>
-                        {tag}
+                        {t(tag)}
                       </span>
                     ))}
                   </div>
@@ -120,18 +122,15 @@ export default function ExifRemoverTool() {
           <div>
             <div className="meta-chips">
               <span className="meta-chip">
-                Selected:{' '}
-                <strong>
-                  {files.length} file{files.length > 1 ? 's' : ''}
-                </strong>
+                {t('Selected')}: <strong>{t('{count} files', { count: files.length })}</strong>
               </span>
               <span className="meta-chip">
-                Total size: <strong>{formatBytes(files.reduce((sum, f) => sum + f.size, 0))}</strong>
+                {t('Total size')}: <strong>{formatBytes(files.reduce((sum, f) => sum + f.size, 0))}</strong>
               </span>
             </div>
 
             <div className={styles.optionsCard} style={{ marginTop: '1.5rem' }}>
-              <div className={styles.optionsTitle}>Stripping Options</div>
+              <div className={styles.optionsTitle}>{t('Stripping options')}</div>
               <div className={styles.optionsGrid}>
                 <label className={styles.checkboxRow}>
                   <input
@@ -141,8 +140,10 @@ export default function ExifRemoverTool() {
                     onChange={(e) => setKeepIcc(e.target.checked)}
                   />
                   <div className={styles.checkboxLabel}>
-                    <span className={styles.checkboxTitle}>Keep ICC colour profile (APP2)</span>
-                    <span className={styles.checkboxHint}>Preserves wide gamut and color management profiles so colors do not shift.</span>
+                    <span className={styles.checkboxTitle}>{t('Keep ICC colour profile (APP2)')}</span>
+                    <span className={styles.checkboxHint}>
+                      {t('Preserves wide gamut and colour management profiles so colours do not shift.')}
+                    </span>
                   </div>
                 </label>
 
@@ -154,10 +155,11 @@ export default function ExifRemoverTool() {
                     onChange={(e) => setApplyOrientation(e.target.checked)}
                   />
                   <div className={styles.checkboxLabel}>
-                    <span className={styles.checkboxTitle}>Apply orientation before stripping (re-encode)</span>
+                    <span className={styles.checkboxTitle}>{t('Apply orientation before stripping (re-encode)')}</span>
                     <span className={styles.checkboxHint}>
-                      If photos have EXIF rotation tags, applies the rotation into the pixel data so they don&apos;t appear rotated after
-                      removing EXIF.
+                      {t(
+                        "If photos have EXIF rotation tags, applies the rotation into the pixel data so they don't appear rotated after removing EXIF.",
+                      )}
                     </span>
                   </div>
                 </label>
@@ -166,15 +168,15 @@ export default function ExifRemoverTool() {
 
             {processing ? (
               <div style={{ marginTop: '1.5rem' }}>
-                <ProgressBar value={progress} label="Stripping metadata losslessly…" />
+                <ProgressBar value={progress} label={t('Stripping metadata losslessly…')} />
               </div>
             ) : (
               <div className="action-buttons" style={{ marginTop: '2rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
-                  Choose different files
+                  {t('Choose different files')}
                 </Button>
                 <Button variant="primary" onClick={handleStrip}>
-                  Strip metadata ({files.length} {files.length > 1 ? 'files' : 'file'})
+                  {t('Strip metadata ({count} files)', { count: files.length })}
                 </Button>
               </div>
             )}

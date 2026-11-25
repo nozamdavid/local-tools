@@ -7,8 +7,16 @@ const SLIDE_WIDTH_PX = 960;
 export const LEGACY_PPT_MESSAGE =
   'Legacy .ppt files are not supported. Open the file in PowerPoint or LibreOffice, save it as .pptx, and try again.';
 
+const PPTX_PREPARATION_ERROR =
+  'Could not prepare this PPTX presentation. Open it in PowerPoint or LibreOffice, save a fresh .pptx copy, and try again.';
+
 export async function checkPptx(file: File): Promise<string | null> {
-  const head = new Uint8Array(await file.slice(0, 4).arrayBuffer());
+  const header = await file
+    .slice(0, 4)
+    .arrayBuffer()
+    .catch(() => null);
+  if (!header) return PPTX_PREPARATION_ERROR;
+  const head = new Uint8Array(header);
   const isOle = head[0] === 0xd0 && head[1] === 0xcf && head[2] === 0x11 && head[3] === 0xe0;
   if (isOle || /\.ppt$/i.test(file.name)) return LEGACY_PPT_MESSAGE;
 
@@ -19,8 +27,9 @@ export async function checkPptx(file: File): Promise<string | null> {
 }
 
 /** Strips dangling content-type overrides and neutralizes external relationships. */
-export async function preparePptxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffer> {
+export async function preparePptxBuffer(input: Blob | ArrayBuffer): Promise<ArrayBuffer> {
   try {
+    const buffer = input instanceof ArrayBuffer ? input : await input.arrayBuffer();
     const JSZip = (await import('jszip')).default;
     const zip = await JSZip.loadAsync(buffer);
     const ctFile = zip.file('[Content_Types].xml');
@@ -42,10 +51,21 @@ export async function preparePptxBuffer(buffer: ArrayBuffer): Promise<ArrayBuffe
       }
     }
     return await zip.generateAsync({ type: 'arraybuffer' });
-  } catch {
-    // If zip processing fails, fall back to original buffer
+  } catch (cause) {
+    throw new Error(PPTX_PREPARATION_ERROR, { cause });
   }
-  return buffer;
+}
+
+type PreviewNode = {
+  nodes?: PreviewNode[];
+  options?: { series?: unknown[]; animation?: boolean };
+};
+
+function disableChartAnimation(nodes: PreviewNode[]): void {
+  for (const node of nodes) {
+    if (node.options?.series) node.options.animation = false;
+    if (node.nodes) disableChartAnimation(node.nodes);
+  }
 }
 
 export async function powerpointToPdf(
@@ -56,13 +76,21 @@ export async function powerpointToPdf(
   const problem = await checkPptx(file);
   if (problem) throw new Error(problem);
 
-  const cleanBuffer = await preparePptxBuffer(await file.arrayBuffer());
+  const cleanBuffer = await preparePptxBuffer(file);
   const { init } = await import('pptx-preview');
   const { stage, dispose } = createStage(SLIDE_WIDTH_PX);
 
   try {
     const previewer = init(stage, { width: SLIDE_WIDTH_PX, mode: 'list' });
-    await previewer.preview(cleanBuffer);
+    const pptx = await previewer.load(cleanBuffer);
+    disableChartAnimation([...pptx.slides, ...pptx.slideLayouts, ...pptx.slideMaster]);
+    for (let i = 0; i < pptx.slides.length; i++) {
+      previewer.htmlRender.renderSlide(i);
+    }
+    // pptx-preview queues chart SVG creation with setTimeout after laying out each slide.
+    if (stage.querySelector('.chart-node')) {
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
     onProgress(0.2);
 
     sanitizeRenderedDom(stage);

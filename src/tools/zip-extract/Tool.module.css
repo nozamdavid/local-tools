@@ -1,0 +1,118 @@
+.workspace {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.fileSummary,
+.selectionBar,
+.selectionActions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.fileSummary > div {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.archiveName {
+  overflow-wrap: anywhere;
+}
+
+.fileMeta,
+.selectionSummary {
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}
+
+.selectionActions {
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.entryList {
+  max-height: 28rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.entryRow + .entryRow {
+  border-top: 1px solid var(--border);
+}
+
+.entryLabel {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  cursor: pointer;
+}
+
+.entryCheckbox {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.entryCheckbox:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.entryCheckbox:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.entryLabel:has(.entryCheckbox:disabled) {
+  cursor: not-allowed;
+}
+
+.entryName {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.entrySize {
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.status {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+.result {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+}
+
+.result p {
+  margin: 0;
+}
+
+@media (max-width: 40rem) {
+  .selectionBar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .selectionBar > button {
+    align-self: flex-start;
+  }
+}

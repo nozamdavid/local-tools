@@ -1,7 +1,16 @@
-import { runFFmpeg, type RunFFmpegInput } from '../../lib/ffmpeg';
-import { SegmentClient } from './segmentClient';
+import { runFFmpegWithinMediaJob, type RunFFmpegInput } from '../../lib/ffmpeg';
+import { withMediaJobLock } from '../../lib/mediaQueue';
+import type { SegmentClient } from './segmentClient';
 import { calculateTargetSize } from './composite';
 import type { VideoMaxResolution, FrameProcessingProgress } from './types';
+import { translate } from '../../lib/i18n';
+
+const MIB = 1024 * 1024;
+const MAX_SOURCE_MIB = 128;
+const MAX_FRAME_MIB = 128;
+const MAX_FRAMES = 900;
+const MAX_FRAME_SIDE = 4096;
+const MAX_FRAME_PIXELS = 4096 * 2160;
 
 export interface ProcessVideoOptions {
   videoFile: File;
@@ -9,7 +18,7 @@ export interface ProcessVideoOptions {
   fps: number; // 15, 24, 30
   maxResolution: VideoMaxResolution;
   outputFormat: 'webm' | 'mp4';
-  segmentClient: SegmentClient;
+  segmentClient: Pick<SegmentClient, 'segmentFrame'>;
   abortSignal: AbortSignal;
   onProgress: (progress: FrameProcessingProgress) => void;
   compositeFn: (
@@ -24,85 +33,123 @@ export interface ProcessVideoOptions {
   ) => void;
 }
 
-export async function processVideo({
-  videoFile,
-  videoUrl,
-  fps,
-  maxResolution,
-  outputFormat,
-  segmentClient,
-  abortSignal,
-  onProgress,
-  compositeFn,
-}: ProcessVideoOptions): Promise<Blob> {
+function waitForVideoEvent(video: HTMLVideoElement, event: 'loadedmetadata' | 'seeked', signal: AbortSignal, start: () => void) {
+  return new Promise<void>((resolve, reject) => {
+    signal.throwIfAborted();
+    const cleanup = () => {
+      clearTimeout(timeout);
+      video.removeEventListener(event, succeed);
+      video.removeEventListener('error', fail);
+      signal.removeEventListener('abort', abort);
+    };
+    const succeed = () => {
+      cleanup();
+      resolve();
+    };
+    const fail = () => {
+      cleanup();
+      reject(new Error(translate('Failed to load video file')));
+    };
+    const abort = () => {
+      cleanup();
+      reject(signal.reason);
+    };
+    const timeout = setTimeout(fail, 10000);
+    video.addEventListener(event, succeed, { once: true });
+    video.addEventListener('error', fail, { once: true });
+    signal.addEventListener('abort', abort, { once: true });
+    try {
+      start();
+    } catch (error) {
+      cleanup();
+      reject(error);
+    }
+  });
+}
+
+export async function processVideo(options: ProcessVideoOptions): Promise<Blob> {
+  options.abortSignal.throwIfAborted();
+  if (options.videoFile.size > MAX_SOURCE_MIB * MIB) {
+    throw new Error(translate('The source video exceeds {limit} MiB. Trim or compress it before exporting.', { limit: MAX_SOURCE_MIB }));
+  }
+
+  // Hold the same media lock through collection and encoding to keep PNGs out of the job queue.
+  return withMediaJobLock(async () => {
+    options.abortSignal.throwIfAborted();
+    const inputs: RunFFmpegInput[] = [];
+    const totalFrames = await collectVideoFrames(options, inputs);
+    return encodeVideo(options, inputs, totalFrames);
+  });
+}
+
+async function collectVideoFrames(options: ProcessVideoOptions, inputs: RunFFmpegInput[]): Promise<number> {
   const video = document.createElement('video');
-  video.src = videoUrl;
   video.muted = true;
   video.playsInline = true;
   video.preload = 'auto';
 
-  await new Promise<void>((resolve, reject) => {
-    video.onloadedmetadata = () => resolve();
-    video.onerror = () => reject(new Error('Failed to load video file'));
-  });
+  try {
+    await waitForVideoEvent(video, 'loadedmetadata', options.abortSignal, () => {
+      video.src = options.videoUrl;
+    });
+    return await collectFrames(video, options, inputs);
+  } finally {
+    video.removeAttribute('src');
+    video.load();
+  }
+}
 
-  if (abortSignal.aborted) throw new Error('Cancelled');
-
-  const duration = video.duration || 1;
-  const totalFrames = Math.max(1, Math.floor(duration * fps));
+async function collectFrames(
+  video: HTMLVideoElement,
+  { fps, maxResolution, segmentClient, abortSignal, onProgress, compositeFn }: ProcessVideoOptions,
+  inputs: RunFFmpegInput[],
+): Promise<number> {
+  const duration = video.duration;
+  if (!Number.isFinite(duration) || duration <= 0 || !video.videoWidth || !video.videoHeight) {
+    throw new Error(translate('Failed to load video file'));
+  }
+  const totalFrames = Math.max(1, Math.round(duration * fps));
+  if (totalFrames > MAX_FRAMES) {
+    throw new Error(translate('This export exceeds {limit} frames. Trim the clip or choose a lower frame rate.', { limit: MAX_FRAMES }));
+  }
   const { width, height } = calculateTargetSize(video.videoWidth, video.videoHeight, maxResolution);
+  if (Math.max(width, height) > MAX_FRAME_SIDE || width * height > MAX_FRAME_PIXELS) {
+    throw new Error(translate('The export resolution is too large. Choose 1080p or a lower processing resolution.'));
+  }
 
   const sourceCanvas = document.createElement('canvas');
   sourceCanvas.width = width;
   sourceCanvas.height = height;
   const sourceCtx = sourceCanvas.getContext('2d', { willReadFrequently: true });
-  if (!sourceCtx) throw new Error('Could not create 2D canvas context');
+  if (!sourceCtx) throw new Error(translate('Could not create 2D canvas context'));
 
   const outputCanvas = document.createElement('canvas');
   outputCanvas.width = width;
   outputCanvas.height = height;
   const outputCtx = outputCanvas.getContext('2d');
-  if (!outputCtx) throw new Error('Could not create 2D canvas context');
+  if (!outputCtx) throw new Error(translate('Could not create 2D canvas context'));
 
-  const pngInputs: RunFFmpegInput[] = [];
+  let frameBytes = 0;
   const startTime = performance.now();
 
   for (let i = 0; i < totalFrames; i++) {
-    if (abortSignal.aborted) {
-      throw new Error('Cancelled');
-    }
+    abortSignal.throwIfAborted();
 
     const targetTime = Math.min(i / fps + 0.001, Math.max(0, duration - 0.001));
-    video.currentTime = targetTime;
-
-    await new Promise<void>((resolve) => {
-      let resolved = false;
-      const onSeeked = () => {
-        if (!resolved) {
-          resolved = true;
-          video.removeEventListener('seeked', onSeeked);
-          resolve();
-        }
-      };
-      video.addEventListener('seeked', onSeeked);
-      // Fallback timeout in case seeked doesn't fire
-      setTimeout(() => {
-        if (!resolved) {
-          resolved = true;
-          video.removeEventListener('seeked', onSeeked);
-          resolve();
-        }
-      }, 500);
-    });
-
-    if (abortSignal.aborted) throw new Error('Cancelled');
+    if (video.currentTime !== targetTime || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+      await waitForVideoEvent(video, 'seeked', abortSignal, () => {
+        video.currentTime = targetTime;
+      });
+      if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) throw new Error(translate('Failed to load video file'));
+    }
+    abortSignal.throwIfAborted();
 
     sourceCtx.drawImage(video, 0, 0, width, height);
     const frameImageData = sourceCtx.getImageData(0, 0, width, height);
 
     const { mask } = await segmentClient.segmentFrame(frameImageData.data, width, height);
 
-    if (abortSignal.aborted) throw new Error('Cancelled');
+    abortSignal.throwIfAborted();
 
     compositeFn(outputCtx, {
       frameImageData,
@@ -115,12 +162,22 @@ export async function processVideo({
     const pngBlob = await new Promise<Blob>((resolve, reject) => {
       outputCanvas.toBlob((blob) => {
         if (blob) resolve(blob);
-        else reject(new Error('Failed to encode frame to PNG'));
+        else reject(new Error(translate('Failed to encode frame to PNG')));
       }, 'image/png');
     });
+    abortSignal.throwIfAborted();
+
+    frameBytes += pngBlob.size;
+    if (frameBytes > MAX_FRAME_MIB * MIB) {
+      throw new Error(
+        translate('The rendered frames exceed {limit} MiB. Trim the clip, lower the frame rate, or choose a lower processing resolution.', {
+          limit: MAX_FRAME_MIB,
+        }),
+      );
+    }
 
     const frameName = `frame_${String(i).padStart(5, '0')}.png`;
-    pngInputs.push({ name: frameName, data: pngBlob });
+    inputs.push({ name: frameName, data: pngBlob });
 
     const elapsed = (performance.now() - startTime) / 1000;
     const rate = (i + 1) / elapsed;
@@ -133,11 +190,19 @@ export async function processVideo({
       fps,
       etaSeconds,
       phase: 'processing',
-      statusText: `Processing frame ${i + 1} of ${totalFrames}...`,
+      statusText: translate('Processing frame {current} of {total}...', { current: i + 1, total: totalFrames }),
     });
   }
 
-  if (abortSignal.aborted) throw new Error('Cancelled');
+  return totalFrames;
+}
+
+async function encodeVideo(
+  { videoFile, fps, outputFormat, abortSignal, onProgress }: ProcessVideoOptions,
+  inputs: RunFFmpegInput[],
+  totalFrames: number,
+): Promise<Blob> {
+  abortSignal.throwIfAborted();
 
   onProgress({
     currentFrame: totalFrames,
@@ -145,13 +210,13 @@ export async function processVideo({
     fps,
     etaSeconds: null,
     phase: 'encoding',
-    statusText: 'Encoding final video with FFmpeg...',
+    statusText: translate('Encoding final video with FFmpeg...'),
   });
 
   const ext = videoFile.name.includes('.') ? videoFile.name.slice(videoFile.name.lastIndexOf('.')) : '.mp4';
   const audioSourceName = `audio_source${ext}`;
 
-  const inputs: RunFFmpegInput[] = [...pngInputs, { name: audioSourceName, data: videoFile }];
+  inputs.push({ name: audioSourceName, data: videoFile });
 
   let outputName: string;
   let args: string[];
@@ -186,7 +251,8 @@ export async function processVideo({
       '0:v:0',
       '-map',
       '1:a?',
-      '-shortest',
+      '-t',
+      String(totalFrames / fps),
       outputName,
     ];
   } else {
@@ -214,14 +280,16 @@ export async function processVideo({
       '0:v:0',
       '-map',
       '1:a?',
-      '-shortest',
+      '-t',
+      String(totalFrames / fps),
       outputName,
     ];
   }
 
-  return await runFFmpeg({
+  return runFFmpegWithinMediaJob({
     inputs,
     args,
     output: outputName,
+    signal: abortSignal,
   });
 }

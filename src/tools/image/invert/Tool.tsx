@@ -47,7 +47,7 @@ export default function InvertTool() {
       defaultOptions={DEFAULT_OPTIONS}
       suffix="-inverted"
       render={renderInvert}
-      renderControls={(options, setOptions) => {
+      renderControls={(options, setOptions, { t }) => {
         const toggleAll = (state: boolean) => {
           setOptions({ invertR: state, invertG: state, invertB: state });
         };
@@ -58,7 +58,7 @@ export default function InvertTool() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <Button variant={allChecked ? 'primary' : 'secondary'} type="button" onClick={() => toggleAll(!allChecked)}>
-                {allChecked ? 'Full Negative (Active)' : 'Select All Channels'}
+                {allChecked ? t('Full negative (active)') : t('Select all channels')}
               </Button>
             </div>
 
@@ -80,7 +80,7 @@ export default function InvertTool() {
                   checked={options.invertR}
                   onChange={(e) => setOptions((prev) => ({ ...prev, invertR: e.target.checked }))}
                 />
-                <span style={{ fontWeight: 500, color: '#ef4444' }}>Invert Red channel</span>
+                <span style={{ fontWeight: 500, color: '#ef4444' }}>{t('Invert red channel')}</span>
               </label>
 
               <label
@@ -100,7 +100,7 @@ export default function InvertTool() {
                   checked={options.invertG}
                   onChange={(e) => setOptions((prev) => ({ ...prev, invertG: e.target.checked }))}
                 />
-                <span style={{ fontWeight: 500, color: '#22c55e' }}>Invert Green channel</span>
+                <span style={{ fontWeight: 500, color: '#22c55e' }}>{t('Invert green channel')}</span>
               </label>
 
               <label
@@ -120,11 +120,11 @@ export default function InvertTool() {
                   checked={options.invertB}
                   onChange={(e) => setOptions((prev) => ({ ...prev, invertB: e.target.checked }))}
                 />
-                <span style={{ fontWeight: 500, color: '#3b82f6' }}>Invert Blue channel</span>
+                <span style={{ fontWeight: 500, color: '#3b82f6' }}>{t('Invert blue channel')}</span>
               </label>
             </div>
 
-            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>Alpha transparency is preserved intact.</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>{t('Alpha transparency is preserved intact.')}</p>
           </div>
         );
       }}

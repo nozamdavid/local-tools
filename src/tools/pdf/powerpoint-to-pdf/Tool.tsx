@@ -8,8 +8,10 @@ import { PageSetupFields } from '../_render/PageSetupFields';
 import { DEFAULT_PAGE_SETUP, pdfFileName, type PageSetup } from '../_render/render';
 import { checkPptx, powerpointToPdf } from './convert';
 import styles from './Tool.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 export default function PowerpointToPdfTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-powerpoint-to-pdf');
   const job = useJob();
 
@@ -54,11 +56,11 @@ export default function PowerpointToPdfTool() {
         <>
           <FileDrop
             accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            label="Choose a PPTX file or drag it here"
-            hint="Converted in your browser. Legacy .ppt files are not supported."
+            label={t('Choose a PPTX file or drag it here')}
+            hint={t("PPTX only; legacy PPT files aren't supported.")}
             onFiles={handleFiles}
           />
-          {fileError && <div className="error-banner">{fileError}</div>}
+          {fileError && <div className="error-banner">{t(fileError)}</div>}
         </>
       ) : (
         <ConvertPanel
@@ -67,18 +69,19 @@ export default function PowerpointToPdfTool() {
           pageCount={pages}
           outName={pdfFileName(file, 'presentation.pdf')}
           sourceSize={file.size}
-          actionLabel="Convert to PDF"
+          actionLabel={t('Convert to PDF')}
           actionDisabled={!!fileError}
-          progressLabel="Rendering slides…"
-          changeLabel="Change file"
+          progressLabel={t('Rendering slides…')}
+          changeLabel={t('Change file')}
           loadError={fileError}
           onConvert={handleConvert}
           onReset={handleReset}
         >
           <PageSetupFields value={setup} onChange={setSetup} allowMatch showOrientation={false} />
           <p className={styles.note}>
-            Each slide becomes one landscape page at the slide aspect ratio. Complex charts, SmartArt, animations and some effects may not
-            render exactly as in PowerPoint.
+            {t(
+              'Each slide becomes one landscape page at the slide aspect ratio. Complex charts, SmartArt, animations and some effects may not render exactly as in PowerPoint.',
+            )}
           </p>
         </ConvertPanel>
       )}

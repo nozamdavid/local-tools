@@ -17,6 +17,28 @@ vi.mock('../image/_pdf/pdfRenderer', () => ({ loadPdfDocument: vi.fn(), renderPd
 vi.mock('../image/_pdf/docxRenderer', () => ({ renderDocxToImages: vi.fn() }));
 vi.mock('./office', () => ({ convertOfficeDocument: vi.fn() }));
 
+describe('executeConversion tabular exports', () => {
+  it('preserves quoted delimiters, multiline fields, and significant whitespace in CSV to JSON', async () => {
+    const file = new File(['"first,name",notes\r\n" Smith, Jr. ","line one\nline ""two"""'], 'contacts.csv');
+    const result = await executeConversion({
+      file,
+      detected: {
+        id: 'csv',
+        label: 'CSV Document',
+        family: 'text',
+        mime: 'text/csv',
+        ext: 'csv',
+        extensionMismatch: false,
+        actualExtension: 'csv',
+      },
+      target: { id: 'json', label: 'JSON', family: 'text', ext: 'json' },
+    });
+
+    if (result.type !== 'single') throw new Error('Expected a single JSON result.');
+    expect(JSON.parse(await result.blob.text())).toEqual([{ 'first,name': ' Smith, Jr. ', notes: 'line one\nline "two"' }]);
+  });
+});
+
 describe('executeConversion XLSX exports', () => {
   it('preserves blank rows in the first sheet CSV export', async () => {
     const workbook = new ExcelJS.Workbook();

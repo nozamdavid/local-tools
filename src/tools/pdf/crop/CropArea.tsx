@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import styles from './CropArea.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 /** Distance of the crop edges from each page edge, as a fraction (0 to 1) of the page side. */
 export interface Frac {
@@ -51,17 +52,29 @@ function drag(state: DragState, x: number, y: number): Frac {
   return next;
 }
 
-const HANDLES: Mode[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+const HANDLES: Exclude<Mode, 'new' | 'move'>[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+const HANDLE_LABELS: Record<Exclude<Mode, 'new' | 'move'>, string> = {
+  nw: 'top-left',
+  n: 'Top',
+  ne: 'top-right',
+  e: 'Right',
+  se: 'bottom-right',
+  s: 'Bottom',
+  sw: 'bottom-left',
+  w: 'Left',
+};
 
 export interface CropAreaProps {
   src: string | null;
+  error?: boolean;
   /** Page width divided by page height. */
   aspect: number;
   frac: Frac;
   onChange: (frac: Frac) => void;
 }
 
-export function CropArea({ src, aspect, frac, onChange }: CropAreaProps) {
+export function CropArea({ src, error = false, aspect, frac, onChange }: CropAreaProps) {
+  const { t } = useI18n();
   const boxRef = useRef<HTMLDivElement>(null);
   const state = useRef<DragState | null>(null);
 
@@ -90,7 +103,20 @@ export function CropArea({ src, aspect, frac, onChange }: CropAreaProps) {
   const end = (e: React.PointerEvent) => {
     if (!state.current) return;
     state.current = null;
-    boxRef.current?.releasePointerCapture(e.pointerId);
+    if (boxRef.current?.hasPointerCapture(e.pointerId)) boxRef.current.releasePointerCapture(e.pointerId);
+  };
+
+  const adjustWithKeyboard = (mode: Mode, e: React.KeyboardEvent<HTMLButtonElement>) => {
+    const step = (e.shiftKey ? 5 : 1) / 100;
+    let dx = 0;
+    let dy = 0;
+    if (e.key === 'ArrowLeft') dx = -step;
+    else if (e.key === 'ArrowRight') dx = step;
+    else if (e.key === 'ArrowUp') dy = -step;
+    else if (e.key === 'ArrowDown') dy = step;
+    else return;
+    e.preventDefault();
+    onChange(drag({ mode, startX: 0, startY: 0, orig: frac }, dx, dy));
   };
 
   const pct = (v: number) => `${v * 100}%`;
@@ -108,10 +134,16 @@ export function CropArea({ src, aspect, frac, onChange }: CropAreaProps) {
       onPointerUp={end}
       onPointerCancel={end}
     >
-      {src ? (
-        <img src={src} alt="Page preview" className={styles.img} draggable={false} />
+      {error ? (
+        <span className={styles.loading} role="alert">
+          {t('Could not render the page preview. Try another page or PDF.')}
+        </span>
+      ) : src ? (
+        <img src={src} alt={t('Page preview')} className={styles.img} draggable={false} />
       ) : (
-        <span className={styles.loading}>Rendering preview…</span>
+        <span className={styles.loading} role="status">
+          {t('Rendering preview…')}
+        </span>
       )}
 
       {active && (
@@ -120,9 +152,34 @@ export function CropArea({ src, aspect, frac, onChange }: CropAreaProps) {
             <div className={styles.hole} style={place} />
           </div>
 
-          <div className={styles.rect} data-testid="crop-rect" style={place} onPointerDown={(e) => begin(e, 'move')}>
+          <div
+            className={styles.rect}
+            data-testid="crop-rect"
+            style={place}
+            role="group"
+            aria-label={t('Crop selection')}
+            onPointerDown={(e) => begin(e, 'move')}
+          >
+            <button
+              type="button"
+              className={styles.moveHandle}
+              aria-label={t('Move crop area')}
+              aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Shift+ArrowUp Shift+ArrowDown Shift+ArrowLeft Shift+ArrowRight"
+              onPointerDown={(e) => begin(e, 'move')}
+              onKeyDown={(e) => adjustWithKeyboard('move', e)}
+            >
+              <span aria-hidden="true">↕</span>
+            </button>
             {HANDLES.map((h) => (
-              <span key={h} className={`${styles.handle} ${styles[`h_${h}`]}`} onPointerDown={(e) => begin(e, h)} />
+              <button
+                key={h}
+                type="button"
+                className={`${styles.handle} ${styles[`h_${h}`]}`}
+                aria-label={t('Resize crop from {side}', { side: t(HANDLE_LABELS[h]) })}
+                aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight Shift+ArrowUp Shift+ArrowDown Shift+ArrowLeft Shift+ArrowRight"
+                onPointerDown={(e) => begin(e, h)}
+                onKeyDown={(e) => adjustWithKeyboard(h, e)}
+              />
             ))}
           </div>
         </>

@@ -10,12 +10,14 @@ import { CanvasDocument, TextLayer } from '../_canvas/types';
 import { useCanvasHistory } from '../_canvas/useCanvasHistory';
 import { CanvasStage } from '../_canvas/CanvasStage';
 import { exportDocument } from '../_canvas/render';
+import { useI18n } from '../../../lib/i18n';
 import styles from './Tool.module.css';
 
 type AspectRatio = '1:1' | '4:5' | '16:9';
 
 export default function Tool() {
   const meta = getToolMeta('img-meme-generator');
+  const { t } = useI18n();
 
   const [hasSource, setHasSource] = useState<boolean>(false);
   const [sourceFilename, setSourceFilename] = useState<string>('meme.png');
@@ -115,7 +117,7 @@ export default function Tool() {
       setHasSource(true);
       setSelectedLayerId('meme-top');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to decode image.');
+      alert(t(err instanceof Error ? err.message : 'Failed to decode image.'));
     }
   };
 
@@ -211,7 +213,7 @@ export default function Tool() {
       const outName = withSuffix(sourceFilename, '-meme', ext);
       downloadBlob(blob, outName);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Export failed.');
+      alert(t(err instanceof Error ? err.message : 'Export failed.'));
     } finally {
       setIsExporting(false);
     }
@@ -227,33 +229,33 @@ export default function Tool() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           <FileDrop
             accept={IMAGE_ACCEPT}
-            label="Upload an image to make a meme"
-            hint="Supports JPG, PNG, WebP, GIF, BMP, AVIF, HEIC, SVG"
+            label={t('Upload an image to make a meme')}
+            hint={t('Supports JPG, PNG, WebP, GIF, BMP, AVIF, HEIC and SVG.')}
             onFiles={handleFileDrop}
           />
 
           <div className={styles.blankTemplatesCard}>
-            <div className={styles.templatesTitle}>Or start with a blank canvas template:</div>
+            <div className={styles.templatesTitle}>{t('Or start with a blank canvas template:')}</div>
             <div className={styles.templateOptions}>
-              <Field label="Aspect Ratio">
+              <Field label={t('Aspect ratio')}>
                 <div className={styles.btnGroup}>
                   {(['1:1', '4:5', '16:9'] as AspectRatio[]).map((asp) => (
                     <Button key={asp} variant={blankAspect === asp ? 'primary' : 'secondary'} onClick={() => setBlankAspect(asp)}>
-                      {asp === '1:1' && '1:1 Square'}
-                      {asp === '4:5' && '4:5 Portrait'}
-                      {asp === '16:9' && '16:9 Landscape'}
+                      {asp === '1:1' && t('1:1 Square')}
+                      {asp === '4:5' && t('4:5 Portrait')}
+                      {asp === '16:9' && t('16:9 Landscape')}
                     </Button>
                   ))}
                 </div>
               </Field>
 
-              <Field label="Background Color">
+              <Field label={t('Background colour')}>
                 <div className={styles.colorRow}>
                   <input
                     type="color"
                     className={styles.colorInput}
                     value={blankColor}
-                    aria-label="Background colour"
+                    aria-label={t('Background colour')}
                     onChange={(e) => setBlankColor(e.target.value)}
                   />
                   <span>{blankColor}</span>
@@ -262,7 +264,7 @@ export default function Tool() {
 
               <div style={{ marginTop: 'auto' }}>
                 <Button variant="primary" onClick={startWithBlank}>
-                  Create Blank Meme
+                  {t('Create blank meme')}
                 </Button>
               </div>
             </div>
@@ -276,8 +278,8 @@ export default function Tool() {
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="Undo (Ctrl+Z)"
-                aria-label="Undo"
+                title={t('Undo (Ctrl+Z)')}
+                aria-label={t('Undo')}
                 data-testid="undo-btn"
                 disabled={!canUndo}
                 onClick={undo}
@@ -287,8 +289,8 @@ export default function Tool() {
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="Redo (Ctrl+Shift+Z)"
-                aria-label="Redo"
+                title={t('Redo (Ctrl+Shift+Z)')}
+                aria-label={t('Redo')}
                 data-testid="redo-btn"
                 disabled={!canRedo}
                 onClick={redo}
@@ -299,8 +301,8 @@ export default function Tool() {
                 <button
                   type="button"
                   className={styles.iconBtn}
-                  title="Delete layer (Del)"
-                  aria-label="Delete layer"
+                  title={t('Delete layer (Del)')}
+                  aria-label={t('Delete layer')}
                   onClick={() => deleteLayer(selectedLayerId)}
                   style={{ color: 'var(--danger)' }}
                 >
@@ -311,10 +313,10 @@ export default function Tool() {
 
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
               <Button variant="secondary" onClick={addExtraText}>
-                + Add extra text
+                {t('+ Add extra text')}
               </Button>
               <Button variant="secondary" onClick={() => setHasSource(false)}>
-                Start Over
+                {t('Start over')}
               </Button>
             </div>
           </div>
@@ -338,7 +340,7 @@ export default function Tool() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <label className="field-label" style={{ fontWeight: 600 }}>
-                      Top Caption
+                      {t('Top caption')}
                     </label>
                     <label className="checkbox-label" style={{ fontSize: '0.8rem' }}>
                       <input
@@ -349,14 +351,14 @@ export default function Tool() {
                           updateTextLayer('meme-top', (l) => ({ ...l, uppercase: e.target.checked }));
                         }}
                       />
-                      <span>ALL CAPS</span>
+                      <span>{t('ALL CAPS')}</span>
                     </label>
                   </div>
                   <input
                     type="text"
                     className="input"
                     value={topLayer.text}
-                    aria-label="Top caption"
+                    aria-label={t('Top caption')}
                     onChange={(e) => updateTextLayer('meme-top', (l) => ({ ...l, text: e.target.value }))}
                   />
                 </div>
@@ -367,7 +369,7 @@ export default function Tool() {
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <label className="field-label" style={{ fontWeight: 600 }}>
-                      Bottom Caption
+                      {t('Bottom caption')}
                     </label>
                     <label className="checkbox-label" style={{ fontSize: '0.8rem' }}>
                       <input
@@ -378,14 +380,14 @@ export default function Tool() {
                           updateTextLayer('meme-bottom', (l) => ({ ...l, uppercase: e.target.checked }));
                         }}
                       />
-                      <span>ALL CAPS</span>
+                      <span>{t('ALL CAPS')}</span>
                     </label>
                   </div>
                   <input
                     type="text"
                     className="input"
                     value={bottomLayer.text}
-                    aria-label="Bottom caption"
+                    aria-label={t('Bottom caption')}
                     onChange={(e) => updateTextLayer('meme-bottom', (l) => ({ ...l, text: e.target.value }))}
                   />
                 </div>
@@ -395,9 +397,11 @@ export default function Tool() {
             {/* Selected Layer Properties */}
             {selectedLayer && selectedLayer.type === 'text' && (
               <div style={{ paddingTop: '0.75rem', borderTop: '1px solid var(--border)' }}>
-                <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>Selected Text Style ({selectedLayer.id})</div>
+                <div style={{ fontSize: '0.9rem', fontWeight: 600, marginBottom: '0.5rem' }}>
+                  {t('Selected text style ({id})', { id: selectedLayer.id })}
+                </div>
                 <div className={styles.grid}>
-                  <Field label="Font Size">
+                  <Field label={t('Font size')}>
                     <Slider
                       value={selectedLayer.fontSize}
                       min={16}
@@ -407,33 +411,33 @@ export default function Tool() {
                     />
                   </Field>
 
-                  <Field label="Text Color">
+                  <Field label={t('Text colour')}>
                     <div className={styles.colorRow}>
                       <input
                         type="color"
                         className={styles.colorInput}
                         value={selectedLayer.fill}
-                        aria-label="Text colour"
+                        aria-label={t('Text colour')}
                         onChange={(e) => updateTextLayer(selectedLayer.id, (l) => ({ ...l, fill: e.target.value }))}
                       />
                       <span>{selectedLayer.fill}</span>
                     </div>
                   </Field>
 
-                  <Field label="Outline Stroke Color">
+                  <Field label={t('Outline stroke colour')}>
                     <div className={styles.colorRow}>
                       <input
                         type="color"
                         className={styles.colorInput}
                         value={selectedLayer.stroke || '#000000'}
-                        aria-label="Outline stroke colour"
+                        aria-label={t('Outline stroke colour')}
                         onChange={(e) => updateTextLayer(selectedLayer.id, (l) => ({ ...l, stroke: e.target.value }))}
                       />
                       <span>{selectedLayer.stroke}</span>
                     </div>
                   </Field>
 
-                  <Field label="Outline Width">
+                  <Field label={t('Outline width')}>
                     <Slider
                       value={selectedLayer.strokeWidth ?? 4}
                       min={0}
@@ -450,20 +454,20 @@ export default function Tool() {
           {/* Export Row */}
           <div className={styles.exportRow}>
             <div className={styles.exportControls}>
-              <Field label="Format">
+              <Field label={t('Format')}>
                 <Select
                   value={exportMime}
                   onChange={(e) => setExportMime(e.target.value as EncodableMime)}
                   options={[
-                    { value: 'image/png', label: 'PNG' },
-                    { value: 'image/jpeg', label: 'JPEG' },
-                    { value: 'image/webp', label: 'WebP' },
+                    { value: 'image/png', label: t('PNG') },
+                    { value: 'image/jpeg', label: t('JPEG') },
+                    { value: 'image/webp', label: t('WebP') },
                   ]}
                 />
               </Field>
 
               {exportMime !== 'image/png' && (
-                <Field label="Quality">
+                <Field label={t('Quality')}>
                   {' '}
                   <Slider value={quality} min={10} max={100} unit="%" onChange={setQuality} />{' '}
                 </Field>
@@ -471,7 +475,7 @@ export default function Tool() {
             </div>
 
             <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleExport}>
-              {isExporting ? 'Exporting…' : 'Download Meme'}
+              {isExporting ? t('Exporting…') : t('Download meme')}
             </Button>
           </div>
         </div>

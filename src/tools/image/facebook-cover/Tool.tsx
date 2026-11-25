@@ -3,6 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { getToolMeta } from '../../registry';
 import { IMAGE_ACCEPT } from '../../../lib/image';
+import { useI18n } from '../../../lib/i18n';
 import { FitToFrameEditor } from '../_layout/FitToFrameEditor';
 import type { FrameConfig } from '../_layout/types';
 
@@ -24,6 +25,7 @@ const CONFIG: FrameConfig = {
 };
 
 export default function FacebookCoverTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-facebook-cover');
   const [file, setFile] = useState<File | null>(null);
 
@@ -36,8 +38,8 @@ export default function FacebookCoverTool() {
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose an image for your Facebook Cover Photo"
-          hint="Supports JPG, PNG, WebP, HEIC and SVG. Exact 820×312 export."
+          label={t('Choose an image for your Facebook Cover Photo')}
+          hint={t('Supports JPG, PNG, WebP, HEIC and SVG. Exact 820×312 export.')}
           onFiles={handleFiles}
         />
       ) : (
@@ -47,8 +49,9 @@ export default function FacebookCoverTool() {
           onReset={() => setFile(null)}
           additionalInfo={
             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              Facebook displays cover photos at 820×312 px on computers. On smartphones, Facebook displays a centered 640×360 crop, clipping
-              the left and right ~90 px. Center your text and subjects inside the 640 px mobile safe zone.
+              {t(
+                'Facebook displays cover photos at 820×312 px on computers. On smartphones, Facebook displays a centered 640×360 crop, clipping the left and right ~90 px. Center your text and subjects inside the 640 px mobile safe zone.',
+              )}
             </div>
           }
         />

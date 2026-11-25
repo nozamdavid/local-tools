@@ -1,4 +1,4 @@
-import { useState, useId } from 'react';
+import { useState, useId, useRef } from 'react';
 import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { ProgressBar } from '../../components/ProgressBar';
@@ -7,9 +7,12 @@ import { Field, Slider, Button } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { getVideoMeta, type VideoMeta } from '../../lib/media';
 import { formatBytes, formatDuration, withSuffix } from '../../lib/format';
-import { runFFmpeg } from '../../lib/ffmpeg';
+import { runFFmpeg, runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
+import { createAudioGainProcessor, withMediabunnyFallback } from '../../lib/mediabunny';
 import { useJob } from '../../lib/useJob';
 import { useObjectUrl } from '../../lib/useObjectUrl';
+import { useI18n } from '../../lib/i18n';
+import { SourcePreview } from '../../components/SourcePreview';
 
 async function detectAudio(file: File, meta?: VideoMeta): Promise<boolean> {
   if (meta?.hasAudio === true) {
@@ -32,6 +35,7 @@ async function detectAudio(file: File, meta?: VideoMeta): Promise<boolean> {
 }
 
 export default function BoostVolumeTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('boost-volume');
   const [file, setFile] = useState<File | null>(null);
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
@@ -40,6 +44,7 @@ export default function BoostVolumeTool() {
 
   const [gain, setGain] = useState<number>(200);
   const [normalizeLoudness, setNormalizeLoudness] = useState<boolean>(false);
+  const metadataRequestRef = useRef(0);
 
   const job = useJob();
   const originalUrl = useObjectUrl(file);
@@ -49,6 +54,7 @@ export default function BoostVolumeTool() {
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
+    const requestId = ++metadataRequestRef.current;
     setFile(selected);
     setMetaError(null);
     setVideoMeta(null);
@@ -57,14 +63,17 @@ export default function BoostVolumeTool() {
 
     try {
       const vMeta = await getVideoMeta(selected);
+      if (requestId !== metadataRequestRef.current) return;
       setVideoMeta(vMeta);
       const audioExists = await detectAudio(selected, vMeta);
+      if (requestId !== metadataRequestRef.current) return;
       setHasAudio(audioExists);
       if (!audioExists) {
         setMetaError('This video has no audio track to boost.');
       }
     } catch {
       const audioExists = await detectAudio(selected);
+      if (requestId !== metadataRequestRef.current) return;
       setHasAudio(audioExists);
       if (!audioExists) {
         setMetaError('This video has no audio track to boost.');
@@ -73,6 +82,7 @@ export default function BoostVolumeTool() {
   };
 
   const handleReset = () => {
+    metadataRequestRef.current += 1;
     setFile(null);
     setVideoMeta(null);
     setHasAudio(null);
@@ -126,16 +136,45 @@ export default function BoostVolumeTool() {
       ];
 
       try {
-        return await runFFmpeg({
-          inputs: [{ name: inputName, data: file }],
-          args,
-          output: outputName,
-          onProgress: setProgress,
-        });
+        if (normalizeLoudness) {
+          return await runFFmpeg({
+            inputs: [{ name: inputName, data: file }],
+            args,
+            output: outputName,
+            onProgress: setProgress,
+          });
+        }
+
+        return await withMediabunnyFallback(
+          {
+            input: file,
+            output: 'mp4',
+            video: {},
+            audio: {
+              codec: 'aac',
+              bitrate: 192_000,
+              forceTranscode: true,
+              process: createAudioGainProcessor(gain / 100, gain > 100 ? 0.95 : null),
+            },
+            tracks: { video: 'primary', audio: 'primary' },
+            requireAudio: true,
+            requireVideo: true,
+            allowDiscardedTrackTypes: ['subtitle'],
+            audioEncoderFallback: 'aac',
+            onProgress: setProgress,
+          },
+          (onProgress) =>
+            runFFmpegWithinMediaJob({
+              inputs: [{ name: inputName, data: file }],
+              args,
+              output: outputName,
+              onProgress,
+            }),
+        );
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : String(err);
         if (msg.includes('matches no streams') || msg.includes('does not contain any stream')) {
-          throw new Error('This video does not have an audio track to boost.', { cause: err });
+          throw new Error(t('This video does not have an audio track to boost.'), { cause: err });
         }
         throw err;
       }
@@ -149,14 +188,14 @@ export default function BoostVolumeTool() {
       {!file ? (
         <FileDrop
           accept="video/*"
-          label="Choose a video or drag it here"
-          hint="Boost volume up to 400% or normalize loudness."
+          label={t('Choose a video or drag it here')}
+          hint={t('Boost volume up to 400% or normalize loudness.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result ? (
             <ResultPanel
@@ -171,18 +210,18 @@ export default function BoostVolumeTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name:')} <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {videoMeta && (
                   <>
                     <span className="meta-chip">
-                      Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
+                      {t('Duration:')} <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution:{' '}
+                      {t('Resolution:')}{' '}
                       <strong>
                         {videoMeta.width}x{videoMeta.height}
                       </strong>
@@ -191,13 +230,15 @@ export default function BoostVolumeTool() {
                 )}
                 {hasAudio !== null && (
                   <span className="meta-chip">
-                    Audio: <strong>{hasAudio ? 'Audio track detected' : 'No audio track'}</strong>
+                    {t('Audio:')} <strong>{hasAudio ? t('Audio track detected') : t('No audio track')}</strong>
                   </span>
                 )}
               </div>
 
+              <SourcePreview file={file} note="Source preview only. Gain and loudness normalization are applied during export." />
+
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Boosting volume..." />
+                <ProgressBar value={job.progress} label={t('Boosting volume...')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
                   <div className="field">
@@ -208,22 +249,25 @@ export default function BoostVolumeTool() {
                         checked={normalizeLoudness}
                         onChange={(e) => setNormalizeLoudness(e.target.checked)}
                       />
-                      <span>Normalize loudness (EBU R128 standard)</span>
+                      <span>{t('Normalize loudness (EBU R128 standard)')}</span>
                     </label>
                   </div>
 
                   {!normalizeLoudness && (
-                    <Field label="Volume gain" hint="Values above 100% boost volume with a limiter to prevent clipping distortion.">
+                    <Field
+                      label={t('Volume gain')}
+                      hint={t('Values above 100% boost volume with a limiter to prevent clipping distortion.')}
+                    >
                       <Slider value={gain} min={0} max={400} step={5} unit="%" onChange={setGain} disabled={normalizeLoudness} />
                     </Field>
                   )}
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different file
+                      {t('Choose different file')}
                     </Button>
                     <Button variant="primary" onClick={handleBoost} disabled={isSilent}>
-                      Boost volume
+                      {t('Boost volume')}
                     </Button>
                   </div>
                 </div>

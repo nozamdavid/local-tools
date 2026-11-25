@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Field, Slider, Select } from '../../../components/Controls';
 import { decodeImage, IMAGE_ACCEPT, EncodableMime } from '../../../lib/image';
@@ -14,6 +15,7 @@ import { SYSTEM_FONTS } from '../_canvas/fonts';
 import styles from './Tool.module.css';
 
 export default function Tool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-add-text');
 
   const [file, setFile] = useState<File | null>(null);
@@ -79,7 +81,7 @@ export default function Tool() {
       resetHistory(newDoc);
       setSelectedLayerId(initialTextId);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to decode image.');
+      alert(t(err instanceof Error ? err.message : 'Failed to decode image.'));
     }
   };
 
@@ -160,7 +162,7 @@ export default function Tool() {
       const outName = withSuffix(file ? file.name : 'image-with-text.png', '-text', ext);
       downloadBlob(blob, outName);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Export failed.');
+      alert(err instanceof Error ? err.message : t('Export failed.'));
     } finally {
       setIsExporting(false);
     }
@@ -173,8 +175,8 @@ export default function Tool() {
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose an image to add text"
-          hint="Supports JPG, PNG, WebP, GIF, BMP, AVIF, HEIC, SVG"
+          label={t('Choose an image to add text')}
+          hint={t('Supports JPG, PNG, WebP, GIF, BMP, AVIF, HEIC, SVG')}
           onFiles={handleFileDrop}
         />
       ) : (
@@ -185,7 +187,7 @@ export default function Tool() {
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="Undo (Ctrl+Z)"
+                title={t('Undo (Ctrl+Z)')}
                 data-testid="undo-btn"
                 disabled={!canUndo}
                 onClick={undo}
@@ -195,7 +197,7 @@ export default function Tool() {
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="Redo (Ctrl+Shift+Z)"
+                title={t('Redo (Ctrl+Shift+Z)')}
                 data-testid="redo-btn"
                 disabled={!canRedo}
                 onClick={redo}
@@ -206,7 +208,7 @@ export default function Tool() {
                 <button
                   type="button"
                   className={styles.iconBtn}
-                  title="Delete layer (Del)"
+                  title={t('Delete layer (Del)')}
                   onClick={() => deleteLayer(selectedLayerId)}
                   style={{ color: 'var(--danger)' }}
                 >
@@ -217,10 +219,10 @@ export default function Tool() {
 
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <Button variant="primary" onClick={addTextLayer}>
-                + Add text layer
+                {t('+ Add text layer')}
               </Button>
               <Button variant="secondary" onClick={() => setFile(null)}>
-                Change Image
+                {t('Change image')}
               </Button>
             </div>
           </div>
@@ -239,7 +241,7 @@ export default function Tool() {
           {/* Layers bar if multiple layers exist */}
           {doc.layers.length > 0 && (
             <div className={styles.layersBar}>
-              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Layers:</span>
+              <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Layers')}:</span>
               {doc.layers.map((l, index) => (
                 <button
                   key={l.id}
@@ -247,7 +249,7 @@ export default function Tool() {
                   className={`${styles.layerChip} ${selectedLayerId === l.id ? styles.layerChipActive : ''}`}
                   onClick={() => setSelectedLayerId(l.id)}
                 >
-                  {l.type === 'text' ? (l as TextLayer).text.slice(0, 15) || 'Text' : `Layer ${index + 1}`}
+                  {l.type === 'text' ? (l as TextLayer).text.slice(0, 15) || t('Text') : t('Layer {number}', { number: index + 1 })}
                 </button>
               ))}
               {selectedLayerId && (
@@ -255,7 +257,7 @@ export default function Tool() {
                   <button
                     type="button"
                     className={styles.iconBtn}
-                    title="Bring forward"
+                    title={t('Bring forward')}
                     onClick={() => reorderLayer(selectedLayerId, 'up')}
                   >
                     ↑
@@ -263,7 +265,7 @@ export default function Tool() {
                   <button
                     type="button"
                     className={styles.iconBtn}
-                    title="Send backward"
+                    title={t('Send backward')}
                     onClick={() => reorderLayer(selectedLayerId, 'down')}
                   >
                     ↓
@@ -276,7 +278,7 @@ export default function Tool() {
           {/* Text Controls Panel */}
           {selectedLayer && (
             <div className={styles.settingsPanel}>
-              <Field label="Text Content">
+              <Field label={t('Text content')}>
                 <textarea
                   className="input"
                   rows={2}
@@ -286,15 +288,7 @@ export default function Tool() {
               </Field>
 
               <div className={styles.grid}>
-                <Field label="Font Family">
-                  <Select
-                    value={selectedLayer.fontFamily}
-                    onChange={(e) => updateSelected((l) => ({ ...l, fontFamily: e.target.value }))}
-                    options={SYSTEM_FONTS.map((f) => ({ value: f.id, label: f.label }))}
-                  />
-                </Field>
-
-                <Field label="Font Size">
+                <Field label={t('Font size')}>
                   <Slider
                     value={selectedLayer.fontSize}
                     min={12}
@@ -304,7 +298,7 @@ export default function Tool() {
                   />
                 </Field>
 
-                <Field label="Text Color">
+                <Field label={t('Text color')}>
                   <div className={styles.colorRow}>
                     <input
                       type="color"
@@ -315,278 +309,319 @@ export default function Tool() {
                     <span>{selectedLayer.fill}</span>
                   </div>
                 </Field>
-
-                <Field label="Opacity">
-                  <Slider
-                    value={Math.round((selectedLayer.opacity ?? 1) * 100)}
-                    min={0}
-                    max={100}
-                    unit="%"
-                    onChange={(v) => updateSelected((l) => ({ ...l, opacity: v / 100 }))}
-                  />
-                </Field>
-
-                <Field label="Style & Weight">
-                  <div className={styles.btnGroup}>
-                    <Button
-                      variant={selectedLayer.fontWeight === 'bold' ? 'primary' : 'secondary'}
-                      onClick={() =>
-                        updateSelected((l) => ({
-                          ...l,
-                          fontWeight: l.fontWeight === 'bold' ? 'normal' : 'bold',
-                        }))
-                      }
-                    >
-                      Bold
-                    </Button>
-                    <Button
-                      variant={selectedLayer.fontStyle === 'italic' ? 'primary' : 'secondary'}
-                      onClick={() =>
-                        updateSelected((l) => ({
-                          ...l,
-                          fontStyle: l.fontStyle === 'italic' ? 'normal' : 'italic',
-                        }))
-                      }
-                    >
-                      Italic
-                    </Button>
-                  </div>
-                </Field>
-
-                <Field label="Alignment">
-                  <div className={styles.btnGroup}>
-                    {(['left', 'center', 'right'] as const).map((a) => (
-                      <Button
-                        key={a}
-                        variant={selectedLayer.textAlign === a ? 'primary' : 'secondary'}
-                        onClick={() => updateSelected((l) => ({ ...l, textAlign: a }))}
-                      >
-                        {a.charAt(0).toUpperCase() + a.slice(1)}
-                      </Button>
-                    ))}
-                  </div>
-                </Field>
-
-                <Field label="Line Height">
-                  <Slider
-                    value={selectedLayer.lineHeight ?? 1.2}
-                    min={0.8}
-                    max={2.5}
-                    step={0.1}
-                    onChange={(v) => updateSelected((l) => ({ ...l, lineHeight: v }))}
-                  />
-                </Field>
-
-                <Field label="Letter Spacing">
-                  <Slider
-                    value={selectedLayer.letterSpacing ?? 0}
-                    min={-5}
-                    max={30}
-                    unit="px"
-                    onChange={(v) => updateSelected((l) => ({ ...l, letterSpacing: v }))}
-                  />
-                </Field>
               </div>
 
-              {/* Stroke (Outline) Section */}
-              <div className={styles.subSection}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(selectedLayer.stroke && (selectedLayer.strokeWidth ?? 0) > 0)}
-                      onChange={(e) =>
-                        updateSelected((l) => ({
-                          ...l,
-                          stroke: e.target.checked ? '#000000' : undefined,
-                          strokeWidth: e.target.checked ? 3 : 0,
-                        }))
-                      }
-                    />
-                    <span>Stroke / Outline</span>
-                  </label>
-                </div>
-                {Boolean(selectedLayer.stroke && (selectedLayer.strokeWidth ?? 0) > 0) && (
+              <details className="tool-options">
+                <summary>{t('Text style')}</summary>
+                <div className="tool-options-body">
                   <div className={styles.grid}>
-                    <Field label="Stroke Color">
-                      <div className={styles.colorRow}>
-                        <input
-                          type="color"
-                          className={styles.colorInput}
-                          value={selectedLayer.stroke || '#000000'}
-                          onChange={(e) => updateSelected((l) => ({ ...l, stroke: e.target.value }))}
-                        />
-                        <span>{selectedLayer.stroke}</span>
-                      </div>
-                    </Field>
-                    <Field label="Stroke Width">
-                      <Slider
-                        value={selectedLayer.strokeWidth ?? 3}
-                        min={1}
-                        max={20}
-                        unit="px"
-                        onChange={(v) => updateSelected((l) => ({ ...l, strokeWidth: v }))}
+                    <Field label={t('Font family')}>
+                      <Select
+                        value={selectedLayer.fontFamily}
+                        onChange={(e) => updateSelected((l) => ({ ...l, fontFamily: e.target.value }))}
+                        options={SYSTEM_FONTS.map((f) => ({ value: f.id, label: t(f.label) }))}
                       />
                     </Field>
-                  </div>
-                )}
-              </div>
 
-              {/* Shadow Section */}
-              <div className={styles.subSection}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(selectedLayer.shadowColor)}
-                      onChange={(e) =>
-                        updateSelected((l) => ({
-                          ...l,
-                          shadowColor: e.target.checked ? '#000000' : undefined,
-                          shadowBlur: e.target.checked ? 6 : 0,
-                          shadowOffsetX: 2,
-                          shadowOffsetY: 2,
-                        }))
-                      }
-                    />
-                    <span>Drop Shadow</span>
-                  </label>
-                </div>
-                {Boolean(selectedLayer.shadowColor) && (
-                  <div className={styles.grid}>
-                    <Field label="Shadow Color">
-                      <div className={styles.colorRow}>
-                        <input
-                          type="color"
-                          className={styles.colorInput}
-                          value={selectedLayer.shadowColor || '#000000'}
-                          onChange={(e) => updateSelected((l) => ({ ...l, shadowColor: e.target.value }))}
-                        />
-                        <span>{selectedLayer.shadowColor}</span>
-                      </div>
-                    </Field>
-                    <Field label="Shadow Blur">
+                    <Field label={t('Opacity')}>
                       <Slider
-                        value={selectedLayer.shadowBlur ?? 6}
-                        min={0}
-                        max={30}
-                        unit="px"
-                        onChange={(v) => updateSelected((l) => ({ ...l, shadowBlur: v }))}
-                      />
-                    </Field>
-                    <Field label="Offset X">
-                      <Slider
-                        value={selectedLayer.shadowOffsetX ?? 2}
-                        min={-20}
-                        max={20}
-                        unit="px"
-                        onChange={(v) => updateSelected((l) => ({ ...l, shadowOffsetX: v }))}
-                      />
-                    </Field>
-                    <Field label="Offset Y">
-                      <Slider
-                        value={selectedLayer.shadowOffsetY ?? 2}
-                        min={-20}
-                        max={20}
-                        unit="px"
-                        onChange={(v) => updateSelected((l) => ({ ...l, shadowOffsetY: v }))}
-                      />
-                    </Field>
-                  </div>
-                )}
-              </div>
-
-              {/* Background Box Section */}
-              <div className={styles.subSection}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <label className="checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={Boolean(selectedLayer.bgBox)}
-                      onChange={(e) =>
-                        updateSelected((l) => ({
-                          ...l,
-                          bgBox: e.target.checked,
-                          bgBoxColor: l.bgBoxColor || '#000000',
-                          bgBoxOpacity: l.bgBoxOpacity ?? 0.8,
-                          bgBoxPadding: l.bgBoxPadding ?? 12,
-                          bgBoxRadius: l.bgBoxRadius ?? 8,
-                        }))
-                      }
-                    />
-                    <span>Background Box</span>
-                  </label>
-                </div>
-                {Boolean(selectedLayer.bgBox) && (
-                  <div className={styles.grid}>
-                    <Field label="Box Color">
-                      <div className={styles.colorRow}>
-                        <input
-                          type="color"
-                          className={styles.colorInput}
-                          value={selectedLayer.bgBoxColor || '#000000'}
-                          onChange={(e) => updateSelected((l) => ({ ...l, bgBoxColor: e.target.value }))}
-                        />
-                        <span>{selectedLayer.bgBoxColor}</span>
-                      </div>
-                    </Field>
-                    <Field label="Box Opacity">
-                      <Slider
-                        value={Math.round((selectedLayer.bgBoxOpacity ?? 0.8) * 100)}
+                        value={Math.round((selectedLayer.opacity ?? 1) * 100)}
                         min={0}
                         max={100}
                         unit="%"
-                        onChange={(v) => updateSelected((l) => ({ ...l, bgBoxOpacity: v / 100 }))}
+                        onChange={(v) => updateSelected((l) => ({ ...l, opacity: v / 100 }))}
                       />
                     </Field>
-                    <Field label="Box Padding">
+
+                    <Field label={t('Style & weight')}>
+                      <div className={styles.btnGroup}>
+                        <Button
+                          variant={selectedLayer.fontWeight === 'bold' ? 'primary' : 'secondary'}
+                          onClick={() =>
+                            updateSelected((l) => ({
+                              ...l,
+                              fontWeight: l.fontWeight === 'bold' ? 'normal' : 'bold',
+                            }))
+                          }
+                        >
+                          {t('Bold')}
+                        </Button>
+                        <Button
+                          variant={selectedLayer.fontStyle === 'italic' ? 'primary' : 'secondary'}
+                          onClick={() =>
+                            updateSelected((l) => ({
+                              ...l,
+                              fontStyle: l.fontStyle === 'italic' ? 'normal' : 'italic',
+                            }))
+                          }
+                        >
+                          {t('Italic')}
+                        </Button>
+                      </div>
+                    </Field>
+
+                    <Field label={t('Alignment')}>
+                      <div className={styles.btnGroup}>
+                        {(['left', 'center', 'right'] as const).map((a) => (
+                          <Button
+                            key={a}
+                            variant={selectedLayer.textAlign === a ? 'primary' : 'secondary'}
+                            onClick={() => updateSelected((l) => ({ ...l, textAlign: a }))}
+                          >
+                            {t(a === 'left' ? 'Left' : a === 'center' ? 'Center' : 'Right')}
+                          </Button>
+                        ))}
+                      </div>
+                    </Field>
+
+                    <Field label={t('Line height')}>
                       <Slider
-                        value={selectedLayer.bgBoxPadding ?? 12}
-                        min={0}
-                        max={50}
-                        unit="px"
-                        onChange={(v) => updateSelected((l) => ({ ...l, bgBoxPadding: v }))}
+                        value={selectedLayer.lineHeight ?? 1.2}
+                        min={0.8}
+                        max={2.5}
+                        step={0.1}
+                        onChange={(v) => updateSelected((l) => ({ ...l, lineHeight: v }))}
                       />
                     </Field>
-                    <Field label="Border Radius">
+
+                    <Field label={t('Letter spacing')}>
                       <Slider
-                        value={selectedLayer.bgBoxRadius ?? 8}
-                        min={0}
-                        max={50}
+                        value={selectedLayer.letterSpacing ?? 0}
+                        min={-5}
+                        max={30}
                         unit="px"
-                        onChange={(v) => updateSelected((l) => ({ ...l, bgBoxRadius: v }))}
+                        onChange={(v) => updateSelected((l) => ({ ...l, letterSpacing: v }))}
                       />
                     </Field>
                   </div>
-                )}
-              </div>
+
+                  {/* Stroke (Outline) Section */}
+                  <div className={styles.subSection}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(selectedLayer.stroke && (selectedLayer.strokeWidth ?? 0) > 0)}
+                          onChange={(e) =>
+                            updateSelected((l) => ({
+                              ...l,
+                              stroke: e.target.checked ? '#000000' : undefined,
+                              strokeWidth: e.target.checked ? 3 : 0,
+                            }))
+                          }
+                        />
+                        <span>{t('Stroke / outline')}</span>
+                      </label>
+                    </div>
+                    {Boolean(selectedLayer.stroke && (selectedLayer.strokeWidth ?? 0) > 0) && (
+                      <div className={styles.grid}>
+                        <Field label={t('Stroke color')}>
+                          <div className={styles.colorRow}>
+                            <input
+                              type="color"
+                              className={styles.colorInput}
+                              value={selectedLayer.stroke || '#000000'}
+                              onChange={(e) => updateSelected((l) => ({ ...l, stroke: e.target.value }))}
+                            />
+                            <span>{selectedLayer.stroke}</span>
+                          </div>
+                        </Field>
+                        <Field label={t('Stroke width')}>
+                          <Slider
+                            value={selectedLayer.strokeWidth ?? 3}
+                            min={1}
+                            max={20}
+                            unit="px"
+                            onChange={(v) => updateSelected((l) => ({ ...l, strokeWidth: v }))}
+                          />
+                        </Field>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Shadow Section */}
+                  <div className={styles.subSection}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(selectedLayer.shadowColor)}
+                          onChange={(e) =>
+                            updateSelected((l) => ({
+                              ...l,
+                              shadowColor: e.target.checked ? '#000000' : undefined,
+                              shadowBlur: e.target.checked ? 6 : 0,
+                              shadowOffsetX: 2,
+                              shadowOffsetY: 2,
+                            }))
+                          }
+                        />
+                        <span>{t('Drop shadow')}</span>
+                      </label>
+                    </div>
+                    {Boolean(selectedLayer.shadowColor) && (
+                      <div className={styles.grid}>
+                        <Field label={t('Shadow color')}>
+                          <div className={styles.colorRow}>
+                            <input
+                              type="color"
+                              className={styles.colorInput}
+                              value={selectedLayer.shadowColor || '#000000'}
+                              onChange={(e) => updateSelected((l) => ({ ...l, shadowColor: e.target.value }))}
+                            />
+                            <span>{selectedLayer.shadowColor}</span>
+                          </div>
+                        </Field>
+                        <Field label={t('Shadow blur')}>
+                          <Slider
+                            value={selectedLayer.shadowBlur ?? 6}
+                            min={0}
+                            max={30}
+                            unit="px"
+                            onChange={(v) => updateSelected((l) => ({ ...l, shadowBlur: v }))}
+                          />
+                        </Field>
+                        <Field label={t('Offset X')}>
+                          <Slider
+                            value={selectedLayer.shadowOffsetX ?? 2}
+                            min={-20}
+                            max={20}
+                            unit="px"
+                            onChange={(v) => updateSelected((l) => ({ ...l, shadowOffsetX: v }))}
+                          />
+                        </Field>
+                        <Field label={t('Offset Y')}>
+                          <Slider
+                            value={selectedLayer.shadowOffsetY ?? 2}
+                            min={-20}
+                            max={20}
+                            unit="px"
+                            onChange={(v) => updateSelected((l) => ({ ...l, shadowOffsetY: v }))}
+                          />
+                        </Field>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Background Box Section */}
+                  <div className={styles.subSection}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <label className="checkbox-label">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(selectedLayer.bgBox)}
+                          onChange={(e) =>
+                            updateSelected((l) => ({
+                              ...l,
+                              bgBox: e.target.checked,
+                              bgBoxColor: l.bgBoxColor || '#000000',
+                              bgBoxOpacity: l.bgBoxOpacity ?? 0.8,
+                              bgBoxPadding: l.bgBoxPadding ?? 12,
+                              bgBoxRadius: l.bgBoxRadius ?? 8,
+                            }))
+                          }
+                        />
+                        <span>{t('Background box')}</span>
+                      </label>
+                    </div>
+                    {Boolean(selectedLayer.bgBox) && (
+                      <div className={styles.grid}>
+                        <Field label={t('Box color')}>
+                          <div className={styles.colorRow}>
+                            <input
+                              type="color"
+                              className={styles.colorInput}
+                              value={selectedLayer.bgBoxColor || '#000000'}
+                              onChange={(e) => updateSelected((l) => ({ ...l, bgBoxColor: e.target.value }))}
+                            />
+                            <span>{selectedLayer.bgBoxColor}</span>
+                          </div>
+                        </Field>
+                        <Field label={t('Box opacity')}>
+                          <Slider
+                            value={Math.round((selectedLayer.bgBoxOpacity ?? 0.8) * 100)}
+                            min={0}
+                            max={100}
+                            unit="%"
+                            onChange={(v) => updateSelected((l) => ({ ...l, bgBoxOpacity: v / 100 }))}
+                          />
+                        </Field>
+                        <Field label={t('Box padding')}>
+                          <Slider
+                            value={selectedLayer.bgBoxPadding ?? 12}
+                            min={0}
+                            max={50}
+                            unit="px"
+                            onChange={(v) => updateSelected((l) => ({ ...l, bgBoxPadding: v }))}
+                          />
+                        </Field>
+                        <Field label={t('Border radius')}>
+                          <Slider
+                            value={selectedLayer.bgBoxRadius ?? 8}
+                            min={0}
+                            max={50}
+                            unit="px"
+                            onChange={(v) => updateSelected((l) => ({ ...l, bgBoxRadius: v }))}
+                          />
+                        </Field>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </details>
+
+              <details className="tool-options">
+                <summary>{t('Position')}</summary>
+                <div className="tool-options-body">
+                  <div className={styles.grid}>
+                    <Field label={t('X position (px)')}>
+                      <input
+                        type="number"
+                        step={1}
+                        className="input"
+                        value={selectedLayer.x}
+                        onChange={(e) => updateSelected((l) => ({ ...l, x: parseInt(e.target.value, 10) || 0 }))}
+                      />
+                    </Field>
+                    <Field label={t('Y position (px)')}>
+                      <input
+                        type="number"
+                        step={1}
+                        className="input"
+                        value={selectedLayer.y}
+                        onChange={(e) => updateSelected((l) => ({ ...l, y: parseInt(e.target.value, 10) || 0 }))}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              </details>
             </div>
           )}
 
           {/* Export Row */}
           <div className={styles.exportRow}>
             <div className={styles.exportControls}>
-              <Field label="Format">
+              <Field label={t('Format')}>
                 <Select
                   value={exportMime}
                   onChange={(e) => setExportMime(e.target.value as EncodableMime)}
                   options={[
-                    { value: 'image/png', label: 'PNG' },
-                    { value: 'image/jpeg', label: 'JPEG' },
-                    { value: 'image/webp', label: 'WebP' },
+                    { value: 'image/png', label: t('PNG') },
+                    { value: 'image/jpeg', label: t('JPEG') },
+                    { value: 'image/webp', label: t('WebP') },
                   ]}
                 />
               </Field>
 
               {exportMime !== 'image/png' && (
-                <Field label="Quality">
+                <Field label={t('Quality')}>
                   <Slider value={quality} min={10} max={100} unit="%" onChange={setQuality} />
                 </Field>
               )}
             </div>
 
             <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleExport}>
-              {isExporting ? 'Exporting…' : 'Download Image'}
+              {isExporting ? t('Exporting…') : t('Download image')}
             </Button>
           </div>
         </div>

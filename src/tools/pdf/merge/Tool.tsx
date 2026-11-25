@@ -6,6 +6,7 @@ import { Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
+import { useI18n } from '../../../lib/i18n';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { loadPdfDocument, renderPdfThumbnail } from '../../image/_pdf/pdfRenderer';
@@ -25,6 +26,7 @@ interface Entry {
 let nextId = 1;
 
 export default function MergePdfTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-merge');
   const [entries, setEntries] = useState<Entry[]>([]);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
@@ -61,12 +63,12 @@ export default function MergePdfTool() {
         const bad = err instanceof IncorrectPasswordError;
         patch(entry.id, {
           isEncrypted: true,
-          error: bad ? 'Incorrect password' : 'Password required',
+          error: bad ? t('Incorrect password') : t('Password required'),
         });
         setPendingPassword({ entryId: entry.id, reason: bad ? 2 : 1 });
         return false;
       }
-      patch(entry.id, { error: err instanceof Error ? err.message : 'Failed to read the PDF.' });
+      patch(entry.id, { error: err instanceof Error ? t(err.message) : t('Failed to read the PDF.') });
       return false;
     }
   };
@@ -148,26 +150,26 @@ export default function MergePdfTool() {
         <FileDrop
           accept="application/pdf,.pdf"
           multiple
-          label="Choose PDF files or drag them here"
-          hint="Add two or more PDFs, then set their order. Nothing is uploaded."
+          label={t('Choose PDF files or drag them here')}
+          hint={t('Add two or more PDFs, then set their order. Nothing is uploaded.')}
           onFiles={addFiles}
         />
       ) : job.status === 'done' && job.result ? (
         <PdfPreview blob={job.result} filename="merged.pdf" pageCount={mergedPages} originalSize={totalSize} onReset={reset} />
       ) : (
         <div>
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           <div className={styles.header}>
             <div className="meta-chips">
               <span className="meta-chip">
-                Files: <strong>{entries.length}</strong>
+                {t('Files:')} <strong>{entries.length}</strong>
               </span>
               <span className="meta-chip">
-                Pages: <strong>{totalPages}</strong>
+                {t('Pages:')} <strong>{totalPages}</strong>
               </span>
               <span className="meta-chip">
-                Total size: <strong>{formatBytes(totalSize)}</strong>
+                {t('Total size:')} <strong>{formatBytes(totalSize)}</strong>
               </span>
             </div>
             <div className={styles.headerActions}>
@@ -183,15 +185,15 @@ export default function MergePdfTool() {
                 }}
               />
               <Button variant="secondary" onClick={() => inputRef.current?.click()}>
-                Add more PDFs
+                {t('Add more PDFs')}
               </Button>
               <Button variant="secondary" onClick={reset}>
-                Clear all
+                {t('Clear all')}
               </Button>
             </div>
           </div>
 
-          <p className="field-hint">Drag files or use the arrows to set the order. The first file comes first.</p>
+          <p className="field-hint">{t('Drag files or use the arrows to set the order. The first file comes first.')}</p>
 
           <ol className={styles.list}>
             {entries.map((entry, index) => (
@@ -216,8 +218,9 @@ export default function MergePdfTool() {
                   </div>
                   <div className={styles.meta}>
                     {formatBytes(entry.file.size)}
-                    {entry.pageCount !== undefined && ` · ${entry.pageCount} ${entry.pageCount === 1 ? 'page' : 'pages'}`}
-                    {entry.pageCount === undefined && !entry.error && ' · reading…'}
+                    {entry.pageCount !== undefined &&
+                      ` · ${t('{count} {unit}', { count: entry.pageCount, unit: entry.pageCount === 1 ? t('page') : t('pages') })}`}
+                    {entry.pageCount === undefined && !entry.error && ` · ${t('reading…')}`}
                   </div>
                   {entry.error && (
                     <div className={styles.rowError}>
@@ -237,7 +240,7 @@ export default function MergePdfTool() {
                             color: 'inherit',
                           }}
                         >
-                          Unlock
+                          {t('Unlock')}
                         </button>
                       )}
                     </div>
@@ -249,8 +252,8 @@ export default function MergePdfTool() {
                     className={styles.iconBtn}
                     disabled={index === 0}
                     onClick={() => move(index, index - 1)}
-                    aria-label={`Move ${entry.file.name} up`}
-                    title="Move up"
+                    aria-label={t('Move {file} up', { file: entry.file.name })}
+                    title={t('Move up')}
                   >
                     ▲
                   </button>
@@ -259,8 +262,8 @@ export default function MergePdfTool() {
                     className={styles.iconBtn}
                     disabled={index === entries.length - 1}
                     onClick={() => move(index, index + 1)}
-                    aria-label={`Move ${entry.file.name} down`}
-                    title="Move down"
+                    aria-label={t('Move {file} down', { file: entry.file.name })}
+                    title={t('Move down')}
                   >
                     ▼
                   </button>
@@ -268,8 +271,8 @@ export default function MergePdfTool() {
                     type="button"
                     className={`${styles.iconBtn} ${styles.removeBtn}`}
                     onClick={() => remove(entry.id)}
-                    aria-label={`Remove ${entry.file.name}`}
-                    title="Remove"
+                    aria-label={t('Remove {file}', { file: entry.file.name })}
+                    title={t('Remove')}
                   >
                     ✕
                   </button>
@@ -279,18 +282,18 @@ export default function MergePdfTool() {
           </ol>
 
           {job.status === 'running' ? (
-            <ProgressBar value={job.progress} label="Merging PDFs…" />
+            <ProgressBar value={job.progress} label={t('Merging PDFs…')} />
           ) : (
             <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
               <Button variant="secondary" onClick={reset}>
-                Choose different files
+                {t('Choose different files')}
               </Button>
               <Button variant="primary" onClick={run} disabled={ready.length < 2 || hasError || loadingCount > 0}>
-                Merge {entries.length} PDFs
+                {t('Merge {count} PDFs', { count: entries.length })}
               </Button>
             </div>
           )}
-          {hasError && <p className={styles.rowError}>Remove or unlock the files marked with an error to continue.</p>}
+          {hasError && <p className={styles.rowError}>{t('Remove or unlock the files marked with an error to continue.')}</p>}
         </div>
       )}
     </ToolPage>

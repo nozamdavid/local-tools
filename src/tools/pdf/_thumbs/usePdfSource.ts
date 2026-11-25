@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PDFDocument, EncryptedPDFError } from 'pdf-lib';
-import type { PDFDocumentProxy } from 'pdfjs-dist';
-import { loadPdfDocument, renderPdfThumbnail } from '../../image/_pdf/pdfRenderer';
+import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
+import { loadPdfjs } from '../../../lib/pdf';
+import { renderPdfThumbnail } from '../../image/_pdf/pdfRenderer';
 import { decryptPdf } from './decrypt';
 
 /** Visual page size in points (pdf.js viewport at scale 1: rotation and CropBox applied). */
@@ -43,12 +44,32 @@ export function usePdfSource(thumbSize = 200): PdfSource {
   const [error, setError] = useState<string | null>(null);
   const [password, setPassword] = useState<PasswordRequest | null>(null);
 
-  const activeFile = useRef<File | null>(null);
+  const openRequest = useRef<AbortController | null>(null);
+  const loadingTask = useRef<PDFDocumentLoadingTask | null>(null);
   const passwordRef = useRef('');
+  const mounted = useRef(false);
+
+  const close = useCallback(() => {
+    openRequest.current?.abort();
+    openRequest.current = null;
+    void loadingTask.current?.destroy().catch(() => undefined);
+    loadingTask.current = null;
+    passwordRef.current = '';
+  }, []);
+
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      // A file handoff can open a PDF during the initial effects replay in Strict Mode.
+      queueMicrotask(() => {
+        if (!mounted.current) close();
+      });
+    };
+  }, [close]);
 
   const reset = useCallback(() => {
-    activeFile.current = null;
-    passwordRef.current = '';
+    close();
     setFile(null);
     setDoc(null);
     setPages([]);
@@ -56,54 +77,65 @@ export function usePdfSource(thumbSize = 200): PdfSource {
     setLoading(false);
     setError(null);
     setPassword(null);
-  }, []);
+  }, [close]);
 
-  const open = useCallback(async (selected: File) => {
-    activeFile.current = selected;
-    passwordRef.current = '';
-    setFile(selected);
-    setDoc(null);
-    setPages([]);
-    setThumbs({});
-    setError(null);
-    setPassword(null);
-    setLoading(true);
+  const open = useCallback(
+    async (selected: File) => {
+      close();
+      const request = new AbortController();
+      openRequest.current = request;
+      setFile(selected);
+      setDoc(null);
+      setPages([]);
+      setThumbs({});
+      setError(null);
+      setPassword(null);
+      setLoading(true);
 
-    try {
-      const loaded = await loadPdfDocument(selected, {
-        onPassword: (verify, reason) => {
+      try {
+        const [pdfjs, buffer] = await Promise.all([loadPdfjs(), selected.arrayBuffer()]);
+        if (request.signal.aborted) return;
+        const task = pdfjs.getDocument({ data: new Uint8Array(buffer) });
+        loadingTask.current = task;
+        task.onPassword = (verify: (password: string) => void, reason: number) => {
+          if (request.signal.aborted) return;
           setPassword({
             reason,
             submit: (pw) => {
+              if (request.signal.aborted) return;
               passwordRef.current = pw;
               verify(pw);
             },
           });
-        },
-      });
-      if (activeFile.current !== selected) return;
+        };
+        const loaded = await task.promise;
 
-      const infos: PageInfo[] = [];
-      for (let p = 1; p <= loaded.numPages; p++) {
-        const page = await loaded.getPage(p);
-        const viewport = page.getViewport({ scale: 1 });
-        infos.push({ width: viewport.width, height: viewport.height });
-        page.cleanup();
-      }
-      if (activeFile.current !== selected) return;
+        const infos: PageInfo[] = [];
+        for (let p = 1; p <= loaded.numPages; p++) {
+          if (request.signal.aborted) return;
+          const page = await loaded.getPage(p);
+          const viewport = page.getViewport({ scale: 1 });
+          infos.push({ width: viewport.width, height: viewport.height });
+          page.cleanup();
+        }
+        if (request.signal.aborted) return;
 
-      setPages(infos);
-      setDoc(loaded);
-      setPassword(null);
-    } catch (err) {
-      if (activeFile.current === selected) {
-        setError(err instanceof Error ? err.message : 'Failed to load PDF document.');
+        setPages(infos);
+        setDoc(loaded);
         setPassword(null);
+      } catch (err) {
+        if (!request.signal.aborted) {
+          close();
+          setError(err instanceof Error ? err.message : 'Failed to load PDF document.');
+          setPassword(null);
+          setLoading(false);
+        }
+      } finally {
+        if (!request.signal.aborted) setLoading(false);
       }
-    } finally {
-      if (activeFile.current === selected) setLoading(false);
-    }
-  }, []);
+    },
+    [close],
+  );
 
   useEffect(() => {
     if (!doc) return;
@@ -129,6 +161,7 @@ export function usePdfSource(thumbSize = 200): PdfSource {
 
   const loadForEditing = useCallback(async () => {
     if (!file) throw new Error('No PDF is open.');
+    const password = passwordRef.current;
     const bytes = new Uint8Array(await file.arrayBuffer());
 
     try {
@@ -139,7 +172,7 @@ export function usePdfSource(thumbSize = 200): PdfSource {
       if (!encrypted) throw err;
     }
 
-    const decrypted = await decryptPdf(bytes, passwordRef.current);
+    const decrypted = await decryptPdf(bytes, password);
     return PDFDocument.load(decrypted, { updateMetadata: false });
   }, [file]);
 

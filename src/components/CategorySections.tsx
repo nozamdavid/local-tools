@@ -1,5 +1,6 @@
-import { categories, toolsByCategory, type Media, type ToolMeta } from '../tools/registry';
+import { categories, localizeCategory, toolsByCategory, type Media, type ToolMeta } from '../tools/registry';
 import { ToolGrid } from './ToolGrid';
+import { useI18n } from '../lib/i18n';
 
 export interface CategorySectionsProps {
   media: Media;
@@ -8,11 +9,13 @@ export interface CategorySectionsProps {
 }
 
 export function CategorySections({ media, filter }: CategorySectionsProps) {
+  useI18n();
   return (
     <>
       {categories
         .filter((c) => c.media === media)
-        .map((category) => {
+        .map((rawCategory) => {
+          const category = localizeCategory(rawCategory);
           const list = toolsByCategory(category.id).filter((t) => !filter || filter(t));
           if (list.length === 0) return null;
           return (
@@ -22,7 +25,6 @@ export function CategorySections({ media, filter }: CategorySectionsProps) {
                   {category.title}
                   <span className="category-count">{list.length}</span>
                 </h2>
-                <p className="category-desc">{category.description}</p>
               </div>
               <ToolGrid tools={list} />
             </section>

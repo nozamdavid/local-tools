@@ -1,5 +1,6 @@
 import type { EncodableMime } from '../../../lib/image';
 import { withSuffix } from '../../../lib/format';
+import { translate } from '../../../lib/i18n';
 
 /** Determines default encodable MIME type and extension from a file */
 export function getDefaultFormat(file: File, fallbackMime: EncodableMime = 'image/png'): { mime: EncodableMime; ext: string } {
@@ -34,9 +35,8 @@ export function detectAlpha(canvas: HTMLCanvasElement): boolean {
   try {
     const imgData = ctx.getImageData(0, 0, width, height);
     const data = imgData.data;
-    const step = Math.max(1, Math.floor(data.length / 40000));
-    for (let i = 3; i < data.length; i += step * 4) {
-      if (data[i] < 250) {
+    for (let i = 3; i < data.length; i += 4) {
+      if (data[i] < 255) {
         return true;
       }
     }
@@ -64,7 +64,7 @@ export function renderScaledCanvas(
     canvas.width = tw;
     canvas.height = th;
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas 2D unavailable');
+    if (!ctx) throw new Error(translate('Canvas 2D unavailable'));
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(source, 0, 0, tw, th);
@@ -78,7 +78,7 @@ export function renderScaledCanvas(
   curCanvas.width = curW;
   curCanvas.height = curH;
   const curCtx = curCanvas.getContext('2d');
-  if (!curCtx) throw new Error('Canvas 2D unavailable');
+  if (!curCtx) throw new Error(translate('Canvas 2D unavailable'));
   curCtx.imageSmoothingEnabled = true;
   curCtx.imageSmoothingQuality = 'high';
   curCtx.drawImage(source, 0, 0, curW, curH);
@@ -107,7 +107,7 @@ export function renderScaledCanvas(
   finalCanvas.width = tw;
   finalCanvas.height = th;
   const finalCtx = finalCanvas.getContext('2d');
-  if (!finalCtx) throw new Error('Canvas 2D unavailable');
+  if (!finalCtx) throw new Error(translate('Canvas 2D unavailable'));
   finalCtx.imageSmoothingEnabled = true;
   finalCtx.imageSmoothingQuality = 'high';
   finalCtx.drawImage(curCanvas, 0, 0, tw, th);

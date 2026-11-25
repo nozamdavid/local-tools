@@ -1,11 +1,13 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
-import { formatBytes } from '../lib/format';
+import { formatBytes, formatNumber } from '../lib/format';
 import { downloadBlob } from '../lib/download';
 import { useObjectUrl } from '../lib/useObjectUrl';
 import { decodeJxlToBlob, isJxlFile } from '../lib/jxl';
 import { CircleCheck, Download, RotateCcw } from 'lucide-react';
 import { Button } from './Controls';
 import { useFocusFallback } from './useFocusFallback';
+import { ContinueWith } from './ContinueWith';
+import { useI18n } from '../lib/i18n';
 
 export interface ResultPanelProps {
   blob: Blob;
@@ -18,6 +20,7 @@ export interface ResultPanelProps {
 }
 
 export function ResultPanel({ blob, filename, kind, originalSize, beforePreview, children, onReset }: ResultPanelProps) {
+  const { t } = useI18n();
   const url = useObjectUrl(blob);
   const [textContent, setTextContent] = useState<string>('');
   const [jxlPreviewUrl, setJxlPreviewUrl] = useState<string | null>(null);
@@ -36,9 +39,9 @@ export function ResultPanel({ blob, filename, kind, originalSize, beforePreview,
       blob
         .text()
         .then(setTextContent)
-        .catch(() => setTextContent('(Failed to read text)'));
+        .catch(() => setTextContent(t('(Failed to read text)')));
     }
-  }, [blob, kind]);
+  }, [blob, kind, t]);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,10 +100,10 @@ export function ResultPanel({ blob, filename, kind, originalSize, beforePreview,
         </span>
         <div>
           <div className="result-header-title" id={titleId}>
-            Done
+            {t('Done')}
           </div>
           <div className="result-header-sub" id={subId}>
-            Processed on this device. Review it, then download.
+            {t('Review your output before downloading.')}
           </div>
         </div>
       </div>
@@ -108,12 +111,12 @@ export function ResultPanel({ blob, filename, kind, originalSize, beforePreview,
       <div className="preview-grid">
         {beforePreview && (
           <div className="preview-box">
-            <div className="preview-box-title">Original</div>
+            <div className="preview-box-title">{t('Original')}</div>
             {beforePreview}
           </div>
         )}
         <div className="preview-box">
-          <div className="preview-box-title">{beforePreview ? 'Result' : 'Preview'}</div>
+          <div className="preview-box-title">{beforePreview ? t('Result') : t('Preview')}</div>
           {renderAfterMedia()}
         </div>
       </div>
@@ -122,14 +125,14 @@ export function ResultPanel({ blob, filename, kind, originalSize, beforePreview,
 
       <div className="stats-row">
         <div className="stat-item" style={{ flex: '1 1 220px' }}>
-          <span className="stat-label">Output file</span>
+          <span className="stat-label">{t('Output file')}</span>
           <span className="stat-value" style={{ fontSize: 'var(--text-md)' }}>
             {filename}
           </span>
         </div>
 
         <div className="stat-item">
-          <span className="stat-label">Size</span>
+          <span className="stat-label">{t('Size')}</span>
           <span className="stat-value">
             {originalSize !== undefined && originalSize > 0 && (
               <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>{formatBytes(originalSize)} → </span>
@@ -140,23 +143,26 @@ export function ResultPanel({ blob, filename, kind, originalSize, beforePreview,
 
         {changePercent !== null && (
           <div className="stat-item">
-            <span className="stat-label">Change</span>
+            <span className="stat-label">{t('Change')}</span>
             <span
               className={`badge ${changePercent <= 0 ? 'badge-success' : 'badge-warning'}`}
               style={{ alignSelf: 'flex-start', marginTop: 'var(--space-1)' }}
             >
-              {changePercent <= 0 ? `${Math.abs(changePercent)}% smaller` : `${changePercent}% larger`}
+              {changePercent <= 0
+                ? t('{percent}% smaller', { percent: formatNumber(Math.abs(changePercent)) })
+                : t('{percent}% larger', { percent: formatNumber(changePercent) })}
             </span>
           </div>
         )}
       </div>
 
       <div className="action-buttons">
-        <Button variant="secondary" icon={<RotateCcw />} onClick={onReset}>
-          Start over
+        <ContinueWith results={[{ name: filename, blob }]} />
+        <Button variant="ghost" icon={<RotateCcw />} onClick={onReset}>
+          {t('Start over')}
         </Button>
         <Button variant="primary" size="lg" icon={<Download />} onClick={() => downloadBlob(blob, filename)}>
-          Download
+          {t('Download')}
         </Button>
       </div>
     </div>

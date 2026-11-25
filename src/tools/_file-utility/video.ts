@@ -199,7 +199,7 @@ export function readEbmlVint(bytes: Uint8Array, offset: number): { value: number
   if (offset + length > bytes.length) return null;
 
   let value = first & ~mask;
-  let isAllOnes = (first & ~mask) === ~mask;
+  let isAllOnes = value === mask - 1;
 
   for (let i = 1; i < length; i++) {
     const b = bytes[offset + i];

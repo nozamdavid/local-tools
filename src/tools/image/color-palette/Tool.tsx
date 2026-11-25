@@ -3,12 +3,14 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { decodeImage } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
 import { type PaletteColor, extractPalette, generatePaletteStripBlob } from '../_color/palette';
 import styles from './Tool.module.css';
 
 export default function ColorPaletteTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-color-palette');
   const [file, setFile] = useState<File | null>(null);
   const [imgElement, setImgElement] = useState<HTMLImageElement | null>(null);
@@ -53,7 +55,7 @@ export default function ColorPaletteTool() {
       setImgElement(img);
       runExtraction(img, colorCount);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to decode image');
+      setError(err instanceof Error ? t(err.message) : t('Failed to decode image'));
     }
   };
 
@@ -102,7 +104,7 @@ export default function ColorPaletteTool() {
       const blob = await generatePaletteStripBlob(palette);
       downloadBlob(blob, 'palette-strip.png');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to generate PNG palette strip');
+      setError(err instanceof Error ? t(err.message) : t('Failed to generate PNG palette strip'));
     }
   };
 
@@ -114,20 +116,20 @@ export default function ColorPaletteTool() {
         {!file ? (
           <FileDrop
             accept="image/*"
-            label="Drop an image here to extract colours"
-            hint="Supports JPG, PNG, WEBP, SVG, HEIC and more."
+            label={t('Drop an image here to extract colours')}
+            hint={t('Supports JPG, PNG, WEBP, SVG, HEIC and more.')}
             onFiles={handleFiles}
           />
         ) : (
           <>
             <div className={styles.controlsRow}>
               <div className={styles.sliderWrapper}>
-                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Colours:</span>
+                <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{t('Colours')}:</span>
                 <Slider min={5} max={12} step={1} value={colorCount} onChange={handleCountChange} />
               </div>
 
               <Button variant="secondary" onClick={handleReset}>
-                Choose different image
+                {t('Choose different image')}
               </Button>
             </div>
 
@@ -162,7 +164,7 @@ export default function ColorPaletteTool() {
                             onClick={() => copyToClipboard(c.hex.toUpperCase(), `hex-${idx}`)}
                             style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
                           >
-                            {copiedKey === `hex-${idx}` ? 'Copied' : 'Copy'}
+                            {copiedKey === `hex-${idx}` ? t('Copied') : t('Copy')}
                           </Button>
                         </div>
                         <div className={styles.swatchRow}>
@@ -174,7 +176,7 @@ export default function ColorPaletteTool() {
                             onClick={() => copyToClipboard(c.rgb, `rgb-${idx}`)}
                             style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
                           >
-                            {copiedKey === `rgb-${idx}` ? 'Copied' : 'Copy'}
+                            {copiedKey === `rgb-${idx}` ? t('Copied') : t('Copy')}
                           </Button>
                         </div>
                         <div className={styles.swatchRow}>
@@ -186,7 +188,7 @@ export default function ColorPaletteTool() {
                             onClick={() => copyToClipboard(c.hsl, `hsl-${idx}`)}
                             style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
                           >
-                            {copiedKey === `hsl-${idx}` ? 'Copied' : 'Copy'}
+                            {copiedKey === `hsl-${idx}` ? t('Copied') : t('Copy')}
                           </Button>
                         </div>
                       </div>
@@ -196,14 +198,14 @@ export default function ColorPaletteTool() {
 
                 <div className={styles.exportSection}>
                   <div className={styles.exportHeader}>
-                    <span className={styles.exportTitle}>Export Palette</span>
+                    <span className={styles.exportTitle}>{t('Export palette')}</span>
                     <div className={styles.exportTabs}>
                       <Button
                         variant={exportMode === 'css' ? 'primary' : 'secondary'}
                         onClick={() => setExportMode('css')}
                         style={{ padding: '0.25rem 0.75rem', fontSize: '0.85rem' }}
                       >
-                        CSS Variables
+                        {t('CSS variables')}
                       </Button>
                       <Button
                         variant={exportMode === 'json' ? 'primary' : 'secondary'}
@@ -222,15 +224,15 @@ export default function ColorPaletteTool() {
                       variant="secondary"
                       onClick={() => copyToClipboard(exportMode === 'css' ? getCssVariables() : getJsonExport(), 'export-copy')}
                     >
-                      {copiedKey === 'export-copy' ? 'Copied to clipboard!' : 'Copy to clipboard'}
+                      {copiedKey === 'export-copy' ? t('Copied to clipboard!') : t('Copy to clipboard')}
                     </Button>
                     {exportMode === 'json' && (
                       <Button variant="secondary" onClick={downloadJson}>
-                        Download JSON
+                        {t('Download JSON')}
                       </Button>
                     )}
                     <Button variant="primary" onClick={downloadPngStrip}>
-                      Download PNG strip
+                      {t('Download PNG strip')}
                     </Button>
                   </div>
                 </div>

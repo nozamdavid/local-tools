@@ -71,7 +71,7 @@ export default function AdjustTool() {
       defaultOptions={DEFAULT_OPTIONS}
       suffix="-adjusted"
       render={renderAdjust}
-      renderControls={(options, setOptions) => {
+      renderControls={(options, setOptions, { t }) => {
         const update = (key: keyof AdjustOptions, val: number) => {
           setOptions((prev) => ({ ...prev, [key]: val }));
         };
@@ -84,7 +84,7 @@ export default function AdjustTool() {
               </span>
               {options[key] !== DEFAULT_OPTIONS[key] && (
                 <button type="button" className={styles.resetMiniBtn} onClick={() => update(key, DEFAULT_OPTIONS[key])}>
-                  Reset
+                  {t('Reset')}
                 </button>
               )}
             </div>
@@ -94,12 +94,12 @@ export default function AdjustTool() {
 
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
-            {renderSlider('Brightness', 'brightness', -100, 100, '%')}
-            {renderSlider('Contrast', 'contrast', -100, 100, '%')}
-            {renderSlider('Saturation', 'saturation', -100, 100, '%')}
-            {renderSlider('Hue rotate', 'hueRotate', -180, 180, '°')}
-            {renderSlider('Exposure (gamma)', 'exposure', -100, 100, '')}
-            {renderSlider('Warmth (temperature)', 'warmth', -100, 100, '')}
+            {renderSlider(t('Brightness'), 'brightness', -100, 100, '%')}
+            {renderSlider(t('Contrast'), 'contrast', -100, 100, '%')}
+            {renderSlider(t('Saturation'), 'saturation', -100, 100, '%')}
+            {renderSlider(t('Hue rotate'), 'hueRotate', -180, 180, '°')}
+            {renderSlider(t('Exposure (gamma)'), 'exposure', -100, 100, '')}
+            {renderSlider(t('Warmth (temperature)'), 'warmth', -100, 100, '')}
           </div>
         );
       }}

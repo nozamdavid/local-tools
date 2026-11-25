@@ -3,15 +3,17 @@ import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { Button, Field, Select } from '../../components/Controls';
 import { getToolMeta } from '../registry';
+import { useI18n } from '../../lib/i18n';
 import { downloadBlob } from '../../lib/download';
 import { zipFiles } from '../../lib/zip';
 import { convertMhtmlToHtml, type ConvertedMhtmlOutput } from './mhtml';
 import styles from './Tool.module.css';
 
 export default function MhtmlToHtmlTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('mhtml-to-html');
-  const title = meta.title !== 'mhtml-to-html' ? meta.title : 'MHTML to HTML Converter';
-  const description = meta.description || 'Convert MHTML/MHT web archives into standalone HTML or ZIP with safely extracted assets.';
+  const title = meta.title !== 'mhtml-to-html' ? meta.title : t('MHTML to HTML Converter');
+  const description = meta.description || t('Convert MHTML/MHT web archives into standalone HTML or ZIP with safely extracted assets.');
 
   const [rawMhtml, setRawMhtml] = useState<string>('');
   const [sourceName, setSourceName] = useState<string>('archive');
@@ -94,13 +96,13 @@ export default function MhtmlToHtmlTool() {
         <div className={styles.card}>
           <FileDrop
             accept=".mhtml,.mht,.mime,message/rfc822,text/html"
-            label="Choose an MHTML or MHT web archive"
-            hint="Private and offline. All MIME parts and assets are extracted in your browser."
+            label={t('Choose an MHTML or MHT web archive')}
+            hint={t('Private and offline. All MIME parts and assets are extracted in your browser.')}
             onFiles={handleFiles}
           />
 
           <div className={styles.controlsRow}>
-            <Field label="Output format">
+            <Field label={t('Output format')}>
               <Select
                 value={outputMode}
                 onChange={(e) => {
@@ -109,8 +111,8 @@ export default function MhtmlToHtmlTool() {
                   reprocess(mode, blockRemote, stripScripts);
                 }}
                 options={[
-                  { value: 'standalone', label: 'Standalone Single HTML (Inlined Assets)' },
-                  { value: 'zip', label: 'ZIP Package (index.html + /assets)' },
+                  { value: 'standalone', label: t('Standalone single HTML (inlined assets)') },
+                  { value: 'zip', label: t('ZIP package (index.html + /assets)') },
                 ]}
               />
             </Field>
@@ -125,7 +127,7 @@ export default function MhtmlToHtmlTool() {
                   reprocess(outputMode, val, stripScripts);
                 }}
               />
-              Block unmapped remote URLs (shields private data)
+              {t('Block unmapped remote URLs (shields private data)')}
             </label>
 
             <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
@@ -138,14 +140,14 @@ export default function MhtmlToHtmlTool() {
                   reprocess(outputMode, blockRemote, val);
                 }}
               />
-              Strip JavaScript and event handlers
+              {t('Strip JavaScript and event handlers')}
             </label>
           </div>
         </div>
 
         {error && (
           <div className={styles.errorBanner}>
-            <span>⚠️ {error}</span>
+            <span>⚠️ {t(error)}</span>
           </div>
         )}
 
@@ -153,15 +155,17 @@ export default function MhtmlToHtmlTool() {
           <div className={styles.previewCard}>
             <div className={styles.previewHeader}>
               <div className={styles.previewTitle}>
-                HTML Preview
-                <span className={styles.badge}>{outputMode === 'standalone' ? 'Standalone HTML' : 'ZIP package'}</span>
+                {t('HTML preview')}
+                <span className={styles.badge}>{outputMode === 'standalone' ? t('Standalone HTML') : t('ZIP package')}</span>
               </div>
 
               <div className={styles.statsRow}>
-                <span className={`${styles.badge} ${styles.badgeSuccess}`}>{conversionResult.inlinedAssetsCount} assets resolved</span>
+                <span className={`${styles.badge} ${styles.badgeSuccess}`}>
+                  {t('{count} assets resolved', { count: conversionResult.inlinedAssetsCount })}
+                </span>
                 {conversionResult.blockedRemoteCount > 0 && (
                   <span className={`${styles.badge} ${styles.badgeWarning}`}>
-                    {conversionResult.blockedRemoteCount} remote refs blocked
+                    {t('{count} remote references blocked', { count: conversionResult.blockedRemoteCount })}
                   </span>
                 )}
               </div>
@@ -169,15 +173,15 @@ export default function MhtmlToHtmlTool() {
 
             {/* Sandboxed iframe preview: scripts disabled, no same-origin escalation, CSP enforced */}
             <div className={styles.iframeContainer}>
-              <iframe title="Converted HTML Preview" sandbox="" srcDoc={conversionResult.html} className={styles.iframe} />
+              <iframe title={t('Converted HTML preview')} sandbox="" srcDoc={conversionResult.html} className={styles.iframe} />
             </div>
 
             <div className={styles.actions}>
               <Button variant="primary" onClick={handleDownload}>
-                Download {outputMode === 'standalone' ? `${sourceName}.html` : `${sourceName}.zip`}
+                {t('Download {file}', { file: outputMode === 'standalone' ? `${sourceName}.html` : `${sourceName}.zip` })}
               </Button>
               <Button variant="secondary" onClick={handleReset}>
-                Reset
+                {t('Reset')}
               </Button>
             </div>
           </div>

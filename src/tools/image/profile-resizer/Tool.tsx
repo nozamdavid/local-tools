@@ -7,6 +7,7 @@ import { getToolMeta } from '../../registry';
 import { IMAGE_ACCEPT, decodeImage, canvasToBlob } from '../../../lib/image';
 import { zipFiles } from '../../../lib/zip';
 import { downloadBlob } from '../../../lib/download';
+import { useI18n } from '../../../lib/i18n';
 import styles from './Tool.module.css';
 
 interface AvatarPreset {
@@ -35,6 +36,7 @@ const REF_SIZE = 800;
 
 export default function ProfileResizerTool() {
   const meta = getToolMeta('img-profile-resizer');
+  const { t } = useI18n();
   const [file, setFile] = useState<File | null>(null);
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -202,18 +204,18 @@ export default function ProfileResizerTool() {
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose a profile photo or avatar"
-          hint="Supports JPG, PNG, WebP, HEIC and SVG. Positions once and exports all 10 platform sizes."
+          label={t('Choose a profile photo or avatar')}
+          hint={t('Supports JPG, PNG, WebP, HEIC and SVG. Position the photo once and export all 10 platform sizes.')}
           onFiles={handleFiles}
         />
       ) : (
         <div className={styles.wrapper}>
-          {loadError && <div className="error-banner">{loadError}</div>}
+          {loadError && <div className="error-banner">{t(loadError)}</div>}
 
           {batchItems ? (
             <div>
               <div style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
-                Your avatar ZIP has been generated! You can also download each avatar size individually below:
+                {t('Your avatar ZIP is ready. You can also download each avatar size individually below:')}
               </div>
               <BatchResults
                 items={batchItems}
@@ -226,13 +228,13 @@ export default function ProfileResizerTool() {
             <div className={styles.editorArea}>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Original: <strong>{file.name}</strong>
+                  {t('Original')}: <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Presets: <strong>10 social platforms</strong>
+                  {t('Presets')}: <strong>{t('10 social platforms')}</strong>
                 </span>
                 <span className="meta-chip">
-                  Format: <strong>PNG</strong>
+                  {t('Format')}: <strong>PNG</strong>
                 </span>
               </div>
 
@@ -255,17 +257,19 @@ export default function ProfileResizerTool() {
                   }}
                   tabIndex={0}
                   role="group"
-                  aria-label="Photo position. Arrow keys move the photo (Shift for larger steps). Use the Zoom slider to zoom."
-                  title="Drag to position photo, mouse wheel to zoom"
+                  aria-label={t(
+                    'Photo position. Use the arrow keys to move the photo; hold Shift to move farther. Use the Zoom slider to zoom.',
+                  )}
+                  title={t('Drag to position the photo, or use the mouse wheel to zoom')}
                 >
-                  <canvas ref={canvasRef} className={styles.canvas} role="img" aria-label="Preview of the cropped profile picture" />
+                  <canvas ref={canvasRef} className={styles.canvas} role="img" aria-label={t('Preview of the cropped profile picture')} />
                   {previewShape === 'square' && <div className={styles.circleOverlay} />}
                 </div>
               </div>
 
               {/* Controls */}
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(250px, 1fr))', gap: '1rem' }}>
-                <Field label="Zoom" hint="Drag avatar to center; slide to zoom.">
+                <Field label={t('Zoom')} hint={t('Drag the avatar to center it, then use the slider to zoom.')}>
                   <Slider value={zoom} min={0.5} max={3.0} step={0.05} unit="x" onChange={setZoom} />
                   <div style={{ marginTop: '0.5rem' }}>
                     <Button
@@ -277,26 +281,26 @@ export default function ProfileResizerTool() {
                         setPan({ x: 0, y: 0 });
                       }}
                     >
-                      Reset position
+                      {t('Reset position')}
                     </Button>
                   </div>
                 </Field>
 
-                <Field label="Preview style" hint="Toggle how avatars are displayed in the preview below.">
+                <Field label={t('Preview style')} hint={t('Change how avatars appear in the preview below.')}>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <Button
                       type="button"
                       variant={previewShape === 'circle' ? 'primary' : 'secondary'}
                       onClick={() => setPreviewShape('circle')}
                     >
-                      Circular preview
+                      {t('Circular preview')}
                     </Button>
                     <Button
                       type="button"
                       variant={previewShape === 'square' ? 'primary' : 'secondary'}
                       onClick={() => setPreviewShape('square')}
                     >
-                      Square preview
+                      {t('Square preview')}
                     </Button>
                   </div>
                 </Field>
@@ -305,7 +309,7 @@ export default function ProfileResizerTool() {
               {/* Preview Grid */}
               <div>
                 <h3 style={{ fontSize: '1rem', fontWeight: 600, marginTop: '1rem', marginBottom: '0.5rem' }}>
-                  Live Preview across 10 Platforms:
+                  {t('Live preview across 10 platforms:')}
                 </h3>
                 <div className={styles.previewGrid}>
                   {PRESETS.map((preset) => (
@@ -318,7 +322,7 @@ export default function ProfileResizerTool() {
                         {previewDataUrl ? (
                           <img
                             src={previewDataUrl}
-                            alt={preset.name}
+                            alt={t('Preview for {platform}', { platform: preset.name })}
                             className={`${styles.cardThumb} ${previewShape === 'circle' ? styles.thumbCircle : styles.thumbSquare}`}
                           />
                         ) : null}
@@ -330,10 +334,10 @@ export default function ProfileResizerTool() {
 
               <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                 <Button variant="secondary" onClick={() => setFile(null)}>
-                  Choose different photo
+                  {t('Choose a different photo')}
                 </Button>
                 <Button variant="primary" onClick={handleExportAll} disabled={exporting}>
-                  {exporting ? 'Exporting ZIP…' : 'Export all 10 avatars (.zip)'}
+                  {exporting ? t('Exporting ZIP…') : t('Export all 10 avatars (.zip)')}
                 </Button>
               </div>
             </div>

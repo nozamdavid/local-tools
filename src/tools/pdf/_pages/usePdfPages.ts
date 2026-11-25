@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { PDFDocument } from 'pdf-lib';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { loadPdfDocument, renderPdfThumbnail } from '../../image/_pdf/pdfRenderer';
@@ -30,31 +30,28 @@ const EMPTY: PdfPagesState = {
 /** Opens a PDF for page-level editing and (optionally) renders a thumbnail for each page. */
 export function usePdfPages(file: File | null, withThumbs: boolean): PdfPagesState {
   const [state, setState] = useState<PdfPagesState>(EMPTY);
-  const passwordRef = useRef('');
-  const passwordResolverRef = useRef<((pw: string) => void) | null>(null);
-
   useEffect(() => {
     if (!file) {
-      passwordRef.current = '';
-      passwordResolverRef.current = null;
       setState(EMPTY);
       return;
     }
 
     let cancelled = false;
     let pdfjsDoc: PDFDocumentProxy | null = null;
+    let dismissPassword: (() => void) | undefined;
     setState({ ...EMPTY, loading: true });
 
-    const requestPassword = (reason: number): Promise<string> => {
+    const requestPassword = (reason: number): Promise<string | undefined> => {
       return new Promise((resolve) => {
-        passwordResolverRef.current = resolve;
+        dismissPassword = () => resolve(undefined);
         setState((prev) => ({
           ...prev,
           loading: false,
           password: {
             reason,
             submit: (pw: string) => {
-              passwordRef.current = pw;
+              if (cancelled) return;
+              dismissPassword = undefined;
               setState((s) => ({ ...s, password: null, loading: true }));
               resolve(pw);
             },
@@ -64,20 +61,16 @@ export function usePdfPages(file: File | null, withThumbs: boolean): PdfPagesSta
     };
 
     (async () => {
-      let currentPw = passwordRef.current;
+      let currentPw: string | undefined;
       while (!cancelled) {
         try {
-          const { doc, pageCount } = await openPdf(file, currentPw || undefined);
+          const { doc, pageCount, bytes } = await openPdf(file, currentPw);
           if (cancelled) return;
 
           setState({ loading: false, error: null, doc, pageCount, thumbs: {}, password: null });
           if (!withThumbs) return;
 
-          const viewDoc = await loadPdfDocument(file, {
-            onPassword: (verify) => {
-              if (currentPw) verify(currentPw);
-            },
-          });
+          const viewDoc = await loadPdfDocument(new Blob([bytes as BlobPart], { type: 'application/pdf' }));
           if (cancelled) {
             void viewDoc.loadingTask.destroy();
             return;
@@ -114,6 +107,7 @@ export function usePdfPages(file: File | null, withThumbs: boolean): PdfPagesSta
 
     return () => {
       cancelled = true;
+      dismissPassword?.();
       void pdfjsDoc?.loadingTask.destroy();
     };
   }, [file, withThumbs]);

@@ -8,6 +8,7 @@ import { getToolMeta } from '../registry';
 import { getVideoMeta, type VideoMeta } from '../../lib/media';
 import { formatBytes, formatDuration, withSuffix } from '../../lib/format';
 import { useObjectUrl } from '../../lib/useObjectUrl';
+import { useI18n } from '../../lib/i18n';
 import { SegmentClient } from '../_segment/segmentClient';
 import { processVideo } from '../_segment/videoProcessor';
 import { compositeRemoveBackgroundFrame } from '../_segment/composite';
@@ -18,6 +19,7 @@ type OutputFormat = 'webm' | 'solid' | 'greenscreen';
 type FpsOption = '30' | '24' | '15';
 
 export default function RemoveBackgroundTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('remove-background');
   const [file, setFile] = useState<File | null>(null);
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
@@ -30,7 +32,9 @@ export default function RemoveBackgroundTool() {
 
   const [status, setStatus] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [progress, setProgress] = useState<number>(0);
-  const [progressLabel, setProgressLabel] = useState<string>('');
+  const [progressMessage, setProgressMessage] = useState<{ key: string; params?: Record<string, string | number>; eta?: string } | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
 
@@ -78,7 +82,7 @@ export default function RemoveBackgroundTool() {
     setMetaError(null);
     setStatus('idle');
     setProgress(0);
-    setProgressLabel('');
+    setProgressMessage(null);
     setError(null);
     setResultBlob(null);
   }, []);
@@ -89,7 +93,7 @@ export default function RemoveBackgroundTool() {
     segmentClientRef.current = null;
     setStatus('idle');
     setProgress(0);
-    setProgressLabel('');
+    setProgressMessage(null);
   }, []);
 
   const handleProcess = async () => {
@@ -103,14 +107,14 @@ export default function RemoveBackgroundTool() {
 
     setStatus('running');
     setProgress(0);
-    setProgressLabel('Loading AI segmentation model...');
+    setProgressMessage({ key: 'Loading AI segmentation model...' });
     setError(null);
 
     try {
       await segmentClient.init((p) => {
         if (p?.progress !== undefined) {
           setProgress(Math.min(0.99, p.progress / 100));
-          setProgressLabel(`Downloading AI model: ${Math.round(p.progress)}%`);
+          setProgressMessage({ key: 'Downloading AI model: {percent}%', params: { percent: Math.round(p.progress) } });
         }
       });
 
@@ -131,8 +135,15 @@ export default function RemoveBackgroundTool() {
           if (p.totalFrames > 0) {
             setProgress(p.currentFrame / p.totalFrames);
           }
-          const etaText = p.etaSeconds && p.etaSeconds > 0 ? ` (ETA: ${formatDuration(p.etaSeconds)})` : '';
-          setProgressLabel(`${p.statusText}${etaText}`);
+          setProgressMessage(
+            p.phase === 'encoding'
+              ? { key: 'Encoding final video with FFmpeg...' }
+              : {
+                  key: 'Processing frame {current} of {total}...',
+                  params: { current: p.currentFrame, total: p.totalFrames },
+                  eta: p.etaSeconds && p.etaSeconds > 0 ? formatDuration(p.etaSeconds) : undefined,
+                },
+          );
         },
         compositeFn: (ctx, info) => {
           compositeRemoveBackgroundFrame(ctx, info.frameImageData, info.mask, info.width, info.height, outputFormat, solidColor);
@@ -144,18 +155,15 @@ export default function RemoveBackgroundTool() {
       setResultBlob(blob);
       setStatus('done');
     } catch (err: any) {
+      if (abortController.signal.aborted) return;
       console.error('Remove background error:', err);
       (window as any).__lastError = err;
-      if (err?.message === 'Cancelled' || abortController.signal.aborted) {
-        setStatus('idle');
-        return;
-      }
       const msg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
       setError(msg || 'Failed to remove background from video.');
       setStatus('error');
     } finally {
       segmentClient.terminate();
-      segmentClientRef.current = null;
+      if (segmentClientRef.current === segmentClient) segmentClientRef.current = null;
     }
   };
 
@@ -167,14 +175,14 @@ export default function RemoveBackgroundTool() {
       {!file ? (
         <FileDrop
           accept="video/*"
-          label="Choose a video or drag it here"
-          hint="Removes video background locally using AI. Transparent WebM or custom background MP4."
+          label={t('Choose a video or drag it here')}
+          hint={t('Removes video background locally using AI. Transparent WebM or custom background MP4.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {error && <div className="error-banner">{error}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {error && <div className="error-banner">{t(error)}</div>}
 
           {status === 'done' && resultBlob ? (
             <ResultPanel
@@ -188,7 +196,7 @@ export default function RemoveBackgroundTool() {
               {outputFormat === 'webm' && resultUrl && (
                 <div style={{ marginTop: '1.25rem' }}>
                   <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.5rem', fontWeight: 600 }}>
-                    Transparent Output (Checkerboard Preview)
+                    {t('Transparent Output (Checkerboard Preview)')}
                   </div>
                   <div className={styles.checkerboardPreview}>
                     <video controls src={resultUrl} playsInline />
@@ -200,18 +208,18 @@ export default function RemoveBackgroundTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name:')} <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {videoMeta && (
                   <>
                     <span className="meta-chip">
-                      Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
+                      {t('Duration:')} <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution:{' '}
+                      {t('Resolution:')}{' '}
                       <strong>
                         {videoMeta.width}x{videoMeta.height}
                       </strong>
@@ -222,30 +230,40 @@ export default function RemoveBackgroundTool() {
 
               {status === 'running' ? (
                 <div className={styles.progressContainer}>
-                  <ProgressBar value={progress} label={progressLabel || 'Processing video...'} />
+                  <ProgressBar
+                    value={progress}
+                    label={
+                      progressMessage
+                        ? `${t(progressMessage.key, progressMessage.params)}${progressMessage.eta ? t(' (ETA: {duration})', { duration: progressMessage.eta }) : ''}`
+                        : t('Processing video...')
+                    }
+                  />
                   <div className={styles.cancelRow}>
                     <Button variant="secondary" onClick={handleCancel}>
-                      Cancel processing
+                      {t('Cancel processing')}
                     </Button>
                   </div>
                 </div>
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
-                  <Field label="Output format" hint="WebM preserves transparency. MP4 places the cutout on solid color or green screen.">
+                  <Field
+                    label={t('Output format')}
+                    hint={t('WebM preserves transparency. MP4 places the cutout on solid color or green screen.')}
+                  >
                     <Select
                       id={formatId}
                       value={outputFormat}
                       onChange={(e) => setOutputFormat(e.target.value as OutputFormat)}
                       options={[
-                        { value: 'webm', label: 'WebM with transparency (VP8 alpha)' },
-                        { value: 'solid', label: 'MP4 on solid color' },
-                        { value: 'greenscreen', label: 'MP4 on green screen' },
+                        { value: 'webm', label: t('WebM with transparency (VP8 alpha)') },
+                        { value: 'solid', label: t('MP4 on solid color') },
+                        { value: 'greenscreen', label: t('MP4 on green screen') },
                       ]}
                     />
                   </Field>
 
                   {outputFormat === 'solid' && (
-                    <Field label="Background color" hint="Pick a solid background color for the subject.">
+                    <Field label={t('Background color')} hint={t('Pick a solid background color for the subject.')}>
                       <div className={styles.colorPickerRow}>
                         <input
                           type="color"
@@ -264,39 +282,39 @@ export default function RemoveBackgroundTool() {
                     </Field>
                   )}
 
-                  <Field label="Framerate (fps)" hint="Lower framerate processes faster. Capped at 30 fps.">
+                  <Field label={t('Framerate (fps)')} hint={t('Lower framerate processes faster. Capped at 30 fps.')}>
                     <Select
                       id={fpsId}
                       value={fps}
                       onChange={(e) => setFps(e.target.value as FpsOption)}
                       options={[
-                        { value: '30', label: 'Original (capped at 30 fps)' },
-                        { value: '24', label: '24 fps (Cinematic)' },
-                        { value: '15', label: '15 fps (Fastest)' },
+                        { value: '30', label: t('Original (capped at 30 fps)') },
+                        { value: '24', label: t('24 fps (Cinematic)') },
+                        { value: '15', label: t('15 fps (Fastest)') },
                       ]}
                     />
                   </Field>
 
-                  <Field label="Max processing resolution" hint="Recommended 720p for fast AI segmentation.">
+                  <Field label={t('Max processing resolution')} hint={t('Recommended 720p for fast AI segmentation.')}>
                     <Select
                       id={resolutionId}
                       value={resolution}
                       onChange={(e) => setResolution(e.target.value as VideoMaxResolution)}
                       options={[
-                        { value: '720p', label: '720p (HD - recommended)' },
-                        { value: '480p', label: '480p (SD - fast)' },
-                        { value: '1080p', label: '1080p (Full HD)' },
-                        { value: 'original', label: 'Original resolution' },
+                        { value: '720p', label: t('720p (HD - recommended)') },
+                        { value: '480p', label: t('480p (SD - fast)') },
+                        { value: '1080p', label: t('1080p (Full HD)') },
+                        { value: 'original', label: t('Original resolution') },
                       ]}
                     />
                   </Field>
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different file
+                      {t('Choose different file')}
                     </Button>
                     <Button variant="primary" onClick={handleProcess}>
-                      Remove background
+                      {t('Remove background')}
                     </Button>
                   </div>
                 </div>

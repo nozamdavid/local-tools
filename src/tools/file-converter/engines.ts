@@ -1,12 +1,16 @@
 import type { DetectedFormat } from './detect';
 import type { TargetFormat } from './matrix';
 import type { BatchResultItem } from '../../components/BatchResults';
-import { runFFmpeg } from '../../lib/ffmpeg';
+import { runFFmpeg, runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
+import { convertTransparentWebm } from '../../lib/transparentWebm';
+import { withMediabunnyFallback, type MediabunnyOutput } from '../../lib/mediabunny';
+import { readZipEntry } from '../../lib/zip';
 import { decodeImage, loadImage, imageToCanvas, canvasToBlob, encodeBmp, encodeGif, encodeIco } from '../../lib/image';
 import { encodeJxlCanvas } from '../../lib/jxl';
 import { loadPdfDocument, renderPdfPageToBlob } from '../image/_pdf/pdfRenderer';
 import { renderDocxToImages } from '../image/_pdf/docxRenderer';
 import { convertOfficeDocument } from './office';
+import { csvToRecords, detectDelimiter, jsonToCsv, parseCsv, serializeCsv } from '../_tabular/csv';
 
 export interface ConvertOptions {
   file: File;
@@ -145,8 +149,14 @@ async function extractPptxText(file: File): Promise<string> {
   if (!presentationFile || !relationshipsFile) throw new Error('Invalid PPTX presentation.');
 
   const parser = new DOMParser();
-  const presentation = parser.parseFromString(await presentationFile.async('text'), 'application/xml');
-  const relationships = parser.parseFromString(await relationshipsFile.async('text'), 'application/xml');
+  let remainingXmlBytes = 128 * 1024 * 1024;
+  const readXml = async (entry: typeof presentationFile) => {
+    const bytes = await readZipEntry(entry, remainingXmlBytes, 'The presentation exceeds the 128 MB expanded XML limit.');
+    remainingXmlBytes -= bytes.byteLength;
+    return parser.parseFromString(new TextDecoder().decode(bytes), 'application/xml');
+  };
+  const presentation = await readXml(presentationFile);
+  const relationships = await readXml(relationshipsFile);
   if (presentation.querySelector('parsererror') || relationships.querySelector('parsererror')) {
     throw new Error('Could not read the presentation slide order.');
   }
@@ -181,8 +191,9 @@ async function extractPptxText(file: File): Promise<string> {
   const slideText: string[] = [];
   for (let index = 0; index < slidePaths.length; index++) {
     const slideFile = zip.file(slidePaths[index]);
-    if (!slideFile) continue;
-    const slide = parser.parseFromString(await slideFile.async('text'), 'application/xml');
+    if (!slideFile) throw new Error(`The presentation is missing slide ${index + 1}.`);
+    const slide = await readXml(slideFile);
+    if (slide.querySelector('parsererror')) throw new Error(`Could not read slide ${index + 1}.`);
     const paragraphs = Array.from(slide.getElementsByTagNameNS('*', 'p'));
     const lines = paragraphs.map((paragraph) =>
       Array.from(paragraph.getElementsByTagNameNS('*', 't'))
@@ -401,6 +412,11 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
   // PATH 2: Video Input (or Audio Input to Audio)
   // -------------------------------------------------------------
   if (detected.family === 'video' || detected.family === 'audio') {
+    if (detected.family === 'video' && (target.family === 'video' || target.id === 'gif')) {
+      const transparent = await convertTransparentWebm(file, target.id, onProgress);
+      if (transparent) return { type: 'single', name: outName, blob: transparent };
+    }
+
     const inputExt = detected.ext || 'bin';
     const inputName = `input.${inputExt}`;
     const outputName = `output.${target.ext}`;
@@ -459,12 +475,66 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
 
     ffmpegArgs.push(outputName);
 
-    const blob = await runFFmpeg({
-      inputs: [{ name: inputName, data: file }],
-      args: ffmpegArgs,
-      output: outputName,
-      onProgress,
-    });
+    const nativeVideoOutput = ['mp4', 'webm', 'mov', 'mkv'].includes(target.id);
+    const nativeAudioOutput = ['mp3', 'm4a', 'wav'].includes(target.id);
+    let blob: Blob;
+
+    if (nativeVideoOutput || nativeAudioOutput) {
+      const output = target.id as MediabunnyOutput;
+      const isAudioOnlyOutput = nativeAudioOutput;
+      const audioCodec = nativeAudioOutput
+        ? target.id === 'mp3'
+          ? 'mp3'
+          : target.id === 'm4a'
+            ? 'aac'
+            : 'pcm-s16'
+        : target.id === 'webm'
+          ? 'opus'
+          : 'aac';
+      const videoCodec = target.id === 'webm' ? 'vp8' : 'avc';
+      const audioBitrate = Number.parseInt(bitrate, 10) * (bitrate.toLowerCase().includes('k') ? 1000 : 1);
+
+      blob = await withMediabunnyFallback(
+        {
+          input: file,
+          output,
+          ...(nativeVideoOutput
+            ? {
+                video: {
+                  codec: videoCodec,
+                  ...(target.id === 'webm' ? { bitrate: 1_000_000 } : { quality: 'high' as const }),
+                  forceTranscode: true,
+                },
+              }
+            : {}),
+          audio: {
+            codec: audioCodec,
+            ...(target.id === 'wav' ? {} : { bitrate: isAudioOnlyOutput ? audioBitrate : target.id === 'webm' ? 96_000 : 128_000 }),
+            forceTranscode: true,
+          },
+          tracks: isAudioOnlyOutput ? { video: 'none', audio: 'primary' } : { video: 'primary', audio: 'primary' },
+          requireVideo: nativeVideoOutput,
+          requireAudio: isAudioOnlyOutput,
+          allowDiscardedTrackTypes: isAudioOnlyOutput ? ['subtitle'] : [],
+          audioEncoderFallback: audioCodec === 'aac' || audioCodec === 'mp3' ? audioCodec : undefined,
+          onProgress,
+        },
+        (fallbackProgress) =>
+          runFFmpegWithinMediaJob({
+            inputs: [{ name: inputName, data: file }],
+            args: ffmpegArgs,
+            output: outputName,
+            onProgress: fallbackProgress,
+          }),
+      );
+    } else {
+      blob = await runFFmpeg({
+        inputs: [{ name: inputName, data: file }],
+        args: ffmpegArgs,
+        output: outputName,
+        onProgress,
+      });
+    }
 
     return { type: 'single', name: outName, blob };
   }
@@ -596,9 +666,10 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
       const zip = await JSZip.loadAsync(file);
       const xmlFile = zip.file('word/document.xml');
       if (!xmlFile) throw new Error('Invalid DOCX document.');
-      const xmlText = await xmlFile.async('text');
-      const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
-      const paragraphs = Array.from(doc.getElementsByTagName('w:p'));
+      const bytes = await readZipEntry(xmlFile, 128 * 1024 * 1024, 'The Word document exceeds the 128 MB expanded XML limit.');
+      const doc = new DOMParser().parseFromString(new TextDecoder().decode(bytes), 'application/xml');
+      if (doc.querySelector('parsererror')) throw new Error('Invalid DOCX document.');
+      const paragraphs = Array.from(doc.getElementsByTagNameNS('*', 'p'));
       const textLines = paragraphs.map((p) => p.textContent || '').filter((t) => t.trim().length > 0);
       return { type: 'single', name: outName, blob: new Blob([textLines.join('\n\n')], { type: 'text/plain' }) };
     }
@@ -611,56 +682,27 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
     const rawText = await file.text();
 
     if (detected.id === 'json') {
-      const parsed = JSON.parse(rawText);
       if (target.id === 'json') {
-        const pretty = JSON.stringify(parsed, null, 2);
+        const pretty = JSON.stringify(JSON.parse(rawText), null, 2);
         return { type: 'single', name: outName, blob: new Blob([pretty], { type: 'application/json' }) };
       }
       if (target.id === 'csv') {
-        const rows = Array.isArray(parsed) ? parsed : [parsed];
-        const headers = Array.from(new Set(rows.flatMap((r) => (typeof r === 'object' && r !== null ? Object.keys(r) : []))));
-        const csvRows = [headers.join(',')];
-        for (const row of rows) {
-          const values = headers.map((h) => {
-            const val = row[h] === undefined || row[h] === null ? '' : String(row[h]);
-            return `"${val.replace(/"/g, '""')}"`;
-          });
-          csvRows.push(values.join(','));
-        }
-        return { type: 'single', name: outName, blob: new Blob([csvRows.join('\n')], { type: 'text/csv' }) };
+        return { type: 'single', name: outName, blob: new Blob([jsonToCsv(JSON.parse(rawText))], { type: 'text/csv' }) };
       }
     }
 
     if (detected.id === 'csv' || detected.id === 'tsv') {
-      const fromDelim = detected.id === 'tsv' ? '\t' : ',';
+      const fromDelim = detected.id === 'tsv' ? '\t' : detectDelimiter(rawText, [',', ';']);
       const toDelim = target.id === 'tsv' ? '\t' : ',';
+      const rows = parseCsv(rawText, { delimiter: fromDelim });
 
       if (target.id === 'json') {
-        const lines = rawText.split(/\r?\n/).filter((l) => l.trim().length > 0);
-        if (lines.length === 0) {
-          return { type: 'single', name: outName, blob: new Blob(['[]'], { type: 'application/json' }) };
-        }
-        const headers = lines[0].split(fromDelim).map((h) => h.replace(/^"|"$/g, '').trim());
-        const dataRows = [];
-        for (let i = 1; i < lines.length; i++) {
-          const cells = lines[i].split(fromDelim).map((c) => c.replace(/^"|"$/g, '').trim());
-          const obj: Record<string, string> = {};
-          headers.forEach((h, idx) => {
-            obj[h] = cells[idx] ?? '';
-          });
-          dataRows.push(obj);
-        }
+        const dataRows = csvToRecords(rows);
         return { type: 'single', name: outName, blob: new Blob([JSON.stringify(dataRows, null, 2)], { type: 'application/json' }) };
       }
 
       if (target.id === 'csv' || target.id === 'tsv') {
-        const lines = rawText.split(/\r?\n/);
-        const converted = lines
-          .map((line) => {
-            const parts = line.split(fromDelim);
-            return parts.join(toDelim);
-          })
-          .join('\n');
+        const converted = serializeCsv(rows, toDelim);
         const mime = target.id === 'csv' ? 'text/csv' : 'text/tab-separated-values';
         return { type: 'single', name: outName, blob: new Blob([converted], { type: mime }) };
       }
@@ -677,16 +719,16 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
       const textWidth = pageWidth - margin * 2;
       const lineHeight = fontSize * 1.4;
 
-      const lines = rawText.split(/\r?\n/);
+      const lines = rawText.replace(/\t/g, '    ').split(/\r\n|\r|\n/);
       let page = pdfDoc.addPage([pageWidth, pageHeight]);
       let y = pageHeight - margin;
 
-      for (const line of lines) {
+      const drawLine = (line: string) => {
         if (y < margin + lineHeight) {
           page = pdfDoc.addPage([pageWidth, pageHeight]);
           y = pageHeight - margin;
         }
-        page.drawText(line.slice(0, Math.floor(textWidth / (fontSize * 0.5))), {
+        page.drawText(line, {
           x: margin,
           y,
           size: fontSize,
@@ -694,6 +736,27 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
           color: rgb(0.1, 0.1, 0.1),
         });
         y -= lineHeight;
+      };
+
+      const glyphWidths = new Map<string, number>();
+      for (const line of lines) {
+        let segment = '';
+        let segmentWidth = 0;
+        for (const glyph of line) {
+          let width = glyphWidths.get(glyph);
+          if (width === undefined) {
+            width = font.widthOfTextAtSize(glyph, fontSize);
+            glyphWidths.set(glyph, width);
+          }
+          if (segmentWidth + width > textWidth) {
+            drawLine(segment);
+            segment = '';
+            segmentWidth = 0;
+          }
+          segment += glyph;
+          segmentWidth += width;
+        }
+        drawLine(segment);
       }
 
       const pdfBytes = await pdfDoc.save();

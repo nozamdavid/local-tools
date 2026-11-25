@@ -6,6 +6,7 @@ import { Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
+import { useI18n } from '../../../lib/i18n';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { loadPdfDocument } from '../../image/_pdf/pdfRenderer';
 import { baseName } from '../_pages/pdfPages';
@@ -21,8 +22,6 @@ const METHOD_LABELS: Record<Method, string> = {
   render: 'Pages rendered and rebuilt (pdf.js)',
 };
 
-const LOCKED_MESSAGE = 'This PDF is password protected. Remove the password with the Unlock PDF tool first.';
-
 /** Opens the bytes with pdf.js and returns the page count; throws if no page can be read. */
 async function countReadablePages(bytes: Uint8Array): Promise<number> {
   const doc = await loadPdfDocument(new Blob([bytes as BlobPart]));
@@ -36,6 +35,7 @@ async function countReadablePages(bytes: Uint8Array): Promise<number> {
 }
 
 export default function RepairPdfTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-repair');
   const [file, setFile] = useState<File | null>(null);
   const [method, setMethod] = useState<Method>('qpdf');
@@ -71,7 +71,8 @@ export default function RepairPdfTool() {
           setPageCount(pages);
           return new Blob([output as BlobPart], { type: 'application/pdf' });
         } catch (err) {
-          if (err instanceof QpdfError && err.badPassword) throw new Error(LOCKED_MESSAGE, { cause: err });
+          if (err instanceof QpdfError && err.badPassword)
+            throw new Error(t('This PDF is password protected. Remove the password with the Unlock PDF tool first.'), { cause: err });
           // try the next method
         }
       }
@@ -81,10 +82,14 @@ export default function RepairPdfTool() {
       try {
         doc = await loadPdfDocument(source);
       } catch (err) {
-        if (err instanceof Error && err.name === 'PasswordException') throw new Error(LOCKED_MESSAGE, { cause: err });
-        throw new Error(`This PDF is too damaged to repair: ${err instanceof Error ? err.message : 'no pages could be read.'}`, {
-          cause: err,
-        });
+        if (err instanceof Error && err.name === 'PasswordException')
+          throw new Error(t('This PDF is password protected. Remove the password with the Unlock PDF tool first.'), { cause: err });
+        throw new Error(
+          t('This PDF is too damaged to repair: {detail}', { detail: err instanceof Error ? err.message : t('no pages could be read.') }),
+          {
+            cause: err,
+          },
+        );
       }
 
       try {
@@ -107,20 +112,21 @@ export default function RepairPdfTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a damaged PDF or drag it here"
+          label={t('Choose a damaged PDF or drag it here')}
           onFiles={(files) => setFile(files[0] ?? null)}
         />
       ) : job.status === 'done' && job.result ? (
         <div>
           <div className="meta-chips">
             <span className="meta-chip">
-              Method: <strong>{METHOD_LABELS[method]}</strong>
+              {t('Method:')} <strong>{t(METHOD_LABELS[method])}</strong>
             </span>
           </div>
           {method === 'render' && (
             <div className="error-banner" role="note">
-              qpdf could not rebuild this file, so each page was rendered as an image. The pages look the same, but text can no longer be
-              selected or searched.
+              {t(
+                'qpdf could not rebuild this file, so each page was rendered as an image. The pages look the same, but text can no longer be selected or searched.',
+              )}
             </div>
           )}
           <PdfPreview
@@ -133,31 +139,32 @@ export default function RepairPdfTool() {
         </div>
       ) : (
         <div>
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           <div className="meta-chips">
             <span className="meta-chip" title={file.name}>
-              File: <strong>{file.name}</strong>
+              {t('File:')} <strong>{file.name}</strong>
             </span>
             <span className="meta-chip">
-              Size: <strong>{formatBytes(file.size)}</strong>
+              {t('Size:')} <strong>{formatBytes(file.size)}</strong>
             </span>
           </div>
 
           <p className="field-hint">
-            The tool first rewrites the file structure and keeps text and images intact. If that fails, it renders each readable page as an
-            image and builds a new PDF.
+            {t(
+              'The tool first rewrites the file structure and keeps text and images intact. If that fails, it renders each readable page as an image and builds a new PDF.',
+            )}
           </p>
 
           {job.status === 'running' ? (
-            <ProgressBar value={job.progress} label="Repairing…" />
+            <ProgressBar value={job.progress} label={t('Repairing…')} />
           ) : (
             <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
               <Button variant="secondary" onClick={reset}>
-                Choose a different file
+                {t('Choose a different file')}
               </Button>
               <Button variant="primary" onClick={run}>
-                Repair PDF
+                {t('Repair PDF')}
               </Button>
             </div>
           )}

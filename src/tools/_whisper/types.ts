@@ -62,6 +62,10 @@ export interface SubtitleCue {
   start: number; // in seconds
   end: number; // in seconds
   text: string;
+  /** Source cue identifier, retained when importing SRT or WebVTT. */
+  sourceId?: string;
+  /** WebVTT cue settings, retained when exporting as WebVTT. */
+  settings?: string;
 }
 
 export type TranscriptionPhase = 'idle' | 'extracting' | 'downloading' | 'transcribing' | 'burning' | 'done';

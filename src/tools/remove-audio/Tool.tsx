@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { ProgressBar } from '../../components/ProgressBar';
@@ -7,9 +7,12 @@ import { Button } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { getVideoMeta, type VideoMeta } from '../../lib/media';
 import { formatBytes, formatDuration, withSuffix } from '../../lib/format';
-import { runFFmpeg } from '../../lib/ffmpeg';
+import { runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
+import { withMediabunnyFallback, type MediabunnyOutput } from '../../lib/mediabunny';
 import { useJob } from '../../lib/useJob';
 import { useObjectUrl } from '../../lib/useObjectUrl';
+import { useI18n } from '../../lib/i18n';
+import { SourcePreview } from '../../components/SourcePreview';
 
 const KEEP_EXTS = ['mp4', 'mov', 'mkv', 'webm'];
 
@@ -20,10 +23,12 @@ function plan(filename: string): { ext: string; copy: boolean } {
 }
 
 export default function RemoveAudioTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('remove-audio');
   const [file, setFile] = useState<File | null>(null);
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
   const [metaError, setMetaError] = useState<string | null>(null);
+  const metadataRequestRef = useRef(0);
 
   const job = useJob();
   const originalUrl = useObjectUrl(file);
@@ -31,6 +36,7 @@ export default function RemoveAudioTool() {
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
+    const requestId = ++metadataRequestRef.current;
     setFile(selected);
     setMetaError(null);
     setVideoMeta(null);
@@ -38,13 +44,16 @@ export default function RemoveAudioTool() {
 
     try {
       const vMeta = await getVideoMeta(selected);
+      if (requestId !== metadataRequestRef.current) return;
       setVideoMeta(vMeta);
     } catch {
+      if (requestId !== metadataRequestRef.current) return;
       setMetaError('Could not read video metadata, but you can still attempt removal.');
     }
   };
 
   const handleReset = () => {
+    metadataRequestRef.current += 1;
     setFile(null);
     setVideoMeta(null);
     setMetaError(null);
@@ -84,12 +93,26 @@ export default function RemoveAudioTool() {
             outputName,
           ];
 
-      return await runFFmpeg({
-        inputs: [{ name: inputName, data: file }],
-        args,
-        output: outputName,
-        onProgress: setProgress,
-      });
+      const nativeVideo = copy ? undefined : { codec: 'avc' as const, quality: 'high' as const, forceTranscode: true };
+
+      return withMediabunnyFallback(
+        {
+          input: file,
+          output: ext as MediabunnyOutput,
+          ...(copy ? { copy: { mode: 'forced' as const } } : { video: nativeVideo }),
+          tracks: { video: 'primary', audio: 'none' },
+          requireVideo: true,
+          allowDiscardedTrackTypes: ['audio', 'subtitle'],
+          onProgress: setProgress,
+        },
+        (onProgress) =>
+          runFFmpegWithinMediaJob({
+            inputs: [{ name: inputName, data: file }],
+            args,
+            output: outputName,
+            onProgress,
+          }),
+      );
     });
   };
 
@@ -98,14 +121,14 @@ export default function RemoveAudioTool() {
       {!file ? (
         <FileDrop
           accept="video/*"
-          label="Choose a video or drag it here"
-          hint="Supports MP4, MOV, WebM, MKV, AVI and more."
+          label={t('Choose a video or drag it here')}
+          hint={t('Supports MP4, MOV, WebM, MKV, AVI and more.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result ? (
             <ResultPanel
@@ -120,18 +143,18 @@ export default function RemoveAudioTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name:')} <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {videoMeta && (
                   <>
                     <span className="meta-chip">
-                      Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
+                      {t('Duration:')} <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution:{' '}
+                      {t('Resolution:')}{' '}
                       <strong>
                         {videoMeta.width}x{videoMeta.height}
                       </strong>
@@ -140,15 +163,17 @@ export default function RemoveAudioTool() {
                 )}
               </div>
 
+              <SourcePreview file={file} note="Source preview only. Audio removal is applied during export." />
+
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Removing audio..." />
+                <ProgressBar value={job.progress} label={t('Removing audio...')} />
               ) : (
                 <div className="action-buttons" style={{ marginTop: '2rem' }}>
                   <Button variant="secondary" onClick={handleReset}>
-                    Choose different file
+                    {t('Choose different file')}
                   </Button>
                   <Button variant="primary" onClick={handleRemove}>
-                    Remove audio
+                    {t('Remove audio')}
                   </Button>
                 </div>
               )}

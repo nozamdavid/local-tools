@@ -15,6 +15,7 @@ import type { Worker as TesseractWorker, Word, Line } from 'tesseract.js';
 import workerPath from 'tesseract.js/dist/worker.min.js?url';
 import coreSimd from 'tesseract.js-core/tesseract-core-simd-lstm.wasm.js?url';
 import corePlain from 'tesseract.js-core/tesseract-core-lstm.wasm.js?url';
+import { translate } from '../../../lib/i18n';
 
 export interface OcrLanguage {
   value: string;
@@ -110,7 +111,7 @@ export async function renderPageForOcr(doc: PDFDocumentProxy, pageNumber: number
   canvas.width = 0;
   canvas.height = 0;
   page.cleanup();
-  if (!blob) throw new Error(`Failed to render page ${pageNumber}.`);
+  if (!blob) throw new Error(translate('Failed to render page {page}.', { page: pageNumber }));
 
   return { blob, viewport };
 }

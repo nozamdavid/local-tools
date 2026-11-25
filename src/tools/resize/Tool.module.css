@@ -45,3 +45,45 @@
   font-weight: 700;
   color: var(--accent);
 }
+
+.livePreview {
+  display: grid;
+  justify-items: start;
+  gap: 0.5rem;
+  margin-top: 1.5rem;
+}
+
+.previewHeader {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+  width: 100%;
+  color: var(--text);
+}
+
+.previewHeader span {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.targetFrame {
+  overflow: hidden;
+  background: #000;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+.targetVideo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #000;
+}
+
+.previewNote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+}

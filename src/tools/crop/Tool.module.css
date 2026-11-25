@@ -7,13 +7,32 @@
   position: relative;
   display: inline-block;
   max-width: 100%;
+  background: #000;
   line-height: 0;
   user-select: none;
   touch-action: none;
+  vertical-align: top;
 }
 
-.stage video {
+.cropVideo {
+  position: absolute;
+  inset: 0;
   display: block;
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  background: #000;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.fallbackVideo {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: min(65vh, 640px);
+  background: #000;
   pointer-events: none;
 }
 
@@ -21,11 +40,24 @@
   position: absolute;
   box-sizing: border-box;
   border: 2px solid var(--accent);
-  background-color: rgba(192, 38, 211, 0.15);
+  background-color: color-mix(in srgb, var(--accent) 16%, transparent);
   box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.55);
   cursor: move;
   z-index: 10;
   touch-action: none;
+}
+
+.cropBox:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.drawing {
+  cursor: crosshair;
+}
+
+.drawBox {
+  cursor: crosshair;
 }
 
 .gridOverlay {
@@ -33,45 +65,120 @@
   inset: 0;
   pointer-events: none;
   background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.25) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.25) 1px, transparent 1px);
-  background-size: 33.333% 33.333%;
+    linear-gradient(
+      to right,
+      transparent 33.15%,
+      rgba(255, 255, 255, 0.38) 33.33%,
+      transparent 33.52%,
+      transparent 66.48%,
+      rgba(255, 255, 255, 0.38) 66.67%,
+      transparent 66.85%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 33.15%,
+      rgba(255, 255, 255, 0.38) 33.33%,
+      transparent 33.52%,
+      transparent 66.48%,
+      rgba(255, 255, 255, 0.38) 66.67%,
+      transparent 66.85%
+    );
 }
 
 .handle {
   position: absolute;
-  width: 14px;
-  height: 14px;
-  background-color: #ffffff;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  background-color: var(--surface);
   border: 2px solid var(--accent);
-  border-radius: 50%;
+  border-radius: var(--radius-full);
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
   touch-action: none;
   z-index: 20;
 }
 
+.handle:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .handleNW {
-  top: -7px;
-  left: -7px;
+  top: -11px;
+  left: -11px;
   cursor: nwse-resize;
+}
+
+.handleN {
+  top: -11px;
+  left: calc(50% - 11px);
+  cursor: ns-resize;
 }
 
 .handleNE {
-  top: -7px;
-  right: -7px;
+  top: -11px;
+  right: -11px;
   cursor: nesw-resize;
+}
+
+.handleE {
+  top: calc(50% - 11px);
+  right: -11px;
+  cursor: ew-resize;
 }
 
 .handleSE {
-  bottom: -7px;
-  right: -7px;
+  bottom: -11px;
+  right: -11px;
   cursor: nwse-resize;
 }
 
+.handleS {
+  bottom: -11px;
+  left: calc(50% - 11px);
+  cursor: ns-resize;
+}
+
 .handleSW {
-  bottom: -7px;
-  left: -7px;
+  bottom: -11px;
+  left: -11px;
   cursor: nesw-resize;
+}
+
+.handleW {
+  top: calc(50% - 11px);
+  left: -11px;
+  cursor: ew-resize;
+}
+
+.previewControls {
+  display: grid;
+  grid-template-columns: auto minmax(80px, 1fr) auto;
+  gap: 0.75rem;
+  align-items: center;
+  width: min(100%, 960px);
+  margin-top: 0.75rem;
+  margin-inline: auto;
+}
+
+.seekInput {
+  width: 100%;
+  min-width: 0;
+  accent-color: var(--accent);
+}
+
+.previewTime {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: var(--text-sm);
+  white-space: nowrap;
+}
+
+.cropActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin: 1rem 0 0.5rem;
 }
 
 .inputsGrid {
@@ -84,6 +191,15 @@
 @media (max-width: 600px) {
   .inputsGrid {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .previewControls {
+    grid-template-columns: auto minmax(60px, 1fr);
+  }
+
+  .previewTime {
+    grid-column: 1 / -1;
+    justify-self: end;
   }
 }
 

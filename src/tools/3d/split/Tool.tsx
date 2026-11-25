@@ -3,6 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Select, Alert, Badge } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { downloadBlob } from '../../../lib/download';
 import { zipFiles } from '../../../lib/zip';
 import {
@@ -13,6 +14,7 @@ import {
   ACCEPT_MESH_EXTENSIONS,
   ALL_MESH_FORMATS,
   stripMeshExtension,
+  translate3DMessage,
   type MeshFormat,
   type MeshModel,
 } from '../_ui';
@@ -21,9 +23,10 @@ import { Split, Download, Archive, Eye, XCircle } from 'lucide-react';
 import styles from '../_ui/Workbench.module.css';
 
 export default function SplitTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('three-split');
-  const title = meta.title !== 'three-split' ? meta.title : '3D Mesh Component Splitter';
-  const description = meta.description || 'Decompose multi-part 3D models into separate disconnected component files or a ZIP archive.';
+  const title = meta.title !== 'three-split' ? meta.title : t('3D Mesh Component Splitter');
+  const description = meta.description || t('Decompose multi-part 3D models into separate disconnected component files or a ZIP archive.');
 
   const {
     file,
@@ -146,24 +149,24 @@ export default function SplitTool() {
             <FileDrop
               accept={ACCEPT_MESH_EXTENSIONS}
               multiple={false}
-              label="Drop a 3D model or CAD file to split (.stl, .obj, .ply, .3mf, .step, .stp, .iges, .igs, .brep)"
-              hint="Detect disconnected shells and export each piece as separate files or a ZIP archive. CAD files are tessellated locally to meshes upon import."
+              label={t('Choose a model or CAD file')}
+              hint={t('Separate disconnected parts into files or a ZIP. CAD files are converted to meshes first.')}
               onFiles={loadFiles}
             />
             {loading && (
               <div style={{ textAlign: 'center', padding: 'var(--space-6)' }}>
                 <span className="spinner" aria-hidden="true" />
-                <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-muted)' }}>Loading 3D model...</p>
+                <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-muted)' }}>{t('Loading 3D model...')}</p>
                 <div style={{ marginTop: 'var(--space-2)' }}>
                   <Button variant="ghost" size="sm" onClick={cancelProcessing}>
-                    Cancel import
+                    {t('Cancel import')}
                   </Button>
                 </div>
               </div>
             )}
             {importError && (
-              <Alert tone="danger" title="Could not open model">
-                {importError}
+              <Alert tone="danger" title={t('Could not open model')}>
+                {translate3DMessage(importError, t)}
               </Alert>
             )}
           </>
@@ -180,8 +183,8 @@ export default function SplitTool() {
             <WorkbenchWarnings warnings={currentModel?.warnings} />
 
             {processError && (
-              <Alert tone="danger" title="Split Error">
-                {processError}
+              <Alert tone="danger" title={t('Split Error')}>
+                {translate3DMessage(processError, t)}
               </Alert>
             )}
 
@@ -190,8 +193,11 @@ export default function SplitTool() {
                 <MeshViewer model={currentModel} />
                 {components.length > 0 && (
                   <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textAlign: 'center' }}>
-                    Viewing component {selectedCompIdx + 1} of {components.length} (
-                    {currentModel?.indices.length ? currentModel.indices.length / 3 : 0} triangles)
+                    {t('Viewing component {current} of {total} ({triangles} triangles)', {
+                      current: selectedCompIdx + 1,
+                      total: components.length,
+                      triangles: currentModel?.indices.length ? currentModel.indices.length / 3 : 0,
+                    })}
                   </div>
                 )}
               </div>
@@ -199,12 +205,12 @@ export default function SplitTool() {
               <div className={styles.controlsCol}>
                 <div className={styles.card}>
                   <h3 className={styles.cardTitle}>
-                    <span>Split Components</span>
+                    <span>{t('Split Components')}</span>
                     <Badge tone={components.length > 0 ? 'success' : 'neutral'}>
-                      {components.length > 0 ? `${components.length} Shells Found` : 'Ready to Split'}
+                      {components.length > 0 ? t('{count} Shells Found', { count: components.length }) : t('Ready to Split')}
                     </Badge>
                   </h3>
-                  <p className={styles.cardSub}>Decomposes the mesh into geometrically independent non-connected surface shells.</p>
+                  <p className={styles.cardSub}>{t('Decomposes the mesh into geometrically independent non-connected surface shells.')}</p>
 
                   <div className={styles.actionRow}>
                     <Button
@@ -216,11 +222,11 @@ export default function SplitTool() {
                       onClick={handleSplit}
                       style={{ flex: 1 }}
                     >
-                      {processing ? 'Splitting...' : 'Detect & Split Shells'}
+                      {processing ? t('Splitting...') : t('Detect & Split Shells')}
                     </Button>
                     {processing && (
                       <Button variant="danger" size="lg" icon={<XCircle size={16} />} onClick={cancelProcessing}>
-                        Cancel
+                        {t('Cancel')}
                       </Button>
                     )}
                   </div>
@@ -230,7 +236,7 @@ export default function SplitTool() {
                 {components.length > 0 && (
                   <div className={styles.card}>
                     <h3 className={styles.cardTitle}>
-                      <span>Export Format</span>
+                      <span>{t('Export Format')}</span>
                     </h3>
                     <div className="field">
                       <Select
@@ -250,7 +256,7 @@ export default function SplitTool() {
                         onClick={handleDownloadAllZip}
                         style={{ width: '100%' }}
                       >
-                        Download All ({components.length} parts) as ZIP
+                        {t('Download All ({count} parts) as ZIP', { count: components.length })}
                       </Button>
                     </div>
                   </div>
@@ -260,7 +266,7 @@ export default function SplitTool() {
                 {components.length > 0 && (
                   <div className={styles.card}>
                     <h3 className={styles.cardTitle}>
-                      <span>Disconnected Parts ({components.length})</span>
+                      <span>{t('Disconnected Parts ({count})', { count: components.length })}</span>
                     </h3>
                     <div className={styles.multiFileList}>
                       {components.map((comp, idx) => {
@@ -278,9 +284,12 @@ export default function SplitTool() {
                             }}
                           >
                             <div>
-                              <span className={styles.multiFileItemName}>Part {idx + 1}</span>
+                              <span className={styles.multiFileItemName}>{t('Part {number}', { number: idx + 1 })}</span>
                               <span className={styles.multiFileItemMeta}>
-                                {cTri.toLocaleString()} triangles • {cVert.toLocaleString()} vertices
+                                {t('{triangles} triangles • {vertices} vertices', {
+                                  triangles: cTri.toLocaleString(),
+                                  vertices: cVert.toLocaleString(),
+                                })}
                               </span>
                             </div>
                             <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
@@ -290,7 +299,7 @@ export default function SplitTool() {
                                 icon={<Eye size={13} />}
                                 onClick={() => handleSelectComponent(idx)}
                               >
-                                {isSelected ? 'Viewing' : 'View'}
+                                {isSelected ? t('Viewing') : t('View')}
                               </Button>
                               <Button
                                 variant="secondary"

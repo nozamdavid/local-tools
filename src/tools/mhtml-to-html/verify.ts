@@ -64,6 +64,7 @@ export async function runVerification(): Promise<void> {
     '</head>',
     '<body>',
     '  <h1 onclick="alert(1)">Title</h1>',
+    '  <p>Literal ------=_Synthetic_Part_9876 text</p>',
     '  <img src="cid:cat-image@local" alt="cat">',
     '  <img src="http://localhost:5300/archived-banner.png" alt="banner">',
     '  <img srcset="http://localhost:5300/canary-srcset.png 2x" alt="srcset-canary">',
@@ -99,6 +100,9 @@ export async function runVerification(): Promise<void> {
   const parsed = parseMhtml(syntheticMhtml);
   if (parsed.parts.length !== 4) {
     throw new Error(`Expected 4 parts in MHTML, got ${parsed.parts.length}`);
+  }
+  if (!parsed.rootHtml.includes('Literal ------=_Synthetic_Part_9876 text')) {
+    throw new Error('A boundary token inside HTML content was treated as a MIME delimiter.');
   }
   console.log(`✓ MHTML parsed ${parsed.parts.length} parts successfully.`);
 

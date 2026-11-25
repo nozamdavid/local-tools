@@ -3,7 +3,9 @@ import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { Button } from '../../components/Controls';
 import { getToolMeta } from '../registry';
+import { useI18n } from '../../lib/i18n';
 import { downloadBlob } from '../../lib/download';
+import { escapeStyleTagBreakout, sanitizeSampleHtml } from '../../lib/inertMarkup';
 import styles from './Tool.module.css';
 
 const DEFAULT_CSS = `/* Sample CSS - Edit live below */
@@ -140,58 +142,23 @@ export const HTML_PRESETS: Record<string, { label: string; html: string }> = {
   },
 };
 
-/**
- * Robustly neutralizes closing style tag variants in user CSS to prevent rawtext HTML breakout.
- * Handles </style>, </style >, </style\t>, </style\n>, </style/x>, and </style attr="foo">.
- * Turning </style into <\/style keeps the HTML parser inside RAWTEXT mode, while CSS parsers
- * treat \/ as an escaped forward slash character.
- */
-export function escapeStyleTagBreakout(css: string): string {
-  return css.replace(/<\s*\/\s*style\b/gi, '<\\/style');
-}
-
-/**
- * Strips active scripts, meta-refresh, base elements, forms, frames, and outbound link navigation
- * from editable sample HTML to prevent privacy leaks and unintended redirects.
- */
-export function sanitizeSampleHtml(html: string): string {
-  let clean = html;
-
-  // 1. Strip script elements
-  clean = clean.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
-  clean = clean.replace(/<script\b[^>]*\/>/gi, '');
-
-  // 2. Strip base and meta refresh
-  clean = clean.replace(/<base\b[^>]*>/gi, '');
-  clean = clean.replace(/<meta\b[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*>/gi, '');
-
-  // 3. Strip forms and frame/embedded elements
-  clean = clean.replace(
-    /<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet|form)>/gis,
-    '',
-  );
-  clean = clean.replace(/<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*\/?>/gi, '');
-
-  // 4. Strip inline event handlers
-  clean = clean.replace(/\s+on[a-zA-Z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
-
-  // 5. Neutralize outbound navigation on links (preserve local hash anchors)
-  clean = clean.replace(/<a\b([^>]*)>/gi, (match, attrs) => {
-    const hrefMatch = attrs.match(/\bhref\s*=\s*(["'])(.*?)\1/i);
-    const href = hrefMatch ? hrefMatch[2] : '';
-    if (href.startsWith('#')) {
-      return match.replace(/\starget\s*=\s*(["']).*?\1/gi, '');
-    }
-    return match.replace(/\bhref\s*=\s*(["']).*?\1/gi, 'href="#"').replace(/\starget\s*=\s*(["']).*?\1/gi, '');
-  });
-
-  return clean;
-}
-
 export default function CssViewerTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('css-viewer');
-  const title = meta.title !== 'css-viewer' ? meta.title : 'CSS Viewer';
-  const description = meta.description || 'View, live edit, inspect, and test CSS stylesheets securely in a sandboxed preview.';
+  const title = meta.title !== 'css-viewer' ? meta.title : t('CSS Viewer');
+  const description = meta.description || t('View, live edit, inspect, and test CSS stylesheets securely in a sandboxed preview.');
+
+  const diagnosticText = (message: string) => {
+    const braceMatch = message.match(/^Mismatched braces detected: (\d+) opening '\{' vs (\d+) closing '\}'.$/);
+    if (braceMatch)
+      return t('Mismatched braces detected: {open} opening braces vs {close} closing braces.', {
+        open: braceMatch[1],
+        close: braceMatch[2],
+      });
+    if (message.startsWith('Parser diagnostic: '))
+      return t('Parser diagnostic: {message}', { message: message.slice('Parser diagnostic: '.length) });
+    return t(message);
+  };
 
   const [cssCode, setCssCode] = useState<string>(DEFAULT_CSS);
   const [selectedPreset, setSelectedPreset] = useState<string>('card');
@@ -335,44 +302,44 @@ ${safeHtml}
         <FileDrop
           accept=".css,text/css"
           multiple={false}
-          label="Drop CSS file here or edit code below"
-          hint="CSS is rendered inside an isolated, sandboxed iframe. Nothing leaves your browser."
+          label={t('Drop CSS file here or edit code below')}
+          hint={t('CSS is rendered inside an isolated, sandboxed iframe. Nothing leaves your browser.')}
           onFiles={handleFileUpload}
         />
 
         {/* Top Controls Bar */}
         <div className={styles.topBar}>
           <div className={styles.deviceControls}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginRight: '0.25rem' }}>Viewport:</span>
+            <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginRight: '0.25rem' }}>{t('Viewport:')}</span>
             <button
               type="button"
               className={`${styles.deviceBtn} ${deviceWidth === 'desktop' ? styles.deviceBtnActive : ''}`}
               onClick={() => setDeviceWidth('desktop')}
             >
-              🖥️ Desktop (100%)
+              🖥️ {t('Desktop (100%)')}
             </button>
             <button
               type="button"
               className={`${styles.deviceBtn} ${deviceWidth === 'tablet' ? styles.deviceBtnActive : ''}`}
               onClick={() => setDeviceWidth('tablet')}
             >
-              📱 Tablet (768px)
+              📱 {t('Tablet (768px)')}
             </button>
             <button
               type="button"
               className={`${styles.deviceBtn} ${deviceWidth === 'mobile' ? styles.deviceBtnActive : ''}`}
               onClick={() => setDeviceWidth('mobile')}
             >
-              📱 Mobile (375px)
+              📱 {t('Mobile (375px)')}
             </button>
           </div>
 
           <div className={styles.actionBtns}>
             <Button variant="secondary" onClick={handleCopy}>
-              {copied ? '✓ Copied' : 'Copy CSS'}
+              {copied ? `✓ ${t('Copied')}` : t('Copy CSS')}
             </Button>
             <Button variant="primary" onClick={handleDownload}>
-              Download CSS
+              {t('Download CSS')}
             </Button>
           </div>
         </div>
@@ -388,14 +355,14 @@ ${safeHtml}
                   className={`${styles.deviceBtn} ${activeTab === 'css' ? styles.deviceBtnActive : ''}`}
                   onClick={() => setActiveTab('css')}
                 >
-                  CSS Editor
+                  {t('CSS editor')}
                 </button>
                 <button
                   type="button"
                   className={`${styles.deviceBtn} ${activeTab === 'html' ? styles.deviceBtnActive : ''}`}
                   onClick={() => setActiveTab('html')}
                 >
-                  Sample HTML
+                  {t('Sample HTML')}
                 </button>
               </div>
 
@@ -403,12 +370,12 @@ ${safeHtml}
                 <select
                   className={styles.presetSelect}
                   value={selectedPreset}
-                  aria-label="HTML Preset"
+                  aria-label={t('HTML preset')}
                   onChange={(e) => handlePresetChange(e.target.value)}
                 >
                   {Object.entries(HTML_PRESETS).map(([k, p]) => (
                     <option key={k} value={k}>
-                      Preset: {p.label}
+                      {t('Preset:')} {t(p.label)}
                     </option>
                   ))}
                 </select>
@@ -420,8 +387,8 @@ ${safeHtml}
                 className={styles.codeArea}
                 value={cssCode}
                 onChange={(e) => setCssCode(e.target.value)}
-                placeholder="Paste or write CSS stylesheet here..."
-                aria-label="CSS stylesheet"
+                placeholder={t('Paste or write CSS stylesheet here...')}
+                aria-label={t('CSS stylesheet')}
                 spellCheck={false}
               />
             ) : (
@@ -429,8 +396,8 @@ ${safeHtml}
                 className={styles.codeArea}
                 value={sampleHtml}
                 onChange={(e) => setSampleHtml(e.target.value)}
-                placeholder="Edit sample HTML to test against the stylesheet..."
-                aria-label="Sample HTML code"
+                placeholder={t('Edit sample HTML to test against the stylesheet...')}
+                aria-label={t('Sample HTML code')}
                 spellCheck={false}
               />
             )}
@@ -439,7 +406,7 @@ ${safeHtml}
           {/* Right: Sandboxed Preview Pane */}
           <div className={styles.previewWrapper}>
             <div className={styles.previewFrameContainer} style={{ width: containerWidth }}>
-              <iframe title="CSS Sandbox Preview" className={styles.previewFrame} sandbox="" srcDoc={iframeSrcDoc} />
+              <iframe title={t('CSS sandbox preview')} className={styles.previewFrame} sandbox="" srcDoc={iframeSrcDoc} />
             </div>
           </div>
         </div>
@@ -447,26 +414,26 @@ ${safeHtml}
         {/* Browser CSS Parsing Diagnostics */}
         <div className={styles.diagPanel}>
           <div className={styles.diagHeader}>
-            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Browser CSS Parsing Diagnostics</h2>
-            <span className={styles.diagBadge}>Partial Preview Analysis</span>
+            <h2 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{t('Browser CSS parsing diagnostics')}</h2>
+            <span className={styles.diagBadge}>{t('Partial preview analysis')}</span>
           </div>
 
           <div className={styles.diagStats}>
             <div className={styles.statCard}>
               <div className={styles.statNum}>{diagnostics.ruleCount}</div>
-              <div className={styles.statLabel}>Style Rules</div>
+              <div className={styles.statLabel}>{t('Style rules')}</div>
             </div>
             <div className={styles.statCard}>
               <div className={styles.statNum}>{diagnostics.mediaQueryCount}</div>
-              <div className={styles.statLabel}>Media Queries</div>
+              <div className={styles.statLabel}>{t('Media queries')}</div>
             </div>
             <div className={styles.statCard}>
               <div className={styles.statNum}>{diagnostics.keyframeCount}</div>
-              <div className={styles.statLabel}>Keyframe Blocks</div>
+              <div className={styles.statLabel}>{t('Keyframe blocks')}</div>
             </div>
             <div className={styles.statCard}>
               <div className={styles.statNum}>{diagnostics.lineCount}</div>
-              <div className={styles.statLabel}>Lines of CSS</div>
+              <div className={styles.statLabel}>{t('Lines of CSS')}</div>
             </div>
           </div>
 
@@ -474,16 +441,17 @@ ${safeHtml}
             <ul className={styles.diagWarnings}>
               {diagnostics.warnings.map((w, idx) => (
                 <li key={idx} className={styles.diagWarningItem}>
-                  ⚠️ {w}
+                  ⚠️ {diagnosticText(w)}
                 </li>
               ))}
             </ul>
           )}
 
           <div className={styles.diagDisclaimer}>
-            <strong>Note on diagnostics:</strong> Modern browser CSS parsers discard invalid properties and malformed rules silently without
-            generating fatal syntax exceptions. These diagnostics provide a partial preview inspection and do not constitute a full CSS
-            standards validation.
+            <strong>{t('Note on diagnostics:')}</strong>{' '}
+            {t(
+              'Modern browser CSS parsers discard invalid properties and malformed rules silently without generating fatal syntax exceptions. These diagnostics provide a partial preview inspection and do not constitute a full CSS standards validation.',
+            )}
           </div>
         </div>
       </div>

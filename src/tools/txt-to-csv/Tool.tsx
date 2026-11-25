@@ -3,14 +3,16 @@ import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { Button, Field, Select } from '../../components/Controls';
 import { getToolMeta } from '../registry';
+import { useI18n } from '../../lib/i18n';
 import { downloadBlob } from '../../lib/download';
 import { parseCsv, serializeCsv, detectDelimiter } from '../_tabular/csv';
 import styles from './Tool.module.css';
 
 export default function TxtToCsvTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('txt-to-csv');
-  const title = meta.title !== 'txt-to-csv' ? meta.title : 'TXT to CSV Converter';
-  const description = meta.description || 'Convert text, TSV, or log files into clean, standard CSV with quote-aware parsing.';
+  const title = meta.title !== 'txt-to-csv' ? meta.title : t('TXT to CSV Converter');
+  const description = meta.description || t('Convert text, TSV, or log files into clean, standard CSV with quote-aware parsing.');
 
   const [inputTab, setInputTab] = useState<'upload' | 'paste'>('paste');
   const [inputText, setInputText] = useState<string>('');
@@ -60,17 +62,13 @@ export default function TxtToCsvTool() {
   // Preview data
   const totalRows = parsedRows.length;
   const maxCols = useMemo(() => {
-    if (parsedRows.length === 0) return 0;
-    return Math.max(...parsedRows.map((r) => r.length));
+    return parsedRows.reduce((max, row) => Math.max(max, row.length), 0);
   }, [parsedRows]);
 
   const previewHeaders = useMemo(() => {
     if (parsedRows.length === 0) return [];
-    if (hasHeader) {
-      return parsedRows[0].map((h, i) => (h.trim() ? h.trim() : `Column ${i + 1}`));
-    }
-    return Array.from({ length: maxCols }, (_, i) => `Column ${i + 1}`);
-  }, [parsedRows, hasHeader, maxCols]);
+    return Array.from({ length: maxCols }, (_, i) => (hasHeader && parsedRows[0][i]?.trim()) || t('Column {number}', { number: i + 1 }));
+  }, [parsedRows, hasHeader, maxCols, t]);
 
   const previewBodyRows = useMemo(() => {
     if (parsedRows.length === 0) return [];
@@ -108,10 +106,10 @@ export default function TxtToCsvTool() {
   };
 
   const delimiterLabel = (d: string) => {
-    if (d === ',') return 'Comma (,)';
-    if (d === '\t') return 'Tab (\\t)';
-    if (d === ';') return 'Semicolon (;)';
-    if (d === '|') return 'Pipe (|)';
+    if (d === ',') return t('Comma (,)');
+    if (d === '\t') return t('Tab (\\t)');
+    if (d === ';') return t('Semicolon (;)');
+    if (d === '|') return t('Pipe (|)');
     return `"${d}"`;
   };
 
@@ -125,29 +123,29 @@ export default function TxtToCsvTool() {
               className={`${styles.tab} ${inputTab === 'paste' ? styles.tabActive : ''}`}
               onClick={() => setInputTab('paste')}
             >
-              Paste text
+              {t('Paste text')}
             </button>
             <button
               type="button"
               className={`${styles.tab} ${inputTab === 'upload' ? styles.tabActive : ''}`}
               onClick={() => setInputTab('upload')}
             >
-              Upload file
+              {t('Upload file')}
             </button>
           </div>
 
           {inputTab === 'upload' ? (
             <FileDrop
               accept=".txt,.tsv,.log,.csv,text/*"
-              label="Choose a TXT, TSV, LOG or CSV file"
-              hint="Files are processed entirely on your device."
+              label={t('Choose a TXT, TSV, LOG or CSV file')}
+              hint={t('Files are processed entirely on your device.')}
               onFiles={handleFiles}
             />
           ) : (
-            <Field label="Input text" hint="Paste delimited text, logs, or raw tables">
+            <Field label={t('Input text')} hint={t('Paste delimited text, logs, or raw tables')}>
               <textarea
                 className={styles.textarea}
-                placeholder="Paste your text here... e.g.&#10;name&#9;age&#9;city&#10;Alice&#9;28&#9;New York&#10;Bob&#9;34&#9;San Francisco"
+                placeholder={`${t('Paste your text here, for example:')}\nname\tage\tcity\nAlice\t28\tNew York\nBob\t34\tSan Francisco`}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
               />
@@ -155,23 +153,23 @@ export default function TxtToCsvTool() {
           )}
 
           <div className={styles.controlsRow}>
-            <Field label="Delimiter">
+            <Field label={t('Delimiter')}>
               <Select
                 value={delimiterMode}
                 onChange={(e) => setDelimiterMode(e.target.value)}
                 options={[
-                  { value: 'auto', label: `Auto-detect (found: ${delimiterLabel(detected)})` },
-                  { value: ',', label: 'Comma (,)' },
-                  { value: '\t', label: 'Tab (\\t)' },
-                  { value: ';', label: 'Semicolon (;)' },
-                  { value: '|', label: 'Pipe (|)' },
-                  { value: 'custom', label: 'Custom character...' },
+                  { value: 'auto', label: t('Auto-detect (found: {delimiter})', { delimiter: delimiterLabel(detected) }) },
+                  { value: ',', label: t('Comma (,)') },
+                  { value: '\t', label: t('Tab (\\t)') },
+                  { value: ';', label: t('Semicolon (;)') },
+                  { value: '|', label: t('Pipe (|)') },
+                  { value: 'custom', label: t('Custom character...') },
                 ]}
               />
             </Field>
 
             {delimiterMode === 'custom' && (
-              <Field label="Custom single character">
+              <Field label={t('Custom single character')}>
                 <input
                   type="text"
                   maxLength={1}
@@ -186,7 +184,7 @@ export default function TxtToCsvTool() {
 
             <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
               <input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} />
-              First row is header
+              {t('First row is header')}
             </label>
           </div>
         </div>
@@ -195,11 +193,13 @@ export default function TxtToCsvTool() {
           <div className={styles.previewCard}>
             <div className={styles.previewHeader}>
               <div className={styles.previewTitle}>
-                CSV Preview
-                <span className={styles.metaBadge}>{totalRows} rows</span>
-                <span className={styles.metaBadge}>{maxCols} columns</span>
+                {t('CSV preview')}
+                <span className={styles.metaBadge}>{t('{count} rows', { count: totalRows })}</span>
+                <span className={styles.metaBadge}>{t('{count} columns', { count: maxCols })}</span>
               </div>
-              {totalRows > 25 && <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Showing first 25 rows</span>}
+              {totalRows > 25 && (
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Showing first {count} rows', { count: 25 })}</span>
+              )}
             </div>
 
             <div className={styles.tableWrap}>
@@ -227,13 +227,13 @@ export default function TxtToCsvTool() {
 
             <div className={styles.actions}>
               <Button variant="primary" onClick={handleDownload}>
-                Download CSV ({sourceName})
+                {t('Download CSV ({file})', { file: sourceName })}
               </Button>
               <Button variant="secondary" onClick={handleCopy}>
-                {copied ? 'Copied to clipboard!' : 'Copy full CSV'}
+                {copied ? t('Copied to clipboard!') : t('Copy full CSV')}
               </Button>
               <Button variant="secondary" onClick={handleReset}>
-                Clear
+                {t('Clear')}
               </Button>
             </div>
           </div>

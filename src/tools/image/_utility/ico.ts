@@ -1,3 +1,5 @@
+import { translate } from '../../../lib/i18n';
+
 /**
  * ICO format parser and extractor.
  * Handles embedded PNG frames as well as standard BMP/DIB frames with AND transparency masks.
@@ -19,7 +21,7 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
   frames: DecodedIcoFrame[];
 } {
   if (buffer.byteLength < 6) {
-    throw new Error(`Invalid ICO file: size too small (${buffer.byteLength} bytes, minimum 6)`);
+    throw new Error(translate('Invalid ICO file: size too small ({size} bytes, minimum 6)', { size: buffer.byteLength }));
   }
 
   const view = new DataView(buffer);
@@ -28,19 +30,26 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
   const count = view.getUint16(4, true);
 
   if (reserved !== 0) {
-    throw new Error(`Invalid ICO file: reserved header word must be 0, got ${reserved}`);
+    throw new Error(translate('Invalid ICO file: reserved header word must be 0, got {reserved}', { reserved }));
   }
   if (type !== 1 && type !== 2) {
-    throw new Error(`Invalid ICO file: expected type 1 (ICO) or 2 (CUR), got ${type}`);
+    throw new Error(translate('Invalid ICO file: expected type 1 (ICO) or 2 (CUR), got {type}', { type }));
   }
   if (count <= 0) {
-    throw new Error('Invalid ICO file: icon directory contains 0 images');
+    throw new Error(translate('Invalid ICO file: icon directory contains 0 images'));
   }
 
   const minHeaderSize = 6 + count * 16;
   if (buffer.byteLength < minHeaderSize) {
     throw new Error(
-      `Malformed ICO directory: header claims ${count} frames, requiring ${minHeaderSize} bytes, but file is only ${buffer.byteLength} bytes`,
+      translate(
+        'Malformed ICO directory: header claims {count} frames, requiring {requiredBytes} bytes, but file is only {fileBytes} bytes',
+        {
+          count,
+          requiredBytes: minHeaderSize,
+          fileBytes: buffer.byteLength,
+        },
+      ),
     );
   }
 
@@ -57,11 +66,18 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
     // Bounds checking
     if (imageOffset < minHeaderSize || imageOffset + bytesInRes > buffer.byteLength) {
       throw new Error(
-        `Malformed ICO frame ${i + 1} (${bWidth}x${bHeight}): offset ${imageOffset} + length ${bytesInRes} exceeds file size ${buffer.byteLength}`,
+        translate('Malformed ICO frame {index} ({width}x{height}): offset {offset} + length {length} exceeds file size {fileBytes}', {
+          index: i + 1,
+          width: bWidth,
+          height: bHeight,
+          offset: imageOffset,
+          length: bytesInRes,
+          fileBytes: buffer.byteLength,
+        }),
       );
     }
     if (bytesInRes < 8) {
-      throw new Error(`Malformed ICO frame ${i + 1}: resource size too small (${bytesInRes} bytes)`);
+      throw new Error(translate('Malformed ICO frame {index}: resource size too small ({size} bytes)', { index: i + 1, size: bytesInRes }));
     }
 
     const frameBytes = new Uint8Array(buffer, imageOffset, bytesInRes);
@@ -94,7 +110,12 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
     const frameView = new DataView(buffer, imageOffset, bytesInRes);
     const headerSize = frameView.getUint32(0, true);
     if (headerSize < 40) {
-      throw new Error(`Malformed DIB frame ${i + 1}: header size ${headerSize} is less than BITMAPINFOHEADER (40)`);
+      throw new Error(
+        translate('Malformed DIB frame {index}: header size {headerSize} is less than BITMAPINFOHEADER (40)', {
+          index: i + 1,
+          headerSize,
+        }),
+      );
     }
 
     const dibWidth = frameView.getInt32(4, true);
@@ -109,12 +130,26 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
     const compression = frameView.getUint32(16, true);
 
     if (compression !== 0 && compression !== 3) {
-      throw new Error(`Unsupported DIB compression ${compression} in ICO frame ${i + 1} (${actualWidth}x${actualHeight})`);
+      throw new Error(
+        translate('Unsupported DIB compression {compression} in ICO frame {index} ({width}x{height})', {
+          compression,
+          index: i + 1,
+          width: actualWidth,
+          height: actualHeight,
+        }),
+      );
     }
 
     const validBits = [1, 4, 8, 24, 32];
     if (!validBits.includes(dibBitCount)) {
-      throw new Error(`Unsupported bit depth ${dibBitCount} in ICO frame ${i + 1} (${actualWidth}x${actualHeight})`);
+      throw new Error(
+        translate('Unsupported bit depth {bitCount} in ICO frame {index} ({width}x{height})', {
+          bitCount: dibBitCount,
+          index: i + 1,
+          width: actualWidth,
+          height: actualHeight,
+        }),
+      );
     }
 
     // Palette handling for indexed formats
@@ -125,7 +160,7 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
 
     if (numColors > 0) {
       if (paletteOffset + numColors * 4 > bytesInRes) {
-        throw new Error(`Malformed DIB frame ${i + 1}: palette truncated`);
+        throw new Error(translate('Malformed DIB frame {index}: palette truncated', { index: i + 1 }));
       }
       for (let c = 0; c < numColors; c++) {
         const pIdx = paletteOffset + c * 4;
@@ -144,7 +179,13 @@ export function parseIcoDirectory(buffer: ArrayBuffer): {
     const andDataSize = andRowStride * actualHeight;
 
     if (xorOffset + xorDataSize > bytesInRes) {
-      throw new Error(`Malformed ICO frame ${i + 1}: XOR mask data truncated (needed ${xorOffset + xorDataSize}, got ${bytesInRes})`);
+      throw new Error(
+        translate('Malformed ICO frame {index}: XOR mask data truncated (needed {neededBytes}, got {actualBytes})', {
+          index: i + 1,
+          neededBytes: xorOffset + xorDataSize,
+          actualBytes: bytesInRes,
+        }),
+      );
     }
 
     const andOffset = xorOffset + xorDataSize;
@@ -251,13 +292,13 @@ export async function frameToPngBlob(frame: DecodedIcoFrame): Promise<Blob> {
 
   if (frame.rgba) {
     if (typeof document === 'undefined') {
-      throw new Error('Canvas conversion requires browser DOM environment');
+      throw new Error(translate('Canvas conversion requires browser DOM environment'));
     }
     const canvas = document.createElement('canvas');
     canvas.width = frame.width;
     canvas.height = frame.height;
     const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas 2D context unavailable');
+    if (!ctx) throw new Error(translate('Canvas 2D context unavailable'));
 
     const imgData = ctx.createImageData(frame.width, frame.height);
     imgData.data.set(frame.rgba);
@@ -266,10 +307,10 @@ export async function frameToPngBlob(frame: DecodedIcoFrame): Promise<Blob> {
     return new Promise<Blob>((resolve, reject) => {
       canvas.toBlob((b) => {
         if (b) resolve(b);
-        else reject(new Error('Failed to encode PNG from decoded frame canvas'));
+        else reject(new Error(translate('Failed to encode PNG from decoded frame canvas')));
       }, 'image/png');
     });
   }
 
-  throw new Error(`Frame ${frame.index} has neither PNG data nor RGBA data`);
+  throw new Error(translate('Frame {index} has neither PNG data nor RGBA data', { index: frame.index }));
 }

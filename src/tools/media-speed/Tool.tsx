@@ -1,9 +1,11 @@
-import { useState, useId } from 'react';
+import { useState, useId, useRef, useEffect, useCallback } from 'react';
 import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { Field, Slider, Button } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { getVideoMeta } from '../../lib/media';
+import { useI18n } from '../../lib/i18n';
+import { useObjectUrl } from '../../lib/useObjectUrl';
 import styles from './Tool.module.css';
 
 const PRESET_SPEEDS = [0.5, 0.75, 1.25, 1.5, 1.75, 2, 2.5, 3];
@@ -66,6 +68,7 @@ function parseDurationString(text: string): { h: number; m: number; s: number } 
 }
 
 export default function MediaSpeedTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('media-speed');
 
   const [hours, setHours] = useState<number>(1);
@@ -73,9 +76,16 @@ export default function MediaSpeedTool() {
   const [seconds, setSeconds] = useState<number>(0);
   const [pasteValue, setPasteValue] = useState<string>('');
   const [customSpeed, setCustomSpeed] = useState<number>(1.5);
+  const [previewRateUnsupported, setPreviewRateUnsupported] = useState(false);
   const [targetMinutes, setTargetMinutes] = useState<string>('45');
   const [loadedFileName, setLoadedFileName] = useState<string | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [previewLoaded, setPreviewLoaded] = useState(false);
+  const [previewPlaybackError, setPreviewPlaybackError] = useState(false);
+  const metadataRequestRef = useRef(0);
+  const previewMediaRef = useRef<HTMLMediaElement | null>(null);
+  const previewUrl = useObjectUrl(previewFile);
 
   const customSpeedInputId = useId();
   const targetMinutesId = useId();
@@ -95,9 +105,16 @@ export default function MediaSpeedTool() {
   const handleFileDrop = async (files: File[]) => {
     if (files.length === 0) return;
     const file = files[0];
+    const requestId = ++metadataRequestRef.current;
+    previewMediaRef.current?.pause();
+    setPreviewFile(file);
+    setPreviewLoaded(false);
+    setPreviewPlaybackError(false);
+    setLoadedFileName(null);
     setFileError(null);
     try {
       const vMeta = await getVideoMeta(file);
+      if (requestId !== metadataRequestRef.current) return;
       if (vMeta.duration && vMeta.duration > 0) {
         const total = Math.round(vMeta.duration);
         const h = Math.floor(total / 3600);
@@ -112,9 +129,30 @@ export default function MediaSpeedTool() {
         setFileError('Could not determine duration from this media file.');
       }
     } catch {
+      if (requestId !== metadataRequestRef.current) return;
       setFileError('Failed to read duration from the media file.');
     }
   };
+
+  const syncPreviewPlayback = useCallback(
+    (media: HTMLMediaElement) => {
+      try {
+        media.playbackRate = customSpeed;
+        setPreviewRateUnsupported(Math.abs(media.playbackRate - customSpeed) > 0.001);
+      } catch {
+        setPreviewRateUnsupported(true);
+      }
+      media.preservesPitch = true;
+      const extendedMedia = media as HTMLMediaElement & { webkitPreservesPitch?: boolean; mozPreservesPitch?: boolean };
+      if ('webkitPreservesPitch' in extendedMedia) extendedMedia.webkitPreservesPitch = true;
+      if ('mozPreservesPitch' in extendedMedia) extendedMedia.mozPreservesPitch = true;
+    },
+    [customSpeed],
+  );
+
+  useEffect(() => {
+    if (previewMediaRef.current) syncPreviewPlayback(previewMediaRef.current);
+  }, [syncPreviewPlayback, previewUrl]);
 
   // Build the list of speeds to display:
   // Presets: 0.5, 0.75, 1.25, 1.5, 1.75, 2, 2.5, 3 and custom speed
@@ -134,22 +172,22 @@ export default function MediaSpeedTool() {
         {/* Duration Input Card */}
         <div className={styles.card}>
           <div className={styles.cardTitle}>
-            <span>1. Media Duration</span>
+            <span>{t('1. Media Duration')}</span>
             <span style={{ fontSize: '0.9rem', fontWeight: 500, color: 'var(--accent-text)' }}>
-              Total: {formatTime(totalDurationSeconds)}
+              {t('Total:')} {formatTime(totalDurationSeconds)}
             </span>
           </div>
 
           <div className={styles.durationGrid}>
             <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Hours (h)</label>
+              <label className={styles.inputLabel}>{t('Hours (h)')}</label>
               <input
                 type="number"
                 min="0"
                 step="1"
                 className={styles.numberInput}
                 value={hours}
-                aria-label="Hours"
+                aria-label={t('Hours')}
                 onChange={(e) => {
                   setHours(Math.max(0, parseInt(e.target.value, 10) || 0));
                   setPasteValue('');
@@ -157,7 +195,7 @@ export default function MediaSpeedTool() {
               />
             </div>
             <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Minutes (m)</label>
+              <label className={styles.inputLabel}>{t('Minutes (m)')}</label>
               <input
                 type="number"
                 min="0"
@@ -165,7 +203,7 @@ export default function MediaSpeedTool() {
                 step="1"
                 className={styles.numberInput}
                 value={minutes}
-                aria-label="Minutes"
+                aria-label={t('Minutes')}
                 onChange={(e) => {
                   setMinutes(Math.max(0, parseInt(e.target.value, 10) || 0));
                   setPasteValue('');
@@ -173,7 +211,7 @@ export default function MediaSpeedTool() {
               />
             </div>
             <div className={styles.inputGroup}>
-              <label className={styles.inputLabel}>Seconds (s)</label>
+              <label className={styles.inputLabel}>{t('Seconds (s)')}</label>
               <input
                 type="number"
                 min="0"
@@ -181,7 +219,7 @@ export default function MediaSpeedTool() {
                 step="1"
                 className={styles.numberInput}
                 value={seconds}
-                aria-label="Seconds"
+                aria-label={t('Seconds')}
                 onChange={(e) => {
                   setSeconds(Math.max(0, parseInt(e.target.value, 10) || 0));
                   setPasteValue('');
@@ -191,13 +229,13 @@ export default function MediaSpeedTool() {
           </div>
 
           <div className={styles.pasteRow}>
-            <label className={styles.inputLabel}>Or paste formatted duration (e.g. 1:23:45 or 45:30)</label>
+            <label className={styles.inputLabel}>{t('Or paste formatted duration (e.g. 1:23:45 or 45:30)')}</label>
             <input
               type="text"
               className={styles.pasteInput}
-              placeholder="Paste duration e.g. 1:30:00"
+              placeholder={t('Paste duration e.g. 1:30:00')}
               value={pasteValue}
-              aria-label="Paste formatted duration"
+              aria-label={t('Paste formatted duration')}
               onChange={(e) => handlePasteChange(e.target.value)}
             />
           </div>
@@ -207,40 +245,104 @@ export default function MediaSpeedTool() {
             {loadedFileName ? (
               <div className={styles.fileLoadedBanner}>
                 <span>
-                  ✓ Duration auto-filled from: <strong>{loadedFileName}</strong>
+                  ✓ {t('Duration auto-filled from:')} <strong>{loadedFileName}</strong>
                 </span>
                 <Button
                   variant="secondary"
-                  onClick={() => setLoadedFileName(null)}
+                  onClick={() => {
+                    metadataRequestRef.current += 1;
+                    setLoadedFileName(null);
+                    setPreviewFile(null);
+                    previewMediaRef.current?.pause();
+                    setPreviewLoaded(false);
+                    setPreviewPlaybackError(false);
+                    setFileError(null);
+                  }}
                   style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
                 >
-                  Clear
+                  {t('Clear')}
                 </Button>
               </div>
             ) : (
               <FileDrop
                 accept="video/*,audio/*"
-                label="Optional: Drop video or audio file to auto-fill duration"
-                hint="Read completely in your browser via HTML5 video metadata"
+                label={t('Optional: Drop video or audio file to auto-fill duration')}
+                hint={t('Read completely in your browser via HTML5 video metadata')}
                 onFiles={handleFileDrop}
               />
             )}
             {fileError && (
               <div className="error-banner" style={{ marginTop: '0.75rem' }}>
-                {fileError}
+                {t(fileError)}
               </div>
             )}
           </div>
+
+          {previewFile && (
+            <section className={styles.previewCard} aria-label={t('Speed preview')}>
+              <div className={styles.cardTitle}>
+                <span>{t('Speed preview')}</span>
+                <span>{customSpeed}x</span>
+              </div>
+              {previewUrl &&
+                (previewFile.type.startsWith('audio/') ? (
+                  <audio
+                    ref={(element) => {
+                      previewMediaRef.current = element;
+                    }}
+                    controls
+                    preload="metadata"
+                    src={previewUrl}
+                    className={styles.previewAudio}
+                    onLoadedMetadata={(event) => {
+                      syncPreviewPlayback(event.currentTarget);
+                      setPreviewLoaded(true);
+                    }}
+                    onPlay={(event) => syncPreviewPlayback(event.currentTarget)}
+                    onError={() => setPreviewPlaybackError(true)}
+                  />
+                ) : (
+                  <video
+                    ref={(element) => {
+                      previewMediaRef.current = element;
+                    }}
+                    controls
+                    playsInline
+                    preload="metadata"
+                    src={previewUrl}
+                    className="preview-media"
+                    onLoadedMetadata={(event) => {
+                      syncPreviewPlayback(event.currentTarget);
+                      setPreviewLoaded(true);
+                    }}
+                    onPlay={(event) => syncPreviewPlayback(event.currentTarget)}
+                    onError={() => setPreviewPlaybackError(true)}
+                  />
+                ))}
+              {previewUrl && !previewLoaded && !previewPlaybackError && (
+                <p className={styles.previewNote} role="status">
+                  {t('Loading source preview...')}
+                </p>
+              )}
+              <p className={styles.previewNote}>{t('Preview uses browser playbackRate. Pitch correction follows browser support.')}</p>
+              {previewPlaybackError && <p className={styles.previewNote}>{t('The browser could not play this source file.')}</p>}
+              {previewRateUnsupported && (
+                <p className={styles.previewNote} role="status">
+                  {t('The browser cannot preview the selected playback speed.')}
+                </p>
+              )}
+            </section>
+          )}
         </div>
 
         {/* Custom Speed Control */}
         <div className={styles.card}>
           <div className={styles.cardTitle}>
-            <span>2. Custom Playback Speed</span>
+            <span>{t('2. Custom Playback Speed')}</span>
             <span style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--accent-text)' }}>{customSpeed}x</span>
           </div>
 
-          <Field label="Custom Speed Multiplier" hint="Select or enter any playback speed (e.g. 1.35x, 2.25x)">
+          <Field label={t('Custom Speed Multiplier')} hint={t('Select or enter any playback speed (e.g. 1.35x, 2.25x)')}>
             <div className={styles.speedRow}>
               <input
                 id={customSpeedInputId}
@@ -250,10 +352,10 @@ export default function MediaSpeedTool() {
                 step="0.05"
                 className={styles.numberInput}
                 value={customSpeed}
-                aria-label="Custom speed multiplier"
+                aria-label={t('Custom speed multiplier')}
                 onChange={(e) => {
                   const val = parseFloat(e.target.value);
-                  if (!isNaN(val) && val > 0) setCustomSpeed(val);
+                  if (Number.isFinite(val)) setCustomSpeed(Math.min(10, Math.max(0.1, val)));
                 }}
               />
               <Slider
@@ -262,7 +364,7 @@ export default function MediaSpeedTool() {
                 max={4}
                 step={0.05}
                 unit="x"
-                aria-label="Custom speed multiplier"
+                aria-label={t('Custom speed multiplier')}
                 onChange={setCustomSpeed}
               />
             </div>
@@ -272,17 +374,17 @@ export default function MediaSpeedTool() {
         {/* Speed Comparison Table */}
         <div className={styles.card}>
           <div className={styles.cardTitle}>
-            <span>3. Playback Speed Comparison</span>
+            <span>{t('3. Playback Speed Comparison')}</span>
           </div>
 
-          <div className={styles.tableWrapper} tabIndex={0} role="region" aria-label="Playback speed comparison table">
+          <div className={styles.tableWrapper} tabIndex={0} role="region" aria-label={t('Playback speed comparison table')}>
             <table className={styles.speedTable}>
               <thead>
                 <tr>
-                  <th>Speed</th>
-                  <th>Resulting Duration</th>
-                  <th>Time Saved / Difference</th>
-                  <th>Percent Saved</th>
+                  <th>{t('Speed')}</th>
+                  <th>{t('Resulting Duration')}</th>
+                  <th>{t('Time Saved / Difference')}</th>
+                  <th>{t('Percent Saved')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -296,14 +398,14 @@ export default function MediaSpeedTool() {
 
                   if (spd > 1) {
                     const pct = ((1 - 1 / spd) * 100).toFixed(1);
-                    diffDisplay = <span className={styles.savedBadge}>Saved {formatTime(timeDiff)}</span>;
+                    diffDisplay = <span className={styles.savedBadge}>{t('Saved {time}', { time: formatTime(timeDiff) })}</span>;
                     percentDisplay = `-${pct}%`;
                   } else if (spd < 1) {
                     const pct = ((1 / spd - 1) * 100).toFixed(1);
-                    diffDisplay = <span className={styles.extraBadge}>+{formatTime(Math.abs(timeDiff))} extra</span>;
+                    diffDisplay = <span className={styles.extraBadge}>{t('+{time} extra', { time: formatTime(Math.abs(timeDiff)) })}</span>;
                     percentDisplay = `+${pct}%`;
                   } else {
-                    diffDisplay = <span className={styles.normalBadge}>Baseline (Normal)</span>;
+                    diffDisplay = <span className={styles.normalBadge}>{t('Baseline (Normal)')}</span>;
                     percentDisplay = '0%';
                   }
 
@@ -311,8 +413,8 @@ export default function MediaSpeedTool() {
                     <tr key={spd} className={spd === customSpeed ? styles.customRow : undefined}>
                       <td>
                         <strong>{spd}x</strong>
-                        {isCustom && <span className={styles.badgeCustom}>Custom</span>}
-                        {spd === customSpeed && !isCustom && <span className={styles.badgeCustom}>Selected</span>}
+                        {isCustom && <span className={styles.badgeCustom}>{t('Custom')}</span>}
+                        {spd === customSpeed && !isCustom && <span className={styles.badgeCustom}>{t('Selected')}</span>}
                       </td>
                       <td>
                         <strong>{formatTime(newDuration)}</strong>
@@ -330,10 +432,10 @@ export default function MediaSpeedTool() {
         {/* Reverse Mode Card */}
         <div className={styles.card}>
           <div className={styles.cardTitle}>
-            <span>4. Reverse Mode: "I have X minutes, what speed do I need?"</span>
+            <span>{t('4. Reverse Mode: "I have X minutes, what speed do I need?"')}</span>
           </div>
 
-          <Field label="Available Time (in minutes)" hint="Enter how many minutes you have available to watch or listen">
+          <Field label={t('Available Time (in minutes)')} hint={t('Enter how many minutes you have available to watch or listen')}>
             <input
               id={targetMinutesId}
               type="number"
@@ -343,7 +445,7 @@ export default function MediaSpeedTool() {
               style={{ maxWidth: '240px' }}
               value={targetMinutes}
               onChange={(e) => setTargetMinutes(e.target.value)}
-              placeholder="e.g. 45"
+              placeholder={t('e.g. 45')}
             />
           </Field>
 
@@ -351,19 +453,21 @@ export default function MediaSpeedTool() {
             <div className={styles.reverseResult}>
               <div className={styles.reverseHighlight}>{reverseSpeed.toFixed(2)}x</div>
               <p className={styles.reverseDesc}>
-                {reverseSpeed > 1 ? (
-                  <>
-                    To finish a <strong>{formatTime(totalDurationSeconds)}</strong> media in <strong>{parsedTargetMinutes} minutes</strong>,
-                    you need to play it at <strong>{reverseSpeed.toFixed(2)}x speed</strong> (saves{' '}
-                    {formatTime(totalDurationSeconds - parsedTargetMinutes * 60)}).
-                  </>
-                ) : (
-                  <>
-                    You have plenty of time! At normal 1.0x speed, the media finishes in <strong>{formatTime(totalDurationSeconds)}</strong>
-                    , leaving you with <strong>{(parsedTargetMinutes - totalDurationSeconds / 60).toFixed(1)} minutes</strong> to spare. You
-                    could even slow it down to <strong>{reverseSpeed.toFixed(2)}x</strong>.
-                  </>
-                )}
+                {reverseSpeed > 1
+                  ? t('To finish a {duration} media in {minutes} minutes, you need to play it at {speed} speed (saves {saved}).', {
+                      duration: formatTime(totalDurationSeconds),
+                      minutes: parsedTargetMinutes,
+                      speed: `${reverseSpeed.toFixed(2)}x`,
+                      saved: formatTime(totalDurationSeconds - parsedTargetMinutes * 60),
+                    })
+                  : t(
+                      'You have plenty of time! At normal 1.0x speed, the media finishes in {duration}, leaving you with {minutes} minutes to spare. You could even slow it down to {speed}.',
+                      {
+                        duration: formatTime(totalDurationSeconds),
+                        minutes: (parsedTargetMinutes - totalDurationSeconds / 60).toFixed(1),
+                        speed: `${reverseSpeed.toFixed(2)}x`,
+                      },
+                    )}
               </p>
             </div>
           )}

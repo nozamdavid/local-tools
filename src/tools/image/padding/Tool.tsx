@@ -120,7 +120,7 @@ export default function PaddingTool() {
       defaultFormat="image/png"
       suffix="-padded"
       render={renderPadding}
-      renderControls={(options, setOptions) => {
+      renderControls={(options, setOptions, { t }) => {
         const setPreset = (preset: AspectRatioPreset) => {
           setOptions((prev) => ({
             ...prev,
@@ -139,7 +139,7 @@ export default function PaddingTool() {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div>
-              <label className="field-label">Fit to aspect ratio presets</label>
+              <label className="field-label">{t('Fit to aspect ratio presets')}</label>
               <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
                 <Button
                   variant={options.preset === '1:1' ? 'primary' : 'secondary'}
@@ -147,7 +147,7 @@ export default function PaddingTool() {
                   data-testid="preset-1-1"
                   onClick={() => setPreset('1:1')}
                 >
-                  1:1 Square
+                  {t('1:1 Square')}
                 </Button>
                 <Button
                   variant={options.preset === '4:5' ? 'primary' : 'secondary'}
@@ -155,7 +155,7 @@ export default function PaddingTool() {
                   data-testid="preset-4-5"
                   onClick={() => setPreset('4:5')}
                 >
-                  4:5 Portrait
+                  {t('4:5 Portrait')}
                 </Button>
                 <Button
                   variant={options.preset === '16:9' ? 'primary' : 'secondary'}
@@ -163,7 +163,7 @@ export default function PaddingTool() {
                   data-testid="preset-16-9"
                   onClick={() => setPreset('16:9')}
                 >
-                  16:9 Widescreen
+                  {t('16:9 Widescreen')}
                 </Button>
                 <Button
                   variant={options.preset === '9:16' ? 'primary' : 'secondary'}
@@ -171,11 +171,11 @@ export default function PaddingTool() {
                   data-testid="preset-9-16"
                   onClick={() => setPreset('9:16')}
                 >
-                  9:16 Story
+                  {t('9:16 Story')}
                 </Button>
                 {options.preset !== 'none' && (
                   <Button variant="secondary" type="button" onClick={() => setPreset('none')}>
-                    Custom padding
+                    {t('Custom padding')}
                   </Button>
                 )}
               </div>
@@ -188,17 +188,17 @@ export default function PaddingTool() {
                 <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                     <input type="checkbox" checked={options.uniform} onChange={(e) => updateCustom({ uniform: e.target.checked })} />
-                    <span>Uniform padding (all sides equal)</span>
+                    <span>{t('Uniform padding (all sides equal)')}</span>
                   </label>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.9rem' }}>Unit:</span>
+                    <span style={{ fontSize: '0.9rem' }}>{t('Unit')}:</span>
                     <Select
                       value={options.unit}
                       onChange={(e) => updateCustom({ unit: e.target.value as PaddingUnit })}
                       options={[
-                        { value: 'px', label: 'Pixels (px)' },
-                        { value: '%', label: 'Percentage (%)' },
+                        { value: 'px', label: t('Pixels (px)') },
+                        { value: '%', label: t('Percentage (%)') },
                       ]}
                       style={{ padding: '0.2rem 0.5rem', fontSize: '0.85rem' }}
                     />
@@ -206,7 +206,7 @@ export default function PaddingTool() {
                 </div>
 
                 {options.uniform ? (
-                  <Field label={`Padding (${options.uniformValue}${options.unit})`}>
+                  <Field label={t('Padding ({value}{unit})', { value: options.uniformValue, unit: options.unit })}>
                     <Slider
                       value={options.uniformValue}
                       min={0}
@@ -218,7 +218,7 @@ export default function PaddingTool() {
                   </Field>
                 ) : (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem' }}>
-                    <Field label={`Top (${options.top}${options.unit})`}>
+                    <Field label={t('Top ({value}{unit})', { value: options.top, unit: options.unit })}>
                       <Slider
                         value={options.top}
                         min={0}
@@ -228,7 +228,7 @@ export default function PaddingTool() {
                         onChange={(v) => updateCustom({ top: v })}
                       />
                     </Field>
-                    <Field label={`Right (${options.right}${options.unit})`}>
+                    <Field label={t('Right ({value}{unit})', { value: options.right, unit: options.unit })}>
                       <Slider
                         value={options.right}
                         min={0}
@@ -238,7 +238,7 @@ export default function PaddingTool() {
                         onChange={(v) => updateCustom({ right: v })}
                       />
                     </Field>
-                    <Field label={`Bottom (${options.bottom}${options.unit})`}>
+                    <Field label={t('Bottom ({value}{unit})', { value: options.bottom, unit: options.unit })}>
                       <Slider
                         value={options.bottom}
                         min={0}
@@ -248,7 +248,7 @@ export default function PaddingTool() {
                         onChange={(v) => updateCustom({ bottom: v })}
                       />
                     </Field>
-                    <Field label={`Left (${options.left}${options.unit})`}>
+                    <Field label={t('Left ({value}{unit})', { value: options.left, unit: options.unit })}>
                       <Slider
                         value={options.left}
                         min={0}
@@ -271,13 +271,13 @@ export default function PaddingTool() {
                     checked={options.isTransparent}
                     onChange={(e) => setOptions((prev) => ({ ...prev, isTransparent: e.target.checked }))}
                   />
-                  <span>Transparent canvas background (PNG)</span>
+                  <span>{t('Transparent canvas background (PNG)')}</span>
                 </label>
               </div>
 
               {!options.isTransparent && (
                 <div style={{ marginTop: '0.75rem', maxWidth: '200px' }}>
-                  <Field label="Background colour">
+                  <Field label={t('Background colour')}>
                     <input
                       type="color"
                       value={options.bgColor}

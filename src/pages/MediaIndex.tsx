@@ -1,15 +1,18 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import { CategorySections } from '../components/CategorySections';
 import { MediaTile } from '../components/Controls';
-import { categories, toolsByMedia, type Media } from '../tools/registry';
-import { MEDIA_INFO } from '../design/media';
+import { categories, localizeCategory, toolsByMedia, type Media } from '../tools/registry';
+import { getMediaInfo } from '../design/media';
 import { searchTools } from '../lib/search';
+import { useI18n } from '../lib/i18n';
 
 export function MediaIndex({ media }: { media: Media }) {
-  const info = MEDIA_INFO[media];
+  const { t, locale } = useI18n();
+  const info = getMediaInfo(media);
   const Icon = info.icon;
   const [query, setQuery] = useState('');
+  const filterRef = useRef<HTMLInputElement>(null);
   const total = toolsByMedia(media).length;
 
   const matches = useMemo(() => {
@@ -19,7 +22,7 @@ export function MediaIndex({ media }: { media: Media }) {
         .filter((t) => t.media === media)
         .map((t) => t.id),
     );
-  }, [query, media]);
+  }, [query, media, locale]);
 
   return (
     <div className="media-index">
@@ -29,35 +32,47 @@ export function MediaIndex({ media }: { media: Media }) {
         </MediaTile>
         <div>
           <h1 className="page-title">{info.title}</h1>
-          <p className="page-desc">
-            {info.description} {total} tools, all running on your device.
-          </p>
+          <p className="page-desc">{t('{description} {count} tools.', { description: info.description, count: total })}</p>
         </div>
       </header>
 
       <div className="index-toolbar">
-        <label className="filter-input">
+        <div className="filter-input">
           <Search aria-hidden="true" />
-          <span className="sr-only">Filter {info.label.toLowerCase()} tools</span>
           <input
+            ref={filterRef}
             type="search"
-            placeholder={`Filter ${total} ${info.label.toLowerCase()} tools`}
+            aria-label={t('Filter {media} tools', { media: info.label.toLowerCase() })}
+            placeholder={t('Filter {count} {media} tools', { count: total, media: info.label.toLowerCase() })}
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
           {query && (
-            <button type="button" className="filter-clear" aria-label="Clear filter" onClick={() => setQuery('')}>
-              <X />
+            <button
+              type="button"
+              className="filter-clear"
+              aria-label={t('Clear filter')}
+              onClick={() => {
+                setQuery('');
+                filterRef.current?.focus();
+              }}
+            >
+              <X aria-hidden="true" />
             </button>
           )}
-        </label>
+        </div>
         <div className="sr-only" role="status">
-          {matches ? `${matches.size} ${matches.size === 1 ? 'tool matches' : 'tools match'} your filter` : ''}
+          {matches
+            ? matches.size === 1
+              ? t('One tool matches your filter')
+              : t('{count} tools match your filter', { count: matches.size })
+            : ''}
         </div>
         {!matches && (
-          <nav className="category-chips" aria-label="Categories">
+          <nav className="category-chips" aria-label={t('Categories')}>
             {categories
               .filter((c) => c.media === media)
+              .map(localizeCategory)
               .map((c) => (
                 <a key={c.id} href={`#${c.id}`} className="chip-link">
                   {c.title}
@@ -70,10 +85,8 @@ export function MediaIndex({ media }: { media: Media }) {
       {matches && matches.size === 0 ? (
         <div className="empty-state">
           <Search aria-hidden="true" />
-          <div className="empty-state-title">
-            No {info.label.toLowerCase()} tools match “{query}”
-          </div>
-          <div>Try a file format or an action, like “png” or “compress”.</div>
+          <div className="empty-state-title">{t('No {media} tools match “{query}”', { media: info.label.toLowerCase(), query })}</div>
+          <div>{t('Try a file format or an action, like “png” or “compress”.')}</div>
         </div>
       ) : (
         <CategorySections media={media} filter={matches ? (t) => matches.has(t.id) : undefined} />

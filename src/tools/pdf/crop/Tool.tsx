@@ -13,6 +13,7 @@ import { renderPdfThumbnail } from '../../image/_pdf/pdfRenderer';
 import { usePdfSource } from '../_thumbs/usePdfSource';
 import { CropArea, type Frac } from './CropArea';
 import styles from './Tool.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 type Unit = 'mm' | '%';
 type Scope = 'all' | 'current';
@@ -48,7 +49,15 @@ const SIDES: { key: keyof Margins; label: string }[] = [
   { key: 'left', label: 'Left' },
 ];
 
+const OPPOSITE_MARGIN: Record<keyof Margins, keyof Margins> = {
+  top: 'bottom',
+  right: 'left',
+  bottom: 'top',
+  left: 'right',
+};
+
 export default function CropTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-crop');
   const source = usePdfSource();
   const job = useJob();
@@ -58,20 +67,24 @@ export default function CropTool() {
   const [margins, setMargins] = useState<Margins>(ZERO);
   const [scope, setScope] = useState<Scope>('all');
   const [preview, setPreview] = useState<string | null>(null);
+  const [previewError, setPreviewError] = useState(false);
 
   const { doc, pages } = source;
   const total = pages.length;
   const page = pages[current];
 
   useEffect(() => {
+    setPreview(null);
+    setPreviewError(false);
     if (!doc) return;
     let cancelled = false;
-    setPreview(null);
     renderPdfThumbnail(doc, current + 1, PREVIEW_SIZE)
       .then((url) => {
         if (!cancelled) setPreview(url);
       })
-      .catch(() => {});
+      .catch(() => {
+        if (!cancelled) setPreviewError(true);
+      });
     return () => {
       cancelled = true;
     };
@@ -123,10 +136,37 @@ export default function CropTool() {
     setUnit(next);
   };
 
+  const getMaxMargin = (key: keyof Margins) => {
+    if (!page) return undefined;
+    const targets = scope === 'all' ? pages : [page];
+    return Math.min(
+      ...targets.map((target) => {
+        const dim = key === 'left' || key === 'right' ? target.width : target.height;
+        const maxFraction = Math.max(0, 1 - toFrac(margins[OPPOSITE_MARGIN[key]], unit, dim) - Math.max(0.02, 1 / dim));
+        return fromFrac(maxFraction, unit, dim);
+      }),
+    );
+  };
+
+  const handleMarginChange = (key: keyof Margins, value: string) => {
+    if (!page) return;
+    const max = getMaxMargin(key);
+    const parsed = Number(value);
+    setMargins((prev) => ({
+      ...prev,
+      [key]: Math.min(max ?? Infinity, Math.max(0, Number.isFinite(parsed) ? parsed : 0)),
+    }));
+  };
+
   const hasCrop = Object.values(margins).some((v) => v > 0);
+  const invalidCropPage = (scope === 'all' ? pages : page ? [page] : []).find(
+    (target) =>
+      target.width - toPoints(margins.left, unit, target.width) - toPoints(margins.right, unit, target.width) < 1 ||
+      target.height - toPoints(margins.top, unit, target.height) - toPoints(margins.bottom, unit, target.height) < 1,
+  );
 
   const handleCrop = () => {
-    if (!doc || !hasCrop) return;
+    if (!doc || !hasCrop || invalidCropPage) return;
     const m = margins;
     const u = unit;
     const targets = scope === 'all' ? pages.map((_, i) => i) : [current];
@@ -153,7 +193,7 @@ export default function CropTool() {
         const x1 = w - toPoints(m.right, u, w);
         const y1 = h - toPoints(m.bottom, u, h);
         if (x1 - x0 < 1 || y1 - y0 < 1) {
-          throw new Error(`The crop area leaves nothing of page ${index + 1}.`);
+          throw new Error(t('The crop area leaves nothing of page {number}.', { number: index + 1 }));
         }
 
         const [ax, ay] = viewport.convertToPdfPoint(x0, y0) as [number, number];
@@ -187,14 +227,19 @@ export default function CropTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Crop pages without re-rendering them."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Crop pages without re-rendering them.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
+          {invalidCropPage && (
+            <div className="error-banner" role="alert">
+              {t('The crop area leaves nothing of page {number}.', { number: pages.indexOf(invalidCropPage) + 1 })}
+            </div>
+          )}
 
           {job.result ? (
             <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
@@ -203,23 +248,23 @@ export default function CropTool() {
               <div className={styles.topRow}>
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    File: <strong>{file.name}</strong>
+                    {t('File:')} <strong>{file.name}</strong>
                   </span>
                   <span className="meta-chip">
-                    Size: <strong>{formatBytes(file.size)}</strong>
+                    {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                   </span>
                   {doc && (
                     <span className="meta-chip">
-                      Pages: <strong>{total}</strong>
+                      {t('Pages:')} <strong>{total}</strong>
                     </span>
                   )}
                 </div>
                 <Button variant="secondary" onClick={handleReset}>
-                  Change PDF
+                  {t('Change PDF')}
                 </Button>
               </div>
 
-              {source.loading && <p className={styles.status}>Opening PDF document…</p>}
+              {source.loading && <p className={styles.status}>{t('Opening PDF document…')}</p>}
 
               {doc && page && (
                 <div className={styles.layout}>
@@ -229,86 +274,86 @@ export default function CropTool() {
                         variant="secondary"
                         onClick={() => setCurrent((c) => Math.max(0, c - 1))}
                         disabled={current === 0}
-                        aria-label="Previous page"
+                        aria-label={t('Previous page')}
                       >
                         ◀
                       </Button>
-                      <span data-testid="page-indicator">
-                        Page {current + 1} of {total}
-                      </span>
+                      <span data-testid="page-indicator">{t('Page {current} of {total}', { current: current + 1, total })}</span>
                       <Button
                         variant="secondary"
                         onClick={() => setCurrent((c) => Math.min(total - 1, c + 1))}
                         disabled={current === total - 1}
-                        aria-label="Next page"
+                        aria-label={t('Next page')}
                       >
                         ▶
                       </Button>
                     </div>
 
-                    <CropArea src={preview} aspect={page.width / page.height} frac={frac} onChange={handleDrag} />
+                    <CropArea src={preview} error={previewError} aspect={page.width / page.height} frac={frac} onChange={handleDrag} />
                     <p className={styles.hint}>
-                      Drag on the page to draw the crop area, then fine-tune it with the handles or the margin fields.
+                      {t('Drag on the page to draw the crop area, then fine-tune it with the handles or the margin fields.')}
+                    </p>
+                    <p className={styles.hint}>
+                      {t('Use a pointer or touch to draw and drag. Focus a handle and use arrow keys to adjust; hold Shift for 5% steps.')}
                     </p>
                   </div>
 
                   <div className={styles.controlsCol}>
                     <Field
-                      label="Margins to remove"
-                      hint={`Measured from each page edge. This page is ${round(page.width / PT_PER_MM, 1)} × ${round(page.height / PT_PER_MM, 1)} mm.`}
+                      label={t('Margins to remove')}
+                      hint={t('Measured from each page edge. This page is {width} × {height} mm.', {
+                        width: round(page.width / PT_PER_MM, 1),
+                        height: round(page.height / PT_PER_MM, 1),
+                      })}
                     >
                       <div className={styles.marginGrid}>
                         {SIDES.map(({ key, label }) => (
                           <label key={key} className={styles.marginField}>
-                            <span>{label}</span>
+                            <span>{t(label)}</span>
                             <input
                               type="number"
                               min={0}
+                              max={getMaxMargin(key)}
                               step={0.5}
-                              aria-label={`${label} margin`}
+                              aria-label={t('{side} margin', { side: t(label) })}
                               value={margins[key]}
-                              onChange={(e) =>
-                                setMargins((prev) => ({
-                                  ...prev,
-                                  [key]: Math.max(0, Number(e.target.value) || 0),
-                                }))
-                              }
+                              onChange={(e) => handleMarginChange(key, e.target.value)}
                             />
                           </label>
                         ))}
                       </div>
                     </Field>
 
-                    <Field label="Unit">
+                    <Field label={t('Unit')}>
                       <Select
-                        aria-label="Unit"
+                        aria-label={t('Unit')}
                         value={unit}
                         onChange={(e) => handleUnit(e.target.value as Unit)}
                         options={[
-                          { value: 'mm', label: 'Millimetres (mm)' },
-                          { value: '%', label: 'Percent of page (%)' },
+                          { value: 'mm', label: t('Millimetres (mm)') },
+                          { value: '%', label: t('Percent of page (%)') },
                         ]}
                       />
                     </Field>
 
                     <Field
-                      label="Apply to"
-                      hint="With several page sizes, millimetre margins stay the same and percent margins scale with each page."
+                      label={t('Apply to')}
+                      hint={t('With several page sizes, millimetre margins stay the same and percent margins scale with each page.')}
                     >
-                      <div className={styles.scope} role="radiogroup" aria-label="Pages to crop">
+                      <div className={styles.scope} role="radiogroup" aria-label={t('Pages to crop')}>
                         <label>
                           <input type="radio" name="scope" checked={scope === 'all'} onChange={() => setScope('all')} />
-                          All pages
+                          {t('All pages')}
                         </label>
                         <label>
                           <input type="radio" name="scope" checked={scope === 'current'} onChange={() => setScope('current')} />
-                          Current page only
+                          {t('Current page only')}
                         </label>
                       </div>
                     </Field>
 
                     <Button variant="secondary" onClick={() => setMargins(ZERO)} disabled={!hasCrop}>
-                      Clear crop area
+                      {t('Clear crop area')}
                     </Button>
                   </div>
                 </div>
@@ -317,14 +362,16 @@ export default function CropTool() {
               {doc &&
                 page &&
                 (job.status === 'running' ? (
-                  <ProgressBar value={job.progress} label="Cropping pages…" />
+                  <ProgressBar value={job.progress} label={t('Cropping pages…')} />
                 ) : (
                   <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different file
+                      {t('Choose different file')}
                     </Button>
-                    <Button variant="primary" onClick={handleCrop} disabled={!hasCrop}>
-                      Crop {scope === 'all' ? `${total} ${total === 1 ? 'page' : 'pages'}` : 'this page'}
+                    <Button variant="primary" onClick={handleCrop} disabled={!hasCrop || Boolean(invalidCropPage)}>
+                      {scope === 'all'
+                        ? t('Crop {count} {pageLabel}', { count: total, pageLabel: total === 1 ? t('page') : t('pages') })
+                        : t('Crop this page')}
                     </Button>
                   </div>
                 ))}

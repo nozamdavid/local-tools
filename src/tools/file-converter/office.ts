@@ -1,4 +1,5 @@
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
+import { readZipEntry } from '../../lib/zip';
 
 export interface OfficeFormat {
   label: string;
@@ -729,57 +730,6 @@ interface OfficeZipArchive {
   file(path: string): OfficeZipEntry | null;
 }
 
-interface ZipEntryStream {
-  on(event: 'data', listener: (chunk: Uint8Array) => void): ZipEntryStream;
-  on(event: 'error', listener: (error: Error) => void): ZipEntryStream;
-  on(event: 'end', listener: () => void): ZipEntryStream;
-  pause(): ZipEntryStream;
-  resume(): ZipEntryStream;
-}
-
-interface ZipEntryWithStream {
-  internalStream(type: string): ZipEntryStream;
-  _data?: { crc32?: number };
-}
-
-function readZipEntry(entry: ZipEntryWithStream, path: string): Promise<Uint8Array> {
-  const stream = entry.internalStream('uint8array');
-  return new Promise((resolve, reject) => {
-    const chunks: Uint8Array[] = [];
-    let byteLength = 0;
-    let settled = false;
-    stream
-      .on('data', (chunk) => {
-        if (settled) return;
-        byteLength += chunk.byteLength;
-        if (byteLength > MAX_PACKAGE_BYTES) {
-          settled = true;
-          stream.pause();
-          reject(new Error(`Office package entry ${path} exceeds the 32 MB uncompressed limit.`));
-          return;
-        }
-        chunks.push(chunk);
-      })
-      .on('error', (error) => {
-        if (settled) return;
-        settled = true;
-        reject(new Error(`Could not decompress office package entry ${path}: ${error.message}`));
-      })
-      .on('end', () => {
-        if (settled) return;
-        settled = true;
-        const output = new Uint8Array(byteLength);
-        let offset = 0;
-        for (const chunk of chunks) {
-          output.set(chunk, offset);
-          offset += chunk.byteLength;
-        }
-        resolve(output);
-      })
-      .resume();
-  });
-}
-
 const CRC32_TABLE = new Uint32Array(256);
 for (let i = 0; i < CRC32_TABLE.length; i++) {
   let value = i;
@@ -814,7 +764,7 @@ async function loadOfficeArchive(file: File): Promise<OfficeArchive> {
       if (!entry) throw new Error(`Office package is missing ${path}.`);
       let bytes: Uint8Array;
       try {
-        bytes = await readZipEntry(entry as unknown as ZipEntryWithStream, path);
+        bytes = await readZipEntry(entry, MAX_PACKAGE_BYTES, `Office package entry ${path} exceeds the 32 MB uncompressed limit.`);
       } catch (error) {
         if (error instanceof Error && error.message.includes('32 MB uncompressed limit')) throw error;
         throw new Error(`Could not decompress office package entry ${path}: ${error instanceof Error ? error.message : String(error)}.`, {
@@ -825,7 +775,7 @@ async function loadOfficeArchive(file: File): Promise<OfficeArchive> {
       if (bytes.byteLength > MAX_PACKAGE_BYTES || decompressedBytes > MAX_PACKAGE_BYTES) {
         throw new Error('Office package exceeds the 32 MB uncompressed extraction limit.');
       }
-      const expectedCrc = (entry as unknown as ZipEntryWithStream)._data?.crc32;
+      const expectedCrc = (entry as { _data?: { crc32?: number } })._data?.crc32;
       if (expectedCrc !== undefined && crc32(bytes) !== expectedCrc >>> 0) {
         throw new Error(`Corrupt office package entry ${path}: checksum mismatch.`);
       }

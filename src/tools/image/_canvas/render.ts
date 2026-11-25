@@ -1,6 +1,7 @@
 import { CanvasDocument, Layer, TextLayer, RedactLayer } from './types';
 import { getFontStack } from './fonts';
 import { canvasToBlob, EncodableMime } from '../../../lib/image';
+import { translate } from '../../../lib/i18n';
 
 export function getAdjustmentFilter(doc: CanvasDocument): string {
   const adj = doc.adjustments;
@@ -406,7 +407,7 @@ export async function exportDocument(doc: CanvasDocument, mime: EncodableMime, q
   canvas.height = Math.max(1, Math.round(doc.height));
 
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D context unavailable.');
+  if (!ctx) throw new Error(translate('Canvas 2D context unavailable.'));
 
   renderDocument(ctx, doc, false);
   return canvasToBlob(canvas, mime, quality);

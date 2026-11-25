@@ -3,6 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { getToolMeta } from '../../registry';
 import { IMAGE_ACCEPT } from '../../../lib/image';
+import { useI18n } from '../../../lib/i18n';
 import { FitToFrameEditor } from '../_layout/FitToFrameEditor';
 import type { FrameConfig } from '../_layout/types';
 
@@ -26,6 +27,7 @@ const CONFIG: FrameConfig = {
 };
 
 export default function ThumbnailTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-thumbnail');
   const [file, setFile] = useState<File | null>(null);
 
@@ -38,8 +40,8 @@ export default function ThumbnailTool() {
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose an image for your YouTube Thumbnail"
-          hint="Supports JPG, PNG, WebP, HEIC and SVG. Exact 1280×720 16:9 standard export."
+          label={t('Choose an image for your YouTube Thumbnail')}
+          hint={t('Supports JPG, PNG, WebP, HEIC and SVG. Exact 1280×720 16:9 standard export.')}
           onFiles={handleFiles}
         />
       ) : (
@@ -49,8 +51,9 @@ export default function ThumbnailTool() {
           onReset={() => setFile(null)}
           additionalInfo={
             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              YouTube thumbnails must be 1280×720 and under 2 MB. Avoid putting critical text in the bottom right where YouTube places the
-              video time badge.
+              {t(
+                'YouTube thumbnails must be 1280×720 and under 2 MB. Avoid putting critical text in the bottom right where YouTube places the video time badge.',
+              )}
             </div>
           }
         />

@@ -46,55 +46,88 @@
   border: 2px solid var(--accent);
   cursor: move;
   box-sizing: border-box;
+  box-shadow: 0 0 0 1px var(--surface);
 }
 
 .handle {
   position: absolute;
-  width: 14px;
-  height: 14px;
-  background: #ffffff;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  appearance: none;
+  background: var(--surface);
   border: 2px solid var(--accent);
   border-radius: 3px;
   box-sizing: border-box;
+  box-shadow: var(--shadow-xs);
+  touch-action: none;
+}
+
+.handle:focus-visible,
+.moveHandle:focus-visible {
+  z-index: 2;
+  outline: none;
+  box-shadow:
+    0 0 0 3px var(--focus-ring),
+    var(--shadow-xs);
+}
+
+.moveHandle {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-full);
+  background: var(--surface);
+  color: var(--accent-text);
+  box-shadow: var(--shadow-xs);
+  cursor: move;
+  touch-action: none;
 }
 
 .h_nw {
-  left: -8px;
-  top: -8px;
+  left: -10px;
+  top: -10px;
   cursor: nwse-resize;
 }
 .h_n {
-  left: calc(50% - 7px);
-  top: -8px;
+  left: calc(50% - 9px);
+  top: -10px;
   cursor: ns-resize;
 }
 .h_ne {
-  right: -8px;
-  top: -8px;
+  right: -10px;
+  top: -10px;
   cursor: nesw-resize;
 }
 .h_e {
-  right: -8px;
-  top: calc(50% - 7px);
+  right: -10px;
+  top: calc(50% - 9px);
   cursor: ew-resize;
 }
 .h_se {
-  right: -8px;
-  bottom: -8px;
+  right: -10px;
+  bottom: -10px;
   cursor: nwse-resize;
 }
 .h_s {
-  left: calc(50% - 7px);
-  bottom: -8px;
+  left: calc(50% - 9px);
+  bottom: -10px;
   cursor: ns-resize;
 }
 .h_sw {
-  left: -8px;
-  bottom: -8px;
+  left: -10px;
+  bottom: -10px;
   cursor: nesw-resize;
 }
 .h_w {
-  left: -8px;
-  top: calc(50% - 7px);
+  left: -10px;
+  top: calc(50% - 9px);
   cursor: ew-resize;
 }

@@ -1,0 +1,135 @@
+import type { Locale } from '../lib/i18n';
+
+// Translation order is Spanish, Italian, German, Portuguese, French.
+const translations: Record<string, [string, string, string, string, string]> = {
+  'Previewing first of {count} files': [
+    'Vista previa del primero de {count} archivos',
+    'Anteprima del primo di {count} file',
+    'Vorschau der ersten von {count} Dateien',
+    'Pré-visualização do primeiro de {count} ficheiros',
+    'Aperçu du premier fichier sur {count}',
+  ],
+  'Preparing source preview…': [
+    'Preparando la vista previa del archivo…',
+    'Preparazione dell’anteprima sorgente…',
+    'Quellvorschau wird vorbereitet …',
+    'A preparar a pré-visualização da origem…',
+    'Préparation de l’aperçu de la source…',
+  ],
+  'Target icon sizes: {sizes} px': [
+    'Tamaños del icono: {sizes} px',
+    'Dimensioni dell’icona: {sizes} px',
+    'Symbolgrößen: {sizes} px',
+    'Tamanhos do ícone: {sizes} px',
+    'Tailles de l’icône : {sizes} px',
+  ],
+  'Target icon appearance: {size} × {size} px': [
+    'Aspecto del icono: {size} × {size} px',
+    'Aspetto dell’icona: {size} × {size} px',
+    'Symbolansicht: {size} × {size} px',
+    'Aspeto do ícone: {size} × {size} px',
+    'Aspect de l’icône : {size} × {size} px',
+  ],
+  'Preparing target icon preview…': [
+    'Preparando la vista previa del icono…',
+    'Preparazione dell’anteprima dell’icona…',
+    'Symbolvorschau wird vorbereitet …',
+    'A preparar a pré-visualização do ícone…',
+    'Préparation de l’aperçu de l’icône…',
+  ],
+  'Target icon preview could not be created. Conversion is still available.': [
+    'No se pudo crear la vista previa del icono. La conversión sigue disponible.',
+    'Impossibile creare l’anteprima dell’icona. La conversione è comunque disponibile.',
+    'Die Symbolvorschau konnte nicht erstellt werden. Die Konvertierung ist weiterhin möglich.',
+    'Não foi possível criar a pré-visualização do ícone. A conversão continua disponível.',
+    'Impossible de créer l’aperçu de l’icône. La conversion reste disponible.',
+  ],
+  'Source image dimensions: {width} × {height} px': [
+    'Dimensiones de la imagen de origen: {width} × {height} px',
+    'Dimensioni dell’immagine sorgente: {width} × {height} px',
+    'Maße des Quellbilds: {width} × {height} px',
+    'Dimensões da imagem de origem: {width} × {height} px',
+    'Dimensions de l’image source : {width} × {height} px',
+  ],
+  'The preview shows the first selected file. Convert processes all {count} files.': [
+    'La vista previa muestra el primer archivo seleccionado. Convertir procesa los {count} archivos.',
+    'L’anteprima mostra il primo file selezionato. Converti elabora tutti i {count} file.',
+    'Die Vorschau zeigt die erste ausgewählte Datei. Beim Konvertieren werden alle {count} Dateien verarbeitet.',
+    'A pré-visualização mostra o primeiro ficheiro selecionado. Converter processa os {count} ficheiros.',
+    'L’aperçu montre le premier fichier sélectionné. Convertir traite les {count} fichiers.',
+  ],
+  'The preview shows the first frame. Convert extracts every frame from all {count} selected files.': [
+    'La vista previa muestra el primer fotograma. Convertir extrae todos los fotogramas de los {count} archivos seleccionados.',
+    'L’anteprima mostra il primo frame. Converti estrae tutti i frame dai {count} file selezionati.',
+    'Die Vorschau zeigt den ersten Frame. Beim Konvertieren werden alle Frames aus den {count} ausgewählten Dateien extrahiert.',
+    'A pré-visualização mostra o primeiro quadro. Converter extrai todos os quadros dos {count} ficheiros selecionados.',
+    'L’aperçu montre la première image. Convertir extrait toutes les images des {count} fichiers sélectionnés.',
+  ],
+  'Source image preview supports files up to {size} MiB. Conversion is still available.': [
+    'La vista previa admite imágenes de hasta {size} Mio. La conversión sigue disponible.',
+    'L’anteprima supporta immagini fino a {size} MiB. La conversione è comunque disponibile.',
+    'Die Bildvorschau unterstützt Dateien bis {size} MiB. Die Konvertierung ist weiterhin möglich.',
+    'A pré-visualização suporta imagens até {size} MiB. A conversão continua disponível.',
+    'L’aperçu prend en charge les images jusqu’à {size} Mio. La conversion reste disponible.',
+  ],
+  'Preview could not be created. Conversion is still available.': [
+    'No se pudo crear la vista previa. La conversión sigue disponible.',
+    'Impossibile creare l’anteprima. La conversione è comunque disponibile.',
+    'Die Vorschau konnte nicht erstellt werden. Die Konvertierung ist weiterhin möglich.',
+    'Não foi possível criar a pré-visualização. A conversão continua disponível.',
+    'Impossible de créer l’aperçu. La conversion reste disponible.',
+  ],
+  'Preparing ICO preview…': [
+    'Preparando la vista previa del ICO…',
+    'Preparazione dell’anteprima ICO…',
+    'ICO-Vorschau wird vorbereitet …',
+    'A preparar a pré-visualização do ICO…',
+    'Préparation de l’aperçu ICO…',
+  ],
+  'ICO preview supports files up to {size} MiB. Conversion is still available.': [
+    'La vista previa de ICO admite archivos de hasta {size} MiB. La conversión sigue disponible.',
+    'L’anteprima ICO supporta file fino a {size} MiB. La conversione è comunque disponibile.',
+    'Die ICO-Vorschau unterstützt Dateien bis {size} MiB. Die Konvertierung ist weiterhin möglich.',
+    'A pré-visualização de ICO suporta ficheiros até {size} MiB. A conversão continua disponível.',
+    'L’aperçu ICO prend en charge les fichiers jusqu’à {size} Mio. La conversion reste disponible.',
+  ],
+  'ICO preview supports up to {count} embedded frames. Conversion is still available.': [
+    'La vista previa de ICO admite hasta {count} fotogramas incrustados. La conversión sigue disponible.',
+    'L’anteprima ICO supporta fino a {count} frame incorporati. La conversione è comunque disponibile.',
+    'Die ICO-Vorschau unterstützt bis zu {count} eingebettete Frames. Die Konvertierung ist weiterhin möglich.',
+    'A pré-visualização de ICO suporta até {count} quadros incorporados. A conversão continua disponível.',
+    'L’aperçu ICO prend en charge jusqu’à {count} images intégrées. La conversion reste disponible.',
+  ],
+  'ICO preview supports frames up to 256 × 256 px. Conversion is still available.': [
+    'La vista previa de ICO admite fotogramas de hasta 256 × 256 px. La conversión sigue disponible.',
+    'L’anteprima ICO supporta frame fino a 256 × 256 px. La conversione è comunque disponibile.',
+    'Die ICO-Vorschau unterstützt Frames bis 256 × 256 px. Die Konvertierung ist weiterhin möglich.',
+    'A pré-visualização de ICO suporta quadros até 256 × 256 px. A conversão continua disponível.',
+    'L’aperçu ICO prend en charge les images jusqu’à 256 × 256 px. La conversion reste disponible.',
+  ],
+  'ICO preview supports up to {size} MiB of frame data. Conversion is still available.': [
+    'La vista previa de ICO admite hasta {size} MiB de datos de fotogramas. La conversión sigue disponible.',
+    'L’anteprima ICO supporta fino a {size} MiB di dati dei frame. La conversione è comunque disponibile.',
+    'Die ICO-Vorschau unterstützt bis zu {size} MiB Frame-Daten. Die Konvertierung ist weiterhin möglich.',
+    'A pré-visualização de ICO suporta até {size} MiB de dados dos quadros. A conversão continua disponível.',
+    'L’aperçu ICO prend en charge jusqu’à {size} Mio de données d’images. La conversion reste disponible.',
+  ],
+  'First ICO frame: {width} × {height} px · {bitCount}-bit · {format}': [
+    'Primer fotograma ICO: {width} × {height} px · {bitCount} bits · {format}',
+    'Primo frame ICO: {width} × {height} px · {bitCount} bit · {format}',
+    'Erster ICO-Frame: {width} × {height} px · {bitCount}-Bit · {format}',
+    'Primeiro quadro ICO: {width} × {height} px · {bitCount} bits · {format}',
+    'Première image ICO : {width} × {height} px · {bitCount} bits · {format}',
+  ],
+  'PNG stream': ['flujo PNG', 'flusso PNG', 'PNG-Stream', 'fluxo PNG', 'flux PNG'],
+  'DIB bitmap': ['mapa de bits DIB', 'bitmap DIB', 'DIB-Bitmap', 'bitmap DIB', 'bitmap DIB'],
+};
+
+const entries = Object.entries(translations);
+export const messages: Partial<Record<Locale, Record<string, string>>> = {
+  es: Object.fromEntries(entries.map(([source, values]) => [source, values[0]])),
+  it: Object.fromEntries(entries.map(([source, values]) => [source, values[1]])),
+  de: Object.fromEntries(entries.map(([source, values]) => [source, values[2]])),
+  pt: Object.fromEntries(entries.map(([source, values]) => [source, values[3]])),
+  fr: Object.fromEntries(entries.map(([source, values]) => [source, values[4]])),
+};

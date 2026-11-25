@@ -7,12 +7,14 @@ import { decodeImage, IMAGE_ACCEPT } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
 import { formatBytes } from '../../../lib/format';
 import { cleanSignaturePixels, cropImageData, type CleanerOptions } from '../_utility/cleaner';
+import { useI18n } from '../../../lib/i18n';
 
 type PresetType = 'signature' | 'stamp';
 type OutputMode = 'transparent' | 'white';
 
 export default function SignatureCleanerTool() {
   const meta = getToolMeta('img-signature-cleaner');
+  const { t } = useI18n();
   const title = meta.title && meta.title !== 'img-signature-cleaner' ? meta.title : 'Signature & Stamp Cleaner';
   const description =
     meta.description || 'Remove paper backgrounds from signatures, stamps and seals while preserving thin ink strokes and colors.';
@@ -155,8 +157,8 @@ export default function SignatureCleanerTool() {
         {!file ? (
           <FileDrop
             accept={IMAGE_ACCEPT}
-            label="Upload signature, stamp or document image"
-            hint="Removes paper background, shadows and textures. 100% private in-browser processing."
+            label={t('Upload a signature, stamp or document image')}
+            hint={t('Removes paper background, shadows and textures.')}
             onFiles={handleFiles}
           />
         ) : (
@@ -173,39 +175,48 @@ export default function SignatureCleanerTool() {
               }}
             >
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem' }}>
-                <Field label="Ink Preset">
+                <Field label={t('Ink preset')}>
                   <Select
                     value={preset}
                     onChange={(e) => handlePresetChange(e.target.value as PresetType)}
                     options={[
-                      { value: 'signature', label: 'Signature (Dark Pen / Blue / Pencil)' },
-                      { value: 'stamp', label: 'Stamp & Seal (Red / Colored Ink)' },
+                      { value: 'signature', label: t('Signature (dark pen, blue ink or pencil)') },
+                      { value: 'stamp', label: t('Stamp and seal (red or coloured ink)') },
                     ]}
                   />
                 </Field>
 
-                <Field label="Output Background">
+                <Field label={t('Output background')}>
                   <Select
                     value={outputMode}
                     onChange={(e) => setOutputMode(e.target.value as OutputMode)}
                     options={[
-                      { value: 'transparent', label: 'Transparent Background (PNG)' },
-                      { value: 'white', label: 'Clean White Background' },
+                      { value: 'transparent', label: t('Transparent background (PNG)') },
+                      { value: 'white', label: t('Clean white background') },
                     ]}
                   />
                 </Field>
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                <Field label={`Paper Threshold: ${threshold}`} hint="Higher values remove more paper and gray shadows.">
+                <Field
+                  label={t('Paper threshold: {value}', { value: threshold })}
+                  hint={t('Higher values remove more paper and grey shadows.')}
+                >
                   <Slider value={threshold} min={100} max={250} step={1} onChange={setThreshold} />
                 </Field>
 
-                <Field label={`Stroke Detail / Smoothness: ${detail}`} hint="Feathers edges to avoid jagged pixelation on thin strokes.">
+                <Field
+                  label={t('Stroke detail / smoothness: {value}', { value: detail })}
+                  hint={t('Softens edges to avoid jagged pixels on thin strokes.')}
+                >
                   <Slider value={detail} min={5} max={60} step={1} onChange={setDetail} />
                 </Field>
 
-                <Field label={`Contrast / Ink Boost: ${contrast}%`} hint="Darkens and strengthens faint pen strokes.">
+                <Field
+                  label={t('Contrast / ink boost: {value}%', { value: contrast })}
+                  hint={t('Darkens and strengthens faint pen strokes.')}
+                >
                   <Slider value={contrast} min={0} max={100} step={5} unit="%" onChange={setContrast} />
                 </Field>
               </div>
@@ -218,15 +229,15 @@ export default function SignatureCleanerTool() {
                     onChange={(e) => setCropToInk(e.target.checked)}
                     style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                   />
-                  <span>
-                    <strong>Auto-crop to ink bounds:</strong> Trims empty paper borders around the signature or stamp.
-                  </span>
+                  <span>{t('Auto-crop to ink bounds: trims empty paper borders around the signature or stamp.')}</span>
                 </label>
               </div>
             </div>
 
             {error && (
-              <div style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px' }}>{error}</div>
+              <div style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px' }}>
+                {t(error)}
+              </div>
             )}
 
             {isEmpty && (
@@ -241,8 +252,9 @@ export default function SignatureCleanerTool() {
                   lineHeight: '1.4',
                 }}
               >
-                ⚠️ <strong>No ink strokes detected with current settings.</strong> The paper was completely erased. Try lowering the{' '}
-                <em>Paper Threshold</em> slider or adjusting <em>Stroke Detail</em> to bring back faint pen ink.
+                {t(
+                  'No ink strokes were detected with these settings. The paper was completely erased. Try lowering the Paper threshold slider or adjusting Stroke detail to bring back faint pen ink.',
+                )}
               </div>
             )}
 
@@ -260,7 +272,7 @@ export default function SignatureCleanerTool() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Original Image</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{t('Original image')}</span>
                   {sourceImg && (
                     <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>
                       {sourceImg.naturalWidth}×{sourceImg.naturalHeight} px
@@ -279,7 +291,7 @@ export default function SignatureCleanerTool() {
                   }}
                 >
                   {sourceImg && (
-                    <img src={sourceImg.src} alt="Original" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+                    <img src={sourceImg.src} alt={t('Original')} style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
                   )}
                 </div>
               </div>
@@ -296,7 +308,7 @@ export default function SignatureCleanerTool() {
                 }}
               >
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Cleaned Result</span>
+                  <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{t('Cleaned result')}</span>
                   {resultBlob && <span style={{ fontSize: '0.8rem', opacity: 0.75 }}>{formatBytes(resultBlob.size)}</span>}
                 </div>
                 <div
@@ -316,7 +328,7 @@ export default function SignatureCleanerTool() {
                   <canvas
                     ref={previewCanvasRef}
                     role="img"
-                    aria-label="Cleaned signature preview"
+                    aria-label={t('Cleaned signature preview')}
                     style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
                   />
                 </div>
@@ -326,10 +338,10 @@ export default function SignatureCleanerTool() {
             {/* Actions */}
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <Button variant="secondary" onClick={handleReset}>
-                Start over
+                {t('Start over')}
               </Button>
               <Button variant="primary" onClick={handleDownload} disabled={!resultBlob || isEmpty}>
-                ⬇ Download Cleaned PNG
+                {t('⬇ Download cleaned PNG')}
               </Button>
             </div>
           </div>

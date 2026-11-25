@@ -6,6 +6,7 @@ import { Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
+import { useI18n } from '../../../lib/i18n';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PageThumb } from '../_thumbs/PageThumb';
 import { usePdfSource } from '../_thumbs/usePdfSource';
@@ -14,6 +15,7 @@ import { buildDocx } from './buildDocx';
 import styles from './Tool.module.css';
 
 export default function PdfToWordTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-pdf-to-word');
   const source = usePdfSource();
   const job = useJob();
@@ -48,41 +50,45 @@ export default function PdfToWordTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Paragraphs, headings and tables become an editable DOCX."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Paragraphs, headings and tables become an editable DOCX.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           <div className={styles.topRow}>
             <div className="meta-chips">
               <span className="meta-chip">
-                File: <strong>{file.name}</strong>
+                {t('File:')} <strong>{file.name}</strong>
               </span>
               <span className="meta-chip">
-                Size: <strong>{formatBytes(file.size)}</strong>
+                {t('Size:')} <strong>{formatBytes(file.size)}</strong>
               </span>
               {source.doc && (
                 <span className="meta-chip">
-                  Pages: <strong>{total}</strong>
+                  {t('Pages:')} <strong>{total}</strong>
                 </span>
               )}
             </div>
             <Button variant="secondary" onClick={handleReset}>
-              Change PDF
+              {t('Change PDF')}
             </Button>
           </div>
 
-          {source.loading && <p className={styles.status}>Opening PDF document…</p>}
+          {source.loading && <p className={styles.status}>{t('Opening PDF document…')}</p>}
 
           {job.result ? (
             <DownloadResult
               blob={job.result}
               filename={outName}
-              summary={`${total} ${total === 1 ? 'page' : 'pages'} converted${exactLayout ? ' as page images' : ' to editable text'}.`}
+              summary={
+                exactLayout
+                  ? t('{count} {unit} converted as page images.', { count: total, unit: total === 1 ? t('page') : t('pages') })
+                  : t('{count} {unit} converted to editable text.', { count: total, unit: total === 1 ? t('page') : t('pages') })
+              }
               onReset={handleReset}
             />
           ) : (
@@ -94,33 +100,38 @@ export default function PdfToWordTool() {
                       src={source.thumbs[0]}
                       width={source.pages[0].width}
                       height={source.pages[0].height}
-                      alt="Page 1"
+                      alt={t('Page 1')}
                       box={180}
                     />
                   )}
 
                   <div className={styles.options}>
-                    <label className={styles.check}>
-                      <input
-                        type="checkbox"
-                        checked={exactLayout}
-                        disabled={job.status === 'running'}
-                        onChange={(e) => setExactLayout(e.target.checked)}
-                      />
-                      <span>
-                        Keep exact layout (page images)
-                        <small>Each page is embedded as a picture, so it looks identical but the text is not editable.</small>
-                      </span>
-                    </label>
+                    <details className="tool-options">
+                      <summary>{t('Export options')}</summary>
+                      <div className="tool-options-body">
+                        <label className={styles.check}>
+                          <input
+                            type="checkbox"
+                            checked={exactLayout}
+                            disabled={job.status === 'running'}
+                            onChange={(e) => setExactLayout(e.target.checked)}
+                          />
+                          <span>
+                            {t('Keep exact layout (page images)')}
+                            <small>{t('Each page is an image, so the layout stays intact but the text is not editable.')}</small>
+                          </span>
+                        </label>
+                      </div>
+                    </details>
                   </div>
                 </div>
 
                 {job.status === 'running' ? (
-                  <ProgressBar value={job.progress} label="Converting to Word…" />
+                  <ProgressBar value={job.progress} label={t('Converting to Word…')} />
                 ) : (
                   <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                     <Button variant="primary" onClick={handleConvert}>
-                      Convert to DOCX
+                      {t('Convert to DOCX')}
                     </Button>
                   </div>
                 )}

@@ -9,6 +9,11 @@ export interface VisualDims {
   rotation: number; // 0, 90, 180, 270
 }
 
+export interface VisiblePageDims extends VisualDims {
+  originX: number;
+  originY: number;
+}
+
 export interface PdfPlacement {
   x: number;
   y: number;
@@ -31,6 +36,33 @@ export function getVisualPageDims(page: PDFPage): VisualDims {
     visualWidth: isSideways ? pdfHeight : pdfWidth,
     visualHeight: isSideways ? pdfWidth : pdfHeight,
     rotation,
+  };
+}
+
+/**
+ * Returns the page area PDF.js actually displays: the CropBox clipped to the
+ * MediaBox, including its PDF-space origin.
+ */
+export function getVisiblePageDims(page: PDFPage): VisiblePageDims {
+  const media = page.getMediaBox();
+  const crop = page.getCropBox();
+  const left = Math.max(media.x, crop.x);
+  const bottom = Math.max(media.y, crop.y);
+  const right = Math.min(media.x + media.width, crop.x + crop.width);
+  const top = Math.min(media.y + media.height, crop.y + crop.height);
+  const box = right > left && top > bottom ? { x: left, y: bottom, width: right - left, height: top - bottom } : media;
+  const rawAngle = page.getRotation().angle;
+  const rotation = ((rawAngle % 360) + 360) % 360;
+  const sideways = rotation === 90 || rotation === 270;
+
+  return {
+    pdfWidth: box.width,
+    pdfHeight: box.height,
+    visualWidth: sideways ? box.height : box.width,
+    visualHeight: sideways ? box.width : box.height,
+    rotation,
+    originX: box.x,
+    originY: box.y,
   };
 }
 
@@ -73,6 +105,16 @@ export function mapVisualToPdf(visualPos: { x: number; y: number; angle?: number
         rotateDegrees,
       };
   }
+}
+
+/** Maps visible page coordinates to PDF user space, accounting for box origin. */
+export function mapVisibleToPdf(visualPos: { x: number; y: number; angle?: number }, dims: VisiblePageDims): PdfPlacement {
+  const placement = mapVisualToPdf(visualPos, dims);
+  return {
+    ...placement,
+    x: placement.x + dims.originX,
+    y: placement.y + dims.originY,
+  };
 }
 
 /**

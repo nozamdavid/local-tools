@@ -4,6 +4,7 @@ import { FileDrop } from '../../../components/FileDrop';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
 import { ResultPanel } from '../../../components/ResultPanel';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { IMAGE_ACCEPT, decodeImage, canvasToBlob, type EncodableMime } from '../../../lib/image';
 import { withSuffix } from '../../../lib/format';
 import styles from './Tool.module.css';
@@ -23,6 +24,7 @@ type Format = 'png' | 'jpg' | 'webp';
 
 export default function MergeTool() {
   const meta = getToolMeta('img-merge');
+  const { t } = useI18n();
   const [items, setItems] = useState<ImageItem[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -288,18 +290,18 @@ export default function MergeTool() {
         <FileDrop
           accept={IMAGE_ACCEPT}
           multiple
-          label="Choose 2 or more images to combine"
-          hint="Supports JPG, PNG, WebP, HEIC and SVG. Merge horizontally, vertically, or in a grid."
+          label={t('Choose 2 or more images to combine')}
+          hint={t('Supports JPG, PNG, WebP, HEIC and SVG. Merge horizontally, vertically or in a grid.')}
           onFiles={loadFiles}
         />
       ) : (
         <div className={styles.wrapper}>
-          {loadError && <div className="error-banner">{loadError}</div>}
+          {loadError && <div className="error-banner">{t(loadError)}</div>}
 
           {/* Image List */}
           <div>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>Images ({items.length})</h3>
+              <h3 style={{ fontSize: '1rem', fontWeight: 600 }}>{t('Images ({count})', { count: items.length })}</h3>
               <input
                 ref={addFilesInputRef}
                 type="file"
@@ -312,7 +314,7 @@ export default function MergeTool() {
                 }}
               />
               <Button variant="secondary" style={{ fontSize: '0.85rem' }} onClick={() => addFilesInputRef.current?.click()}>
-                + Add more images
+                {t('+ Add more images')}
               </Button>
             </div>
 
@@ -336,7 +338,7 @@ export default function MergeTool() {
                       className={styles.actionBtn}
                       disabled={idx === 0}
                       onClick={() => handleMove(idx, -1)}
-                      title="Move up"
+                      title={t('Move up')}
                     >
                       ↑
                     </button>
@@ -345,7 +347,7 @@ export default function MergeTool() {
                       className={styles.actionBtn}
                       disabled={idx === items.length - 1}
                       onClick={() => handleMove(idx, 1)}
-                      title="Move down"
+                      title={t('Move down')}
                     >
                       ↓
                     </button>
@@ -353,7 +355,7 @@ export default function MergeTool() {
                       type="button"
                       className={`${styles.actionBtn} ${styles.actionBtnDanger}`}
                       onClick={() => handleRemove(idx)}
-                      title="Remove"
+                      title={t('Remove')}
                     >
                       ✕
                     </button>
@@ -365,75 +367,75 @@ export default function MergeTool() {
 
           {/* Merge Preview */}
           <div>
-            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>Live Preview:</h3>
+            <h3 style={{ fontSize: '1rem', fontWeight: 600, marginBottom: '0.5rem' }}>{t('Live preview')}</h3>
             <div className={styles.previewContainer}>
-              <canvas ref={canvasRef} className={styles.previewCanvas} role="img" aria-label="Preview of the merged image" />
+              <canvas ref={canvasRef} className={styles.previewCanvas} role="img" aria-label={t('Preview of the merged image')} />
             </div>
           </div>
 
           {/* Controls */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '1.25rem' }}>
-            <Field label="Direction" hint="How images are sequenced together.">
+            <Field label={t('Direction')} hint={t('How images are sequenced together.')}>
               <Select
                 id={directionId}
                 value={direction}
                 onChange={(e) => setDirection(e.target.value as Direction)}
                 options={[
-                  { value: 'horizontal', label: 'Horizontal (side by side)' },
-                  { value: 'vertical', label: 'Vertical (stacked)' },
-                  { value: 'grid', label: 'Grid' },
+                  { value: 'horizontal', label: t('Horizontal (side by side)') },
+                  { value: 'vertical', label: t('Vertical (stacked)') },
+                  { value: 'grid', label: t('Grid') },
                 ]}
               />
             </Field>
 
             {direction === 'grid' && (
-              <Field label="Grid columns" hint="Number of columns in the grid.">
+              <Field label={t('Grid columns')} hint={t('Number of columns in the grid.')}>
                 <Select
                   id={gridColsId}
                   value={String(gridCols)}
                   onChange={(e) => setGridCols(parseInt(e.target.value, 10))}
                   options={[
-                    { value: '2', label: '2 columns' },
-                    { value: '3', label: '3 columns' },
-                    { value: '4', label: '4 columns' },
-                    { value: '5', label: '5 columns' },
+                    { value: '2', label: t('2 columns') },
+                    { value: '3', label: t('3 columns') },
+                    { value: '4', label: t('4 columns') },
+                    { value: '5', label: t('5 columns') },
                   ]}
                 />
               </Field>
             )}
 
-            <Field label="Alignment" hint="Alignment for differently sized images.">
+            <Field label={t('Alignment')} hint={t('Alignment for differently sized images.')}>
               <Select
                 id={alignmentId}
                 value={alignment}
                 disabled={matchSize && direction !== 'grid'}
                 onChange={(e) => setAlignment(e.target.value as Alignment)}
                 options={[
-                  { value: 'center', label: 'Center (recommended)' },
-                  { value: 'start', label: direction === 'vertical' ? 'Left' : 'Top' },
-                  { value: 'end', label: direction === 'vertical' ? 'Right' : 'Bottom' },
+                  { value: 'center', label: t('Center (recommended)') },
+                  { value: 'start', label: direction === 'vertical' ? t('Left') : t('Top') },
+                  { value: 'end', label: direction === 'vertical' ? t('Right') : t('Bottom') },
                 ]}
               />
             </Field>
 
-            <Field label="Spacing / Gap (px)" hint="Space between adjacent images.">
+            <Field label={t('Spacing / gap (px)')} hint={t('Space between adjacent images.')}>
               <Slider value={gap} min={0} max={100} step={2} unit="px" onChange={setGap} />
             </Field>
 
-            <Field label="Output format" hint="PNG preserves transparency; JPG produces smaller file.">
+            <Field label={t('Output format')} hint={t('PNG preserves transparency; JPG produces smaller files.')}>
               <Select
                 id={formatId}
                 value={format}
                 onChange={(e) => setFormat(e.target.value as Format)}
                 options={[
-                  { value: 'png', label: 'PNG' },
-                  { value: 'jpg', label: 'JPG' },
-                  { value: 'webp', label: 'WebP' },
+                  { value: 'png', label: t('PNG') },
+                  { value: 'jpg', label: t('JPG') },
+                  { value: 'webp', label: t('WebP') },
                 ]}
               />
             </Field>
 
-            <Field label="Background & Gap colour" hint="Colour filled between and behind images.">
+            <Field label={t('Background and gap colour')} hint={t('Colour filled between and behind images.')}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <input
                   type="color"
@@ -445,7 +447,7 @@ export default function MergeTool() {
                 {format !== 'jpg' && (
                   <label className="checkbox-label" style={{ margin: 0 }}>
                     <input type="checkbox" checked={isTransparent} onChange={(e) => setIsTransparent(e.target.checked)} />
-                    <span>Transparent</span>
+                    <span>{t('Transparent')}</span>
                   </label>
                 )}
               </div>
@@ -455,18 +457,16 @@ export default function MergeTool() {
           <div className="field">
             <label className="checkbox-label">
               <input type="checkbox" checked={matchSize} onChange={(e) => setMatchSize(e.target.checked)} />
-              <span>
-                <strong>Match size</strong> (scale all images to uniform height for horizontal, or uniform width for vertical)
-              </span>
+              <span>{t('Match size (scale all images to uniform height for horizontal, or uniform width for vertical)')}</span>
             </label>
           </div>
 
           <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
             <Button variant="secondary" onClick={handleReset}>
-              Start over
+              {t('Start over')}
             </Button>
             <Button variant="primary" onClick={handleExport} disabled={exporting || items.length < 2}>
-              {exporting ? 'Merging…' : `Merge ${items.length} images`}
+              {exporting ? t('Merging…') : t('Merge {count} images', { count: items.length })}
             </Button>
           </div>
         </div>

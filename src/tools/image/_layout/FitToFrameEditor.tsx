@@ -5,6 +5,7 @@ import { decodeImage, canvasToBlob, type EncodableMime } from '../../../lib/imag
 import { withSuffix, formatBytes } from '../../../lib/format';
 import { Field, Slider, Select, Button } from '../../../components/Controls';
 import { ResultPanel } from '../../../components/ResultPanel';
+import { useI18n } from '../../../lib/i18n';
 import styles from './FitToFrameEditor.module.css';
 
 export interface FitToFrameEditorProps {
@@ -15,6 +16,7 @@ export interface FitToFrameEditorProps {
 }
 
 export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitToFrameEditorProps) {
+  const { t } = useI18n();
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -42,7 +44,6 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
   });
 
   const formatSelectId = useId();
-  const qualitySelectId = useId();
 
   // Load image
   useEffect(() => {
@@ -182,7 +183,10 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
 
       if (config.warnIfOverBytes && blob.size > config.warnIfOverBytes) {
         setFileSizeWarning(
-          `Output file is ${formatBytes(blob.size)}, exceeding the recommended ${formatBytes(config.warnIfOverBytes)} limit for this platform.`,
+          t('Output file is {size}, exceeding the recommended {limit} limit for this platform.', {
+            size: formatBytes(blob.size),
+            limit: formatBytes(config.warnIfOverBytes),
+          }),
         );
       }
 
@@ -197,10 +201,10 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
   if (loadError) {
     return (
       <div>
-        <div className="error-banner">{loadError}</div>
+        <div className="error-banner">{t(loadError)}</div>
         <div style={{ marginTop: '1rem' }}>
           <Button variant="secondary" onClick={onReset}>
-            Choose different image
+            {t('Choose different image')}
           </Button>
         </div>
       </div>
@@ -223,7 +227,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
           <div className={styles.warningBox} style={{ margin: '1rem 0' }}>
             <span>⚠️ {fileSizeWarning}</span>
             <Button variant="secondary" style={{ fontSize: '0.8rem', padding: '0.35rem 0.65rem' }} onClick={() => handleExport(0.8)}>
-              Re-export at 80% quality
+              {t('Re-export at 80% quality')}
             </Button>
           </div>
         )}
@@ -236,7 +240,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
       const topPercent = (guide.size / config.height) * 100;
       return (
         <div key={idx} className={`${styles.guideEdge} ${styles.guideTop}`} style={{ height: `${topPercent}%` }}>
-          {guide.label}
+          {t(guide.label)}
         </div>
       );
     }
@@ -244,7 +248,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
       const bottomPercent = (guide.size / config.height) * 100;
       return (
         <div key={idx} className={`${styles.guideEdge} ${styles.guideBottom}`} style={{ height: `${bottomPercent}%` }}>
-          {guide.label}
+          {t(guide.label)}
         </div>
       );
     }
@@ -255,7 +259,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
       const h = (guide.height / config.height) * 100;
       return (
         <div key={idx} className={styles.guideBox} style={{ left: `${left}%`, top: `${top}%`, width: `${w}%`, height: `${h}%` }}>
-          {guide.label}
+          {t(guide.label)}
         </div>
       );
     }
@@ -270,7 +274,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
           className={styles.guideCircle}
           style={{ left: `${left}%`, top: `${top}%`, width: `${diameterX}%`, height: `${diameterY}%` }}
         >
-          {guide.label}
+          {t(guide.label)}
         </div>
       );
     }
@@ -281,16 +285,13 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
     <div className={styles.editorWrapper}>
       <div className="meta-chips">
         <span className="meta-chip">
-          Target:{' '}
+          {t('Target')}:{' '}
           <strong>
             {config.width} × {config.height} px
           </strong>
         </span>
         <span className="meta-chip">
-          Original: <strong>{img ? `${img.naturalWidth || img.width} × ${img.naturalHeight || img.height} px` : '...'}</strong>
-        </span>
-        <span className="meta-chip">
-          Fit: <strong>{fitMode.toUpperCase()}</strong>
+          {t('Original')}: <strong>{img ? `${img.naturalWidth || img.width} × ${img.naturalHeight || img.height} px` : '...'}</strong>
         </span>
       </div>
 
@@ -308,10 +309,10 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
           onKeyDown={handleKeyDown}
           tabIndex={0}
           role="group"
-          aria-label="Image position. Arrow keys move the image (Shift for larger steps), plus and minus zoom."
-          title="Drag to reposition, mouse wheel to zoom"
+          aria-label={t('Image position. Arrow keys move the image (Shift for larger steps), plus and minus zoom.')}
+          title={t('Drag to reposition, mouse wheel to zoom')}
         >
-          <canvas ref={canvasRef} className={styles.previewCanvas} role="img" aria-label="Preview of the framed image" />
+          <canvas ref={canvasRef} className={styles.previewCanvas} role="img" aria-label={t('Preview of the framed image')} />
           {showGuides && config.guides && config.guides.length > 0 && (
             <div className={styles.guidesOverlay}>{config.guides.map((g, i) => renderGuide(g, i))}</div>
           )}
@@ -320,7 +321,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
 
       {/* Editor Controls */}
       <div className={styles.controlsGrid}>
-        <Field label="Fit mode" hint="Cover fills entire canvas; contain shows entire image.">
+        <Field label={t('Fit mode')} hint={t('Cover fills entire canvas; contain shows entire image.')}>
           <div className={styles.buttonGroup}>
             <button
               type="button"
@@ -328,7 +329,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
               aria-pressed={fitMode === 'cover'}
               onClick={() => setFitMode('cover')}
             >
-              Cover
+              {t('Cover')}
             </button>
             <button
               type="button"
@@ -336,13 +337,13 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
               aria-pressed={fitMode === 'contain'}
               onClick={() => setFitMode('contain')}
             >
-              Contain
+              {t('Contain')}
             </button>
           </div>
         </Field>
 
         {fitMode === 'contain' && (
-          <Field label="Contain background" hint="Background for unfilled edges.">
+          <Field label={t('Contain background')} hint={t('Background for unfilled edges.')}>
             <div className={styles.buttonGroup}>
               <button
                 type="button"
@@ -350,7 +351,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
                 aria-pressed={bgType === 'blur'}
                 onClick={() => setBgType('blur')}
               >
-                Blurred image
+                {t('Blurred image')}
               </button>
               <button
                 type="button"
@@ -358,7 +359,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
                 aria-pressed={bgType === 'color'}
                 onClick={() => setBgType('color')}
               >
-                Solid color
+                {t('Solid color')}
               </button>
             </div>
             {bgType === 'color' && (
@@ -370,7 +371,7 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
           </Field>
         )}
 
-        <Field label="Zoom" hint="Drag image directly to pan; use slider or wheel to zoom.">
+        <Field label={t('Zoom')} hint={t('Drag image directly to pan; use slider or wheel to zoom.')}>
           <Slider
             value={transform.zoom}
             min={0.5}
@@ -381,62 +382,68 @@ export function FitToFrameEditor({ config, file, onReset, additionalInfo }: FitT
           />
           <div style={{ marginTop: '0.5rem' }}>
             <Button type="button" variant="secondary" style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }} onClick={handleResetPanZoom}>
-              Reset pan & zoom
+              {t('Reset pan & zoom')}
             </Button>
           </div>
         </Field>
-
-        <Field label="Export format" hint="JPG is recommended for photos and web upload.">
-          <Select
-            id={formatSelectId}
-            value={exportFormat}
-            onChange={(e) => setExportFormat(e.target.value as ExportMime)}
-            options={[
-              { value: 'image/jpeg', label: 'JPEG (quality 92)' },
-              { value: 'image/png', label: 'PNG (lossless)' },
-            ]}
-          />
-        </Field>
-
-        {exportFormat === 'image/jpeg' && !circularExport && (
-          <Field label="JPEG quality" hint="Quality 92 balances sharp details and reasonable file size.">
-            <Select
-              id={qualitySelectId}
-              value={String(jpegQuality)}
-              onChange={(e) => setJpegQuality(parseFloat(e.target.value))}
-              options={[
-                { value: '0.92', label: '92% (High quality - recommended)' },
-                { value: '0.85', label: '85% (Balanced)' },
-                { value: '0.75', label: '75% (Smaller file)' },
-              ]}
-            />
-          </Field>
-        )}
       </div>
 
-      {/* Guide & circular toggles */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '0.5rem' }}>
-        {config.guides && config.guides.length > 0 && (
-          <label className="checkbox-label">
-            <input type="checkbox" checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} />
-            <span>Show safe-zone guide overlays</span>
-          </label>
-        )}
+      {config.allowCircularExport && (
+        <label className="checkbox-label">
+          <input type="checkbox" checked={circularExport} onChange={(e) => setCircularExport(e.target.checked)} />
+          <span>{t('Export as circular PNG (transparent outer background)')}</span>
+        </label>
+      )}
 
-        {config.allowCircularExport && (
-          <label className="checkbox-label">
-            <input type="checkbox" checked={circularExport} onChange={(e) => setCircularExport(e.target.checked)} />
-            <span>Export as Circular PNG (transparent outer background)</span>
-          </label>
-        )}
-      </div>
+      <details className="tool-options">
+        <summary>{t('Export options')}</summary>
+        <div className="tool-options-body">
+          <div className={styles.controlsGrid}>
+            <Field label={t('Export format')} hint={circularExport ? t('Circular exports use PNG.') : undefined}>
+              <Select
+                id={formatSelectId}
+                value={circularExport ? 'image/png' : exportFormat}
+                disabled={circularExport}
+                onChange={(e) => setExportFormat(e.target.value as ExportMime)}
+                options={[
+                  { value: 'image/jpeg', label: t('JPEG') },
+                  { value: 'image/png', label: t('PNG (lossless)') },
+                ]}
+              />
+            </Field>
+
+            {exportFormat === 'image/jpeg' && !circularExport && (
+              <Field label={t('JPEG quality')}>
+                <Select
+                  value={String(jpegQuality)}
+                  onChange={(e) => setJpegQuality(parseFloat(e.target.value))}
+                  options={[
+                    { value: '0.92', label: t('92% (recommended)') },
+                    { value: '0.85', label: t('85% (balanced)') },
+                    { value: '0.75', label: t('75% (smaller file)') },
+                  ]}
+                />
+              </Field>
+            )}
+          </div>
+
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '0.5rem' }}>
+            {config.guides && config.guides.length > 0 && (
+              <label className="checkbox-label">
+                <input type="checkbox" checked={showGuides} onChange={(e) => setShowGuides(e.target.checked)} />
+                <span>{t('Show safe-zone guide overlays')}</span>
+              </label>
+            )}
+          </div>
+        </div>
+      </details>
 
       <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
         <Button variant="secondary" onClick={onReset}>
-          Choose different photo
+          {t('Choose different photo')}
         </Button>
         <Button variant="primary" onClick={() => handleExport()} disabled={exporting}>
-          {exporting ? 'Exporting…' : `Export ${config.width}×${config.height} image`}
+          {exporting ? t('Exporting…') : t('Export {width}×{height} image', { width: config.width, height: config.height })}
         </Button>
       </div>
     </div>

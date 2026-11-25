@@ -3,7 +3,16 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Checkbox, Select, Input, Alert } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
-import { MeshViewer, use3DWorkbench, WorkbenchHeader, WorkbenchWarnings, ExportCard, ACCEPT_MESH_EXTENSIONS } from '../_ui';
+import { useI18n } from '../../../lib/i18n';
+import {
+  MeshViewer,
+  use3DWorkbench,
+  WorkbenchHeader,
+  WorkbenchWarnings,
+  ExportCard,
+  ACCEPT_MESH_EXTENSIONS,
+  translate3DMessage,
+} from '../_ui';
 import { processModel } from '../_mesh/client';
 import { Move3d, RotateCcw, Compass, XCircle } from 'lucide-react';
 import styles from '../_ui/Workbench.module.css';
@@ -20,10 +29,11 @@ const SCALE_PRESETS = [
 ];
 
 export default function TransformTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('three-transform');
-  const title = meta.title !== 'three-transform' ? meta.title : '3D Mesh Transform & Unit Scaler';
+  const title = meta.title !== 'three-transform' ? meta.title : t('3D Mesh Transform & Unit Scaler');
   const description =
-    meta.description || 'Scale dimensions, apply inch-to-mm conversions, rotate along XYZ axes, center, and ground to the build plate.';
+    meta.description || t('Scale dimensions, apply inch-to-mm conversions, rotate along XYZ axes, center, and ground to the build plate.');
 
   const {
     file,
@@ -141,24 +151,24 @@ export default function TransformTool() {
             <FileDrop
               accept={ACCEPT_MESH_EXTENSIONS}
               multiple={false}
-              label="Drop a 3D model or CAD file to transform (.stl, .obj, .ply, .3mf, .step, .stp, .iges, .igs, .brep)"
-              hint="Apply unit scaling, coordinate reorientation, auto-centering, and bed grounding. CAD files are tessellated locally to meshes upon import."
+              label={t('Choose a model or CAD file')}
+              hint={t('Set model scale and placement. CAD files are converted to meshes first.')}
               onFiles={loadFiles}
             />
             {loading && (
               <div style={{ textAlign: 'center', padding: 'var(--space-6)' }}>
                 <span className="spinner" aria-hidden="true" />
-                <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-muted)' }}>Loading 3D model...</p>
+                <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-muted)' }}>{t('Loading 3D model...')}</p>
                 <div style={{ marginTop: 'var(--space-2)' }}>
                   <Button variant="ghost" size="sm" onClick={cancelProcessing}>
-                    Cancel import
+                    {t('Cancel import')}
                   </Button>
                 </div>
               </div>
             )}
             {importError && (
-              <Alert tone="danger" title="Could not open model">
-                {importError}
+              <Alert tone="danger" title={t('Could not open model')}>
+                {translate3DMessage(importError, t)}
               </Alert>
             )}
           </>
@@ -171,7 +181,7 @@ export default function TransformTool() {
               action={
                 isTransformed ? (
                   <Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={handleResetToOriginal}>
-                    Restore original
+                    {t('Restore original')}
                   </Button>
                 ) : undefined
               }
@@ -179,8 +189,8 @@ export default function TransformTool() {
             <WorkbenchWarnings warnings={currentModel?.warnings} />
 
             {processError && (
-              <Alert tone="danger" title="Transform Error">
-                {processError}
+              <Alert tone="danger" title={t('Transform Error')}>
+                {translate3DMessage(processError, t)}
               </Alert>
             )}
 
@@ -193,142 +203,167 @@ export default function TransformTool() {
                 {/* Scale Card */}
                 <div className={styles.card}>
                   <h3 className={styles.cardTitle}>
-                    <span>Dimensions &amp; Scale</span>
+                    <span>{t('Scale')}</span>
                     <Move3d size={16} aria-hidden="true" />
                   </h3>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
                     <div className="field">
-                      <label className="field-label">Unit / Scale Preset</label>
-                      <Select value={scalePreset} options={SCALE_PRESETS} onChange={(e) => handlePresetChange(e.target.value)} />
-                    </div>
-
-                    <div>
-                      <Checkbox
-                        label="Uniform scaling (preserve proportions across all axes)"
-                        checked={uniformScale}
-                        disabled={processing}
-                        onChange={setUniformScale}
+                      <label className="field-label" htmlFor="scale-preset">
+                        {t('Scale preset')}
+                      </label>
+                      <Select
+                        id="scale-preset"
+                        value={scalePreset}
+                        options={SCALE_PRESETS.map((option) => ({ ...option, label: t(option.label) }))}
+                        onChange={(e) => handlePresetChange(e.target.value)}
                       />
                     </div>
 
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-2)' }}>
-                      <div className="field">
-                        <label className="field-label" style={{ fontSize: 'var(--text-xs)' }}>
-                          Scale X
-                        </label>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          min="0.001"
-                          value={scaleX}
-                          onChange={(e) => handleScaleXChange(parseFloat(e.target.value) || 1)}
-                        />
-                      </div>
-                      <div className="field">
-                        <label className="field-label" style={{ fontSize: 'var(--text-xs)' }}>
-                          Scale Y
-                        </label>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          min="0.001"
-                          disabled={uniformScale}
-                          value={scaleY}
-                          onChange={(e) => {
-                            setScaleY(parseFloat(e.target.value) || 1);
-                            setScalePreset('custom');
-                          }}
-                        />
-                      </div>
-                      <div className="field">
-                        <label className="field-label" style={{ fontSize: 'var(--text-xs)' }}>
-                          Scale Z
-                        </label>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          min="0.001"
-                          disabled={uniformScale}
-                          value={scaleZ}
-                          onChange={(e) => {
-                            setScaleZ(parseFloat(e.target.value) || 1);
-                            setScalePreset('custom');
-                          }}
-                        />
-                      </div>
+                    <div className="field">
+                      <label className="field-label" htmlFor="scale-factor">
+                        {t('Scale factor')}
+                      </label>
+                      <Input
+                        id="scale-factor"
+                        type="number"
+                        step="0.1"
+                        min="0.001"
+                        value={scaleX}
+                        onChange={(e) => handleScaleXChange(parseFloat(e.target.value) || 1)}
+                      />
                     </div>
                   </div>
                 </div>
 
-                {/* Rotation Card */}
-                <div className={styles.card}>
-                  <h3 className={styles.cardTitle}>
-                    <span>Rotation (Degrees)</span>
-                    <Compass size={16} aria-hidden="true" />
-                  </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-2)' }}>
-                    <div className="field">
-                      <label className="field-label" style={{ fontSize: 'var(--text-xs)' }}>
-                        Rotate X°
-                      </label>
-                      <Input type="number" step="15" value={rotX} onChange={(e) => setRotX(parseFloat(e.target.value) || 0)} />
-                    </div>
-                    <div className="field">
-                      <label className="field-label" style={{ fontSize: 'var(--text-xs)' }}>
-                        Rotate Y°
-                      </label>
-                      <Input type="number" step="15" value={rotY} onChange={(e) => setRotY(parseFloat(e.target.value) || 0)} />
-                    </div>
-                    <div className="field">
-                      <label className="field-label" style={{ fontSize: 'var(--text-xs)' }}>
-                        Rotate Z°
-                      </label>
-                      <Input type="number" step="15" value={rotZ} onChange={(e) => setRotZ(parseFloat(e.target.value) || 0)} />
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
-                    <Button variant="secondary" size="sm" onClick={() => setRotX((r) => (r + 90) % 360)}>
-                      +90° X
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => setRotY((r) => (r + 90) % 360)}>
-                      +90° Y
-                    </Button>
-                    <Button variant="secondary" size="sm" onClick={() => setRotZ((r) => (r + 90) % 360)}>
-                      +90° Z
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setRotX(0);
-                        setRotY(0);
-                        setRotZ(0);
+                <details className="tool-options">
+                  <summary>{t('Advanced transform settings')}</summary>
+                  <div className="tool-options-body">
+                    <Checkbox
+                      label={t('Uniform scaling')}
+                      checked={uniformScale}
+                      disabled={processing}
+                      onChange={(enabled) => {
+                        setUniformScale(enabled);
+                        if (enabled) {
+                          setScaleY(scaleX);
+                          setScaleZ(scaleX);
+                        }
                       }}
-                    >
-                      Clear rotation
-                    </Button>
+                    />
+
+                    {!uniformScale && (
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-2)' }}>
+                        <div className="field">
+                          <label className="field-label" htmlFor="scale-y">
+                            {t('Scale Y')}
+                          </label>
+                          <Input
+                            id="scale-y"
+                            type="number"
+                            step="0.1"
+                            min="0.001"
+                            value={scaleY}
+                            onChange={(e) => {
+                              setScaleY(parseFloat(e.target.value) || 1);
+                              setScalePreset('custom');
+                            }}
+                          />
+                        </div>
+                        <div className="field">
+                          <label className="field-label" htmlFor="scale-z">
+                            {t('Scale Z')}
+                          </label>
+                          <Input
+                            id="scale-z"
+                            type="number"
+                            step="0.1"
+                            min="0.001"
+                            value={scaleZ}
+                            onChange={(e) => {
+                              setScaleZ(parseFloat(e.target.value) || 1);
+                              setScalePreset('custom');
+                            }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div className={styles.cardTitle}>
+                      <span>{t('Rotation (degrees)')}</span>
+                      <Compass size={16} aria-hidden="true" />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 'var(--space-2)' }}>
+                      <div className="field">
+                        <label className="field-label" htmlFor="rotation-x">
+                          X
+                        </label>
+                        <Input
+                          id="rotation-x"
+                          type="number"
+                          step="15"
+                          value={rotX}
+                          onChange={(e) => setRotX(parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+                      <div className="field">
+                        <label className="field-label" htmlFor="rotation-y">
+                          Y
+                        </label>
+                        <Input
+                          id="rotation-y"
+                          type="number"
+                          step="15"
+                          value={rotY}
+                          onChange={(e) => setRotY(parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+                      <div className="field">
+                        <label className="field-label" htmlFor="rotation-z">
+                          Z
+                        </label>
+                        <Input
+                          id="rotation-z"
+                          type="number"
+                          step="15"
+                          value={rotZ}
+                          onChange={(e) => setRotZ(parseFloat(e.target.value) || 0)}
+                        />
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap' }}>
+                      <Button variant="secondary" size="sm" onClick={() => setRotX((r) => (r + 90) % 360)}>
+                        +90° X
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => setRotY((r) => (r + 90) % 360)}>
+                        +90° Y
+                      </Button>
+                      <Button variant="secondary" size="sm" onClick={() => setRotZ((r) => (r + 90) % 360)}>
+                        +90° Z
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setRotX(0);
+                          setRotY(0);
+                          setRotZ(0);
+                        }}
+                      >
+                        {t('Clear rotation')}
+                      </Button>
+                    </div>
                   </div>
-                </div>
+                </details>
 
                 {/* Alignment Card */}
                 <div className={styles.card}>
                   <h3 className={styles.cardTitle}>
-                    <span>Alignment &amp; Placement</span>
+                    <span>{t('Placement')}</span>
                   </h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-2)' }}>
-                    <Checkbox
-                      label="Center mesh origin (center bounding box at X=0, Y=0)"
-                      checked={center}
-                      disabled={processing}
-                      onChange={setCenter}
-                    />
-                    <Checkbox
-                      label="Ground to build plate (place lowest vertex at Z=0 mm)"
-                      checked={ground}
-                      disabled={processing}
-                      onChange={setGround}
-                    />
+                    <Checkbox label={t('Center model at X = 0, Y = 0')} checked={center} disabled={processing} onChange={setCenter} />
+                    <Checkbox label={t('Ground model at Z = 0')} checked={ground} disabled={processing} onChange={setGround} />
                   </div>
 
                   <div className={styles.actionRow} style={{ marginTop: 'var(--space-4)' }}>
@@ -340,11 +375,11 @@ export default function TransformTool() {
                       onClick={handleApplyTransform}
                       style={{ flex: 1 }}
                     >
-                      {processing ? 'Applying Transform...' : 'Apply Transforms'}
+                      {processing ? t('Applying Transform...') : t('Apply Transforms')}
                     </Button>
                     {processing && (
                       <Button variant="danger" size="lg" icon={<XCircle size={16} />} onClick={cancelProcessing}>
-                        Cancel
+                        {t('Cancel')}
                       </Button>
                     )}
                   </div>
@@ -358,7 +393,7 @@ export default function TransformTool() {
                   onExport={() => handleExport(currentModel, exportFormat, '-transformed')}
                   exporting={exporting}
                   disabled={processing}
-                  label="Export Transformed Mesh"
+                  label={t('Export Transformed Mesh')}
                 />
               </div>
             </div>

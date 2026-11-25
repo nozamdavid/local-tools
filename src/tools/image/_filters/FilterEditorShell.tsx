@@ -7,8 +7,11 @@ import { getToolMeta } from '../../registry';
 import { decodeImage, imageToCanvas, canvasToBlob, IMAGE_ACCEPT, type EncodableMime } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
 import { formatBytes, withSuffix } from '../../../lib/format';
+import { useI18n } from '../../../lib/i18n';
 import { hasAlphaChannel, createPreviewCanvas } from './common';
 import styles from './FilterEditorShell.module.css';
+
+type Translator = (sourceEnglish: string, params?: Record<string, string | number>) => string;
 
 export interface FilterEditorShellProps<T> {
   toolId: string;
@@ -24,6 +27,7 @@ export interface FilterEditorShellProps<T> {
       imageHeight: number;
       previewCanvas: HTMLCanvasElement | null;
       previewContainerRef: React.RefObject<HTMLDivElement | null>;
+      t: Translator;
     },
   ) => React.ReactNode;
   renderOverlay?: (
@@ -34,6 +38,7 @@ export interface FilterEditorShellProps<T> {
       imageHeight: number;
       previewWidth: number;
       previewHeight: number;
+      t: Translator;
     },
   ) => React.ReactNode;
 }
@@ -47,6 +52,7 @@ export function FilterEditorShell<T>({
   renderControls,
   renderOverlay,
 }: FilterEditorShellProps<T>) {
+  const { t } = useI18n();
   const meta = getToolMeta(toolId);
 
   const [file, setFile] = useState<File | null>(null);
@@ -60,8 +66,7 @@ export function FilterEditorShell<T>({
   const [format, setFormat] = useState<EncodableMime>(forcedDefaultFormat || 'image/jpeg');
   const [quality, setQuality] = useState<number>(92);
 
-  const [isComparing, setIsComparing] = useState<boolean>(false);
-  const [compareToggle, setCompareToggle] = useState<boolean>(false);
+  const [showOriginal, setShowOriginal] = useState<boolean>(false);
 
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
   const [resultBlob, setResultBlob] = useState<Blob | null>(null);
@@ -119,7 +124,7 @@ export function FilterEditorShell<T>({
     const seq = ++renderSeqRef.current;
     const targetCanvas = previewDisplayCanvasRef.current;
 
-    if (isComparing || compareToggle) {
+    if (showOriginal) {
       // Show original preview canvas
       targetCanvas.width = previewSourceCanvas.width;
       targetCanvas.height = previewSourceCanvas.height;
@@ -146,7 +151,7 @@ export function FilterEditorShell<T>({
         if (seq !== renderSeqRef.current) return;
         console.error('Preview render failed:', err);
       });
-  }, [previewSourceCanvas, options, isComparing, compareToggle, render]);
+  }, [previewSourceCanvas, options, showOriginal, render]);
 
   const handleDownload = async () => {
     if (!fullSourceCanvas || !file) return;
@@ -164,7 +169,7 @@ export function FilterEditorShell<T>({
       setResultBlob(blob);
       setResultFilename(outName);
     } catch (err: any) {
-      alert(`Export failed: ${err?.message || err}`);
+      alert(t('Export failed: {error}', { error: err?.message || String(err) }));
     } finally {
       setIsProcessing(false);
     }
@@ -175,32 +180,32 @@ export function FilterEditorShell<T>({
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose an image or drag it here"
-          hint="Supports JPG, PNG, WebP, SVG, AVIF, HEIC and more."
+          label={t('Choose an image or drag it here')}
+          hint={t('Supports JPG, PNG, WebP, SVG, AVIF, HEIC and more.')}
           onFiles={handleFiles}
         />
       ) : resultBlob ? (
         <ResultPanel blob={resultBlob} filename={resultFilename} kind="image" originalSize={file.size} onReset={handleFullReset}>
           <div style={{ display: 'flex', justifyContent: 'center', marginTop: '1rem' }}>
             <Button variant="secondary" onClick={() => setResultBlob(null)}>
-              ← Back to editing
+              {t('Back to editing')}
             </Button>
           </div>
         </ResultPanel>
       ) : (
         <div className={styles.editorContainer}>
-          {loadError && <div className="error-banner">{loadError}</div>}
+          {loadError && <div className="error-banner">{t(loadError)}</div>}
 
           <div className="meta-chips">
             <span className="meta-chip">
-              Name: <strong>{file.name}</strong>
+              {t('Name')}: <strong>{file.name}</strong>
             </span>
             <span className="meta-chip">
-              Size: <strong>{formatBytes(file.size)}</strong>
+              {t('Size')}: <strong>{formatBytes(file.size)}</strong>
             </span>
             {fullSourceCanvas && (
               <span className="meta-chip">
-                Dimensions:{' '}
+                {t('Dimensions')}:{' '}
                 <strong>
                   {fullSourceCanvas.width} × {fullSourceCanvas.height}
                 </strong>
@@ -210,27 +215,17 @@ export function FilterEditorShell<T>({
 
           <div className={styles.previewSection} ref={previewContainerRef}>
             <div className={styles.previewToolbar}>
-              <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-                <button
-                  type="button"
-                  className={`${styles.compareButton} ${isComparing ? styles.compareButtonActive : ''}`}
-                  onPointerDown={() => setIsComparing(true)}
-                  onPointerUp={() => setIsComparing(false)}
-                  onPointerLeave={() => setIsComparing(false)}
-                  title="Press and hold to view original"
-                  data-testid="compare-btn"
-                >
-                  👁️ Compare (hold)
-                </button>
-                <label style={{ fontSize: '0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                  <input type="checkbox" checked={compareToggle} onChange={(e) => setCompareToggle(e.target.checked)} />
-                  <span>Show original</span>
-                </label>
-              </div>
-
-              <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>
-                Preview resolution: {previewSourceCanvas ? `${previewSourceCanvas.width} × ${previewSourceCanvas.height}` : '...'}
-              </div>
+              <button
+                type="button"
+                className={`${styles.compareButton} ${showOriginal ? styles.compareButtonActive : ''}`}
+                aria-pressed={showOriginal}
+                onClick={() => setShowOriginal((current) => !current)}
+                title={showOriginal ? t('Show edited preview') : t('Show original image')}
+                data-testid="compare-btn"
+              >
+                {t('Show original')}
+              </button>
+              <span className={styles.previewNote}>{t('Preview is scaled for editing; downloads use the full-resolution image.')}</span>
             </div>
 
             <div className={styles.canvasWrapper}>
@@ -238,7 +233,7 @@ export function FilterEditorShell<T>({
                 ref={previewDisplayCanvasRef}
                 className={styles.canvas}
                 role="img"
-                aria-label="Live preview of the edited image"
+                aria-label={t('Live preview of the edited image')}
                 data-testid="preview-canvas"
               />
               {renderOverlay && previewSourceCanvas && (
@@ -248,6 +243,7 @@ export function FilterEditorShell<T>({
                     imageHeight: fullSourceCanvas?.height || 0,
                     previewWidth: previewSourceCanvas.width,
                     previewHeight: previewSourceCanvas.height,
+                    t,
                   })}
                 </div>
               )}
@@ -260,25 +256,26 @@ export function FilterEditorShell<T>({
               imageHeight: fullSourceCanvas?.height || 0,
               previewCanvas: previewSourceCanvas,
               previewContainerRef,
+              t,
             })}
 
             <div className={styles.exportSection}>
               <div className={styles.formatRow}>
-                <Field label="Output format">
+                <Field label={t('Output format')}>
                   <Select
                     id={formatSelectId}
                     value={format}
                     onChange={(e) => setFormat(e.target.value as EncodableMime)}
                     options={[
-                      { value: 'image/png', label: 'PNG (.png, preserves transparency)' },
-                      { value: 'image/jpeg', label: 'JPG (.jpg)' },
-                      { value: 'image/webp', label: 'WebP (.webp)' },
+                      { value: 'image/png', label: t('PNG (.png, preserves transparency)') },
+                      { value: 'image/jpeg', label: t('JPG (.jpg)') },
+                      { value: 'image/webp', label: t('WebP (.webp)') },
                     ]}
                   />
                 </Field>
 
                 {format !== 'image/png' && (
-                  <Field label={`Quality (${quality}%)`}>
+                  <Field label={t('Quality ({quality}%)', { quality })}>
                     <Slider value={quality} min={1} max={100} step={1} unit="%" onChange={setQuality} />
                   </Field>
                 )}
@@ -286,13 +283,13 @@ export function FilterEditorShell<T>({
 
               <div className={styles.actionRow}>
                 <Button variant="secondary" onClick={handleResetOptions}>
-                  Reset settings
+                  {t('Reset settings')}
                 </Button>
                 <Button variant="secondary" onClick={handleFullReset}>
-                  Choose different file
+                  {t('Choose different file')}
                 </Button>
                 <Button variant="primary" onClick={handleDownload} disabled={isProcessing} data-testid="download-btn">
-                  {isProcessing ? 'Processing full image...' : 'Download'}
+                  {isProcessing ? t('Processing full image...') : t('Download')}
                 </Button>
               </div>
             </div>

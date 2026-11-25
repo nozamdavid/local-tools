@@ -3,15 +3,17 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Alert, Badge } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
-import { MeshViewer, use3DWorkbench, ExportCard, ACCEPT_MESH_EXTENSIONS, type MeshModel } from '../_ui';
+import { useI18n } from '../../../lib/i18n';
+import { MeshViewer, use3DWorkbench, ExportCard, ACCEPT_MESH_EXTENSIONS, translate3DMessage, type MeshModel } from '../_ui';
 import { mergeModels } from '../_mesh/client';
 import { Combine, Trash2, XCircle, ShieldAlert, Plus, RotateCcw } from 'lucide-react';
 import styles from '../_ui/Workbench.module.css';
 
 export default function MergeTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('three-merge');
-  const title = meta.title !== 'three-merge' ? meta.title : '3D Mesh Merger';
-  const description = meta.description || 'Combine and flatten multiple 3D model files into a single unified mesh container.';
+  const title = meta.title !== 'three-merge' ? meta.title : t('3D Mesh Merger');
+  const description = meta.description || t('Combine and flatten multiple 3D model files into a single unified mesh container.');
 
   const {
     files,
@@ -77,24 +79,24 @@ export default function MergeTool() {
             <FileDrop
               accept={ACCEPT_MESH_EXTENSIONS}
               multiple={true}
-              label="Drop 2 or more 3D models or CAD files to combine (.stl, .obj, .ply, .3mf, .step, .stp, .iges, .igs, .brep)"
-              hint="Select multiple mesh or CAD files to combine into a single unified mesh. CAD files are tessellated locally to meshes upon import."
+              label={t('Choose 2 or more models or CAD files')}
+              hint={t('Combine models into one mesh. CAD files are converted to meshes first.')}
               onFiles={loadFiles}
             />
             {loading && (
               <div style={{ textAlign: 'center', padding: 'var(--space-6)' }}>
                 <span className="spinner" aria-hidden="true" />
-                <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-muted)' }}>Loading 3D models...</p>
+                <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-muted)' }}>{t('Loading 3D models...')}</p>
                 <div style={{ marginTop: 'var(--space-2)' }}>
                   <Button variant="ghost" size="sm" onClick={cancelProcessing}>
-                    Cancel import
+                    {t('Cancel import')}
                   </Button>
                 </div>
               </div>
             )}
             {importError && (
-              <Alert tone="danger" title="Could not open model">
-                {importError}
+              <Alert tone="danger" title={t('Could not open model')}>
+                {translate3DMessage(importError, t)}
               </Alert>
             )}
           </>
@@ -102,19 +104,24 @@ export default function MergeTool() {
           <>
             <div className={styles.fileHeader}>
               <div className={styles.fileInfo}>
-                <span className={styles.fileName}>{mergedModel ? 'Merged 3D Mesh' : `${multiModels.length} Models Loaded`}</span>
+                <span className={styles.fileName}>
+                  {mergedModel ? t('Merged 3D Mesh') : t('{count} Models Loaded', { count: multiModels.length })}
+                </span>
                 <span className={styles.fileMeta}>
-                  Total: {totalInputTriangles.toLocaleString()} triangles • {totalInputVertices.toLocaleString()} vertices
+                  {t('Total: {triangles} triangles • {vertices} vertices', {
+                    triangles: totalInputTriangles.toLocaleString(),
+                    vertices: totalInputVertices.toLocaleString(),
+                  })}
                 </span>
               </div>
               <Button variant="secondary" size="sm" icon={<RotateCcw size={14} />} onClick={handleReset}>
-                Start over
+                {t('Start over')}
               </Button>
             </div>
 
             {processError && (
-              <Alert tone="danger" title="Merge Error">
-                {processError}
+              <Alert tone="danger" title={t('Merge Error')}>
+                {translate3DMessage(processError, t)}
               </Alert>
             )}
 
@@ -123,7 +130,7 @@ export default function MergeTool() {
                 <MeshViewer model={currentModel} />
                 {mergedModel && (
                   <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textAlign: 'center' }}>
-                    Viewing unified merged mesh ({mergedModel.indices.length / 3} triangles)
+                    {t('Viewing unified merged mesh ({count} triangles)', { count: mergedModel.indices.length / 3 })}
                   </div>
                 )}
               </div>
@@ -134,8 +141,9 @@ export default function MergeTool() {
                   <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'flex-start' }}>
                     <ShieldAlert size={16} style={{ flexShrink: 0, marginTop: 2 }} aria-hidden="true" />
                     <div>
-                      <strong>Flatten Notice:</strong> Combines and flattens geometry buffers into a single mesh container.{' '}
-                      <strong>This does not perform CSG Boolean union operations</strong> (no intersection carving or seam welding).
+                      <strong>{t('Flatten Notice:')}</strong> {t('Combines and flattens geometry buffers into a single mesh container.')}{' '}
+                      <strong>{t('This does not perform CSG Boolean union operations')}</strong>{' '}
+                      {t('(no intersection carving or seam welding).')}
                     </div>
                   </div>
                 </Alert>
@@ -143,9 +151,9 @@ export default function MergeTool() {
                 {/* Models List */}
                 <div className={styles.card}>
                   <h3 className={styles.cardTitle}>
-                    <span>Loaded 3D Models ({multiModels.length})</span>
+                    <span>{t('Loaded 3D Models ({count})', { count: multiModels.length })}</span>
                     <Badge tone={multiModels.length >= 2 ? 'success' : 'warning'}>
-                      {multiModels.length >= 2 ? 'Ready to merge' : 'Need at least 2 models'}
+                      {multiModels.length >= 2 ? t('Ready to merge') : t('Need at least 2 models')}
                     </Badge>
                   </h3>
 
@@ -158,9 +166,14 @@ export default function MergeTool() {
                       return (
                         <div key={idx} className={styles.multiFileItem}>
                           <div>
-                            <span className={styles.multiFileItemName}>{f?.name || m.name || `Model ${idx + 1}`}</span>
+                            <span className={styles.multiFileItemName}>
+                              {f?.name || m.name || t('Model {number}', { number: idx + 1 })}
+                            </span>
                             <span className={styles.multiFileItemMeta}>
-                              {mTri.toLocaleString()} triangles • {mVert.toLocaleString()} vertices
+                              {t('{triangles} triangles • {vertices} vertices', {
+                                triangles: mTri.toLocaleString(),
+                                vertices: mVert.toLocaleString(),
+                              })}
                             </span>
                           </div>
                           <Button
@@ -168,7 +181,7 @@ export default function MergeTool() {
                             size="sm"
                             icon={<Trash2 size={14} color="var(--danger)" />}
                             onClick={() => removeMultiFile(idx)}
-                            title="Remove model"
+                            title={t('Remove model')}
                             disabled={processing}
                           />
                         </div>
@@ -200,7 +213,7 @@ export default function MergeTool() {
                         }}
                         style={{ width: '100%' }}
                       >
-                        Add more models
+                        {t('Add more models')}
                       </Button>
                     </label>
 
@@ -213,13 +226,13 @@ export default function MergeTool() {
                       onClick={handleMerge}
                       style={{ flex: 1 }}
                     >
-                      {processing ? 'Merging...' : 'Merge Models'}
+                      {processing ? t('Merging...') : t('Merge Models')}
                     </Button>
                   </div>
 
                   {processing && (
                     <Button variant="danger" size="md" icon={<XCircle size={15} />} onClick={cancelProcessing}>
-                      Cancel
+                      {t('Cancel')}
                     </Button>
                   )}
                 </div>
@@ -233,7 +246,7 @@ export default function MergeTool() {
                     onExport={() => handleExport(mergedModel, exportFormat, '-merged')}
                     exporting={exporting}
                     disabled={processing}
-                    label="Export Merged Mesh"
+                    label={t('Export Merged Mesh')}
                   />
                 )}
               </div>

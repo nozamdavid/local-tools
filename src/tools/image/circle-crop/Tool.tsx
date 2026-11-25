@@ -1,15 +1,17 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { ResultPanel } from '../../../components/ResultPanel';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { decodeImage, canvasToBlob, IMAGE_ACCEPT } from '../../../lib/image';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
 import { useObjectUrl } from '../../../lib/useObjectUrl';
 import { formatOutputFile } from '../_basic';
+import { createBoundedPngPreview } from '../_basic/previews';
 import circleStyles from './CircleCrop.module.css';
 import basicStyles from '../_basic/basic.module.css';
 
@@ -23,14 +25,26 @@ interface CircleCropResult {
   height: number;
 }
 
-const VIEWPORT_SIZE = 300; // px in preview
+const VIEWPORT_SIZE = 300; // editor coordinate units; measured again when the viewport is constrained.
+
+function constrainPan(pan: { x: number; y: number }, imageWidth: number, imageHeight: number, viewWidth: number, viewHeight: number) {
+  return {
+    x: Math.max(viewWidth - imageWidth, Math.min(0, pan.x)),
+    y: Math.max(viewHeight - imageHeight, Math.min(0, pan.y)),
+  };
+}
 
 export default function CircleCropTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-circle-crop');
   const [file, setFile] = useState<File | null>(null);
   const [decodedImg, setDecodedImg] = useState<HTMLImageElement | null>(null);
+  const [editorPreviewBlob, setEditorPreviewBlob] = useState<Blob | null>(null);
+  const [editorPreviewError, setEditorPreviewError] = useState(false);
   const [shape, setShape] = useState<Shape>('circle');
+  const shapeLabel = shape === 'circle' ? t('Circle') : t('Ellipse');
   const [zoom, setZoom] = useState<number>(1);
+  const [viewW, setViewW] = useState<number>(VIEWPORT_SIZE);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hasBorder, setHasBorder] = useState<boolean>(false);
   const [borderWidth, setBorderWidth] = useState<number>(4);
@@ -39,17 +53,34 @@ export default function CircleCropTool() {
   const [metaError, setMetaError] = useState<string | null>(null);
   const [resultInfo, setResultInfo] = useState<CircleCropResult | null>(null);
 
-  const dragStartRef = useRef<{ startX: number; startY: number; initialPan: { x: number; y: number } } | null>(null);
+  const previewRef = useRef<HTMLDivElement | null>(null);
+  const dragStartRef = useRef<{ pointerId: number; startX: number; startY: number; initialPan: { x: number; y: number } } | null>(null);
+  const loadSequenceRef = useRef(0);
 
   const job = useJob();
-  const originalUrl = useObjectUrl(file);
+  const editorPreviewUrl = useObjectUrl(editorPreviewBlob);
+
+  useEffect(
+    () => () => {
+      loadSequenceRef.current += 1;
+      dragStartRef.current = null;
+    },
+    [],
+  );
+
+  useEffect(() => {
+    if (job.status === 'done') setDecodedImg(null);
+  }, [job.status]);
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
+    const sequence = ++loadSequenceRef.current;
     setFile(selected);
     setMetaError(null);
     setDecodedImg(null);
+    setEditorPreviewBlob(null);
+    setEditorPreviewError(false);
     setResultInfo(null);
     setZoom(1);
     setPan({ x: 0, y: 0 });
@@ -57,15 +88,26 @@ export default function CircleCropTool() {
 
     try {
       const img = await decodeImage(selected);
+      if (sequence !== loadSequenceRef.current) return;
       setDecodedImg(img);
+      try {
+        const previewBlob = await createBoundedPngPreview(img, img.width, img.height, 1280);
+        if (sequence === loadSequenceRef.current) setEditorPreviewBlob(previewBlob);
+      } catch {
+        if (sequence === loadSequenceRef.current) setEditorPreviewError(true);
+      }
     } catch {
-      setMetaError('Could not decode image. The file may be corrupt or unsupported.');
+      if (sequence === loadSequenceRef.current) setMetaError(t('Could not decode image. The file may be corrupt or unsupported.'));
     }
   };
 
   const handleReset = () => {
+    loadSequenceRef.current += 1;
+    dragStartRef.current = null;
     setFile(null);
     setDecodedImg(null);
+    setEditorPreviewBlob(null);
+    setEditorPreviewError(false);
     setResultInfo(null);
     setZoom(1);
     setPan({ x: 0, y: 0 });
@@ -74,8 +116,7 @@ export default function CircleCropTool() {
   };
 
   // Preview viewport dimensions
-  const viewW = VIEWPORT_SIZE;
-  const viewH = shape === 'circle' ? VIEWPORT_SIZE : Math.round(VIEWPORT_SIZE * 0.75);
+  const viewH = shape === 'circle' ? viewW : Math.round(viewW * 0.75);
 
   // Compute scale and position for preview display
   const baseScale = decodedImg ? Math.max(viewW / decodedImg.width, viewH / decodedImg.height) : 1;
@@ -83,38 +124,81 @@ export default function CircleCropTool() {
   const dispW = decodedImg ? Math.round(decodedImg.width * totalScale) : viewW;
   const dispH = decodedImg ? Math.round(decodedImg.height * totalScale) : viewH;
 
-  const left = viewW / 2 - dispW / 2 + pan.x;
-  const top = viewH / 2 - dispH / 2 + pan.y;
+  const boundedPan = constrainPan(pan, dispW, dispH, viewW, viewH);
+  const left = viewW / 2 - dispW / 2 + boundedPan.x;
+  const top = viewH / 2 - dispH / 2 + boundedPan.y;
+
+  useEffect(() => {
+    const viewport = previewRef.current;
+    if (!viewport) return;
+    const measure = () => {
+      const width = Math.round(viewport.clientWidth);
+      if (width > 0) setViewW(width);
+    };
+    measure();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', measure);
+      return () => window.removeEventListener('resize', measure);
+    }
+    const observer = new ResizeObserver(measure);
+    observer.observe(viewport);
+    return () => observer.disconnect();
+  }, [file, shape]);
+
+  useEffect(() => {
+    setPan((current) => constrainPan(current, dispW, dispH, viewW, viewH));
+  }, [dispH, dispW, viewH, viewW]);
 
   // Pointer events for dragging
-  const onPointerDown = (e: React.PointerEvent) => {
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!decodedImg) return;
+    e.preventDefault();
+    e.currentTarget.focus({ preventScroll: true });
+    e.currentTarget.setPointerCapture(e.pointerId);
     dragStartRef.current = {
+      pointerId: e.pointerId,
       startX: e.clientX,
       startY: e.clientY,
-      initialPan: { ...pan },
+      initialPan: { ...boundedPan },
     };
   };
 
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!dragStartRef.current) return;
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!dragStartRef.current || dragStartRef.current.pointerId !== e.pointerId) return;
+    e.preventDefault();
     const dx = e.clientX - dragStartRef.current.startX;
     const dy = e.clientY - dragStartRef.current.startY;
-    setPan({
-      x: dragStartRef.current.initialPan.x + dx,
-      y: dragStartRef.current.initialPan.y + dy,
-    });
+    setPan(
+      constrainPan(
+        {
+          x: dragStartRef.current.initialPan.x + dx,
+          y: dragStartRef.current.initialPan.y + dy,
+        },
+        dispW,
+        dispH,
+        viewW,
+        viewH,
+      ),
+    );
   };
 
-  const onPointerUp = (e: React.PointerEvent) => {
-    if (dragStartRef.current) {
-      try {
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {
-        // ignore
-      }
-      dragStartRef.current = null;
+  const finishPointer = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragStartRef.current?.pointerId !== e.pointerId) return;
+    dragStartRef.current = null;
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture may already be released after cancellation.
     }
+  };
+
+  const onPreviewKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!decodedImg || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+    e.preventDefault();
+    const step = e.shiftKey ? 10 : 1;
+    const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+    const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+    setPan(constrainPan({ x: boundedPan.x + dx, y: boundedPan.y + dy }, dispW, dispH, viewW, viewH));
   };
 
   const handleCrop = () => {
@@ -165,8 +249,8 @@ export default function CircleCropTool() {
       ctx.clip();
 
       // Draw image
-      const renderX = (viewW / 2 - dispW / 2 + pan.x) * ratio;
-      const renderY = (viewH / 2 - dispH / 2 + pan.y) * ratio;
+      const renderX = (viewW / 2 - dispW / 2 + boundedPan.x) * ratio;
+      const renderY = (viewH / 2 - dispH / 2 + boundedPan.y) * ratio;
       const renderW = dispW * ratio;
       const renderH = dispH * ratio;
 
@@ -209,14 +293,14 @@ export default function CircleCropTool() {
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose an image or drag it here"
-          hint="Supports JPG, PNG, WEBP, GIF, BMP, SVG, HEIC and AVIF."
+          label={t('Choose an image or drag it here')}
+          hint={t('Supports JPG, PNG, WEBP, GIF, BMP, SVG, HEIC and AVIF.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
           {metaError && <div className="error-banner">{metaError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result && resultInfo ? (
             <ResultPanel
@@ -224,15 +308,15 @@ export default function CircleCropTool() {
               filename={resultInfo.filename}
               kind="image"
               originalSize={file.size}
-              beforePreview={originalUrl ? <img src={originalUrl} alt={file.name} className="preview-media" /> : null}
+              beforePreview={editorPreviewUrl ? <img src={editorPreviewUrl} alt={file.name} className="preview-media" /> : null}
               onReset={handleReset}
             >
               <div className="meta-chips" style={{ marginBottom: '1rem' }}>
                 <span className="meta-chip">
-                  Shape: <strong>{shape === 'circle' ? 'Circle' : 'Ellipse'}</strong>
+                  {t('Shape')}: <strong>{shape === 'circle' ? t('Circle') : t('Ellipse')}</strong>
                 </span>
                 <span className="meta-chip">
-                  Output:{' '}
+                  {t('Output')}:{' '}
                   <strong>
                     {resultInfo.width}×{resultInfo.height} px (PNG)
                   </strong>
@@ -243,14 +327,14 @@ export default function CircleCropTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name')}: <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size')}: <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {decodedImg && (
                   <span className="meta-chip">
-                    Dimensions:{' '}
+                    {t('Dimensions')}:{' '}
                     <strong>
                       {decodedImg.width}×{decodedImg.height} px
                     </strong>
@@ -259,42 +343,48 @@ export default function CircleCropTool() {
               </div>
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Cropping image..." />
+                <ProgressBar value={job.progress} label={t('Cropping image...')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
                   {/* Shape toggle */}
-                  <Field label="Crop shape">
+                  <Field label={t('Crop shape')}>
                     <div className={basicStyles.presetChips}>
                       <button
                         type="button"
                         className={`${basicStyles.presetChip} ${shape === 'circle' ? basicStyles.presetChipActive : ''}`}
                         onClick={() => setShape('circle')}
                       >
-                        ⭕ Circle
+                        ⭕ {t('Circle')}
                       </button>
                       <button
                         type="button"
                         className={`${basicStyles.presetChip} ${shape === 'ellipse' ? basicStyles.presetChipActive : ''}`}
                         onClick={() => setShape('ellipse')}
                       >
-                        ⬭ Ellipse
+                        ⬭ {t('Ellipse')}
                       </button>
                     </div>
                   </Field>
 
                   {/* Fixed circular / elliptical preview viewport */}
                   <div
+                    ref={previewRef}
                     className={`${circleStyles.previewContainer} ${shape === 'circle' ? circleStyles.circleMask : circleStyles.ellipseMask}`}
-                    style={{ width: `${viewW}px`, height: `${viewH}px` }}
+                    style={{ width: `${viewW + 2}px`, height: `${viewH + 2}px` }}
                     onPointerDown={onPointerDown}
                     onPointerMove={onPointerMove}
-                    onPointerUp={onPointerUp}
-                    onPointerCancel={onPointerUp}
+                    onPointerUp={finishPointer}
+                    onPointerCancel={finishPointer}
+                    onLostPointerCapture={finishPointer}
+                    onKeyDown={onPreviewKeyDown}
+                    tabIndex={0}
+                    role="group"
+                    aria-label={t('Crop preview. Drag to reposition. Use arrow keys to move the image.')}
                   >
-                    {originalUrl && (
+                    {decodedImg && editorPreviewUrl ? (
                       <img
-                        src={originalUrl}
-                        alt="Draggable preview"
+                        src={editorPreviewUrl}
+                        alt={t('Draggable preview')}
                         className={circleStyles.dragImage}
                         style={{
                           width: `${dispW}px`,
@@ -303,7 +393,13 @@ export default function CircleCropTool() {
                           top: `${top}px`,
                         }}
                       />
-                    )}
+                    ) : decodedImg && editorPreviewError ? (
+                      <span className={circleStyles.previewUnavailable}>{t('Image preview is unavailable; choose another image.')}</span>
+                    ) : decodedImg ? (
+                      <span className={circleStyles.previewUnavailable} role="status">
+                        {t('Loading image…')}
+                      </span>
+                    ) : null}
                     {hasBorder && (
                       <div
                         className={`${circleStyles.overlayRing} ${shape === 'circle' ? circleStyles.circleMask : circleStyles.ellipseMask}`}
@@ -315,33 +411,33 @@ export default function CircleCropTool() {
                   </div>
 
                   <p className="field-hint" style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-                    Drag image to reposition inside the {shape}. Use zoom slider below to resize.
+                    {t('Drag image to reposition inside the {shape}. Use zoom slider below to resize.', { shape: shapeLabel })}
                   </p>
 
                   {/* Zoom slider */}
-                  <Field label="Zoom">
+                  <Field label={t('Zoom')}>
                     <Slider value={zoom} min={1} max={4} step={0.05} unit="x" onChange={setZoom} />
                   </Field>
 
                   {/* Border ring controls */}
-                  <Field label="Border ring">
+                  <Field label={t('Border ring')}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                       <label className="checkbox-label">
                         <input type="checkbox" checked={hasBorder} onChange={(e) => setHasBorder(e.target.checked)} />
-                        <span>Enable border ring</span>
+                        <span>{t('Enable border ring')}</span>
                       </label>
 
                       {hasBorder && (
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
                           <div style={{ flex: 1, minWidth: '150px' }}>
                             <label className="field-label" style={{ fontSize: '0.8rem' }}>
-                              Width: {borderWidth}px
+                              {t('Width: {width}px', { width: borderWidth })}
                             </label>
                             <Slider value={borderWidth} min={1} max={30} step={1} unit="px" onChange={setBorderWidth} />
                           </div>
                           <div>
                             <label className="field-label" style={{ fontSize: '0.8rem' }}>
-                              Color
+                              {t('Color')}
                             </label>
                             <input
                               type="color"
@@ -356,25 +452,25 @@ export default function CircleCropTool() {
                   </Field>
 
                   {/* Output size select */}
-                  <Field label="Output size" hint="Choose resolution for transparent PNG export">
+                  <Field label={t('Output size')} hint={t('Choose resolution for transparent PNG export')}>
                     <Select
                       value={outputSize}
                       onChange={(e) => setOutputSize(e.target.value as OutputSizeOption)}
                       options={[
-                        { value: '256', label: '256 px' },
-                        { value: '512', label: '512 px (Recommended for avatars)' },
-                        { value: '1024', label: '1024 px (High resolution)' },
-                        { value: 'original', label: 'Original image dimension' },
+                        { value: '256', label: t('256 px') },
+                        { value: '512', label: t('512 px (Recommended for avatars)') },
+                        { value: '1024', label: t('1024 px (High resolution)') },
+                        { value: 'original', label: t('Original image dimension') },
                       ]}
                     />
                   </Field>
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different image
+                      {t('Choose different image')}
                     </Button>
-                    <Button variant="primary" onClick={handleCrop}>
-                      Crop {shape} (PNG)
+                    <Button variant="primary" onClick={handleCrop} disabled={!decodedImg || !editorPreviewUrl}>
+                      {t('Crop {shape} (PNG)', { shape: shapeLabel })}
                     </Button>
                   </div>
                 </div>

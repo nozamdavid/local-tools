@@ -201,7 +201,7 @@ export default function BorderTool() {
       defaultOptions={DEFAULT_OPTIONS}
       suffix="-border"
       render={renderDecorativeBorder}
-      renderControls={(options, setOptions) => {
+      renderControls={(options, setOptions, { t }) => {
         const handlePresetChange = (preset: BorderPreset) => {
           setOptions((prev) => ({
             ...prev,
@@ -212,22 +212,22 @@ export default function BorderTool() {
 
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-            <Field label="Frame preset">
+            <Field label={t('Frame preset')}>
               <Select
                 value={options.preset}
                 onChange={(e) => handlePresetChange(e.target.value as BorderPreset)}
                 options={[
-                  { value: 'polaroid', label: '📸 Polaroid classic' },
-                  { value: 'film-strip', label: '🎞️ 35mm Film strip' },
-                  { value: 'double-line', label: '🏛️ Double line elegant' },
-                  { value: 'shadowed-mat', label: '🖼️ Gallery picture mat' },
-                  { value: 'rounded-card', label: '💳 Modern rounded card' },
-                  { value: 'vintage-vignette', label: '🕰️ Vintage vignette' },
+                  { value: 'polaroid', label: t('📸 Polaroid classic') },
+                  { value: 'film-strip', label: t('🎞️ 35mm Film strip') },
+                  { value: 'double-line', label: t('🏛️ Double line elegant') },
+                  { value: 'shadowed-mat', label: t('🖼️ Gallery picture mat') },
+                  { value: 'rounded-card', label: t('💳 Modern rounded card') },
+                  { value: 'vintage-vignette', label: t('🕰️ Vintage vignette') },
                 ]}
               />
             </Field>
 
-            <Field label="Frame colour">
+            <Field label={t('Frame colour')}>
               <input
                 type="color"
                 value={options.color}
@@ -236,7 +236,7 @@ export default function BorderTool() {
               />
             </Field>
 
-            <Field label={`Border scale (${options.scale}%)`}>
+            <Field label={t('Border scale ({scale}%)', { scale: options.scale })}>
               <Slider
                 value={options.scale}
                 min={50}

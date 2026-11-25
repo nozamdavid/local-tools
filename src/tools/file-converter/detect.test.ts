@@ -61,6 +61,11 @@ describe('detectFormat office documents', () => {
     await expect(detectFormat(new File([content], filename))).resolves.toMatchObject({ id, family: 'text' });
   });
 
+  it('recognizes plain text that starts with PK and crosses the sample boundary in a UTF-8 character', async () => {
+    const text = `PK${' '.repeat(8189)}é`;
+    await expect(detectFormat(new File([text], 'notes.txt'))).resolves.toMatchObject({ id: 'txt', family: 'text' });
+  });
+
   it('handles a short file without throwing', async () => {
     const shortBuffer = new Uint8Array([0]).buffer as ArrayBuffer;
     await expect(detectFormat(new File([shortBuffer], 'short.bin'))).resolves.toMatchObject({ id: 'unknown', family: 'unknown' });

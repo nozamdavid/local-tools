@@ -9,26 +9,71 @@ import { getVideoMeta, type VideoMeta } from '../../lib/media';
 import { formatBytes, formatDuration, replaceExt, withSuffix } from '../../lib/format';
 import { downloadBlob } from '../../lib/download';
 import { useObjectUrl } from '../../lib/useObjectUrl';
+import { useI18n } from '../../lib/i18n';
 import {
-  WHISPER_MODELS,
-  WHISPER_LANGUAGES,
+  MAX_SUBTITLE_CUE_TEXT_CHARS,
+  MAX_SUBTITLE_CUES,
+  MAX_SUBTITLE_FILE_BYTES,
+  MAX_SUBTITLE_TIME_SECONDS,
+  parseSubtitles,
+  shiftSubtitleCues,
   toSrt,
   toVtt,
-  WhisperTranscriptionJob,
+  validateSubtitleCues,
+  type ParsedSubtitles,
+  type SubtitleFormat,
+} from '../_whisper/formats';
+import {
+  WHISPER_LANGUAGES,
+  WHISPER_MODELS,
   type ProgressState,
   type SubtitleCue,
   type WhisperModel,
   type WhisperTask,
-} from '../_whisper';
-import { burnSubtitlesIntoVideo, type SubtitleStyleOptions } from './burnSubtitles';
-import { embedSoftSubtitles } from './embedSubtitles';
+} from '../_whisper/types';
+import type { WhisperTranscriptionJob } from '../_whisper/whisperClient';
+import type { SubtitleStyleOptions } from './burnSubtitles';
 import styles from './Tool.module.css';
 
+function CueTimeInput({
+  value,
+  onCommit,
+  label,
+  className,
+}: {
+  value: number;
+  onCommit: (value: string) => void;
+  label: string;
+  className: string;
+}) {
+  const [draft, setDraft] = useState<string | null>(null);
+  return (
+    <input
+      type="number"
+      step="0.1"
+      className={className}
+      value={draft ?? value}
+      aria-label={label}
+      onChange={(event) => setDraft(event.target.value)}
+      onBlur={() => {
+        if (draft !== null && draft.trim() !== '' && Number.isFinite(Number(draft))) onCommit(draft);
+        setDraft(null);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter') event.currentTarget.blur();
+      }}
+    />
+  );
+}
+
 export default function SubtitlesTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('subtitles');
   const [file, setFile] = useState<File | null>(null);
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
   const [metaError, setMetaError] = useState<string | null>(null);
+  const [parsedSource, setParsedSource] = useState<ParsedSubtitles | null>(null);
+  const [isParsingSidecar, setIsParsingSidecar] = useState(false);
 
   const [model, setModel] = useState<WhisperModel>('onnx-community/whisper-tiny');
   const [language, setLanguage] = useState<string>('');
@@ -58,9 +103,12 @@ export default function SubtitlesTool() {
     blob: Blob;
     filename: string;
   } | null>(null);
+  const [shiftSeconds, setShiftSeconds] = useState('0');
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const activeTranscriptionJobRef = useRef<WhisperTranscriptionJob | null>(null);
+  const activeSessionRef = useRef(0);
   const originalUrl = useObjectUrl(file);
 
   const [vttBlobUrl, setVttBlobUrl] = useState<string | null>(null);
@@ -72,18 +120,29 @@ export default function SubtitlesTool() {
   const fontColorId = useId();
   const bgBoxId = useId();
   const positionId = useId();
+  const shiftId = useId();
+
+  const isSidecar = Boolean(file && /\.(srt|vtt)$/i.test(file.name));
+  const isVideoSource = Boolean(
+    file && !isSidecar && (file.type.startsWith('video/') || (videoMeta && videoMeta.width > 0 && videoMeta.height > 0)),
+  );
+  const isAudioSource = Boolean(file && !isSidecar && file.type.startsWith('audio/'));
 
   // Keep VTT track refreshed whenever cues change
   useEffect(() => {
     if (!cues || cues.length === 0) {
-      if (vttBlobUrl) {
-        URL.revokeObjectURL(vttBlobUrl);
-        setVttBlobUrl(null);
-      }
+      // The previous effect's cleanup owns and revokes its URL.
+      setVttBlobUrl(null);
       return;
     }
 
-    const vttContent = toVtt(cues);
+    let vttContent: string;
+    try {
+      vttContent = toVtt(cues);
+    } catch {
+      setVttBlobUrl(null);
+      return;
+    }
     const blob = new Blob([vttContent], { type: 'text/vtt;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     setVttBlobUrl(url);
@@ -113,9 +172,20 @@ export default function SubtitlesTool() {
     };
   }, [vttBlobUrl]);
 
+  useEffect(
+    () => () => {
+      activeSessionRef.current++;
+      activeTranscriptionJobRef.current?.abort();
+    },
+    [],
+  );
+
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
+    const session = ++activeSessionRef.current;
+    activeTranscriptionJobRef.current?.abort();
+    activeTranscriptionJobRef.current = null;
     setFile(selected);
     setMetaError(null);
     setTranscribeError(null);
@@ -123,16 +193,43 @@ export default function SubtitlesTool() {
     setExportedResult(null);
     setVideoMeta(null);
     setCues(null);
+    setParsedSource(null);
+    setShiftSeconds('0');
+    setIsTranscribing(false);
+    setIsExporting(false);
+    setIsParsingSidecar(false);
+    setProgressState({ phase: 'idle', ratio: 0, label: '' });
+
+    const extension = selected.name.split('.').pop()?.toLowerCase();
+    if (extension === 'srt' || extension === 'vtt') {
+      setIsParsingSidecar(true);
+      try {
+        if (selected.size > MAX_SUBTITLE_FILE_BYTES) {
+          throw new Error(t('Subtitle file is too large (maximum {size} MB).', { size: Math.round(MAX_SUBTITLE_FILE_BYTES / 1_000_000) }));
+        }
+        const content = await selected.text();
+        if (session !== activeSessionRef.current) return;
+        const parsed = parseSubtitles(content, extension as SubtitleFormat);
+        setParsedSource(parsed);
+        setCues(parsed.cues);
+      } catch (err: unknown) {
+        if (session === activeSessionRef.current) setMetaError(err instanceof Error ? err.message : String(err));
+      } finally {
+        if (session === activeSessionRef.current) setIsParsingSidecar(false);
+      }
+      return;
+    }
 
     try {
       const vMeta = await getVideoMeta(selected);
-      setVideoMeta(vMeta);
+      if (session === activeSessionRef.current) setVideoMeta(vMeta);
     } catch {
       // Audio file or standard container missing
     }
   };
 
   const handleReset = () => {
+    activeSessionRef.current++;
     if (activeTranscriptionJobRef.current) {
       activeTranscriptionJobRef.current.abort();
       activeTranscriptionJobRef.current = null;
@@ -140,50 +237,58 @@ export default function SubtitlesTool() {
     setFile(null);
     setVideoMeta(null);
     setMetaError(null);
+    setParsedSource(null);
+    setIsParsingSidecar(false);
     setTranscribeError(null);
     setExportError(null);
     setExportedResult(null);
     setCues(null);
     setIsTranscribing(false);
     setIsExporting(false);
+    setShiftSeconds('0');
+    setProgressState({ phase: 'idle', ratio: 0, label: '' });
   };
 
   const handleTranscribe = async () => {
     if (!file) return;
 
+    const session = activeSessionRef.current;
     setIsTranscribing(true);
     setTranscribeError(null);
     setExportError(null);
     setExportedResult(null);
 
-    const job = new WhisperTranscriptionJob();
-    activeTranscriptionJobRef.current = job;
-
+    let job: WhisperTranscriptionJob | null = null;
     try {
+      const { WhisperTranscriptionJob } = await import('../_whisper/whisperClient');
+      if (session !== activeSessionRef.current) return;
+      job = new WhisperTranscriptionJob();
+      activeTranscriptionJobRef.current = job;
       const result = await job.run(file, {
         model,
         language: language || undefined,
         task,
         videoDuration: videoMeta?.duration,
         onProgress: (state) => {
-          setProgressState(state);
+          if (session === activeSessionRef.current) setProgressState(state);
         },
       });
 
-      setCues(result.cues);
+      if (session === activeSessionRef.current) setCues(result.cues);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
-      if (msg !== 'Transcription cancelled') {
+      if (session === activeSessionRef.current && msg !== 'Transcription cancelled') {
         setTranscribeError(msg);
       }
     } finally {
-      setIsTranscribing(false);
-      activeTranscriptionJobRef.current = null;
+      if (session === activeSessionRef.current) setIsTranscribing(false);
+      if (activeTranscriptionJobRef.current === job) activeTranscriptionJobRef.current = null;
     }
   };
 
   const handleUpdateCue = (id: string, field: 'start' | 'end' | 'text', val: string) => {
     if (!cues) return;
+    setExportError(null);
     setCues((prev) => {
       if (!prev) return prev;
       return prev.map((c) => {
@@ -203,8 +308,16 @@ export default function SubtitlesTool() {
   };
 
   const handleAddCue = () => {
+    if (cues && cues.length >= MAX_SUBTITLE_CUES) {
+      setExportError(t('Subtitle files may contain at most {count} cues.', { count: MAX_SUBTITLE_CUES.toLocaleString() }));
+      return;
+    }
     const lastCue = cues && cues.length > 0 ? cues[cues.length - 1] : null;
     const start = lastCue ? Math.round((lastCue.end + 0.1) * 100) / 100 : 0;
+    if (start + 3 > MAX_SUBTITLE_TIME_SECONDS) {
+      setExportError('Cannot add a cue after the seven-day timing limit.');
+      return;
+    }
     const end = Math.round((start + 3) * 100) / 100;
     const newCue: SubtitleCue = {
       id: `cue-${Date.now()}-${Math.random()}`,
@@ -216,34 +329,64 @@ export default function SubtitlesTool() {
   };
 
   const handleSeekVideo = (seconds: number) => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = Math.max(0, seconds);
-      videoRef.current.play().catch(() => {});
+    const media = videoRef.current ?? audioRef.current;
+    if (media) {
+      media.currentTime = Math.max(0, seconds);
+      media.play().catch(() => {});
     }
   };
 
   const handleDownloadSrt = () => {
     if (!file || !cues) return;
-    const content = toSrt(cues);
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    downloadBlob(blob, replaceExt(file.name, '.srt'));
+    try {
+      const content = toSrt(cues);
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      downloadBlob(blob, replaceExt(file.name, '.srt'));
+      setExportError(null);
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   const handleDownloadVtt = () => {
     if (!file || !cues) return;
-    const content = toVtt(cues);
-    const blob = new Blob([content], { type: 'text/vtt;charset=utf-8' });
-    downloadBlob(blob, replaceExt(file.name, '.vtt'));
+    try {
+      const content = toVtt(cues);
+      const blob = new Blob([content], { type: 'text/vtt;charset=utf-8' });
+      downloadBlob(blob, replaceExt(file.name, '.vtt'));
+      setExportError(null);
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleShift = () => {
+    if (!cues) return;
+    const shift = Number(shiftSeconds.trim());
+    if (!shiftSeconds.trim() || !Number.isFinite(shift)) {
+      setExportError('Enter a finite shift in seconds.');
+      return;
+    }
+    try {
+      setCues(shiftSubtitleCues(cues, shift));
+      setExportError(null);
+    } catch (err: unknown) {
+      setExportError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   const handleBurnIn = async () => {
-    if (!file || !cues) return;
+    if (!file || !cues || !isVideoSource) return;
+    const session = activeSessionRef.current;
     setIsExporting(true);
     setExportError(null);
-    setExportLabel('Rendering and burning subtitles into video...');
+    setExportLabel(t('Rendering and burning subtitles into video...'));
     setExportRatio(0.05);
 
     try {
+      validateSubtitleCues(cues);
+      const { burnSubtitlesIntoVideo } = await import('./burnSubtitles');
+      if (session !== activeSessionRef.current) return;
       const style: SubtitleStyleOptions = {
         fontSize,
         color: fontColor,
@@ -252,73 +395,107 @@ export default function SubtitlesTool() {
       };
 
       const burnedBlob = await burnSubtitlesIntoVideo(file, cues, style, videoMeta?.width || 1280, videoMeta?.height || 720, (ratio) => {
-        setExportRatio(ratio);
+        if (session === activeSessionRef.current) setExportRatio(ratio);
       });
 
-      setExportedResult({
-        blob: burnedBlob,
-        filename: withSuffix(file.name, '-subtitled-burned', 'mp4'),
-      });
+      if (session === activeSessionRef.current) {
+        setExportedResult({
+          blob: burnedBlob,
+          filename: withSuffix(file.name, '-subtitled-burned', 'mp4'),
+        });
+      }
     } catch (err: unknown) {
-      setExportError(err instanceof Error ? err.message : String(err));
+      if (session === activeSessionRef.current) setExportError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsExporting(false);
+      if (session === activeSessionRef.current) setIsExporting(false);
     }
   };
 
   const handleEmbedSoft = async () => {
-    if (!file || !cues) return;
+    if (!file || !cues || !isVideoSource) return;
+    const session = activeSessionRef.current;
     setIsExporting(true);
     setExportError(null);
-    setExportLabel('Embedding soft subtitles track into MP4...');
+    setExportLabel(t('Embedding soft subtitles track into MP4...'));
     setExportRatio(0.1);
 
     try {
+      const { embedSoftSubtitles } = await import('./embedSubtitles');
+      if (session !== activeSessionRef.current) return;
       const softBlob = await embedSoftSubtitles(file, cues, (ratio) => {
-        setExportRatio(ratio);
+        if (session === activeSessionRef.current) setExportRatio(ratio);
       });
 
-      setExportedResult({
-        blob: softBlob,
-        filename: withSuffix(file.name, '-subtitled-soft', 'mp4'),
-      });
+      if (session === activeSessionRef.current) {
+        setExportedResult({
+          blob: softBlob,
+          filename: withSuffix(file.name, '-subtitled-soft', 'mp4'),
+        });
+      }
     } catch (err: unknown) {
-      setExportError(err instanceof Error ? err.message : String(err));
+      if (session === activeSessionRef.current) setExportError(err instanceof Error ? err.message : String(err));
     } finally {
-      setIsExporting(false);
+      if (session === activeSessionRef.current) setIsExporting(false);
     }
   };
+
+  const importedMetadataNotices = parsedSource
+    ? [
+        parsedSource.metadata.ignoredBlocks.length > 0 || parsedSource.metadata.headerMetadata
+          ? t('{blocks} are not retained; cue IDs, text, and timing remain.', {
+              blocks: [
+                ...parsedSource.metadata.ignoredBlocks.map((block) => `${block} blocks`),
+                ...(parsedSource.metadata.headerMetadata ? ['header metadata'] : []),
+              ].join(' and '),
+            })
+          : null,
+        parsedSource.metadata.hasCueSettings ? t('WebVTT cue settings are preserved in VTT exports; SRT has no equivalent.') : null,
+        parsedSource.metadata.hasCueMarkup ? t('WebVTT cue markup is treated as plain text; its formatting is not retained.') : null,
+      ].filter((notice): notice is string => notice !== null)
+    : [];
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="subtitles">
       {!file ? (
         <FileDrop
-          accept="video/*,audio/*"
-          label="Choose a video or audio file"
-          hint="Supports MP4, MOV, WebM, MKV and more. Transcribed with on-device AI."
+          accept="video/*,audio/*,.srt,.vtt"
+          label={t('Choose a video, audio, or subtitle file')}
+          hint={t('Transcribe video or audio on this device, or open an SRT or VTT file to edit it.')}
           onFiles={handleFiles}
         />
       ) : (
         <div className={styles.container}>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {transcribeError && <div className="error-banner">{transcribeError}</div>}
-          {exportError && <div className="error-banner">{exportError}</div>}
+          {metaError && (
+            <div className="error-banner" role="alert">
+              {t(metaError)}
+            </div>
+          )}
+          {transcribeError && (
+            <div className="error-banner" role="alert">
+              {t(transcribeError)}
+            </div>
+          )}
+          {exportError && (
+            <div className="error-banner" role="alert">
+              {t(exportError)}
+            </div>
+          )}
 
           <div className="meta-chips">
             <span className="meta-chip">
-              File: <strong>{file.name}</strong>
+              {t('File:')} <strong>{file.name}</strong>
             </span>
             <span className="meta-chip">
-              Size: <strong>{formatBytes(file.size)}</strong>
+              {t('Size:')} <strong>{formatBytes(file.size)}</strong>
             </span>
             {videoMeta && videoMeta.duration > 0 && (
               <span className="meta-chip">
-                Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
+                {t('Duration:')} <strong>{formatDuration(videoMeta.duration)}</strong>
               </span>
             )}
             {videoMeta && videoMeta.width > 0 && (
               <span className="meta-chip">
-                Resolution:{' '}
+                {t('Resolution:')}{' '}
                 <strong>
                   {videoMeta.width}x{videoMeta.height}
                 </strong>
@@ -326,16 +503,21 @@ export default function SubtitlesTool() {
             )}
           </div>
 
-          {isTranscribing ? (
+          {isParsingSidecar ? (
+            <div style={{ marginTop: '1rem' }}>{t('Reading subtitle cues locally…')}</div>
+          ) : isTranscribing ? (
             <div style={{ marginTop: '1rem' }}>
               <ProgressBar
                 value={progressState.phase === 'transcribing' ? 0.95 : progressState.ratio}
-                label={progressState.label || 'Transcribing...'}
+                label={t(progressState.label || 'Transcribing...')}
               />
+              <Button variant="secondary" onClick={handleReset}>
+                {t('Cancel transcription')}
+              </Button>
             </div>
           ) : isExporting ? (
             <div style={{ marginTop: '1rem' }}>
-              <ProgressBar value={exportRatio} label={exportLabel || 'Processing video...'} />
+              <ProgressBar value={exportRatio} label={exportLabel || t('Processing video...')} />
             </div>
           ) : exportedResult ? (
             <ResultPanel
@@ -343,73 +525,86 @@ export default function SubtitlesTool() {
               filename={exportedResult.filename}
               kind="video"
               originalSize={file.size}
-              beforePreview={originalUrl ? <video controls src={originalUrl} className="preview-media" playsInline /> : null}
+              beforePreview={
+                originalUrl && isVideoSource ? <video controls src={originalUrl} className="preview-media" playsInline /> : null
+              }
               onReset={() => setExportedResult(null)}
             />
           ) : cues ? (
             <div className={styles.editorLayout}>
               {/* Video preview with live track */}
-              {originalUrl && (
+              {originalUrl && isVideoSource && (
                 <div className={styles.videoSection}>
                   <video ref={videoRef} controls playsInline src={originalUrl} className={styles.videoPreview}>
-                    {vttBlobUrl && <track key={vttBlobUrl} kind="subtitles" src={vttBlobUrl} srcLang="en" label="Subtitles" default />}
+                    {vttBlobUrl && <track key={vttBlobUrl} kind="subtitles" src={vttBlobUrl} srcLang="en" label={t('Subtitles')} default />}
                   </video>
                   <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Live preview: video displays cues updated in real time.
+                    {t('Live preview: video displays cues updated in real time.')}
                   </span>
                 </div>
               )}
+              {originalUrl && isAudioSource && (
+                <div className={styles.videoSection}>
+                  <audio ref={audioRef} controls src={originalUrl} />
+                </div>
+              )}
+
+              {importedMetadataNotices.map((notice) => (
+                <div key={notice} className={styles.noticeBanner}>
+                  {notice}
+                </div>
+              ))}
 
               {/* Editable cue list */}
               <div className={styles.cuesSection}>
                 <div className={styles.cuesHeader}>
                   <div className={styles.cuesTitle}>
-                    Subtitles ({cues.length} {cues.length === 1 ? 'cue' : 'cues'})
+                    {t('Subtitles ({count} {cueLabel})', { count: cues.length, cueLabel: cues.length === 1 ? t('cue') : t('cues') })}
                   </div>
-                  <Button variant="secondary" onClick={handleAddCue}>
-                    + Add Cue
+                  <Button variant="secondary" onClick={handleAddCue} disabled={cues.length >= MAX_SUBTITLE_CUES}>
+                    + {t('Add Cue')}
                   </Button>
                 </div>
 
                 <div className={styles.cueList}>
                   {cues.map((cue, idx) => (
-                    <div key={cue.id} className={styles.cueRow}>
-                      <input
-                        type="number"
-                        step="0.1"
-                        className={styles.timeInput}
+                    <div key={cue.id} className={`${styles.cueRow} ${isVideoSource || isAudioSource ? styles.cueRowWithMedia : ''}`}>
+                      <CueTimeInput
+                        className={`input ${styles.timeInput} ${styles.cueStart}`}
                         value={cue.start}
-                        onChange={(e) => handleUpdateCue(cue.id, 'start', e.target.value)}
-                        title="Start time (seconds)"
+                        onCommit={(value) => handleUpdateCue(cue.id, 'start', value)}
+                        label={t('Start time for cue {number} in seconds', { number: idx + 1 })}
                       />
-                      <input
-                        type="number"
-                        step="0.1"
-                        className={styles.timeInput}
+                      <CueTimeInput
+                        className={`input ${styles.timeInput} ${styles.cueEnd}`}
                         value={cue.end}
-                        onChange={(e) => handleUpdateCue(cue.id, 'end', e.target.value)}
-                        title="End time (seconds)"
+                        onCommit={(value) => handleUpdateCue(cue.id, 'end', value)}
+                        label={t('End time for cue {number} in seconds', { number: idx + 1 })}
                       />
-                      <input
-                        type="text"
-                        className={styles.textInput}
+                      <textarea
+                        className={`textarea ${styles.textInput} ${styles.cueText}`}
                         value={cue.text}
+                        rows={2}
+                        maxLength={MAX_SUBTITLE_CUE_TEXT_CHARS}
                         onChange={(e) => handleUpdateCue(cue.id, 'text', e.target.value)}
-                        placeholder={`Cue #${idx + 1}`}
+                        placeholder={t('Cue #{number}', { number: idx + 1 })}
+                        aria-label={t('Subtitle text for cue {number}', { number: idx + 1 })}
                       />
+                      {(isVideoSource || isAudioSource) && (
+                        <button
+                          type="button"
+                          className={`${styles.iconBtn} ${styles.cueSeek}`}
+                          onClick={() => handleSeekVideo(cue.start)}
+                          aria-label={t('Seek media to start of cue {number}', { number: idx + 1 })}
+                        >
+                          ▶
+                        </button>
+                      )}
                       <button
                         type="button"
-                        className={styles.iconBtn}
-                        onClick={() => handleSeekVideo(cue.start)}
-                        title="Seek video to cue start"
-                      >
-                        ▶
-                      </button>
-                      <button
-                        type="button"
-                        className={`${styles.iconBtn} ${styles.deleteBtn}`}
+                        className={`${styles.iconBtn} ${styles.deleteBtn} ${styles.cueDelete}`}
                         onClick={() => handleDeleteCue(cue.id)}
-                        title="Delete cue"
+                        aria-label={t('Delete cue {number}', { number: idx + 1 })}
                       >
                         ✕
                       </button>
@@ -418,110 +613,152 @@ export default function SubtitlesTool() {
                 </div>
               </div>
 
-              {/* Burn-in Style Options */}
-              <div className={styles.stylesCard}>
-                <div className={styles.stylesTitle}>Burn-in Appearance Options</div>
-                <div className={styles.stylesGrid}>
-                  <Field label="Font size">
-                    <Select
-                      id={fontSizeId}
-                      value={String(fontSize)}
-                      onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
-                      options={[
-                        { value: '20', label: 'Small (20px)' },
-                        { value: '28', label: 'Medium (28px - recommended)' },
-                        { value: '36', label: 'Large (36px)' },
-                        { value: '48', label: 'Extra Large (48px)' },
-                      ]}
-                    />
-                  </Field>
-
-                  <Field label="Subtitle color">
-                    <Select
-                      id={fontColorId}
-                      value={fontColor}
-                      onChange={(e) => setFontColor(e.target.value)}
-                      options={[
-                        { value: '#ffffff', label: 'White' },
-                        { value: '#ffe600', label: 'Yellow' },
-                        { value: '#00ffff', label: 'Cyan' },
-                        { value: '#00ff88', label: 'Green' },
-                      ]}
-                    />
-                  </Field>
-
-                  <Field label="Position">
-                    <Select
-                      id={positionId}
-                      value={position}
-                      onChange={(e) => setPosition(e.target.value as 'bottom' | 'top')}
-                      options={[
-                        { value: 'bottom', label: 'Bottom' },
-                        { value: 'top', label: 'Top' },
-                      ]}
-                    />
-                  </Field>
-
-                  <div className="field">
-                    <label className="checkbox-label" htmlFor={bgBoxId}>
-                      <input id={bgBoxId} type="checkbox" checked={backgroundBox} onChange={(e) => setBackgroundBox(e.target.checked)} />
-                      <span>Background box</span>
-                    </label>
-                  </div>
+              <div className={styles.shiftSection}>
+                <div>
+                  <div className={styles.stylesTitle}>{t('Shift all cues')}</div>
+                  <p className={styles.shiftHint}>
+                    {t(
+                      'Positive seconds delay subtitles; negative seconds move them earlier. A shift that moves any cue before zero is rejected.',
+                    )}
+                  </p>
                 </div>
+                <Field label={t('Shift in seconds')}>
+                  <input
+                    id={shiftId}
+                    className={`input ${styles.timeInput}`}
+                    type="number"
+                    step="0.1"
+                    value={shiftSeconds}
+                    onChange={(e) => setShiftSeconds(e.target.value)}
+                  />
+                </Field>
+                <Button variant="secondary" onClick={handleShift}>
+                  {t('Apply shift')}
+                </Button>
               </div>
+
+              {/* Burn-in Style Options */}
+              {isVideoSource && (
+                <details className="tool-options">
+                  <summary>{t('Burn-in appearance')}</summary>
+                  <div className="tool-options-body">
+                    <Field label={t('Font size')}>
+                      <Select
+                        id={fontSizeId}
+                        value={String(fontSize)}
+                        onChange={(e) => setFontSize(parseInt(e.target.value, 10))}
+                        options={[
+                          { value: '20', label: t('Small (20px)') },
+                          { value: '28', label: t('Medium (28px - recommended)') },
+                          { value: '36', label: t('Large (36px)') },
+                          { value: '48', label: t('Extra Large (48px)') },
+                        ]}
+                      />
+                    </Field>
+
+                    <Field label={t('Subtitle color')}>
+                      <Select
+                        id={fontColorId}
+                        value={fontColor}
+                        onChange={(e) => setFontColor(e.target.value)}
+                        options={[
+                          { value: '#ffffff', label: t('White') },
+                          { value: '#ffe600', label: t('Yellow') },
+                          { value: '#00ffff', label: t('Cyan') },
+                          { value: '#00ff88', label: t('Green') },
+                        ]}
+                      />
+                    </Field>
+
+                    <Field label={t('Position')}>
+                      <Select
+                        id={positionId}
+                        value={position}
+                        onChange={(e) => setPosition(e.target.value as 'bottom' | 'top')}
+                        options={[
+                          { value: 'bottom', label: t('Bottom') },
+                          { value: 'top', label: t('Top') },
+                        ]}
+                      />
+                    </Field>
+
+                    <div className="field">
+                      <label className="checkbox-label" htmlFor={bgBoxId}>
+                        <input id={bgBoxId} type="checkbox" checked={backgroundBox} onChange={(e) => setBackgroundBox(e.target.checked)} />
+                        <span>{t('Background box')}</span>
+                      </label>
+                    </div>
+                  </div>
+                </details>
+              )}
 
               {/* Action outputs */}
               <div className={styles.actionSection}>
                 <div className={styles.buttonGroup} style={{ justifyContent: 'space-between' }}>
                   <Button variant="secondary" onClick={handleReset}>
-                    Start over
+                    {t('Start over')}
                   </Button>
 
                   <div className={styles.buttonGroup}>
                     <Button variant="secondary" onClick={handleDownloadSrt}>
-                      Download .srt
+                      {t('Download .srt')}
                     </Button>
                     <Button variant="secondary" onClick={handleDownloadVtt}>
-                      Download .vtt
+                      {t('Download .vtt')}
                     </Button>
-                    <Button variant="secondary" onClick={handleEmbedSoft}>
-                      Embed soft subtitles
-                    </Button>
-                    <Button variant="primary" onClick={handleBurnIn}>
-                      Burn into video
-                    </Button>
+                    {isVideoSource && (
+                      <>
+                        <Button variant="secondary" onClick={handleEmbedSoft}>
+                          {t('Embed soft subtitles')}
+                        </Button>
+                        <Button variant="primary" onClick={handleBurnIn}>
+                          {t('Burn into video')}
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
             </div>
+          ) : isSidecar ? (
+            <div className={styles.sidecarErrorState} role="alert">
+              <p>{t('This subtitle file could not be opened. Choose another file to continue.')}</p>
+              <Button variant="secondary" onClick={handleReset}>
+                {t('Choose different file')}
+              </Button>
+            </div>
           ) : (
             <div style={{ marginTop: '1rem' }}>
               <div className={styles.optionsGrid}>
-                <Field label="Whisper Model" hint="Tiny runs fastest with low memory; Small provides higher accuracy.">
+                <Field label={t('Whisper Model')} hint={t('Tiny runs fastest with low memory; Small provides higher accuracy.')}>
                   <Select
                     id={modelId}
                     value={model}
                     onChange={(e) => setModel(e.target.value as WhisperModel)}
                     options={WHISPER_MODELS.map((m) => ({
                       value: m.value,
-                      label: m.label,
+                      label: t(m.label),
                     }))}
                   />
                 </Field>
 
-                <Field label="Language" hint="Select spoken language or let Whisper detect automatically.">
-                  <Select id={languageId} value={language} onChange={(e) => setLanguage(e.target.value)} options={WHISPER_LANGUAGES} />
+                <Field label={t('Language')} hint={t('Select spoken language or let Whisper detect automatically.')}>
+                  <Select
+                    id={languageId}
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    options={WHISPER_LANGUAGES.map((option) => ({ ...option, label: t(option.label) }))}
+                  />
                 </Field>
 
-                <Field label="Task" hint="Transcribe original audio or translate directly into English.">
+                <Field label={t('Task')} hint={t('Transcribe original audio or translate directly into English.')}>
                   <Select
                     id={taskId}
                     value={task}
                     onChange={(e) => setTask(e.target.value as WhisperTask)}
                     options={[
-                      { value: 'transcribe', label: 'Transcribe (same language)' },
-                      { value: 'translate', label: 'Translate to English' },
+                      { value: 'transcribe', label: t('Transcribe (same language)') },
+                      { value: 'translate', label: t('Translate to English') },
                     ]}
                   />
                 </Field>
@@ -529,10 +766,10 @@ export default function SubtitlesTool() {
 
               <div className="action-buttons" style={{ marginTop: '2rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
-                  Choose different file
+                  {t('Choose different file')}
                 </Button>
                 <Button variant="primary" onClick={handleTranscribe}>
-                  Generate Subtitles
+                  {t('Generate Subtitles')}
                 </Button>
               </div>
             </div>

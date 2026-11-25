@@ -1,5 +1,6 @@
 import { type RGBA, type HSLA, formatHex, formatRgb, formatHsl, rgbToHsl } from './convert';
 import { canvasToBlob } from '../../../lib/image';
+import { translate } from '../../../lib/i18n';
 
 export interface PaletteColor {
   rgba: RGBA;
@@ -165,7 +166,7 @@ export async function generatePaletteStripBlob(palette: PaletteColor[], width = 
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D context unavailable');
+  if (!ctx) throw new Error(translate('Canvas 2D context unavailable'));
 
   const count = palette.length;
   const blockWidth = width / count;

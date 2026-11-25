@@ -10,12 +10,24 @@ import { CanvasDocument, Layer, TextLayer, RectLayer, EllipseLayer, ArrowLayer, 
 import { useCanvasHistory } from '../_canvas/useCanvasHistory';
 import { CanvasStage, CropRect, StageMode, DrawConfig, ShapeConfig } from '../_canvas/CanvasStage';
 import { exportDocument } from '../_canvas/render';
+import { useI18n } from '../../../lib/i18n';
 import styles from './Tool.module.css';
 
 type TabType = 'adjust' | 'filters' | 'crop' | 'transform' | 'text' | 'draw' | 'shapes';
 
+const TAB_LABELS: Record<TabType, string> = {
+  adjust: 'Adjust',
+  filters: 'Filters',
+  crop: 'Crop',
+  transform: 'Rotate',
+  text: 'Text',
+  draw: 'Draw',
+  shapes: 'Shapes',
+};
+
 export default function Tool() {
   const meta = getToolMeta('img-photo-editor');
+  const { t } = useI18n();
 
   const [file, setFile] = useState<File | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('adjust');
@@ -98,7 +110,7 @@ export default function Tool() {
       setSelectedLayerId(null);
       setCropRect({ x: 0, y: 0, width: img.width, height: img.height });
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to decode image.');
+      alert(t(err instanceof Error ? err.message : 'Failed to decode image.'));
     }
   };
 
@@ -435,7 +447,7 @@ export default function Tool() {
       const outName = withSuffix(file ? file.name : 'edited-photo.png', '-edited', ext);
       downloadBlob(blob, outName);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Export failed.');
+      alert(t(err instanceof Error ? err.message : 'Export failed.'));
     } finally {
       setIsExporting(false);
     }
@@ -454,8 +466,8 @@ export default function Tool() {
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose an image to edit"
-          hint="Supports JPG, PNG, WebP, GIF, BMP, AVIF, HEIC, SVG"
+          label={t('Choose an image to edit')}
+          hint={t('Supports JPG, PNG, WebP, GIF, BMP, AVIF, HEIC and SVG.')}
           onFiles={handleFileDrop}
         />
       ) : (
@@ -466,7 +478,8 @@ export default function Tool() {
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="Undo (Ctrl+Z)"
+                title={t('Undo (Ctrl+Z)')}
+                aria-label={t('Undo')}
                 data-testid="undo-btn"
                 disabled={!canUndo}
                 onClick={undo}
@@ -476,7 +489,8 @@ export default function Tool() {
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="Redo (Ctrl+Shift+Z)"
+                title={t('Redo (Ctrl+Shift+Z)')}
+                aria-label={t('Redo')}
                 data-testid="redo-btn"
                 disabled={!canRedo}
                 onClick={redo}
@@ -487,7 +501,8 @@ export default function Tool() {
                 <button
                   type="button"
                   className={styles.iconBtn}
-                  title="Delete layer (Del)"
+                  title={t('Delete layer (Del)')}
+                  aria-label={t('Delete layer')}
                   onClick={() => deleteLayer(selectedLayerId)}
                   style={{ color: 'var(--danger)' }}
                 >
@@ -496,27 +511,45 @@ export default function Tool() {
               )}
             </div>
 
-            <div className={styles.tabsRow}>
-              {(['adjust', 'filters', 'crop', 'transform', 'text', 'draw', 'shapes'] as TabType[]).map((tab) => (
+            <div className={styles.tabsRow} role="group" aria-label={t('Photo editing tools')}>
+              {(['adjust', 'crop', 'transform'] as TabType[]).map((tab) => (
                 <button
                   key={tab}
                   type="button"
                   className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ''}`}
+                  aria-pressed={activeTab === tab}
                   onClick={() => setActiveTab(tab)}
                 >
-                  {tab === 'adjust' && 'Adjust'}
-                  {tab === 'filters' && 'Filters'}
-                  {tab === 'crop' && 'Crop'}
-                  {tab === 'transform' && 'Rotate / Flip'}
-                  {tab === 'text' && 'Text'}
-                  {tab === 'draw' && 'Draw'}
-                  {tab === 'shapes' && 'Shapes'}
+                  {t(TAB_LABELS[tab])}
                 </button>
               ))}
+
+              <details className="tool-options">
+                <summary>
+                  {(['filters', 'text', 'draw', 'shapes'] as TabType[]).includes(activeTab)
+                    ? t('More tools: {tool}', { tool: t(TAB_LABELS[activeTab]) })
+                    : t('More tools')}
+                </summary>
+                <div className="tool-options-body">
+                  <div className={styles.tabsRow} role="group" aria-label={t('More photo editing tools')}>
+                    {(['filters', 'text', 'draw', 'shapes'] as TabType[]).map((tab) => (
+                      <button
+                        key={tab}
+                        type="button"
+                        className={`${styles.tabBtn} ${activeTab === tab ? styles.tabBtnActive : ''}`}
+                        aria-pressed={activeTab === tab}
+                        onClick={() => setActiveTab(tab)}
+                      >
+                        {t(TAB_LABELS[tab])}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </details>
             </div>
 
             <Button variant="secondary" onClick={() => setFile(null)}>
-              Change Image
+              {t('Change image')}
             </Button>
           </div>
 
@@ -539,7 +572,7 @@ export default function Tool() {
           <div className={styles.controlsPanel}>
             {activeTab === 'adjust' && (
               <div className={styles.controlGrid}>
-                <Field label="Brightness">
+                <Field label={t('Brightness')}>
                   <Slider
                     value={doc.adjustments?.brightness ?? 100}
                     min={0}
@@ -548,7 +581,7 @@ export default function Tool() {
                     onChange={(v) => updateAdjustment('brightness', v)}
                   />
                 </Field>
-                <Field label="Contrast">
+                <Field label={t('Contrast')}>
                   <Slider
                     value={doc.adjustments?.contrast ?? 100}
                     min={0}
@@ -557,7 +590,7 @@ export default function Tool() {
                     onChange={(v) => updateAdjustment('contrast', v)}
                   />
                 </Field>
-                <Field label="Saturation">
+                <Field label={t('Saturation')}>
                   <Slider
                     value={doc.adjustments?.saturation ?? 100}
                     min={0}
@@ -566,14 +599,14 @@ export default function Tool() {
                     onChange={(v) => updateAdjustment('saturation', v)}
                   />
                 </Field>
-                <Field label="Blur">
+                <Field label={t('Blur')}>
                   <Slider value={doc.adjustments?.blur ?? 0} min={0} max={20} unit="px" onChange={(v) => updateAdjustment('blur', v)} />
                 </Field>
               </div>
             )}
 
             {activeTab === 'filters' && (
-              <Field label="Filter Presets">
+              <Field label={t('Filter presets')}>
                 <div className={styles.btnGroup}>
                   {[
                     { id: 'none', label: 'Original' },
@@ -589,7 +622,7 @@ export default function Tool() {
                       variant={doc.adjustments?.preset === p.id ? 'primary' : 'secondary'}
                       onClick={() => setFilterPreset(p.id as any)}
                     >
-                      {p.label}
+                      {t(p.label)}
                     </Button>
                   ))}
                 </div>
@@ -598,18 +631,18 @@ export default function Tool() {
 
             {activeTab === 'crop' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <Field label="Aspect Ratio Preset">
+                <Field label={t('Aspect ratio preset')}>
                   <div className={styles.btnGroup}>
                     {['free', '1:1', '4:3', '16:9', '3:2', '9:16'].map((asp) => (
                       <Button key={asp} variant={cropAspect === asp ? 'primary' : 'secondary'} onClick={() => handleAspectChange(asp)}>
-                        {asp.toUpperCase()}
+                        {asp === 'free' ? t('Free') : asp.toUpperCase()}
                       </Button>
                     ))}
                   </div>
                 </Field>
                 <div style={{ display: 'flex', gap: '0.75rem' }}>
                   <Button variant="primary" onClick={applyCrop}>
-                    Apply Crop
+                    {t('Apply crop')}
                   </Button>
                   <Button
                     variant="secondary"
@@ -618,26 +651,26 @@ export default function Tool() {
                       setActiveTab('adjust');
                     }}
                   >
-                    Cancel
+                    {t('Cancel')}
                   </Button>
                 </div>
               </div>
             )}
 
             {activeTab === 'transform' && (
-              <Field label="Rotate & Flip">
+              <Field label={t('Rotate and flip')}>
                 <div className={styles.btnGroup}>
                   <Button variant="secondary" onClick={() => rotateBase(true)}>
-                    Rotate 90° CW
+                    {t('Rotate 90° clockwise')}
                   </Button>
                   <Button variant="secondary" onClick={() => rotateBase(false)}>
-                    Rotate 90° CCW
+                    {t('Rotate 90° counterclockwise')}
                   </Button>
                   <Button variant="secondary" onClick={() => flipBase(true)}>
-                    Flip Horizontal
+                    {t('Flip horizontal')}
                   </Button>
                   <Button variant="secondary" onClick={() => flipBase(false)}>
-                    Flip Vertical
+                    {t('Flip vertical')}
                   </Button>
                 </div>
               </Field>
@@ -647,13 +680,13 @@ export default function Tool() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                   <Button variant="primary" onClick={addTextLayer}>
-                    + Add Text
+                    {t('+ Add text')}
                   </Button>
                 </div>
 
                 {selectedLayer && selectedLayer.type === 'text' && (
                   <div className={styles.controlGrid}>
-                    <Field label="Text Content">
+                    <Field label={t('Text content')}>
                       <input
                         type="text"
                         className="input"
@@ -667,7 +700,7 @@ export default function Tool() {
                         }}
                       />
                     </Field>
-                    <Field label="Font Size">
+                    <Field label={t('Font size')}>
                       <Slider
                         value={selectedLayer.fontSize}
                         min={12}
@@ -681,7 +714,7 @@ export default function Tool() {
                         }}
                       />
                     </Field>
-                    <Field label="Text Color">
+                    <Field label={t('Text colour')}>
                       <div className={styles.colorInputRow}>
                         <input
                           type="color"
@@ -698,7 +731,7 @@ export default function Tool() {
                         <span>{selectedLayer.fill}</span>
                       </div>
                     </Field>
-                    <Field label="Stroke Color">
+                    <Field label={t('Stroke colour')}>
                       <div className={styles.colorInputRow}>
                         <input
                           type="color"
@@ -722,24 +755,24 @@ export default function Tool() {
 
             {activeTab === 'draw' && (
               <div className={styles.controlGrid}>
-                <Field label="Tool Mode">
+                <Field label={t('Tool mode')}>
                   <div className={styles.btnGroup}>
                     <Button
                       variant={!drawConfig.isEraser ? 'primary' : 'secondary'}
                       onClick={() => setDrawConfig((prev) => ({ ...prev, isEraser: false }))}
                     >
-                      Brush
+                      {t('Brush')}
                     </Button>
                     <Button
                       variant={drawConfig.isEraser ? 'primary' : 'secondary'}
                       onClick={() => setDrawConfig((prev) => ({ ...prev, isEraser: true }))}
                     >
-                      Eraser
+                      {t('Eraser')}
                     </Button>
                   </div>
                 </Field>
                 {!drawConfig.isEraser && (
-                  <Field label="Brush Color">
+                  <Field label={t('Brush colour')}>
                     <div className={styles.colorInputRow}>
                       <input
                         type="color"
@@ -751,7 +784,7 @@ export default function Tool() {
                     </div>
                   </Field>
                 )}
-                <Field label="Brush Size">
+                <Field label={t('Brush size')}>
                   <Slider
                     value={drawConfig.strokeWidth}
                     min={1}
@@ -765,25 +798,25 @@ export default function Tool() {
 
             {activeTab === 'shapes' && (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <Field label="Add Shape">
+                <Field label={t('Add shape')}>
                   <div className={styles.btnGroup}>
                     <Button variant="secondary" onClick={() => addShapeLayer('rect')}>
-                      + Rectangle
+                      {t('+ Rectangle')}
                     </Button>
                     <Button variant="secondary" onClick={() => addShapeLayer('ellipse')}>
-                      + Ellipse
+                      {t('+ Ellipse')}
                     </Button>
                     <Button variant="secondary" onClick={() => addShapeLayer('arrow')}>
-                      + Arrow
+                      {t('+ Arrow')}
                     </Button>
                     <Button variant="secondary" onClick={() => addShapeLayer('line')}>
-                      + Line
+                      {t('+ Line')}
                     </Button>
                   </div>
                 </Field>
 
                 <div className={styles.controlGrid}>
-                  <Field label="Stroke Color">
+                  <Field label={t('Stroke colour')}>
                     <div className={styles.colorInputRow}>
                       <input
                         type="color"
@@ -794,7 +827,7 @@ export default function Tool() {
                       <span>{shapeConfig.stroke}</span>
                     </div>
                   </Field>
-                  <Field label="Stroke Width">
+                  <Field label={t('Stroke width')}>
                     <Slider
                       value={shapeConfig.strokeWidth}
                       min={1}
@@ -803,7 +836,7 @@ export default function Tool() {
                       onChange={(v) => setShapeConfig((prev) => ({ ...prev, strokeWidth: v }))}
                     />
                   </Field>
-                  <Field label="Fill Color">
+                  <Field label={t('Fill colour')}>
                     <div className={styles.colorInputRow}>
                       <input
                         type="color"
@@ -815,7 +848,7 @@ export default function Tool() {
                         variant={shapeConfig.fill === 'transparent' ? 'primary' : 'secondary'}
                         onClick={() => setShapeConfig((prev) => ({ ...prev, fill: 'transparent' }))}
                       >
-                        Transparent
+                        {t('Transparent')}
                       </Button>
                     </div>
                   </Field>
@@ -827,27 +860,27 @@ export default function Tool() {
           {/* Export Row */}
           <div className={styles.exportRow}>
             <div className={styles.exportControls}>
-              <Field label="Format">
+              <Field label={t('Format')}>
                 <Select
                   value={exportMime}
                   onChange={(e) => setExportMime(e.target.value as EncodableMime)}
                   options={[
-                    { value: 'image/png', label: 'PNG' },
-                    { value: 'image/jpeg', label: 'JPEG' },
-                    { value: 'image/webp', label: 'WebP' },
+                    { value: 'image/png', label: t('PNG') },
+                    { value: 'image/jpeg', label: t('JPEG') },
+                    { value: 'image/webp', label: t('WebP') },
                   ]}
                 />
               </Field>
 
               {exportMime !== 'image/png' && (
-                <Field label="Quality">
+                <Field label={t('Quality')}>
                   <Slider value={quality} min={10} max={100} unit="%" onChange={setQuality} />
                 </Field>
               )}
             </div>
 
             <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleExport}>
-              {isExporting ? 'Exporting…' : 'Download Image'}
+              {isExporting ? t('Exporting…') : t('Download image')}
             </Button>
           </div>
         </div>

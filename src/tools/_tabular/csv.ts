@@ -2,6 +2,7 @@ export interface CsvParseOptions {
   delimiter?: string;
   hasHeader?: boolean;
   trimFields?: boolean;
+  maxRows?: number;
 }
 
 export interface CsvToRecordsOptions {
@@ -27,32 +28,12 @@ export function detectDelimiter(text: string, candidates: readonly string[] = CO
   }
   if (!text.trim()) return ',';
 
-  // Take up to 20 non-empty lines for sampling
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0)
-    .slice(0, 20);
-
-  if (lines.length === 0) return ',';
-
   let bestDelimiter = ',';
   let bestScore = -1;
 
   for (const delim of candidates) {
-    const counts = lines.map((line) => {
-      let count = 0;
-      let inQuote = false;
-      for (let i = 0; i < line.length; i++) {
-        const c = line[i];
-        if (c === '"') {
-          inQuote = !inQuote;
-        } else if (c === delim && !inQuote) {
-          count++;
-        }
-      }
-      return count;
-    });
+    const rows = parseCsv(text, { delimiter: delim, maxRows: 20 });
+    const counts = rows.filter((row) => row.length > 1 || row[0].trim()).map((row) => row.length - 1);
 
     // All sample lines should ideally have the same non-zero count of delimiters
     const nonZeroCounts = counts.filter((c) => c > 0);
@@ -60,7 +41,7 @@ export function detectDelimiter(text: string, candidates: readonly string[] = CO
 
     const first = nonZeroCounts[0];
     const consistent = nonZeroCounts.every((c) => c === first);
-    const fractionWithDelim = nonZeroCounts.length / lines.length;
+    const fractionWithDelim = nonZeroCounts.length / counts.length;
 
     // Score based on consistency and frequency
     const score = (consistent ? 1000 : 0) + fractionWithDelim * 100 + first;
@@ -87,6 +68,7 @@ export function parseCsv(text: string, options: CsvParseOptions = {}): string[][
 
   const delimiter = options.delimiter && options.delimiter.length > 0 ? options.delimiter[0] : ',';
   const trimFields = options.trimFields ?? false;
+  const maxRows = options.maxRows ?? Infinity;
 
   const rows: string[][] = [];
   let currentRow: string[] = [];
@@ -97,7 +79,7 @@ export function parseCsv(text: string, options: CsvParseOptions = {}): string[][
   let i = 0;
   const len = text.length;
 
-  while (i < len) {
+  while (i < len && rows.length < maxRows) {
     const char = text[i];
 
     if (inQuotes) {
@@ -122,7 +104,8 @@ export function parseCsv(text: string, options: CsvParseOptions = {}): string[][
     }
 
     // Outside quotes
-    if (char === '"') {
+    if (char === '"' && !fieldQuoted && (currentField === '' || (trimFields && currentField.trim() === ''))) {
+      currentField = '';
       inQuotes = true;
       fieldQuoted = true;
       rowStarted = true;
@@ -237,12 +220,15 @@ export function csvToRecords(rows: string[][], options: CsvToRecordsOptions = {}
     validateHeaders(headers);
     dataRows = rows.slice(1);
   } else {
-    const maxCols = Math.max(...rows.map((r) => r.length));
+    const maxCols = rows.reduce((max, row) => Math.max(max, row.length), 0);
     headers = Array.from({ length: maxCols }, (_, i) => `column_${i + 1}`);
     dataRows = rows;
   }
 
-  return dataRows.map((row) => {
+  return dataRows.map((row, index) => {
+    if (row.length > headers.length) {
+      throw new Error(`CSV data row ${index + 1} has more fields than the header row.`);
+    }
     const record: Record<string, unknown> = {};
     for (let c = 0; c < headers.length; c++) {
       const colName = headers[c];
@@ -270,7 +256,7 @@ export function csvToRecords(rows: string[][], options: CsvToRecordsOptions = {}
           value = null;
         } else {
           const num = Number(cellVal);
-          if (!isNaN(num) && cellVal.trim() !== '') {
+          if (Number.isFinite(num) && (!Number.isInteger(num) || Number.isSafeInteger(num)) && cellVal.trim() !== '') {
             value = num;
           } else {
             value = cellVal;
@@ -318,7 +304,12 @@ export function escapeCsvField(value: unknown, delimiter = ','): string {
  * Serializes rows of values into a CSV string.
  */
 export function serializeCsv(rows: unknown[][], delimiter = ','): string {
-  return rows.map((row) => row.map((cell) => escapeCsvField(cell, delimiter)).join(delimiter)).join('\r\n');
+  return rows
+    .map((row) => {
+      const line = row.map((cell) => escapeCsvField(cell, delimiter)).join(delimiter);
+      return row.length === 1 && line === '' ? '""' : line;
+    })
+    .join('\r\n');
 }
 
 /**
@@ -332,47 +323,30 @@ export function jsonToCsv(json: unknown, options: JsonToCsvOptions = {}): string
     return '';
   }
 
-  // Normalize single object or primitive to array
-  let data: unknown = json;
-  if (typeof data === 'string') {
-    try {
-      data = JSON.parse(data);
-    } catch {
-      return escapeCsvField(data, delimiter);
-    }
-  }
-
   let items: unknown[];
-  if (Array.isArray(data)) {
-    items = data;
-  } else if (typeof data === 'object' && data !== null) {
-    items = [data];
+  if (Array.isArray(json)) {
+    items = json;
+  } else if (typeof json === 'object') {
+    items = [json];
   } else {
     // primitive value
-    return escapeCsvField(data, delimiter);
+    return serializeCsv([[json]], delimiter);
   }
 
   if (items.length === 0) return '';
 
-  const first = items[0];
-
   // Case 1: Array of Arrays
-  if (Array.isArray(first)) {
-    const rows = items as unknown[][];
-    return serializeCsv(rows, delimiter);
+  if (items.every(Array.isArray)) {
+    return serializeCsv(items, delimiter);
   }
 
   // Case 2: Array of Objects
-  if (typeof first === 'object' && first !== null) {
-    const objects = items as Record<string, unknown>[];
-
+  if (items.every((item): item is Record<string, unknown> => typeof item === 'object' && item !== null && !Array.isArray(item))) {
     // Stable union headers: maintain first-seen order across all objects
     const headerSet = new Set<string>();
-    for (const obj of objects) {
-      if (typeof obj === 'object' && obj !== null) {
-        for (const key of Object.keys(obj)) {
-          headerSet.add(key);
-        }
+    for (const obj of items) {
+      for (const key of Object.keys(obj)) {
+        headerSet.add(key);
       }
     }
 
@@ -380,13 +354,13 @@ export function jsonToCsv(json: unknown, options: JsonToCsvOptions = {}): string
     const rows: unknown[][] = [];
 
     // Header row
-    rows.push(headers);
+    if (options.hasHeader ?? true) rows.push(headers);
 
     // Data rows
-    for (const obj of objects) {
+    for (const obj of items) {
       const row: unknown[] = [];
       for (const h of headers) {
-        const val = obj && typeof obj === 'object' ? obj[h] : '';
+        const val = Object.hasOwn(obj, h) ? obj[h] : '';
         row.push(val);
       }
       rows.push(row);
@@ -395,7 +369,7 @@ export function jsonToCsv(json: unknown, options: JsonToCsvOptions = {}): string
     return serializeCsv(rows, delimiter);
   }
 
-  // Case 3: Array of primitives
+  // Case 3: Primitive or mixed array, with one cell per item
   const rows = items.map((item) => [item]);
   return serializeCsv(rows, delimiter);
 }

@@ -3,14 +3,16 @@ import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { Button, Field, Select } from '../../components/Controls';
 import { getToolMeta } from '../registry';
+import { useI18n } from '../../lib/i18n';
 import { downloadBlob } from '../../lib/download';
 import { parseCsv, serializeCsv, detectDelimiter } from '../_tabular/csv';
 import styles from './Tool.module.css';
 
 export default function CsvViewerTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('csv-viewer');
-  const title = meta.title !== 'csv-viewer' ? meta.title : 'CSV Viewer';
-  const description = meta.description || 'View, search, paginate, and inspect CSV/TSV tables safely in your browser.';
+  const title = meta.title !== 'csv-viewer' ? meta.title : t('CSV Viewer');
+  const description = meta.description || t('View, search, paginate, and inspect CSV/TSV tables safely in your browser.');
 
   const [inputTab, setInputTab] = useState<'paste' | 'upload'>('paste');
   const [inputText, setInputText] = useState<string>('');
@@ -57,17 +59,13 @@ export default function CsvViewerTool() {
   }, [inputText, activeDelimiter]);
 
   const maxCols = useMemo(() => {
-    if (allRows.length === 0) return 0;
-    return Math.max(...allRows.map((r) => r.length));
+    return allRows.reduce((max, row) => Math.max(max, row.length), 0);
   }, [allRows]);
 
   const headers = useMemo(() => {
     if (allRows.length === 0) return [];
-    if (hasHeader) {
-      return allRows[0].map((h, i) => (h.trim() ? h.trim() : `Column ${i + 1}`));
-    }
-    return Array.from({ length: maxCols }, (_, i) => `Column ${i + 1}`);
-  }, [allRows, hasHeader, maxCols]);
+    return Array.from({ length: maxCols }, (_, i) => (hasHeader && allRows[0][i]?.trim()) || t('Column {number}', { number: i + 1 }));
+  }, [allRows, hasHeader, maxCols, t]);
 
   const dataRows = useMemo(() => {
     if (allRows.length === 0) return [];
@@ -93,14 +91,9 @@ export default function CsvViewerTool() {
   // Copy visible page as TSV
   const handleCopyVisiblePage = async () => {
     if (visibleRows.length === 0 && headers.length === 0) return;
-    const lines: string[] = [];
-    lines.push(headers.join('\t'));
-    for (const row of visibleRows) {
-      const padded = Array.from({ length: headers.length }, (_, i) => (i < row.length ? row[i] : ''));
-      lines.push(padded.join('\t'));
-    }
+    const rows = [headers, ...visibleRows.map((row) => Array.from({ length: headers.length }, (_, i) => row[i] ?? ''))];
     try {
-      await navigator.clipboard.writeText(lines.join('\n'));
+      await navigator.clipboard.writeText(serializeCsv(rows, '\t'));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
@@ -123,10 +116,10 @@ export default function CsvViewerTool() {
   };
 
   const delimiterName = (d: string) => {
-    if (d === ',') return 'Comma (,)';
-    if (d === '\t') return 'Tab (\\t)';
-    if (d === ';') return 'Semicolon (;)';
-    if (d === '|') return 'Pipe (|)';
+    if (d === ',') return t('Comma (,)');
+    if (d === '\t') return t('Tab (\\t)');
+    if (d === ';') return t('Semicolon (;)');
+    if (d === '|') return t('Pipe (|)');
     return `"${d}"`;
   };
 
@@ -140,26 +133,26 @@ export default function CsvViewerTool() {
               className={`${styles.tab} ${inputTab === 'paste' ? styles.tabActive : ''}`}
               onClick={() => setInputTab('paste')}
             >
-              Paste CSV
+              {t('Paste CSV')}
             </button>
             <button
               type="button"
               className={`${styles.tab} ${inputTab === 'upload' ? styles.tabActive : ''}`}
               onClick={() => setInputTab('upload')}
             >
-              Upload file
+              {t('Upload file')}
             </button>
           </div>
 
           {inputTab === 'upload' ? (
             <FileDrop
               accept=".csv,.tsv,.txt,text/*"
-              label="Choose a CSV, TSV or text file"
-              hint="Parsed completely in-memory. Zero network transmission."
+              label={t('Choose a CSV, TSV or text file')}
+              hint={t('Parsed completely in memory. Zero network transmission.')}
               onFiles={handleFiles}
             />
           ) : (
-            <Field label="CSV Data" hint="Paste any delimited text or CSV format">
+            <Field label={t('CSV data')} hint={t('Paste any delimited text or CSV format')}>
               <textarea
                 className={styles.textarea}
                 placeholder="id,product,category,price&#10;1,Wireless Mouse,Electronics,29.99&#10;2,Coffee Mug,Kitchen,14.50"
@@ -172,26 +165,31 @@ export default function CsvViewerTool() {
             </Field>
           )}
 
-          <div className={styles.controlsRow}>
-            <Field label="Delimiter">
-              <Select
-                value={delimiterMode}
-                onChange={(e) => setDelimiterMode(e.target.value)}
-                options={[
-                  { value: 'auto', label: `Auto-detect (found: ${delimiterName(detectedDelim)})` },
-                  { value: ',', label: 'Comma (,)' },
-                  { value: '\t', label: 'Tab (\\t)' },
-                  { value: ';', label: 'Semicolon (;)' },
-                  { value: '|', label: 'Pipe (|)' },
-                ]}
-              />
-            </Field>
+          <details className="tool-options">
+            <summary>{t('Import settings')}</summary>
+            <div className="tool-options-body">
+              <div className={styles.controlsRow}>
+                <Field label={t('Delimiter')}>
+                  <Select
+                    value={delimiterMode}
+                    onChange={(e) => setDelimiterMode(e.target.value)}
+                    options={[
+                      { value: 'auto', label: t('Auto-detect (found: {delimiter})', { delimiter: delimiterName(detectedDelim) }) },
+                      { value: ',', label: t('Comma (,)') },
+                      { value: '\t', label: t('Tab (\\t)') },
+                      { value: ';', label: t('Semicolon (;)') },
+                      { value: '|', label: t('Pipe (|)') },
+                    ]}
+                  />
+                </Field>
 
-            <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
-              <input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} />
-              First row is header
-            </label>
-          </div>
+                <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
+                  <input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} />
+                  {t('First row is header')}
+                </label>
+              </div>
+            </div>
+          </details>
         </div>
 
         {allRows.length > 0 && (
@@ -201,7 +199,8 @@ export default function CsvViewerTool() {
                 <input
                   type="text"
                   className={styles.searchInput}
-                  placeholder="Search across all columns..."
+                  aria-label={t('Search table')}
+                  placeholder={t('Search across all columns...')}
                   value={searchQuery}
                   onChange={(e) => {
                     setSearchQuery(e.target.value);
@@ -211,9 +210,9 @@ export default function CsvViewerTool() {
               </div>
 
               <div className={styles.statsBar}>
-                <span className={styles.badge}>{dataRows.length} total rows</span>
-                {searchQuery && <span className={styles.badge}>{filteredRows.length} filtered rows</span>}
-                <span className={styles.badge}>{maxCols} columns</span>
+                <span className={styles.badge}>{t('{count} total rows', { count: dataRows.length })}</span>
+                {searchQuery && <span className={styles.badge}>{t('{count} filtered rows', { count: filteredRows.length })}</span>}
+                <span className={styles.badge}>{t('{count} columns', { count: maxCols })}</span>
               </div>
             </div>
 
@@ -242,7 +241,7 @@ export default function CsvViewerTool() {
                   {visibleRows.length === 0 && (
                     <tr>
                       <td colSpan={headers.length + 1} style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>
-                        No rows match &quot;{searchQuery}&quot;
+                        {t('No rows match "{query}"', { query: searchQuery })}
                       </td>
                     </tr>
                   )}
@@ -252,42 +251,31 @@ export default function CsvViewerTool() {
 
             <div className={styles.pagination}>
               <div className={styles.pageControls}>
-                <button type="button" className={styles.pageBtn} onClick={() => setCurrentPage(1)} disabled={safePage <= 1}>
-                  « First
-                </button>
                 <button
                   type="button"
                   className={styles.pageBtn}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  onClick={() => setCurrentPage(Math.max(1, safePage - 1))}
                   disabled={safePage <= 1}
+                  aria-label={t('Previous page')}
                 >
-                  ‹ Prev
+                  {t('Previous')}
                 </button>
-                <span className={styles.pageInfo}>
-                  Page {safePage} of {totalPages}
-                </span>
+                <span className={styles.pageInfo}>{t('Page {current} of {total}', { current: safePage, total: totalPages })}</span>
                 <button
                   type="button"
                   className={styles.pageBtn}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  onClick={() => setCurrentPage(Math.min(totalPages, safePage + 1))}
                   disabled={safePage >= totalPages}
+                  aria-label={t('Next page')}
                 >
-                  Next ›
-                </button>
-                <button
-                  type="button"
-                  className={styles.pageBtn}
-                  onClick={() => setCurrentPage(totalPages)}
-                  disabled={safePage >= totalPages}
-                >
-                  Last »
+                  {t('Next')}
                 </button>
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>Rows per page:</span>
+                <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{t('Rows per page:')}</span>
                 <Select
-                  aria-label="Rows per page"
+                  aria-label={t('Rows per page')}
                   value={String(pageSize)}
                   onChange={(e) => {
                     setPageSize(Number(e.target.value));
@@ -304,14 +292,14 @@ export default function CsvViewerTool() {
             </div>
 
             <div className={styles.actions}>
-              <Button variant="secondary" onClick={handleCopyVisiblePage}>
-                {copied ? 'Copied to clipboard!' : 'Copy visible page'}
-              </Button>
               <Button variant="primary" onClick={handleDownload}>
-                Download CSV
+                {t('Download CSV')}
+              </Button>
+              <Button variant="secondary" onClick={handleCopyVisiblePage}>
+                {copied ? t('Copied to clipboard!') : t('Copy visible page')}
               </Button>
               <Button variant="secondary" onClick={handleReset}>
-                Clear
+                {t('Clear')}
               </Button>
             </div>
           </div>

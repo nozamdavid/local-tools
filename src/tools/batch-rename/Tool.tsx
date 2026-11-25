@@ -6,6 +6,7 @@ import { ProgressBar } from '../../components/ProgressBar';
 import { getToolMeta } from '../registry';
 import { downloadBlob } from '../../lib/download';
 import { formatBytes } from '../../lib/format';
+import { useI18n } from '../../lib/i18n';
 import { computeBatchRename, type RenameConfig } from '../_file-utility/rename';
 import JSZip from 'jszip';
 import styles from './Tool.module.css';
@@ -18,10 +19,11 @@ interface FileEntry {
 }
 
 export default function BatchRenameTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('batch-rename');
-  const title = meta.title !== 'batch-rename' ? meta.title : 'Batch File Renamer';
+  const title = meta.title !== 'batch-rename' ? meta.title : t('Batch File Renamer');
   const description =
-    meta.description || 'Rename multiple files with numbering, custom prefixes, extension preservation, and collision protection.';
+    meta.description || t('Rename multiple files with numbering, custom prefixes, extension preservation, and collision protection.');
 
   const [files, setFiles] = useState<FileEntry[]>([]);
   const [config, setConfig] = useState<RenameConfig>({
@@ -115,7 +117,7 @@ export default function BatchRenameTool() {
 
       downloadBlob(zipBlob, 'renamed-files.zip');
     } catch (err: unknown) {
-      alert(`Failed to create ZIP: ${(err as Error).message || String(err)}`);
+      alert(t('Failed to create ZIP: {message}', { message: (err as Error).message || String(err) }));
     } finally {
       setZipping(false);
       setZipProgress(0);
@@ -127,8 +129,8 @@ export default function BatchRenameTool() {
       <div className={styles.container}>
         <FileDrop
           multiple={true}
-          label="Select or drag multiple files to rename"
-          hint="Files are processed entirely within your browser memory. No data is uploaded."
+          label={t('Add files to rename')}
+          hint={t('Files stay on your device and download together as a ZIP.')}
           onFiles={handleFiles}
         />
 
@@ -137,183 +139,197 @@ export default function BatchRenameTool() {
             {/* Memory safety warning if large */}
             {hasHighMemoryRisk && (
               <div className={styles.memoryWarning}>
-                ⚠️ <strong>Memory Advisory:</strong> Combined file size is {formatBytes(totalSizeBytes)}. Bundling over 1GB in browser
-                memory may strain system resources. Consider downloading in smaller batches.
+                ⚠️ <strong>{t('Memory advisory:')}</strong>{' '}
+                {t(
+                  'Combined file size is {size}. Bundling over 1 GB in browser memory may strain system resources. Consider downloading in smaller batches.',
+                  { size: formatBytes(totalSizeBytes) },
+                )}
               </div>
             )}
 
             {/* Rename Settings Panel */}
             <div className={styles.configCard}>
-              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>Rename Rules</h3>
+              <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{t('Rename files')}</h3>
 
               <div className={styles.configGrid}>
                 {/* Naming Mode */}
                 <div className={styles.inputField}>
-                  <label className={styles.inputLabel}>Name Pattern</label>
+                  <label className={styles.inputLabel}>{t('Name pattern')}</label>
                   <select
                     className={styles.selectInput}
                     value={config.mode}
                     onChange={(e) => setConfig({ ...config, mode: e.target.value as any })}
                   >
-                    <option value="custom">Custom Base Name</option>
-                    <option value="original">Keep Original Name</option>
+                    <option value="custom">{t('Custom base name')}</option>
+                    <option value="original">{t('Keep original name')}</option>
                   </select>
                 </div>
 
                 {/* Base Name Input */}
                 {config.mode === 'custom' && (
                   <div className={styles.inputField}>
-                    <label className={styles.inputLabel}>Base Name</label>
+                    <label className={styles.inputLabel}>{t('Base name')}</label>
                     <input
                       type="text"
                       className={styles.textInput}
                       value={config.baseName}
                       onChange={(e) => setConfig({ ...config, baseName: e.target.value })}
-                      placeholder="e.g. photo, document"
+                      placeholder={t('e.g. photo, document')}
                     />
                   </div>
                 )}
+              </div>
 
-                {/* Numbering Toggle */}
-                <div className={styles.inputField}>
-                  <label className={styles.inputLabel}>Numbering</label>
-                  <label className={styles.checkboxRow}>
-                    <input
-                      type="checkbox"
-                      checked={config.enableNumbering}
-                      onChange={(e) => setConfig({ ...config, enableNumbering: e.target.checked })}
-                    />
-                    Enable Sequential Numbers
-                  </label>
-                </div>
-
-                {/* Numbering Options */}
-                {config.enableNumbering && (
-                  <>
+              <details className="tool-options">
+                <summary>{t('Advanced rename options')}</summary>
+                <div className="tool-options-body">
+                  <div className={styles.configGrid}>
+                    {/* Numbering Toggle */}
                     <div className={styles.inputField}>
-                      <label className={styles.inputLabel}>Start From</label>
+                      <label className={styles.inputLabel}>{t('Numbering')}</label>
+                      <label className={styles.checkboxRow}>
+                        <input
+                          type="checkbox"
+                          checked={config.enableNumbering}
+                          onChange={(e) => setConfig({ ...config, enableNumbering: e.target.checked })}
+                        />
+                        {t('Add sequence numbers')}
+                      </label>
+                    </div>
+
+                    {/* Numbering Options */}
+                    {config.enableNumbering && (
+                      <>
+                        <div className={styles.inputField}>
+                          <label className={styles.inputLabel}>{t('Start from')}</label>
+                          <input
+                            type="number"
+                            min="0"
+                            className={styles.textInput}
+                            value={config.numberStart}
+                            onChange={(e) => setConfig({ ...config, numberStart: parseInt(e.target.value, 10) || 0 })}
+                          />
+                        </div>
+
+                        <div className={styles.inputField}>
+                          <label className={styles.inputLabel}>{t('Number padding')}</label>
+                          <select
+                            className={styles.selectInput}
+                            value={config.numberPadding}
+                            onChange={(e) => setConfig({ ...config, numberPadding: parseInt(e.target.value, 10) })}
+                          >
+                            <option value={1}>{t('{count} digit', { count: 1 })}</option>
+                            <option value={2}>{t('{count} digits', { count: 2 })}</option>
+                            <option value={3}>{t('{count} digits', { count: 3 })}</option>
+                            <option value={4}>{t('{count} digits', { count: 4 })}</option>
+                          </select>
+                        </div>
+
+                        <div className={styles.inputField}>
+                          <label className={styles.inputLabel}>{t('Number position')}</label>
+                          <select
+                            className={styles.selectInput}
+                            value={config.numberPosition}
+                            onChange={(e) => setConfig({ ...config, numberPosition: e.target.value as any })}
+                          >
+                            <option value="suffix">{t('After name')}</option>
+                            <option value="prefix">{t('Before name')}</option>
+                          </select>
+                        </div>
+
+                        <div className={styles.inputField}>
+                          <label className={styles.inputLabel}>{t('Separator')}</label>
+                          <select
+                            className={styles.selectInput}
+                            value={config.separator}
+                            onChange={(e) => setConfig({ ...config, separator: e.target.value })}
+                          >
+                            <option value="_">{t('Underscore (_)')}</option>
+                            <option value="-">{t('Hyphen (-)')}</option>
+                            <option value=" ">{t('Space')}</option>
+                            <option value=".">{t('Dot (.)')}</option>
+                            <option value="">{t('None')}</option>
+                          </select>
+                        </div>
+                      </>
+                    )}
+
+                    {/* Case Transform */}
+                    <div className={styles.inputField}>
+                      <label className={styles.inputLabel}>{t('Letter case')}</label>
+                      <select
+                        className={styles.selectInput}
+                        value={config.caseTransform}
+                        onChange={(e) => setConfig({ ...config, caseTransform: e.target.value as any })}
+                      >
+                        <option value="none">{t('Keep original')}</option>
+                        <option value="lower">{t('lowercase')}</option>
+                        <option value="upper">{t('UPPERCASE')}</option>
+                        <option value="title">{t('Title Case')}</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '0.5rem' }}>
+                    <label className={styles.checkboxRow}>
                       <input
-                        type="number"
-                        min="0"
-                        className={styles.textInput}
-                        value={config.numberStart}
-                        onChange={(e) => setConfig({ ...config, numberStart: parseInt(e.target.value, 10) || 0 })}
+                        type="checkbox"
+                        checked={config.preserveExtension}
+                        onChange={(e) => setConfig({ ...config, preserveExtension: e.target.checked })}
                       />
-                    </div>
-
-                    <div className={styles.inputField}>
-                      <label className={styles.inputLabel}>Padding (Digits)</label>
-                      <select
-                        className={styles.selectInput}
-                        value={config.numberPadding}
-                        onChange={(e) => setConfig({ ...config, numberPadding: parseInt(e.target.value, 10) })}
-                      >
-                        <option value={1}>1 (1, 2, 3...)</option>
-                        <option value={2}>2 (01, 02, 03...)</option>
-                        <option value={3}>3 (001, 002, 003...)</option>
-                        <option value={4}>4 (0001, 0002...)</option>
-                      </select>
-                    </div>
-
-                    <div className={styles.inputField}>
-                      <label className={styles.inputLabel}>Position</label>
-                      <select
-                        className={styles.selectInput}
-                        value={config.numberPosition}
-                        onChange={(e) => setConfig({ ...config, numberPosition: e.target.value as any })}
-                      >
-                        <option value="suffix">Suffix (name_01.ext)</option>
-                        <option value="prefix">Prefix (01_name.ext)</option>
-                      </select>
-                    </div>
-
-                    <div className={styles.inputField}>
-                      <label className={styles.inputLabel}>Separator</label>
-                      <select
-                        className={styles.selectInput}
-                        value={config.separator}
-                        onChange={(e) => setConfig({ ...config, separator: e.target.value })}
-                      >
-                        <option value="_">Underscore (_)</option>
-                        <option value="-">Hyphen (-)</option>
-                        <option value=" ">Space ( )</option>
-                        <option value=".">Dot (.)</option>
-                        <option value="">None</option>
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                {/* Case Transform */}
-                <div className={styles.inputField}>
-                  <label className={styles.inputLabel}>Case Transform</label>
-                  <select
-                    className={styles.selectInput}
-                    value={config.caseTransform}
-                    onChange={(e) => setConfig({ ...config, caseTransform: e.target.value as any })}
-                  >
-                    <option value="none">Preserve Case</option>
-                    <option value="lower">lowercase</option>
-                    <option value="upper">UPPERCASE</option>
-                    <option value="title">Title Case</option>
-                  </select>
+                      {t('Keep file extensions')}
+                    </label>
+                    <label className={styles.checkboxRow}>
+                      <input
+                        type="checkbox"
+                        checked={config.autoResolveCollisions}
+                        onChange={(e) => setConfig({ ...config, autoResolveCollisions: e.target.checked })}
+                      />
+                      {t('Resolve duplicate names automatically')}
+                    </label>
+                  </div>
                 </div>
-              </div>
-
-              {/* Toggles */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', marginTop: '0.5rem' }}>
-                <label className={styles.checkboxRow}>
-                  <input
-                    type="checkbox"
-                    checked={config.preserveExtension}
-                    onChange={(e) => setConfig({ ...config, preserveExtension: e.target.checked })}
-                  />
-                  Preserve file extension (supports dotfiles like .gitignore and .tar.gz)
-                </label>
-                <label className={styles.checkboxRow}>
-                  <input
-                    type="checkbox"
-                    checked={config.autoResolveCollisions}
-                    onChange={(e) => setConfig({ ...config, autoResolveCollisions: e.target.checked })}
-                  />
-                  Auto-resolve duplicate name collisions
-                </label>
-              </div>
+              </details>
             </div>
+
+            {hasCollisions && (
+              <div className={styles.collisionWarning} role="alert">
+                <strong>{t('Some new names collide.')}</strong> {t('Adjust the rename rules before downloading.')}
+              </div>
+            )}
 
             {/* Stats and Action Bar */}
             <div className={styles.statsBar}>
-              <div>
-                <strong>{files.length}</strong> files ready &bull; Total: <strong>{formatBytes(totalSizeBytes)}</strong>
-              </div>
+              <div>{t('{count} files ready · Total: {size}', { count: files.length, size: formatBytes(totalSizeBytes) })}</div>
 
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <Button variant="secondary" onClick={() => setFiles([])}>
-                  Clear All
+                  {t('Clear all')}
                 </Button>
                 <Button variant="primary" disabled={zipping || hasCollisions} onClick={handleDownloadZip}>
-                  {zipping ? 'Creating ZIP...' : 'Download Renamed ZIP'}
+                  {zipping ? t('Creating ZIP…') : t('Download renamed ZIP')}
                 </Button>
               </div>
             </div>
 
             {zipping && (
               <div>
-                <ProgressBar value={zipProgress} />
+                <ProgressBar value={zipProgress} label={t('Creating ZIP…')} />
               </div>
             )}
 
             {/* Live Table */}
             <div className={styles.tableWrapper}>
               <table className={styles.fileTable}>
+                <caption className={styles.previewCaption}>{t('Live preview')}</caption>
                 <thead>
                   <tr>
                     <th style={{ width: '40px' }}>#</th>
-                    <th>Original Filename</th>
-                    <th>New Filename</th>
-                    <th>Size</th>
-                    <th>Status</th>
-                    <th style={{ width: '120px' }}>Actions</th>
+                    <th>{t('Original filename')}</th>
+                    <th>{t('New filename')}</th>
+                    <th>{t('Size')}</th>
+                    <th>{t('Status')}</th>
+                    <th style={{ width: '120px' }}>{t('Actions')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -325,11 +341,11 @@ export default function BatchRenameTool() {
                       <td>{formatBytes(item.size)}</td>
                       <td>
                         {item.hasCollision ? (
-                          <span className={styles.badgeCollision}>⚠️ Collision</span>
+                          <span className={styles.badgeCollision}>⚠️ {t('Collision')}</span>
                         ) : item.sanitized ? (
-                          <span className={styles.badgeSanitized}>Cleaned</span>
+                          <span className={styles.badgeSanitized}>{t('Cleaned')}</span>
                         ) : (
-                          <span className={styles.badgeOk}>OK</span>
+                          <span className={styles.badgeOk}>{t('OK')}</span>
                         )}
                       </td>
                       <td>
@@ -339,7 +355,7 @@ export default function BatchRenameTool() {
                             className={styles.btnMini}
                             disabled={idx === 0}
                             onClick={() => handleMove(idx, 'up')}
-                            title="Move up"
+                            title={t('Move up')}
                           >
                             ▲
                           </button>
@@ -348,7 +364,7 @@ export default function BatchRenameTool() {
                             className={styles.btnMini}
                             disabled={idx === files.length - 1}
                             onClick={() => handleMove(idx, 'down')}
-                            title="Move down"
+                            title={t('Move down')}
                           >
                             ▼
                           </button>
@@ -356,7 +372,7 @@ export default function BatchRenameTool() {
                             type="button"
                             className={`${styles.btnMini} ${styles.btnDelete}`}
                             onClick={() => handleRemove(item.id)}
-                            title="Remove file"
+                            title={t('Remove file')}
                           >
                             ✕
                           </button>

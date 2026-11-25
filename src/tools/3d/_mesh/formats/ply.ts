@@ -10,8 +10,21 @@ export function parsePLY(buffer: ArrayBuffer, name = 'model'): MeshModel {
 
   const loader = new PLYLoader();
   let geom;
+  let hasExpandedFaces = false;
   try {
     geom = loader.parse(buffer);
+    if (!geom.getIndex() && (geom.getAttribute('color') || geom.getAttribute('uv'))) {
+      // Face colors and texcoords can make PLYLoader discard its index.
+      // Disable those expansion triggers to check whether it actually parsed faces.
+      loader.setPropertyNameMapping({
+        red: 'ignored_red',
+        diffuse_red: 'ignored_diffuse_red',
+        r: 'ignored_r',
+        diffuse_r: 'ignored_diffuse_r',
+        texcoord: 'ignored_texcoord',
+      });
+      hasExpandedFaces = Boolean(loader.parse(buffer).getIndex()?.count);
+    }
   } catch (err) {
     throw new Error(`Failed to parse PLY file: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
   }
@@ -21,8 +34,11 @@ export function parsePLY(buffer: ArrayBuffer, name = 'model'): MeshModel {
     throw new Error('Corrupt PLY file: no vertex positions found.');
   }
 
-  const rawPositions = new Float32Array(posAttr.array);
   const indexAttr = geom.getIndex();
+  if (!indexAttr?.count && !hasExpandedFaces) {
+    throw new Error('PLY contains no supported faces. Point clouds are not supported.');
+  }
+  const rawPositions = new Float32Array(posAttr.array);
 
   if (geom.getAttribute('color') || geom.getAttribute('normal')) {
     warnings.push('Vertex colors and custom attributes were ignored (geometry-only import).');
@@ -38,7 +54,7 @@ export function parsePLY(buffer: ArrayBuffer, name = 'model'): MeshModel {
     };
   }
 
-  // Non-indexed PLY (triangle soup): weld exact vertices
+  // PLYLoader expanded the faces into non-indexed triangles.
   const { positions, indices } = weldExactVertices(rawPositions);
 
   return {

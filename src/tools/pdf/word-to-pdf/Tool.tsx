@@ -8,8 +8,10 @@ import { PageSetupFields } from '../_render/PageSetupFields';
 import { DEFAULT_PAGE_SETUP, pdfFileName, type PageSetup } from '../_render/render';
 import { checkDocx, wordToPdf } from './convert';
 import styles from './Tool.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 export default function WordToPdfTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-word-to-pdf');
   const job = useJob();
 
@@ -50,11 +52,11 @@ export default function WordToPdfTool() {
         <>
           <FileDrop
             accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            label="Choose a DOCX file or drag it here"
-            hint="Converted in your browser. Legacy .doc files are not supported."
+            label={t('Choose a DOCX file or drag it here')}
+            hint={t("DOCX only; legacy DOC files aren't supported.")}
             onFiles={handleFiles}
           />
-          {fileError && <div className="error-banner">{fileError}</div>}
+          {fileError && <div className="error-banner">{t(fileError)}</div>}
         </>
       ) : (
         <ConvertPanel
@@ -63,18 +65,19 @@ export default function WordToPdfTool() {
           pageCount={pages}
           outName={pdfFileName(file, 'document.pdf')}
           sourceSize={file.size}
-          actionLabel="Convert to PDF"
+          actionLabel={t('Convert to PDF')}
           actionDisabled={!!fileError}
-          progressLabel="Rendering pages…"
-          changeLabel="Change file"
+          progressLabel={t('Rendering pages…')}
+          changeLabel={t('Change file')}
           loadError={fileError}
           onConvert={handleConvert}
           onReset={handleReset}
         >
           <PageSetupFields value={setup} onChange={setSetup} allowMatch showOrientation={false} showMargin={false} />
           <p className={styles.note}>
-            Each page of the document becomes one PDF page. The result is rendered from the DOCX layout in your browser, so text is stored
-            as an image and fonts may differ from Word.
+            {t(
+              'Each page of the document becomes one PDF page. The result is rendered from the DOCX layout in your browser, so text is stored as an image and fonts may differ from Word.',
+            )}
           </p>
         </ConvertPanel>
       )}

@@ -1,10 +1,11 @@
+import { translate } from '../../lib/i18n';
+
 export interface GeoPoint {
   lat: number;
   lon: number;
   ele?: number;
   time?: string;
 }
-
 export interface Waypoint extends GeoPoint {
   name?: string;
   desc?: string;
@@ -65,13 +66,13 @@ export function unescapeXml(str: string): string {
  */
 export function validateCoordinates(lat: number, lon: number): void {
   if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
-    throw new Error(`Invalid coordinate: non-numeric value received (lat=${lat}, lon=${lon}).`);
+    throw new Error(translate('Invalid coordinate: non-numeric value received (lat={lat}, lon={lon}).', { lat, lon }));
   }
   if (lat < -90 || lat > 90) {
-    throw new Error(`Invalid latitude: ${lat}. Latitude must be between -90 and 90 degrees.`);
+    throw new Error(translate('Invalid latitude: {latitude}. Latitude must be between -90 and 90 degrees.', { latitude: lat }));
   }
   if (lon < -180 || lon > 180) {
-    throw new Error(`Invalid longitude: ${lon}. Longitude must be between -180 and 180 degrees.`);
+    throw new Error(translate('Invalid longitude: {longitude}. Longitude must be between -180 and 180 degrees.', { longitude: lon }));
   }
 }
 
@@ -98,7 +99,7 @@ export function parseXmlDocument(xmlText: string): SimpleElement {
     const doc = parser.parseFromString(xmlText, 'application/xml');
     const parserErrors = doc.getElementsByTagName('parsererror');
     if (parserErrors.length > 0) {
-      throw new Error(`Invalid XML: ${parserErrors[0].textContent || 'Syntax error'}`);
+      throw new Error(translate('Invalid XML: {detail}', { detail: parserErrors[0].textContent || 'Syntax error' }));
     }
 
     const wrap = (node: Element): SimpleElement => ({
@@ -135,7 +136,7 @@ export function parseXmlDocument(xmlText: string): SimpleElement {
   // Node.js pure parser implementation
   const trimmed = xmlText.trim();
   if (!trimmed) {
-    throw new Error('Invalid XML: empty document.');
+    throw new Error(translate('Invalid XML: empty document.'));
   }
 
   let pos = 0;
@@ -159,7 +160,7 @@ export function parseXmlDocument(xmlText: string): SimpleElement {
     // Comments <!---->
     if (trimmed.startsWith('!--', pos)) {
       const commentEnd = trimmed.indexOf('-->', pos + 3);
-      if (commentEnd === -1) throw new Error('Invalid XML: unclosed comment');
+      if (commentEnd === -1) throw new Error(translate('Invalid XML: unclosed comment'));
       pos = commentEnd + 3;
       continue;
     }
@@ -167,7 +168,7 @@ export function parseXmlDocument(xmlText: string): SimpleElement {
     // Processing instructions <?...?>
     if (trimmed[pos] === '?') {
       const piEnd = trimmed.indexOf('?>', pos + 1);
-      if (piEnd === -1) throw new Error('Invalid XML: unclosed processing instruction');
+      if (piEnd === -1) throw new Error(translate('Invalid XML: unclosed processing instruction'));
       pos = piEnd + 2;
       continue;
     }
@@ -175,7 +176,7 @@ export function parseXmlDocument(xmlText: string): SimpleElement {
     // CDATA <![CDATA[...]]>
     if (trimmed.startsWith('![CDATA[', pos)) {
       const cdataEnd = trimmed.indexOf(']]>', pos + 8);
-      if (cdataEnd === -1) throw new Error('Invalid XML: unclosed CDATA section');
+      if (cdataEnd === -1) throw new Error(translate('Invalid XML: unclosed CDATA section'));
       const cdataText = trimmed.slice(pos + 8, cdataEnd);
       if (stack.length > 0) {
         stack[stack.length - 1].textContent += cdataText;
@@ -187,16 +188,21 @@ export function parseXmlDocument(xmlText: string): SimpleElement {
     // Closing tag </tag>
     if (trimmed[pos] === '/') {
       const closeEnd = trimmed.indexOf('>', pos + 1);
-      if (closeEnd === -1) throw new Error('Invalid XML: unclosed closing tag');
+      if (closeEnd === -1) throw new Error(translate('Invalid XML: unclosed closing tag'));
       const closeName = trimmed.slice(pos + 1, closeEnd).trim();
       const expected = stack.pop();
       if (!expected) {
-        throw new Error(`Invalid XML: unexpected closing tag </${closeName}>`);
+        throw new Error(translate('Invalid XML: unexpected closing tag </{tag}>.', { tag: closeName }));
       }
       const expLocal = expected.tagName.includes(':') ? expected.tagName.split(':')[1] : expected.tagName;
       const actLocal = closeName.includes(':') ? closeName.split(':')[1] : closeName;
       if (expLocal.toLowerCase() !== actLocal.toLowerCase()) {
-        throw new Error(`Invalid XML: mismatched closing tag </${closeName}>, expected </${expected.tagName}>`);
+        throw new Error(
+          translate('Invalid XML: mismatched closing tag </{actual}>, expected </{expected}>.', {
+            actual: closeName,
+            expected: expected.tagName,
+          }),
+        );
       }
       pos = closeEnd + 1;
       continue;
@@ -204,7 +210,7 @@ export function parseXmlDocument(xmlText: string): SimpleElement {
 
     // Opening or self-closing tag <tag ...>
     const tagEnd = trimmed.indexOf('>', pos);
-    if (tagEnd === -1) throw new Error('Invalid XML: unclosed opening tag');
+    if (tagEnd === -1) throw new Error(translate('Invalid XML: unclosed opening tag'));
 
     const isSelfClosing = trimmed[tagEnd - 1] === '/';
     const tagContent = isSelfClosing ? trimmed.slice(pos, tagEnd - 1).trim() : trimmed.slice(pos, tagEnd).trim();
@@ -213,7 +219,7 @@ export function parseXmlDocument(xmlText: string): SimpleElement {
 
     // Parse tag name and attributes
     const nameMatch = tagContent.match(/^([^\s/>]+)/);
-    if (!nameMatch) throw new Error('Invalid XML: invalid tag name');
+    if (!nameMatch) throw new Error(translate('Invalid XML: invalid tag name'));
     const rawTagName = nameMatch[1];
     const attrString = tagContent.slice(rawTagName.length);
 
@@ -261,11 +267,11 @@ export function parseXmlDocument(xmlText: string): SimpleElement {
   }
 
   if (stack.length > 0) {
-    throw new Error(`Invalid XML: unclosed tag <${stack[stack.length - 1].tagName}>`);
+    throw new Error(translate('Invalid XML: unclosed tag <{tag}>.', { tag: stack[stack.length - 1].tagName }));
   }
 
   if (!root) {
-    throw new Error('Invalid XML: no root element found.');
+    throw new Error(translate('Invalid XML: no root element found.'));
   }
 
   return root;
@@ -278,7 +284,7 @@ export function gpxToGeoData(gpxText: string): GeoData {
   const root = parseXmlDocument(gpxText);
   const rootLocal = root.tagName.includes(':') ? root.tagName.split(':')[1] : root.tagName;
   if (rootLocal.toLowerCase() !== 'gpx') {
-    throw new Error(`Invalid GPX: root element is <${root.tagName}>, expected <gpx>.`);
+    throw new Error(translate('Invalid GPX: root element is <{actual}>, expected <gpx>.', { actual: root.tagName }));
   }
 
   // Metadata
@@ -300,7 +306,7 @@ export function gpxToGeoData(gpxText: string): GeoData {
     const latStr = wpt.getAttribute('lat');
     const lonStr = wpt.getAttribute('lon');
     if (!latStr || !lonStr) {
-      throw new Error('Invalid GPX: <wpt> is missing lat or lon attribute.');
+      throw new Error(translate('Invalid GPX: <wpt> is missing lat or lon attribute.'));
     }
     const lat = parseFloat(latStr);
     const lon = parseFloat(lonStr);
@@ -451,7 +457,7 @@ export function kmlToGeoData(kmlText: string): GeoData {
   const root = parseXmlDocument(kmlText);
   const rootLocal = root.tagName.includes(':') ? root.tagName.split(':')[1] : root.tagName;
   if (rootLocal.toLowerCase() !== 'kml') {
-    throw new Error(`Invalid KML: root element is <${root.tagName}>, expected <kml>.`);
+    throw new Error(translate('Invalid KML: root element is <{actual}>, expected <kml>.', { actual: root.tagName }));
   }
 
   const docNode = root.getElementsByTagName('Document')[0] || root;

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { CanvasDocument, Layer, TransformHandle, PathLayer } from './types';
 import { renderDocument } from './render';
+import { useI18n } from '../../../lib/i18n';
 import styles from './CanvasStage.module.css';
 
 export interface CropRect {
@@ -81,6 +82,7 @@ export function CanvasStage({
   onPushDoc,
   onDeleteLayer,
 }: CanvasStageProps) {
+  const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [scale, setScale] = useState<number>(1);
@@ -784,7 +786,9 @@ export function CanvasStage({
           ref={canvasRef}
           data-testid="canvas-stage"
           role="img"
-          aria-label="Editing canvas. Placing, moving and resizing layers needs a pointer; the side panel controls and the Delete key edit the selected layer."
+          aria-label={t(
+            'Editing canvas. Placing, moving and resizing layers needs a pointer; the side panel controls and the Delete key edit the selected layer.',
+          )}
           className={`${styles.canvasElement} ${getCursorClass()}`}
           width={doc.width}
           height={doc.height}

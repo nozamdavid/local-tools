@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import type { MeshModel } from './types';
 import styles from './MeshViewer.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 export interface MeshViewerProps {
   model: MeshModel | null;
@@ -10,6 +11,7 @@ export interface MeshViewerProps {
 const LazyMeshCanvas = lazy(() => import('./MeshCanvas'));
 
 export function MeshViewer({ model, className }: MeshViewerProps) {
+  const { t } = useI18n();
   if (!model) {
     return <div className={`${styles.viewerContainer} ${className || ''}`} />;
   }
@@ -20,7 +22,7 @@ export function MeshViewer({ model, className }: MeshViewerProps) {
         <div className={`${styles.viewerContainer} ${className || ''}`}>
           <div className={styles.loadingSpinner}>
             <span className="spinner" aria-hidden="true" />
-            <span>Initializing 3D Viewport...</span>
+            <span>{t('Initializing 3D Viewport...')}</span>
           </div>
         </div>
       }

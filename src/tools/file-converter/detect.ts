@@ -1,5 +1,6 @@
 import { fileTypeFromBuffer } from 'file-type';
 import { OFFICE_FORMATS } from './office';
+import { readZipEntry } from '../../lib/zip';
 
 export type FormatFamily = 'image' | 'video' | 'audio' | 'document' | 'text' | 'unknown';
 
@@ -12,6 +13,13 @@ export interface DetectedFormat {
   extensionMismatch: boolean;
   actualExtension: string;
   detectionNote?: string;
+}
+
+export type FormatLabelTranslator = (sourceEnglish: string, params?: Record<string, string | number>) => string;
+
+export function translateDetectedFormatLabel(label: string, t: FormatLabelTranslator): string {
+  const genericFile = label.match(/^(.+) File$/);
+  return genericFile ? t('{type} File', { type: genericFile[1] }) : t(label);
 }
 
 const OFFICE_FORMAT_METAS = Object.fromEntries(
@@ -187,7 +195,7 @@ function checkCsvOrTsv(text: string): 'csv' | 'tsv' | null {
   return null;
 }
 
-function checkPlainText(uint8: Uint8Array): boolean {
+function checkPlainText(uint8: Uint8Array, fileSize: number): boolean {
   if (uint8.length === 0) return true;
   for (let i = 0; i < Math.min(uint8.length, 8192); i++) {
     const byte = uint8[i];
@@ -195,7 +203,7 @@ function checkPlainText(uint8: Uint8Array): boolean {
     if (byte < 9 || (byte > 13 && byte < 32)) return false;
   }
   try {
-    new TextDecoder('utf-8', { fatal: true }).decode(uint8.slice(0, 8192));
+    new TextDecoder('utf-8', { fatal: true }).decode(uint8.subarray(0, 8192), { stream: fileSize > 8192 });
     return true;
   } catch {
     return false;
@@ -246,7 +254,8 @@ const LEGACY_OLE_ID_BY_EXTENSION = new Map(
 );
 
 function isZipSignature(uint8: Uint8Array): boolean {
-  return uint8.length >= 2 && uint8[0] === 0x50 && uint8[1] === 0x4b;
+  if (uint8.length < 4 || uint8[0] !== 0x50 || uint8[1] !== 0x4b) return false;
+  return (uint8[2] === 3 && uint8[3] === 4) || (uint8[2] === 5 && uint8[3] === 6) || (uint8[2] === 7 && uint8[3] === 8);
 }
 
 function isOleSignature(uint8: Uint8Array): boolean {
@@ -287,11 +296,17 @@ async function detectOfficeZip(file: File): Promise<string | null> {
   try {
     const { default: JSZip } = await import('jszip');
     const zip = await JSZip.loadAsync(file);
-    const mimetype = (await zip.file('mimetype')?.async('text'))?.trim().toLowerCase();
+    const readMetadata = async (name: string, maxBytes: number) => {
+      const entry = zip.file(name);
+      if (!entry) return undefined;
+      const bytes = await readZipEntry(entry, maxBytes, `ZIP metadata entry ${name} is too large to inspect.`);
+      return new TextDecoder().decode(bytes);
+    };
+    const mimetype = (await readMetadata('mimetype', 1024))?.trim().toLowerCase();
     if (mimetype === 'application/epub+zip') return 'epub';
     if (mimetype && ODF_MIME_IDS[mimetype]) return ODF_MIME_IDS[mimetype];
 
-    const contentTypes = await zip.file('[Content_Types].xml')?.async('text');
+    const contentTypes = await readMetadata('[Content_Types].xml', 4 * 1024 * 1024);
     if (zip.file('word/document.xml')) {
       if (contentTypes?.includes('wordprocessingml.template.main+xml')) return 'dotx';
       if (!contentTypes || contentTypes.includes('wordprocessingml.document.main+xml')) return 'docx';
@@ -324,27 +339,31 @@ function fallbackOfficeIdForExtension(extension: string): string | null {
 
 async function probeStreamsWithFFmpeg(file: File): Promise<{ hasVideo: boolean; hasAudio: boolean }> {
   try {
-    const { getFFmpeg } = await import('../../lib/ffmpeg');
-    const ffmpeg = await getFFmpeg();
+    const { probeMedia } = await import('../../lib/mediabunny');
+    const summary = await probeMedia(file);
+    if (summary) {
+      return {
+        hasVideo: summary.tracks.some((track) => track.type === 'video'),
+        hasAudio: summary.tracks.some((track) => track.type === 'audio'),
+      };
+    }
+  } catch {
+    // Unsupported files use the existing FFmpeg probe below.
+  }
+
+  try {
+    const { runFFmpeg } = await import('../../lib/ffmpeg');
     const logLines: string[] = [];
-    const handleLog = ({ message }: { message: string }) => {
-      logLines.push(message);
-    };
-    ffmpeg.on('log', handleLog);
     const inputName = `probe_${Date.now()}_${Math.random().toString(36).slice(2)}.bin`;
     try {
-      const buffer = await file.arrayBuffer();
-      await ffmpeg.writeFile(inputName, new Uint8Array(buffer));
-      await ffmpeg.exec(['-hide_banner', '-i', inputName]);
+      await runFFmpeg({
+        inputs: [{ name: inputName, data: file }],
+        args: ['-hide_banner', '-i', inputName],
+        output: `probe_${Date.now()}.tmp`,
+        onLog: (line) => logLines.push(line),
+      });
     } catch {
       // Expected: ffmpeg exits with code 1 because no output file was specified
-    } finally {
-      try {
-        await ffmpeg.deleteFile(inputName);
-      } catch {
-        /* ignore */
-      }
-      ffmpeg.off('log', handleLog);
     }
     const hasVideo = logLines.some((l) => /Stream #.*:\s*Video:/i.test(l) && !/attached pic/i.test(l));
     const hasAudio = logLines.some((l) => /Stream #.*:\s*Audio:/i.test(l));
@@ -440,13 +459,16 @@ export async function detectFormat(file: File): Promise<DetectedFormat> {
         rawId = 'svg';
       } else if (rawId === 'xml') {
         rawId = 'txt';
+      } else if (actualExt === 'json' && checkPlainText(uint8, file.size)) {
+        // Validate declared JSON during conversion so large inputs need not be read twice.
+        rawId = 'json';
       } else if (file.size < 5000000 && checkJson(await file.text())) {
         rawId = 'json';
       } else {
         const csvTsv = checkCsvOrTsv(headText);
         if (csvTsv) {
           rawId = csvTsv;
-        } else if (checkPlainText(uint8)) {
+        } else if (checkPlainText(uint8, file.size)) {
           if (actualExt === 'csv' || actualExt === 'tsv') {
             rawId = actualExt;
           } else {

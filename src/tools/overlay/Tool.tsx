@@ -10,6 +10,7 @@ import { formatBytes, formatDuration, withSuffix } from '../../lib/format';
 import { runFFmpeg } from '../../lib/ffmpeg';
 import { useJob } from '../../lib/useJob';
 import { useObjectUrl } from '../../lib/useObjectUrl';
+import { useI18n } from '../../lib/i18n';
 import styles from './Tool.module.css';
 
 type OverlayType = 'text' | 'image';
@@ -94,6 +95,7 @@ function calculateQuickPosition(
 }
 
 export default function OverlayTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('overlay');
 
   // Step 1: Video File state
@@ -555,14 +557,14 @@ export default function OverlayTool() {
       {!file ? (
         <FileDrop
           accept="video/*"
-          label="Choose a video or drag it here"
-          hint="Supports MP4, MOV, WebM, MKV, AVI and more."
+          label={t('Choose a video or drag it here')}
+          hint={t('Supports MP4, MOV, WebM, MKV, AVI and more.')}
           onFiles={handleVideoFiles}
         />
       ) : (
         <div className={styles.container}>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result ? (
             <ResultPanel
@@ -577,18 +579,18 @@ export default function OverlayTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name:')} <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {videoMeta && (
                   <>
                     <span className="meta-chip">
-                      Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
+                      {t('Duration:')} <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution:{' '}
+                      {t('Resolution:')}{' '}
                       <strong>
                         {videoMeta.width}x{videoMeta.height}
                       </strong>
@@ -598,12 +600,12 @@ export default function OverlayTool() {
               </div>
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Applying watermark..." />
+                <ProgressBar value={job.progress} label={t('Applying watermark...')} />
               ) : (
                 <>
                   {/* Live Video Preview with Draggable Overlay */}
                   <div className={styles.previewCard}>
-                    <div className={styles.previewTitle}>Live Preview (Drag watermark to reposition)</div>
+                    <div className={styles.previewTitle}>{t('Live Preview (Drag watermark to reposition)')}</div>
                     <div
                       ref={previewContainerRef}
                       className={styles.previewContainer}
@@ -635,7 +637,7 @@ export default function OverlayTool() {
                           }}
                           onPointerDown={handlePointerDown}
                         >
-                          <img src={overlayResult.dataUrl} alt="Watermark" className={styles.overlayImage} draggable={false} />
+                          <img src={overlayResult.dataUrl} alt={t('Watermark')} className={styles.overlayImage} draggable={false} />
                         </div>
                       )}
                     </div>
@@ -643,7 +645,7 @@ export default function OverlayTool() {
                     {videoMeta && (
                       <div className={styles.playbackBar}>
                         <button type="button" className={styles.playToggleBtn} onClick={togglePlayback}>
-                          {isPlaying ? '⏸ Pause' : '▶ Play'}
+                          {isPlaying ? `⏸ ${t('Pause')}` : `▶ ${t('Play')}`}
                         </button>
                         <input
                           type="range"
@@ -668,14 +670,14 @@ export default function OverlayTool() {
                       className={`${styles.tab} ${overlayType === 'text' ? styles.activeTab : ''}`}
                       onClick={() => setOverlayType('text')}
                     >
-                      Text Watermark
+                      {t('Text Watermark')}
                     </button>
                     <button
                       type="button"
                       className={`${styles.tab} ${overlayType === 'image' ? styles.activeTab : ''}`}
                       onClick={() => setOverlayType('image')}
                     >
-                      Image Watermark
+                      {t('Image Watermark')}
                     </button>
                   </div>
 
@@ -683,31 +685,31 @@ export default function OverlayTool() {
                   <div className={styles.sectionGrid}>
                     {/* Left Column: Overlay Customization */}
                     <div className={styles.settingsCard}>
-                      <div className={styles.cardTitle}>{overlayType === 'text' ? 'Text Settings' : 'Image Settings'}</div>
+                      <div className={styles.cardTitle}>{overlayType === 'text' ? t('Text Settings') : t('Image Settings')}</div>
 
                       {overlayType === 'text' ? (
                         <>
-                          <Field label="Watermark text">
+                          <Field label={t('Watermark text')}>
                             <input
                               id={textInputId}
                               type="text"
                               className="select"
                               value={text}
                               onChange={(e) => setText(e.target.value)}
-                              placeholder="Enter watermark text..."
+                              placeholder={t('Enter watermark text...')}
                             />
                           </Field>
 
-                          <Field label="Font family">
+                          <Field label={t('Font family')}>
                             <Select
                               id={fontSelectId}
                               value={fontFamily}
                               onChange={(e) => setFontFamily(e.target.value)}
-                              options={FONT_OPTIONS}
+                              options={FONT_OPTIONS.map((option) => ({ ...option, label: t(option.label) }))}
                             />
                           </Field>
 
-                          <Field label="Font size">
+                          <Field label={t('Font size')}>
                             <Slider
                               value={fontSize}
                               min={10}
@@ -719,7 +721,7 @@ export default function OverlayTool() {
                           </Field>
 
                           <div className="field">
-                            <label className="field-label">Text color & style</label>
+                            <label className="field-label">{t('Text color & style')}</label>
                             <div className={styles.colorRow}>
                               <input
                                 type="color"
@@ -730,12 +732,12 @@ export default function OverlayTool() {
                               <span className={styles.colorHex}>{textColor.toUpperCase()}</span>
                               <label className="checkbox-label" htmlFor={boldCheckboxId} style={{ marginLeft: 'auto' }}>
                                 <input id={boldCheckboxId} type="checkbox" checked={isBold} onChange={(e) => setIsBold(e.target.checked)} />
-                                <span>Bold</span>
+                                <span>{t('Bold')}</span>
                               </label>
                             </div>
                           </div>
 
-                          <Field label="Opacity">
+                          <Field label={t('Opacity')}>
                             <Slider value={textOpacity} min={0} max={100} step={1} unit="%" onChange={setTextOpacity} />
                           </Field>
 
@@ -747,7 +749,7 @@ export default function OverlayTool() {
                                 checked={hasShadow}
                                 onChange={(e) => setHasShadow(e.target.checked)}
                               />
-                              <span>Add drop shadow</span>
+                              <span>{t('Add drop shadow')}</span>
                             </label>
                           </div>
 
@@ -759,14 +761,14 @@ export default function OverlayTool() {
                                 checked={hasBgBox}
                                 onChange={(e) => setHasBgBox(e.target.checked)}
                               />
-                              <span>Add background box</span>
+                              <span>{t('Add background box')}</span>
                             </label>
                           </div>
 
                           {hasBgBox && (
                             <div style={{ paddingLeft: '1rem', borderLeft: '2px solid var(--accent)', marginTop: '0.5rem' }}>
                               <div className="field">
-                                <label className="field-label">Box color</label>
+                                <label className="field-label">{t('Box color')}</label>
                                 <div className={styles.colorRow}>
                                   <input
                                     type="color"
@@ -778,11 +780,11 @@ export default function OverlayTool() {
                                 </div>
                               </div>
 
-                              <Field label="Box opacity">
+                              <Field label={t('Box opacity')}>
                                 <Slider value={bgBoxOpacity} min={0} max={100} step={1} unit="%" onChange={setBgBoxOpacity} />
                               </Field>
 
-                              <Field label="Box padding">
+                              <Field label={t('Box padding')}>
                                 <Slider value={bgBoxPadding} min={0} max={60} step={1} unit="px" onChange={setBgBoxPadding} />
                               </Field>
                             </div>
@@ -793,14 +795,14 @@ export default function OverlayTool() {
                           {!imageFile ? (
                             <FileDrop
                               accept="image/*"
-                              label="Choose a watermark image"
-                              hint="Supports PNG, JPG, WebP, SVG (PNG with transparency recommended)"
+                              label={t('Choose a watermark image')}
+                              hint={t('Supports PNG, JPG, WebP, SVG (PNG with transparency recommended)')}
                               onFiles={handleImageFiles}
                             />
                           ) : (
                             <div>
                               <div className={styles.imagePreviewRow}>
-                                {imageElement && <img src={imageElement.src} alt="Overlay thumb" className={styles.imageThumb} />}
+                                {imageElement && <img src={imageElement.src} alt={t('Overlay thumbnail')} className={styles.imageThumb} />}
                                 <div className={styles.imageInfo}>
                                   <div className={styles.imageName}>{imageFile.name}</div>
                                   <div className={styles.imageSize}>{formatBytes(imageFile.size)}</div>
@@ -813,15 +815,15 @@ export default function OverlayTool() {
                                     setImageElement(null);
                                   }}
                                 >
-                                  Change
+                                  {t('Change')}
                                 </Button>
                               </div>
 
-                              <Field label="Size (percentage of video width)">
+                              <Field label={t('Size (percentage of video width)')}>
                                 <Slider value={imageSizePercent} min={5} max={100} step={1} unit="%" onChange={setImageSizePercent} />
                               </Field>
 
-                              <Field label="Opacity">
+                              <Field label={t('Opacity')}>
                                 <Slider value={imageOpacity} min={0} max={100} step={1} unit="%" onChange={setImageOpacity} />
                               </Field>
                             </div>
@@ -832,16 +834,16 @@ export default function OverlayTool() {
 
                     {/* Right Column: Position & Placement */}
                     <div className={styles.settingsCard}>
-                      <div className={styles.cardTitle}>Position & Placement</div>
+                      <div className={styles.cardTitle}>{t('Position & Placement')}</div>
 
                       <div className={styles.quickPositionWrapper}>
-                        <Field label="Quick position presets">
+                        <Field label={t('Quick position presets')}>
                           <div className={styles.positionGrid}>
                             {QUICK_POSITIONS.map((qp) => (
                               <button
                                 key={qp.id}
                                 type="button"
-                                title={qp.label}
+                                title={t(qp.label)}
                                 className={`${styles.posBtn} ${activeQuickPos === qp.id ? styles.posBtnActive : ''}`}
                                 onClick={() => handleQuickPosClick(qp.id)}
                               >
@@ -851,12 +853,12 @@ export default function OverlayTool() {
                           </div>
                         </Field>
 
-                        <Field label="Margin from edge">
+                        <Field label={t('Margin from edge')}>
                           <Slider value={marginPercent} min={0} max={25} step={1} unit="%" onChange={handleMarginChange} />
                         </Field>
 
                         <div className={styles.dragHint}>
-                          💡 Tip: You can also drag the watermark directly on the video preview above to place it anywhere.
+                          💡 {t('Tip: You can also drag the watermark directly on the video preview above to place it anywhere.')}
                         </div>
                       </div>
                     </div>
@@ -865,10 +867,10 @@ export default function OverlayTool() {
                   {/* Actions */}
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different video
+                      {t('Choose different video')}
                     </Button>
                     <Button variant="primary" onClick={handleApplyWatermark} disabled={!canApply}>
-                      Add watermark
+                      {t('Add watermark')}
                     </Button>
                   </div>
                 </>

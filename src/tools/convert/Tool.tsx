@@ -1,4 +1,4 @@
-import { useState, useId } from 'react';
+import { useState, useId, useRef } from 'react';
 import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { ProgressBar } from '../../components/ProgressBar';
@@ -7,18 +7,23 @@ import { Field, Select, Button } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { getVideoMeta, type VideoMeta } from '../../lib/media';
 import { formatBytes, formatDuration, replaceExt } from '../../lib/format';
-import { runFFmpeg } from '../../lib/ffmpeg';
+import { runFFmpeg, runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
+import { convertTransparentWebm } from '../../lib/transparentWebm';
+import { withMediabunnyFallback, type MediabunnyOptions, type MediabunnyOutput } from '../../lib/mediabunny';
+import type { AudioCodec, VideoCodec } from 'mediabunny';
 import { useJob } from '../../lib/useJob';
 import { useObjectUrl } from '../../lib/useObjectUrl';
+import { useI18n } from '../../lib/i18n';
+import { SourcePreview } from '../../components/SourcePreview';
 
 type OutputFormat = 'mp4' | 'webm' | 'mov' | 'mkv' | 'avi' | 'gif';
 type GifWidth = 'original' | '480' | '320';
 
 const FORMAT_OPTIONS: { value: OutputFormat; label: string }[] = [
   { value: 'mp4', label: 'MP4 (H.264 / AAC)' },
-  { value: 'webm', label: 'WebM (VP8 / Opus)' },
+  { value: 'webm', label: 'WebM' },
   { value: 'mov', label: 'MOV (H.264 / AAC)' },
-  { value: 'mkv', label: 'MKV (H.264 / AAC)' },
+  { value: 'mkv', label: 'MKV' },
   { value: 'avi', label: 'AVI (MPEG-4 / MP3)' },
   { value: 'gif', label: 'GIF (animated image)' },
 ];
@@ -83,6 +88,7 @@ function buildEncodeArgs(format: OutputFormat, fastCopy: boolean, gifFps: string
 }
 
 export default function ConvertTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('convert');
   const [file, setFile] = useState<File | null>(null);
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
@@ -92,6 +98,7 @@ export default function ConvertTool() {
   const [fastCopy, setFastCopy] = useState<boolean>(false);
   const [gifFps, setGifFps] = useState<string>('15');
   const [gifWidth, setGifWidth] = useState<GifWidth>('480');
+  const metadataRequestRef = useRef(0);
 
   const job = useJob();
   const originalUrl = useObjectUrl(file);
@@ -104,6 +111,7 @@ export default function ConvertTool() {
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
+    const requestId = ++metadataRequestRef.current;
     setFile(selected);
     setMetaError(null);
     setVideoMeta(null);
@@ -111,13 +119,16 @@ export default function ConvertTool() {
 
     try {
       const vMeta = await getVideoMeta(selected);
+      if (requestId !== metadataRequestRef.current) return;
       setVideoMeta(vMeta);
     } catch {
+      if (requestId !== metadataRequestRef.current) return;
       setMetaError('Could not read video metadata, but you can still attempt conversion.');
     }
   };
 
   const handleReset = () => {
+    metadataRequestRef.current += 1;
     setFile(null);
     setVideoMeta(null);
     setMetaError(null);
@@ -130,17 +141,59 @@ export default function ConvertTool() {
     if (!file) return;
 
     job.run(async (setProgress) => {
+      const transparent = await convertTransparentWebm(file, format, setProgress);
+      if (transparent) return transparent;
+
       const dot = file.name.lastIndexOf('.');
       const inputExt = dot > 0 ? file.name.slice(dot).replace(/[^\w.]/g, '') : '.mp4';
       const inputName = `input${inputExt}`;
       const outputName = `output.${format}`;
 
-      return await runFFmpeg({
-        inputs: [{ name: inputName, data: file }],
-        args: ['-i', inputName, ...buildEncodeArgs(format, fastCopy, gifFps, gifWidth), outputName],
-        output: outputName,
-        onProgress: setProgress,
-      });
+      if (format === 'gif' || format === 'avi') {
+        return runFFmpeg({
+          inputs: [{ name: inputName, data: file }],
+          args: ['-i', inputName, ...buildEncodeArgs(format, fastCopy, gifFps, gifWidth), outputName],
+          output: outputName,
+          onProgress: setProgress,
+        });
+      }
+
+      const output = format as MediabunnyOutput;
+      const videoCodec: VideoCodec = output === 'webm' ? 'vp8' : 'avc';
+      const audioCodec: AudioCodec = output === 'webm' ? 'opus' : 'aac';
+      const nativeOptions: Pick<MediabunnyOptions, 'copy' | 'video' | 'audio'> = fastCopy
+        ? { copy: { mode: 'forced' as const } }
+        : {
+            video: {
+              codec: videoCodec,
+              ...(output === 'webm' ? { bitrate: 1_000_000 } : { quality: 'high' as const }),
+              forceTranscode: true,
+            },
+            audio: {
+              codec: audioCodec,
+              bitrate: output === 'webm' ? 96_000 : 128_000,
+              forceTranscode: true,
+            },
+          };
+
+      return withMediabunnyFallback(
+        {
+          input: file,
+          output,
+          ...nativeOptions,
+          tracks: { video: 'all', audio: 'all' },
+          requireVideo: true,
+          audioEncoderFallback: audioCodec === 'aac' ? 'aac' : undefined,
+          onProgress: setProgress,
+        },
+        (onProgress) =>
+          runFFmpegWithinMediaJob({
+            inputs: [{ name: inputName, data: file }],
+            args: ['-i', inputName, ...buildEncodeArgs(format, fastCopy, gifFps, gifWidth), outputName],
+            output: outputName,
+            onProgress,
+          }),
+      );
     });
   };
 
@@ -151,14 +204,14 @@ export default function ConvertTool() {
       {!file ? (
         <FileDrop
           accept="video/*"
-          label="Choose a video or drag it here"
-          hint="Supports MP4, MOV, WebM, MKV, AVI and more."
+          label={t('Choose a video or drag it here')}
+          hint={t('Supports MP4, MOV, WebM, MKV, AVI and more.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result ? (
             <ResultPanel
@@ -173,18 +226,18 @@ export default function ConvertTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name:')} <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {videoMeta && (
                   <>
                     <span className="meta-chip">
-                      Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
+                      {t('Duration:')} <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution:{' '}
+                      {t('Resolution:')}{' '}
                       <strong>
                         {videoMeta.width}x{videoMeta.height}
                       </strong>
@@ -193,34 +246,44 @@ export default function ConvertTool() {
                 )}
               </div>
 
+              <SourcePreview
+                file={file}
+                note="Source preview only. The selected output format, codec, and quality are applied during export."
+              />
+
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Converting video..." />
+                <ProgressBar value={job.progress} label={t('Converting video...')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
-                  <Field label="Output format" hint={`Saved as ${outputFilename}`}>
+                  <Field label={t('Output format')} hint={t('Saved as {filename}', { filename: outputFilename })}>
                     <Select
                       id={formatId}
                       value={format}
                       onChange={(e) => setFormat(e.target.value as OutputFormat)}
-                      options={FORMAT_OPTIONS}
+                      options={FORMAT_OPTIONS.map((option) => ({ ...option, label: t(option.label) }))}
                     />
                   </Field>
 
                   {canCopy && (
-                    <div className="field">
-                      <label className="checkbox-label" htmlFor={fastCopyId}>
-                        <input id={fastCopyId} type="checkbox" checked={fastCopy} onChange={(e) => setFastCopy(e.target.checked)} />
-                        <span>Fast (no re-encode)</span>
-                      </label>
-                      <p className="field-hint">
-                        Copies the streams as they are. Instant, but fails if the source codecs do not fit the new container.
-                      </p>
-                    </div>
+                    <details className="tool-options">
+                      <summary>{t('Advanced encoding options')}</summary>
+                      <div className="tool-options-body">
+                        <div className="field">
+                          <label className="checkbox-label" htmlFor={fastCopyId}>
+                            <input id={fastCopyId} type="checkbox" checked={fastCopy} onChange={(e) => setFastCopy(e.target.checked)} />
+                            <span>{t('Fast copy (no re-encode)')}</span>
+                          </label>
+                          <p className="field-hint">
+                            {t('Copies the streams as they are. This may fail if the source codecs do not fit the new container.')}
+                          </p>
+                        </div>
+                      </div>
+                    </details>
                   )}
 
                   {format === 'gif' && (
                     <>
-                      <Field label="Frame rate">
+                      <Field label={t('Frame rate')}>
                         <Select
                           id={gifFpsId}
                           value={gifFps}
@@ -233,13 +296,13 @@ export default function ConvertTool() {
                         />
                       </Field>
 
-                      <Field label="Width" hint="GIFs get large quickly; smaller widths keep the file manageable.">
+                      <Field label={t('Width')} hint={t('GIFs get large quickly; smaller widths keep the file manageable.')}>
                         <Select
                           id={gifWidthId}
                           value={gifWidth}
                           onChange={(e) => setGifWidth(e.target.value as GifWidth)}
                           options={[
-                            { value: 'original', label: 'Original width' },
+                            { value: 'original', label: t('Original width') },
                             { value: '480', label: '480 px' },
                             { value: '320', label: '320 px' },
                           ]}
@@ -250,10 +313,10 @@ export default function ConvertTool() {
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different file
+                      {t('Choose different file')}
                     </Button>
                     <Button variant="primary" onClick={handleConvert}>
-                      Convert to {format.toUpperCase()}
+                      {t('Convert to {format}', { format: format.toUpperCase() })}
                     </Button>
                   </div>
                 </div>

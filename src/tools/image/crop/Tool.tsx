@@ -1,28 +1,24 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { ResultPanel } from '../../../components/ResultPanel';
 import { Field, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { decodeImage, canvasToBlob, IMAGE_ACCEPT, type EncodableMime } from '../../../lib/image';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
 import { useObjectUrl } from '../../../lib/useObjectUrl';
 import { getDefaultFormat, formatOutputFile } from '../_basic';
+import { createBoundedPngPreview } from '../_basic/previews';
 import cropStyles from './Crop.module.css';
 import basicStyles from '../_basic/basic.module.css';
-
-interface CropRect {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
+import { clampCrop, createCropSelection, moveCrop, resizeCrop, updateCropValue, type CropDragMode, type CropRect } from './geometry';
 
 interface AspectPreset {
   label: string;
-  ratio: number | null; // null for Free
+  ratio: number | null;
 }
 
 const PRESETS: AspectPreset[] = [
@@ -35,7 +31,27 @@ const PRESETS: AspectPreset[] = [
   { label: '4:5', ratio: 4 / 5 },
 ];
 
-type DragMode = 'move' | 'nw' | 'ne' | 'se' | 'sw' | 'n' | 's' | 'e' | 'w';
+const HANDLES: Exclude<CropDragMode, 'draw' | 'move'>[] = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'];
+const HANDLE_LABELS: Record<(typeof HANDLES)[number], string> = {
+  nw: 'Resize crop from top left',
+  n: 'Resize crop from top',
+  ne: 'Resize crop from top right',
+  e: 'Resize crop from right',
+  se: 'Resize crop from bottom right',
+  s: 'Resize crop from bottom',
+  sw: 'Resize crop from bottom left',
+  w: 'Resize crop from left',
+};
+const HANDLE_CLASSES: Record<(typeof HANDLES)[number], string> = {
+  nw: cropStyles.handleNw,
+  n: cropStyles.handleN,
+  ne: cropStyles.handleNe,
+  e: cropStyles.handleE,
+  se: cropStyles.handleSe,
+  s: cropStyles.handleS,
+  sw: cropStyles.handleSw,
+  w: cropStyles.handleW,
+};
 
 interface CropResult {
   blob: Blob;
@@ -45,91 +61,124 @@ interface CropResult {
 }
 
 export default function CropTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-crop');
   const [file, setFile] = useState<File | null>(null);
   const [decodedImg, setDecodedImg] = useState<HTMLImageElement | null>(null);
-  const [crop, setCrop] = useState<CropRect>({ x: 0, y: 0, width: 100, height: 100 });
+  const [editorPreviewBlob, setEditorPreviewBlob] = useState<Blob | null>(null);
+  const [editorPreviewError, setEditorPreviewError] = useState(false);
+  const [crop, setCrop] = useState<CropRect>({ x: 0, y: 0, width: 1, height: 1 });
   const [aspect, setAspect] = useState<number | null>(null);
+  const [displaySize, setDisplaySize] = useState({ width: 0, height: 0 });
   const [metaError, setMetaError] = useState<string | null>(null);
   const [resultInfo, setResultInfo] = useState<CropResult | null>(null);
 
   const imgRef = useRef<HTMLImageElement | null>(null);
-  const [dispScale, setDispScale] = useState<number>(1);
-
+  const stageRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{
-    mode: DragMode;
+    pointerId: number;
+    mode: CropDragMode;
     startX: number;
     startY: number;
     initialCrop: CropRect;
   } | null>(null);
+  const loadSequenceRef = useRef(0);
 
   const job = useJob();
-  const originalUrl = useObjectUrl(file);
+  const editorPreviewUrl = useObjectUrl(editorPreviewBlob);
+  const coordinateId = useId();
+  const bounds = decodedImg ? { width: decodedImg.width, height: decodedImg.height } : null;
 
-  const updateDisplayScale = useCallback(() => {
-    if (imgRef.current && decodedImg && decodedImg.width > 0) {
-      const clientW = imgRef.current.clientWidth;
-      setDispScale(clientW / decodedImg.width);
-    }
-  }, [decodedImg]);
+  useEffect(
+    () => () => {
+      loadSequenceRef.current += 1;
+      dragRef.current = null;
+    },
+    [],
+  );
 
   useEffect(() => {
-    updateDisplayScale();
-    window.addEventListener('resize', updateDisplayScale);
-    return () => window.removeEventListener('resize', updateDisplayScale);
-  }, [updateDisplayScale]);
+    if (job.status === 'done') setDecodedImg(null);
+  }, [job.status]);
+
+  const updateDisplaySize = useCallback(() => {
+    const rect = imgRef.current?.getBoundingClientRect();
+    if (rect && rect.width > 0 && rect.height > 0) {
+      setDisplaySize((current) =>
+        current.width === rect.width && current.height === rect.height ? current : { width: rect.width, height: rect.height },
+      );
+    }
+  }, []);
+
+  useEffect(() => {
+    const image = imgRef.current;
+    if (!image) return;
+    updateDisplaySize();
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateDisplaySize);
+      return () => window.removeEventListener('resize', updateDisplaySize);
+    }
+    const observer = new ResizeObserver(updateDisplaySize);
+    observer.observe(image);
+    return () => observer.disconnect();
+  }, [decodedImg, editorPreviewUrl, updateDisplaySize]);
 
   const initCropForAspect = useCallback((imgW: number, imgH: number, ratio: number | null): CropRect => {
-    if (!ratio) {
-      // 80% centered
-      const w = Math.round(imgW * 0.8);
-      const h = Math.round(imgH * 0.8);
-      return {
-        x: Math.round((imgW - w) / 2),
-        y: Math.round((imgH - h) / 2),
-        width: w,
-        height: h,
-      };
+    let width = Math.round(imgW * 0.8);
+    let height = Math.round(imgH * 0.8);
+    if (ratio) {
+      if (width / height > ratio) width = Math.round(height * ratio);
+      else height = Math.round(width / ratio);
     }
-
-    let w: number;
-    let h: number;
-    if (imgW / imgH > ratio) {
-      h = Math.round(imgH * 0.8);
-      w = Math.round(h * ratio);
-    } else {
-      w = Math.round(imgW * 0.8);
-      h = Math.round(w / ratio);
-    }
-    return {
-      x: Math.round((imgW - w) / 2),
-      y: Math.round((imgH - h) / 2),
-      width: Math.max(10, w),
-      height: Math.max(10, h),
-    };
+    return clampCrop(
+      {
+        x: Math.round((imgW - width) / 2),
+        y: Math.round((imgH - height) / 2),
+        width,
+        height,
+      },
+      { width: imgW, height: imgH },
+    );
   }, []);
 
   const handleFiles = async (files: File[]) => {
-    if (files.length === 0) return;
     const selected = files[0];
+    if (!selected) return;
+    const sequence = ++loadSequenceRef.current;
     setFile(selected);
     setMetaError(null);
     setDecodedImg(null);
+    setEditorPreviewBlob(null);
+    setEditorPreviewError(false);
+    setDisplaySize({ width: 0, height: 0 });
     setResultInfo(null);
     job.reset();
 
     try {
       const img = await decodeImage(selected);
+      if (sequence !== loadSequenceRef.current) return;
       setDecodedImg(img);
       setCrop(initCropForAspect(img.width, img.height, aspect));
+      try {
+        const previewBlob = await createBoundedPngPreview(img, img.width, img.height, 1280);
+        if (sequence === loadSequenceRef.current) setEditorPreviewBlob(previewBlob);
+      } catch {
+        // The crop selection remains available through numeric source-pixel controls if a preview cannot be encoded.
+        if (sequence === loadSequenceRef.current) setEditorPreviewError(true);
+      }
     } catch {
-      setMetaError('Could not decode image. The file may be corrupt or unsupported.');
+      if (sequence === loadSequenceRef.current) setMetaError(t('Could not decode image. The file may be corrupt or unsupported.'));
     }
   };
 
   const handleReset = () => {
+    loadSequenceRef.current += 1;
+    dragRef.current = null;
     setFile(null);
     setDecodedImg(null);
+    setEditorPreviewBlob(null);
+    setEditorPreviewError(false);
+    setDisplaySize({ width: 0, height: 0 });
     setMetaError(null);
     setResultInfo(null);
     job.reset();
@@ -137,161 +186,139 @@ export default function CropTool() {
 
   const handleSelectAspect = (ratio: number | null) => {
     setAspect(ratio);
-    if (decodedImg) {
-      setCrop(initCropForAspect(decodedImg.width, decodedImg.height, ratio));
-    }
+    if (decodedImg) setCrop(initCropForAspect(decodedImg.width, decodedImg.height, ratio));
   };
 
-  // Pointer event handlers for drag / resize
-  const onPointerDown = (e: React.PointerEvent, mode: DragMode) => {
+  const pointFromClient = useCallback(
+    (clientX: number, clientY: number) => {
+      const rect = imgRef.current?.getBoundingClientRect();
+      if (!rect || !decodedImg || rect.width <= 0 || rect.height <= 0) return null;
+      return {
+        x: Math.max(0, Math.min(decodedImg.width, ((clientX - rect.left) / rect.width) * decodedImg.width)),
+        y: Math.max(0, Math.min(decodedImg.height, ((clientY - rect.top) / rect.height) * decodedImg.height)),
+      };
+    },
+    [decodedImg],
+  );
+
+  const onPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (!decodedImg || !bounds || job.status === 'running') return;
+    const point = pointFromClient(e.clientX, e.clientY);
+    if (!point) return;
     e.preventDefault();
-    e.stopPropagation();
-    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    const target = e.target as HTMLElement;
+    if (target.tabIndex >= 0) target.focus({ preventScroll: true });
+    const mode = target.closest<HTMLElement>('[data-crop-mode]')?.dataset.cropMode as CropDragMode | undefined;
+    const dragMode = mode || 'draw';
     dragRef.current = {
-      mode,
-      startX: e.clientX,
-      startY: e.clientY,
+      pointerId: e.pointerId,
+      mode: dragMode,
+      startX: point.x,
+      startY: point.y,
       initialCrop: { ...crop },
     };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    if (dragMode === 'draw') {
+      setCrop(createCropSelection(point, point, bounds, aspect));
+    }
   };
 
-  const onPointerMove = (e: React.PointerEvent) => {
-    if (!dragRef.current || !decodedImg || dispScale <= 0) return;
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const drag = dragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId || !decodedImg || !bounds) return;
+    const point = pointFromClient(e.clientX, e.clientY);
+    if (!point) return;
     e.preventDefault();
+    const dx = point.x - drag.startX;
+    const dy = point.y - drag.startY;
 
-    const { mode, startX, startY, initialCrop } = dragRef.current;
-    const dx = (e.clientX - startX) / dispScale;
-    const dy = (e.clientY - startY) / dispScale;
-
-    const imgW = decodedImg.width;
-    const imgH = decodedImg.height;
-
-    let newCrop = { ...initialCrop };
-
-    if (mode === 'move') {
-      newCrop.x = Math.max(0, Math.min(imgW - initialCrop.width, Math.round(initialCrop.x + dx)));
-      newCrop.y = Math.max(0, Math.min(imgH - initialCrop.height, Math.round(initialCrop.y + dy)));
+    if (drag.mode === 'draw') {
+      setCrop(createCropSelection({ x: drag.startX, y: drag.startY }, point, bounds, aspect));
+    } else if (drag.mode === 'move') {
+      setCrop(moveCrop(drag.initialCrop, dx, dy, bounds));
     } else {
-      let x1 = initialCrop.x;
-      let y1 = initialCrop.y;
-      let x2 = initialCrop.x + initialCrop.width;
-      let y2 = initialCrop.y + initialCrop.height;
-
-      if (mode.includes('w')) x1 = Math.min(x2 - 10, Math.max(0, Math.round(initialCrop.x + dx)));
-      if (mode.includes('e')) x2 = Math.max(x1 + 10, Math.min(imgW, Math.round(initialCrop.x + initialCrop.width + dx)));
-      if (mode.includes('n')) y1 = Math.min(y2 - 10, Math.max(0, Math.round(initialCrop.y + dy)));
-      if (mode.includes('s')) y2 = Math.max(y1 + 10, Math.min(imgH, Math.round(initialCrop.y + initialCrop.height + dy)));
-
-      let w = x2 - x1;
-      let h = y2 - y1;
-
-      if (aspect) {
-        if (mode === 'e' || mode === 'w') {
-          h = Math.round(w / aspect);
-          y2 = Math.min(imgH, y1 + h);
-          w = Math.round((y2 - y1) * aspect);
-        } else {
-          w = Math.round(h * aspect);
-          if (x1 + w > imgW) {
-            w = imgW - x1;
-            h = Math.round(w / aspect);
-          }
-        }
-      }
-
-      newCrop = {
-        x: Math.max(0, Math.min(imgW - 10, x1)),
-        y: Math.max(0, Math.min(imgH - 10, y1)),
-        width: Math.max(10, Math.min(imgW - x1, w)),
-        height: Math.max(10, Math.min(imgH - y1, h)),
-      };
-    }
-
-    setCrop(newCrop);
-  };
-
-  const onPointerUp = (e: React.PointerEvent) => {
-    if (dragRef.current) {
-      try {
-        (e.target as HTMLElement).releasePointerCapture(e.pointerId);
-      } catch {
-        // ignore
-      }
-      dragRef.current = null;
+      setCrop(resizeCrop(drag.initialCrop, dx, dy, drag.mode, bounds, aspect));
     }
   };
 
-  const updateNumeric = (key: keyof CropRect, val: number) => {
-    if (!decodedImg) return;
-    const clampedVal = Math.max(0, val);
-    const updated = { ...crop, [key]: clampedVal };
-
-    if (key === 'x') updated.x = Math.min(decodedImg.width - updated.width, clampedVal);
-    if (key === 'y') updated.y = Math.min(decodedImg.height - updated.height, clampedVal);
-    if (key === 'width') updated.width = Math.min(decodedImg.width - updated.x, Math.max(10, clampedVal));
-    if (key === 'height') updated.height = Math.min(decodedImg.height - updated.y, Math.max(10, clampedVal));
-
-    if (aspect) {
-      if (key === 'width') {
-        updated.height = Math.max(10, Math.min(decodedImg.height - updated.y, Math.round(updated.width / aspect)));
-      } else if (key === 'height') {
-        updated.width = Math.max(10, Math.min(decodedImg.width - updated.x, Math.round(updated.height * aspect)));
-      }
+  const finishPointer = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (dragRef.current?.pointerId !== e.pointerId) return;
+    dragRef.current = null;
+    try {
+      if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // The browser may already have released capture after cancellation.
     }
+  };
 
-    setCrop(updated);
+  const onSelectionKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!bounds || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+    e.preventDefault();
+    const step = e.shiftKey ? 10 : 1;
+    const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+    const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+    setCrop((current) => moveCrop(current, dx, dy, bounds));
+  };
+
+  const onHandleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, mode: Exclude<CropDragMode, 'draw' | 'move'>) => {
+    if (!bounds || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return;
+    e.preventDefault();
+    const step = e.shiftKey ? 10 : 1;
+    const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0;
+    const dy = e.key === 'ArrowUp' ? -step : e.key === 'ArrowDown' ? step : 0;
+    setCrop((current) => resizeCrop(current, dx, dy, mode, bounds, aspect));
+  };
+
+  const updateNumeric = (key: keyof CropRect, value: number) => {
+    if (!bounds) return;
+    setCrop((current) => updateCropValue(current, key, value, bounds, aspect));
+  };
+
+  const resetCrop = () => {
+    if (decodedImg) setCrop(initCropForAspect(decodedImg.width, decodedImg.height, aspect));
   };
 
   const handleApplyCrop = () => {
-    if (!file || !decodedImg || crop.width <= 0 || crop.height <= 0) return;
+    if (!file || !decodedImg || !bounds || crop.width <= 0 || crop.height <= 0) return;
+    const outputCrop = clampCrop(crop, bounds);
 
     job.run(async (setProgress) => {
       setProgress(0.2);
       const canvas = document.createElement('canvas');
-      canvas.width = Math.round(crop.width);
-      canvas.height = Math.round(crop.height);
+      canvas.width = outputCrop.width;
+      canvas.height = outputCrop.height;
       const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas 2D unavailable');
+      if (!ctx) throw new Error(t('Canvas 2D unavailable'));
 
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
-
-      ctx.drawImage(
-        decodedImg,
-        Math.round(crop.x),
-        Math.round(crop.y),
-        Math.round(crop.width),
-        Math.round(crop.height),
-        0,
-        0,
-        canvas.width,
-        canvas.height,
-      );
+      ctx.drawImage(decodedImg, outputCrop.x, outputCrop.y, outputCrop.width, outputCrop.height, 0, 0, outputCrop.width, outputCrop.height);
       setProgress(0.6);
 
       const defaultFmt = getDefaultFormat(file, 'image/png');
       const mime: EncodableMime = defaultFmt.mime;
       const ext = mime === 'image/jpeg' ? 'jpg' : mime === 'image/webp' ? 'webp' : 'png';
-
       const blob = await canvasToBlob(canvas, mime, mime === 'image/png' ? undefined : 0.92);
-      setProgress(1.0);
+      setProgress(1);
 
       const info: CropResult = {
         blob,
         filename: formatOutputFile(file.name, '-cropped', ext),
-        width: canvas.width,
-        height: canvas.height,
+        width: outputCrop.width,
+        height: outputCrop.height,
       };
       setResultInfo(info);
       return blob;
     });
   };
 
+  const scaleX = decodedImg && displaySize.width > 0 ? displaySize.width / decodedImg.width : 0;
+  const scaleY = decodedImg && displaySize.height > 0 ? displaySize.height / decodedImg.height : 0;
   const boxStyle: React.CSSProperties = {
-    left: `${crop.x * dispScale}px`,
-    top: `${crop.y * dispScale}px`,
-    width: `${crop.width * dispScale}px`,
-    height: `${crop.height * dispScale}px`,
+    left: `${crop.x * scaleX}px`,
+    top: `${crop.y * scaleY}px`,
+    width: `${crop.width * scaleX}px`,
+    height: `${crop.height * scaleY}px`,
   };
 
   return (
@@ -299,14 +326,14 @@ export default function CropTool() {
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose an image or drag it here"
-          hint="Supports JPG, PNG, WEBP, GIF, BMP, SVG, HEIC and AVIF."
+          label={t('Choose an image or drag it here')}
+          hint={t('Supports JPG, PNG, WEBP, GIF, BMP, SVG, HEIC and AVIF.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
           {metaError && <div className="error-banner">{metaError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result && resultInfo ? (
             <ResultPanel
@@ -314,12 +341,12 @@ export default function CropTool() {
               filename={resultInfo.filename}
               kind="image"
               originalSize={file.size}
-              beforePreview={originalUrl ? <img src={originalUrl} alt={file.name} className="preview-media" /> : null}
+              beforePreview={editorPreviewUrl ? <img src={editorPreviewUrl} alt={file.name} className="preview-media" /> : null}
               onReset={handleReset}
             >
               <div className="meta-chips" style={{ marginBottom: '1rem' }}>
                 <span className="meta-chip">
-                  Cropped dimensions:{' '}
+                  {t('Cropped dimensions')}:{' '}
                   <strong>
                     {resultInfo.width}×{resultInfo.height} px
                   </strong>
@@ -330,14 +357,14 @@ export default function CropTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name')}: <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size')}: <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {decodedImg && (
                   <span className="meta-chip">
-                    Dimensions:{' '}
+                    {t('Dimensions')}:{' '}
                     <strong>
                       {decodedImg.width}×{decodedImg.height} px
                     </strong>
@@ -346,128 +373,130 @@ export default function CropTool() {
               </div>
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Cropping image..." />
+                <ProgressBar value={job.progress} label={t('Cropping image...')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
-                  {/* Aspect ratio presets */}
-                  <Field label="Aspect ratio">
+                  <Field label={t('Aspect ratio')}>
                     <div className={basicStyles.presetChips}>
-                      {PRESETS.map((p) => {
-                        const isActive = aspect === p.ratio;
+                      {PRESETS.map((preset) => {
+                        const isActive = aspect === preset.ratio;
                         return (
                           <button
-                            key={p.label}
+                            key={preset.label}
                             type="button"
                             className={`${basicStyles.presetChip} ${isActive ? basicStyles.presetChipActive : ''}`}
-                            onClick={() => handleSelectAspect(p.ratio)}
+                            aria-pressed={isActive}
+                            onClick={() => handleSelectAspect(preset.ratio)}
                           >
-                            {p.label}
+                            {t(preset.label)}
                           </button>
                         );
                       })}
                     </div>
                   </Field>
 
-                  {/* Crop editor canvas/image */}
-                  <div style={{ textAlign: 'center', marginTop: '1rem' }}>
-                    <div className={cropStyles.cropWrapper}>
-                      {originalUrl && (
+                  <div className={cropStyles.editorRow}>
+                    {decodedImg && editorPreviewUrl ? (
+                      <div
+                        ref={stageRef}
+                        className={cropStyles.cropWrapper}
+                        onPointerDown={onPointerDown}
+                        onPointerMove={onPointerMove}
+                        onPointerUp={finishPointer}
+                        onPointerCancel={finishPointer}
+                        onLostPointerCapture={finishPointer}
+                      >
                         <img
                           ref={imgRef}
-                          src={originalUrl}
-                          alt="Crop preview"
+                          src={editorPreviewUrl}
+                          alt={t('Image crop editor')}
                           className={cropStyles.cropImage}
-                          onLoad={updateDisplayScale}
+                          draggable={false}
+                          onLoad={updateDisplaySize}
                         />
-                      )}
-                      <div
-                        className={cropStyles.cropBox}
-                        style={boxStyle}
-                        onPointerDown={(e) => onPointerDown(e, 'move')}
-                        onPointerMove={onPointerMove}
-                        onPointerUp={onPointerUp}
-                        onPointerCancel={onPointerUp}
-                      >
-                        <div className={`${cropStyles.handle} ${cropStyles.handleNw}`} onPointerDown={(e) => onPointerDown(e, 'nw')} />
-                        <div className={`${cropStyles.handle} ${cropStyles.handleNe}`} onPointerDown={(e) => onPointerDown(e, 'ne')} />
-                        <div className={`${cropStyles.handle} ${cropStyles.handleSw}`} onPointerDown={(e) => onPointerDown(e, 'sw')} />
-                        <div className={`${cropStyles.handle} ${cropStyles.handleSe}`} onPointerDown={(e) => onPointerDown(e, 'se')} />
-                        {!aspect && (
-                          <>
-                            <div className={`${cropStyles.handle} ${cropStyles.handleN}`} onPointerDown={(e) => onPointerDown(e, 'n')} />
-                            <div className={`${cropStyles.handle} ${cropStyles.handleS}`} onPointerDown={(e) => onPointerDown(e, 's')} />
-                            <div className={`${cropStyles.handle} ${cropStyles.handleW}`} onPointerDown={(e) => onPointerDown(e, 'w')} />
-                            <div className={`${cropStyles.handle} ${cropStyles.handleE}`} onPointerDown={(e) => onPointerDown(e, 'e')} />
-                          </>
+                        {scaleX > 0 && scaleY > 0 && (
+                          <div className={cropStyles.cropBox} style={boxStyle} data-crop-mode="move">
+                            <span className={cropStyles.ruleVerticalLeft} aria-hidden="true" />
+                            <span className={cropStyles.ruleVerticalRight} aria-hidden="true" />
+                            <span className={cropStyles.ruleHorizontalTop} aria-hidden="true" />
+                            <span className={cropStyles.ruleHorizontalBottom} aria-hidden="true" />
+                            <div
+                              className={cropStyles.selectionKeyboardTarget}
+                              role="group"
+                              tabIndex={0}
+                              aria-label={t('Crop selection. Use arrow keys to move it.')}
+                              aria-describedby={`${coordinateId}-hint`}
+                              onKeyDown={onSelectionKeyDown}
+                            />
+                            {HANDLES.map((handle) => (
+                              <button
+                                key={handle}
+                                type="button"
+                                className={`${cropStyles.handle} ${HANDLE_CLASSES[handle]}`}
+                                data-crop-mode={handle}
+                                aria-label={t(HANDLE_LABELS[handle])}
+                                title={t(HANDLE_LABELS[handle])}
+                                aria-describedby={`${coordinateId}-hint`}
+                                onKeyDown={(e) => onHandleKeyDown(e, handle)}
+                              />
+                            ))}
+                          </div>
                         )}
                       </div>
-                    </div>
+                    ) : editorPreviewError ? (
+                      <div className={cropStyles.editorLoading} role="status">
+                        {t('Image preview is unavailable. Use the source-pixel fields to set the crop.')}
+                      </div>
+                    ) : metaError ? null : (
+                      <div className={cropStyles.editorLoading} role="status">
+                        {t('Loading image…')}
+                      </div>
+                    )}
                   </div>
+                  <p id={`${coordinateId}-hint`} className={cropStyles.editorHint}>
+                    {t('Drag inside the crop to move it. Drag outside to draw a new selection. Use arrow keys to move or resize.')}
+                  </p>
+                  <p className={cropStyles.editorNote}>
+                    {t('The selection uses source pixel coordinates; export crops from the original decoded image.')}
+                  </p>
 
-                  {/* Numeric Inputs in source pixels */}
-                  <Field label="Crop coordinates (source pixels)">
+                  <Field label={t('Crop coordinates (source pixels)')}>
                     <div className={cropStyles.inputsGrid}>
-                      <div>
-                        <label className="field-label" style={{ fontSize: '0.8rem' }}>
-                          X (px)
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={decodedImg?.width || 10000}
-                          value={Math.round(crop.x)}
-                          onChange={(e) => updateNumeric('x', parseInt(e.target.value, 10) || 0)}
-                          className={basicStyles.inputNumber}
-                        />
-                      </div>
-                      <div>
-                        <label className="field-label" style={{ fontSize: '0.8rem' }}>
-                          Y (px)
-                        </label>
-                        <input
-                          type="number"
-                          min={0}
-                          max={decodedImg?.height || 10000}
-                          value={Math.round(crop.y)}
-                          onChange={(e) => updateNumeric('y', parseInt(e.target.value, 10) || 0)}
-                          className={basicStyles.inputNumber}
-                        />
-                      </div>
-                      <div>
-                        <label className="field-label" style={{ fontSize: '0.8rem' }}>
-                          Width (px)
-                        </label>
-                        <input
-                          type="number"
-                          min={10}
-                          max={decodedImg?.width || 10000}
-                          value={Math.round(crop.width)}
-                          onChange={(e) => updateNumeric('width', parseInt(e.target.value, 10) || 10)}
-                          className={basicStyles.inputNumber}
-                        />
-                      </div>
-                      <div>
-                        <label className="field-label" style={{ fontSize: '0.8rem' }}>
-                          Height (px)
-                        </label>
-                        <input
-                          type="number"
-                          min={10}
-                          max={decodedImg?.height || 10000}
-                          value={Math.round(crop.height)}
-                          onChange={(e) => updateNumeric('height', parseInt(e.target.value, 10) || 10)}
-                          className={basicStyles.inputNumber}
-                        />
-                      </div>
+                      {(
+                        [
+                          ['x', 'X (px)', 0, decodedImg?.width || 10000],
+                          ['y', 'Y (px)', 0, decodedImg?.height || 10000],
+                          ['width', 'Width (px)', 1, decodedImg?.width || 10000],
+                          ['height', 'Height (px)', 1, decodedImg?.height || 10000],
+                        ] as const
+                      ).map(([key, label, min, max]) => (
+                        <div key={key}>
+                          <label className="field-label" htmlFor={`${coordinateId}-${key}`}>
+                            {t(label)}
+                          </label>
+                          <input
+                            id={`${coordinateId}-${key}`}
+                            type="number"
+                            min={min}
+                            max={max}
+                            value={Math.round(crop[key])}
+                            onChange={(e) => updateNumeric(key, parseInt(e.target.value, 10) || (key === 'x' || key === 'y' ? 0 : 1))}
+                            className={basicStyles.inputNumber}
+                          />
+                        </div>
+                      ))}
                     </div>
                   </Field>
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different image
+                      {t('Choose different image')}
                     </Button>
-                    <Button variant="primary" onClick={handleApplyCrop}>
-                      Crop image
+                    <Button variant="secondary" onClick={resetCrop} disabled={!decodedImg}>
+                      {t('Reset crop')}
+                    </Button>
+                    <Button variant="primary" onClick={handleApplyCrop} disabled={!decodedImg}>
+                      {t('Crop image')}
                     </Button>
                   </div>
                 </div>

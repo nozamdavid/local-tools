@@ -9,6 +9,7 @@ export async function extractPdfText(
   doc: PDFDocumentProxy,
   maxPages?: number,
   onProgress?: (current: number, total: number) => void,
+  signal?: AbortSignal,
 ): Promise<ExtractionResult> {
   const totalPages = Math.min(doc.numPages, maxPages ?? doc.numPages);
   const pages: ExtractedPageText[] = [];
@@ -16,10 +17,10 @@ export async function extractPdfText(
   let totalWords = 0;
 
   for (let p = 1; p <= totalPages; p++) {
+    signal?.throwIfAborted();
     onProgress?.(p, totalPages);
     const page = await doc.getPage(p);
-    const content = await page.getTextContent();
-    page.cleanup();
+    const content = await page.getTextContent().finally(() => page.cleanup());
 
     const paragraphs: string[] = [];
     let currentParagraphLines: string[] = [];
@@ -79,18 +80,20 @@ export function chunkTextForInference(
     maxTotalChunks?: number;
   } = {},
 ): TextChunk[] {
-  const { maxChunkChars = 1800, includePageHeaders = false, maxTotalChunks = 20 } = options;
+  const { includePageHeaders = false, maxTotalChunks = 20 } = options;
+  const maxChunkChars = Math.max(2, Math.floor(options.maxChunkChars ?? 1800));
   const chunks: TextChunk[] = [];
   let currentChunkText = '';
-  const currentPageHeader: string | undefined = undefined;
 
   const flushChunk = () => {
     const trimmed = currentChunkText.trim();
     if (trimmed.length > 0) {
+      if (chunks.length >= maxTotalChunks) {
+        throw new Error('The selected pages contain too much text for one run. Select fewer pages.');
+      }
       chunks.push({
         index: chunks.length,
         text: trimmed,
-        pageHeader: currentPageHeader,
         charCount: trimmed.length,
       });
     }
@@ -98,32 +101,23 @@ export function chunkTextForInference(
   };
 
   for (const page of pages) {
-    if (chunks.length >= maxTotalChunks) break;
-
     const pageMarker = includePageHeaders ? `--- Page ${page.pageNum} ---\n\n` : '';
-    let pageStarted = false;
+    for (const [index, paragraph] of page.paragraphs.entries()) {
+      let remaining = index === 0 ? pageMarker + paragraph : paragraph;
+      if (currentChunkText && currentChunkText.length + remaining.length + 2 > maxChunkChars) flushChunk();
 
-    for (const para of page.paragraphs) {
-      if (chunks.length >= maxTotalChunks) break;
-
-      const paraWithMarker = !pageStarted && pageMarker ? pageMarker + para : para;
-      pageStarted = true;
-
-      // If the paragraph alone exceeds maxChunkChars, split by sentences
-      if (paraWithMarker.length > maxChunkChars) {
-        const sentences = paraWithMarker.match(/[^.!?]+[.!?]+(\s+|$)|[^.!?]+$/g) || [paraWithMarker];
-        for (const sentence of sentences) {
-          if (currentChunkText.length + sentence.length > maxChunkChars && currentChunkText.length > 0) {
-            flushChunk();
-          }
-          currentChunkText += (currentChunkText ? ' ' : '') + sentence.trim();
-        }
-      } else {
-        if (currentChunkText.length + paraWithMarker.length + 2 > maxChunkChars && currentChunkText.length > 0) {
-          flushChunk();
-        }
-        currentChunkText += (currentChunkText ? '\n\n' : '') + paraWithMarker;
+      while (remaining.length > maxChunkChars) {
+        const prefix = remaining.slice(0, maxChunkChars);
+        const sentenceEnd = prefix.match(/.*[.!?](?=\s)/s)?.[0].length ?? 0;
+        const wordBreak = prefix.search(/\s\S*$/);
+        let end = sentenceEnd >= maxChunkChars / 2 ? sentenceEnd : wordBreak > 0 ? wordBreak : maxChunkChars;
+        // Keep a surrogate pair together when splitting an unbroken word.
+        if (end > 1 && /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(remaining.slice(end - 1, end + 1))) end--;
+        currentChunkText = remaining.slice(0, end);
+        flushChunk();
+        remaining = remaining.slice(end).trimStart();
       }
+      currentChunkText += (currentChunkText ? '\n\n' : '') + remaining;
     }
   }
 

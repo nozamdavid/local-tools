@@ -10,6 +10,7 @@ import { CanvasDocument, ArrowLayer, RectLayer, EllipseLayer, LineLayer, BadgeLa
 import { useCanvasHistory } from '../_canvas/useCanvasHistory';
 import { CanvasStage, StageMode, DrawConfig, ShapeConfig } from '../_canvas/CanvasStage';
 import { exportDocument } from '../_canvas/render';
+import { useI18n } from '../../../lib/i18n';
 import styles from './Tool.module.css';
 
 const COLOR_PRESETS = [
@@ -26,6 +27,7 @@ type AnnotatorTool = 'select' | 'arrow' | 'rect' | 'ellipse' | 'line' | 'badge' 
 
 export default function Tool() {
   const meta = getToolMeta('img-image-annotator');
+  const { t } = useI18n();
 
   const [file, setFile] = useState<File | null>(null);
   const [activeTool, setActiveTool] = useState<AnnotatorTool>('select');
@@ -75,7 +77,7 @@ export default function Tool() {
       setSelectedLayerId(null);
       setStepBadgeNumber(1);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to decode image.');
+      alert(t(err instanceof Error ? err.message : 'Failed to decode image.'));
     }
   };
 
@@ -233,7 +235,7 @@ export default function Tool() {
       const outName = withSuffix(file ? file.name : 'annotated-image.png', '-annotated', ext);
       downloadBlob(blob, outName);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Export failed.');
+      alert(t(err instanceof Error ? err.message : 'Export failed.'));
     } finally {
       setIsExporting(false);
     }
@@ -260,8 +262,8 @@ export default function Tool() {
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose an image or screenshot to annotate"
-          hint="Supports JPG, PNG, WebP, GIF, BMP, AVIF, HEIC, SVG"
+          label={t('Choose an image or screenshot to annotate')}
+          hint={t('Supports JPG, PNG, WebP, GIF, BMP, AVIF, HEIC and SVG.')}
           onFiles={handleFileDrop}
         />
       ) : (
@@ -272,7 +274,8 @@ export default function Tool() {
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="Undo (Ctrl+Z)"
+                title={t('Undo (Ctrl+Z)')}
+                aria-label={t('Undo')}
                 data-testid="undo-btn"
                 disabled={!canUndo}
                 onClick={undo}
@@ -282,7 +285,8 @@ export default function Tool() {
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="Redo (Ctrl+Shift+Z)"
+                title={t('Redo (Ctrl+Shift+Z)')}
+                aria-label={t('Redo')}
                 data-testid="redo-btn"
                 disabled={!canRedo}
                 onClick={redo}
@@ -293,7 +297,8 @@ export default function Tool() {
                 <button
                   type="button"
                   className={styles.iconBtn}
-                  title="Delete layer (Del)"
+                  title={t('Delete layer (Del)')}
+                  aria-label={t('Delete layer')}
                   onClick={() => deleteLayer(selectedLayerId)}
                   style={{ color: 'var(--danger)' }}
                 >
@@ -303,7 +308,7 @@ export default function Tool() {
             </div>
 
             <Button variant="secondary" onClick={() => setFile(null)}>
-              Change Image
+              {t('Change image')}
             </Button>
           </div>
 
@@ -314,35 +319,35 @@ export default function Tool() {
               className={`${styles.toolBtn} ${activeTool === 'select' ? styles.toolBtnActive : ''}`}
               onClick={() => setActiveTool('select')}
             >
-              ↖ Select
+              {t('↖ Select')}
             </button>
             <button type="button" className={styles.toolBtn} onClick={addArrow}>
-              ➔ Arrow
+              {t('➔ Arrow')}
             </button>
             <button type="button" className={styles.toolBtn} onClick={addRect}>
-              ▭ Rectangle
+              {t('▭ Rectangle')}
             </button>
             <button type="button" className={styles.toolBtn} onClick={addEllipse}>
-              ⬭ Ellipse
+              {t('⬭ Ellipse')}
             </button>
             <button type="button" className={styles.toolBtn} onClick={addLine}>
-              ― Line
+              {t('― Line')}
             </button>
             <button type="button" className={styles.toolBtn} onClick={addStepBadge}>
-              ① Step Badge ({stepBadgeNumber})
+              {t('① Step badge ({number})', { number: stepBadgeNumber })}
             </button>
             <button type="button" className={styles.toolBtn} onClick={addCallout}>
-              💬 Callout
+              {t('💬 Callout')}
             </button>
             <button
               type="button"
               className={`${styles.toolBtn} ${activeTool === 'highlighter' ? styles.toolBtnActive : ''}`}
               onClick={() => setActiveTool(activeTool === 'highlighter' ? 'select' : 'highlighter')}
             >
-              🖍 Highlighter
+              {t('🖍 Highlighter')}
             </button>
             <button type="button" className={styles.toolBtn} onClick={addRedactBox}>
-              🔒 Redact (Blur/Pixelate)
+              {t('🔒 Redact (blur / pixelate)')}
             </button>
           </div>
 
@@ -362,13 +367,14 @@ export default function Tool() {
           {/* Settings Panel */}
           <div className={styles.settingsPanel}>
             <div className={styles.grid}>
-              <Field label="Colour Presets">
+              <Field label={t('Colour presets')}>
                 <div className={styles.colorPresetsRow}>
                   {COLOR_PRESETS.map((p) => (
                     <button
                       key={p.hex}
                       type="button"
-                      title={p.name}
+                      title={t(p.name)}
+                      aria-label={t(p.name)}
                       className={`${styles.colorSwatch} ${color === p.hex ? styles.colorSwatchActive : ''}`}
                       style={{ backgroundColor: p.hex }}
                       onClick={() => {
@@ -398,7 +404,7 @@ export default function Tool() {
                 </div>
               </Field>
 
-              <Field label="Stroke Width">
+              <Field label={t('Stroke width')}>
                 <Slider
                   value={strokeWidth}
                   min={2}
@@ -416,7 +422,7 @@ export default function Tool() {
                 />
               </Field>
 
-              <Field label="Redaction Type">
+              <Field label={t('Redaction type')}>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <Button
                     variant={redactType === 'blur' ? 'primary' : 'secondary'}
@@ -432,7 +438,7 @@ export default function Tool() {
                       }
                     }}
                   >
-                    Blur
+                    {t('Blur')}
                   </Button>
                   <Button
                     variant={redactType === 'pixelate' ? 'primary' : 'secondary'}
@@ -448,7 +454,7 @@ export default function Tool() {
                       }
                     }}
                   >
-                    Pixelate
+                    {t('Pixelate')}
                   </Button>
                 </div>
               </Field>
@@ -456,7 +462,7 @@ export default function Tool() {
 
             {/* Selected item specific controls */}
             {selectedLayer && selectedLayer.type === 'callout' && (
-              <Field label="Callout Text">
+              <Field label={t('Callout text')}>
                 <input
                   type="text"
                   className="input"
@@ -473,7 +479,7 @@ export default function Tool() {
             )}
 
             {selectedLayer && selectedLayer.type === 'badge' && (
-              <Field label="Badge Number">
+              <Field label={t('Badge number')}>
                 <input
                   type="number"
                   className="input"
@@ -494,27 +500,27 @@ export default function Tool() {
           {/* Export Row */}
           <div className={styles.exportRow}>
             <div className={styles.exportControls}>
-              <Field label="Format">
+              <Field label={t('Format')}>
                 <Select
                   value={exportMime}
                   onChange={(e) => setExportMime(e.target.value as EncodableMime)}
                   options={[
-                    { value: 'image/png', label: 'PNG' },
-                    { value: 'image/jpeg', label: 'JPEG' },
-                    { value: 'image/webp', label: 'WebP' },
+                    { value: 'image/png', label: t('PNG') },
+                    { value: 'image/jpeg', label: t('JPEG') },
+                    { value: 'image/webp', label: t('WebP') },
                   ]}
                 />
               </Field>
 
               {exportMime !== 'image/png' && (
-                <Field label="Quality">
+                <Field label={t('Quality')}>
                   <Slider value={quality} min={10} max={100} unit="%" onChange={setQuality} />
                 </Field>
               )}
             </div>
 
             <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleExport}>
-              {isExporting ? 'Exporting…' : 'Download Image'}
+              {isExporting ? t('Exporting…') : t('Download image')}
             </Button>
           </div>
         </div>

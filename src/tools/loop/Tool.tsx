@@ -11,8 +11,10 @@ import { runFFmpeg } from '../../lib/ffmpeg';
 import { useJob } from '../../lib/useJob';
 import { useObjectUrl } from '../../lib/useObjectUrl';
 import styles from './Tool.module.css';
+import { useI18n } from '../../lib/i18n';
 
 export default function LoopTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('loop');
   const [file, setFile] = useState<File | null>(null);
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
@@ -108,7 +110,7 @@ export default function LoopTool() {
   const resultingDuration = videoMeta ? videoMeta.duration * loopCount : 0;
   const loopOptions = [2, 3, 4, 5, 6, 7, 8, 9, 10].map((num) => ({
     value: String(num),
-    label: `${num} times (${num}x)`,
+    label: t('{count} times ({count}x)', { count: num }),
   }));
 
   return (
@@ -116,14 +118,14 @@ export default function LoopTool() {
       {!file ? (
         <FileDrop
           accept="video/*"
-          label="Choose a video or drag it here"
-          hint="Supports MP4, MOV, WebM, MKV, AVI and more."
+          label={t('Choose a video or drag it here')}
+          hint={t('Supports MP4, MOV, WebM, MKV, AVI and more.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result ? (
             <ResultPanel
@@ -138,18 +140,18 @@ export default function LoopTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name:')} <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {videoMeta && (
                   <>
                     <span className="meta-chip">
-                      Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
+                      {t('Duration:')} <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution:{' '}
+                      {t('Resolution:')}{' '}
                       <strong>
                         {videoMeta.width}x{videoMeta.height}
                       </strong>
@@ -159,7 +161,7 @@ export default function LoopTool() {
               </div>
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Looping video..." />
+                <ProgressBar value={job.progress} label={t('Looping video...')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
                   <div className={styles.videoContainer}>
@@ -168,15 +170,17 @@ export default function LoopTool() {
 
                   {resultingDuration > 0 && (
                     <div className={styles.durationBadge}>
-                      <span>Resulting duration:</span>
+                      <span>{t('Resulting duration:')}</span>
                       <strong>{formatDuration(resultingDuration)}</strong>
                       <span>({resultingDuration.toFixed(1)}s)</span>
                     </div>
                   )}
 
                   <Field
-                    label="Loop count"
-                    hint="Number of times to repeat the video. Tries fast bitstream concatenation first, with automatic re-encode fallback."
+                    label={t('Loop count')}
+                    hint={t(
+                      'Number of times to repeat the video. Tries fast bitstream concatenation first, with automatic re-encode fallback.',
+                    )}
                   >
                     <Select
                       id={loopId}
@@ -188,10 +192,10 @@ export default function LoopTool() {
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different file
+                      {t('Choose different file')}
                     </Button>
                     <Button variant="primary" onClick={handleLoop}>
-                      Loop video
+                      {t('Loop video')}
                     </Button>
                   </div>
                 </div>

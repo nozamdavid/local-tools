@@ -1,8 +1,10 @@
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
-import { Button, Select, Alert, Badge } from '../../../components/Controls';
+import { Button, Select, Alert, Field } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { formatBytes } from '../../../lib/format';
+import { downloadBlob } from '../../../lib/download';
 import {
   MeshViewer,
   use3DWorkbench,
@@ -10,15 +12,17 @@ import {
   WorkbenchWarnings,
   ACCEPT_MESH_EXTENSIONS,
   ALL_MESH_FORMATS,
+  translate3DMessage,
   type MeshFormat,
 } from '../_ui';
 import { ArrowRight, CheckCircle, Download } from 'lucide-react';
 import styles from '../_ui/Workbench.module.css';
 
 export default function ConvertTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('three-convert');
-  const title = meta.title !== 'three-convert' ? meta.title : '3D Format Converter';
-  const description = meta.description || 'Convert 3D mesh files between STL, OBJ, PLY, and 3MF formats entirely on your device.';
+  const title = meta.title !== 'three-convert' ? meta.title : t('3D Format Converter');
+  const description = meta.description || t('Convert 3D mesh files between STL, OBJ, PLY, and 3MF formats entirely on your device.');
 
   const {
     file,
@@ -36,8 +40,6 @@ export default function ConvertTool() {
     handleExport,
   } = use3DWorkbench({ multiple: false });
 
-  const inputExt = file?.name ? file.name.split('.').pop()?.toLowerCase() || '' : '';
-
   return (
     <ToolPage title={title} description={description} currentId="three-convert">
       <div className={styles.workbench}>
@@ -46,24 +48,24 @@ export default function ConvertTool() {
             <FileDrop
               accept={ACCEPT_MESH_EXTENSIONS}
               multiple={false}
-              label="Drop a 3D model or CAD file (.stl, .obj, .ply, .3mf, .step, .stp, .iges, .igs, .brep)"
-              hint="Supports mesh files (STL, OBJ, PLY, 3MF) and CAD models (STEP, IGES, BREP). CAD files are locally tessellated to triangular meshes on-device; export is to 3D mesh formats."
+              label={t('Choose a model or CAD file')}
+              hint={t('Convert 3D model and CAD files to a mesh format. CAD files are converted to meshes first.')}
               onFiles={loadFiles}
             />
             {loading && (
               <div style={{ textAlign: 'center', padding: 'var(--space-6)' }}>
                 <span className="spinner" aria-hidden="true" />
-                <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-muted)' }}>Loading 3D model...</p>
+                <p style={{ marginTop: 'var(--space-2)', color: 'var(--text-muted)' }}>{t('Loading 3D model...')}</p>
                 <div style={{ marginTop: 'var(--space-2)' }}>
                   <Button variant="ghost" size="sm" onClick={cancelProcessing}>
-                    Cancel import
+                    {t('Cancel import')}
                   </Button>
                 </div>
               </div>
             )}
             {importError && (
-              <Alert tone="danger" title="Could not open model">
-                {importError}
+              <Alert tone="danger" title={t('Could not open model')}>
+                {translate3DMessage(importError, t)}
               </Alert>
             )}
           </>
@@ -73,8 +75,8 @@ export default function ConvertTool() {
             <WorkbenchWarnings warnings={currentModel.warnings} />
 
             {processError && (
-              <Alert tone="danger" title="Conversion Error">
-                {processError}
+              <Alert tone="danger" title={t('Conversion Error')}>
+                {translate3DMessage(processError, t)}
               </Alert>
             )}
 
@@ -86,22 +88,17 @@ export default function ConvertTool() {
               <div className={styles.controlsCol}>
                 <div className={styles.card}>
                   <h3 className={styles.cardTitle}>
-                    <span>Choose Target Format</span>
-                    {inputExt && <Badge tone="neutral">Source: {inputExt.toUpperCase()}</Badge>}
+                    <span>{t('Convert model')}</span>
                   </h3>
-                  <p className={styles.cardSub}>
-                    Select the format you want to export. All calculations and binary generation occur locally.
-                  </p>
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-                    <div className="field">
-                      <label className="field-label">Target 3D Format</label>
+                    <Field label={t('Output format')}>
                       <Select
                         value={exportFormat}
                         options={ALL_MESH_FORMATS}
                         onChange={(e) => setExportFormat(e.target.value as MeshFormat)}
                       />
-                    </div>
+                    </Field>
 
                     <Button
                       variant="primary"
@@ -111,23 +108,23 @@ export default function ConvertTool() {
                       disabled={exporting}
                       onClick={() => handleExport()}
                     >
-                      Convert & Download .{exportFormat.toUpperCase()}
+                      {t('Convert and download')}
                     </Button>
                   </div>
                 </div>
 
                 {lastExportedBlob && (
                   <div className={styles.resultBox}>
-                    <div className={styles.resultTitle}>
+                    <div className={styles.resultTitle} role="status" aria-live="polite">
                       <CheckCircle size={16} color="var(--success)" aria-hidden="true" />
-                      <span>Ready for Download</span>
+                      <span>{t('Download started')}</span>
                     </div>
                     <div className={styles.statRow}>
-                      <span className={styles.statLabel}>Output file</span>
+                      <span className={styles.statLabel}>{t('Output file')}</span>
                       <span className={styles.statValue}>{lastExportedBlob.filename}</span>
                     </div>
                     <div className={styles.statRow}>
-                      <span className={styles.statLabel}>Size</span>
+                      <span className={styles.statLabel}>{t('Size')}</span>
                       <span className={styles.statValue}>
                         {file && (
                           <span style={{ color: 'var(--text-muted)', fontWeight: 'var(--weight-regular)' }}>
@@ -137,6 +134,13 @@ export default function ConvertTool() {
                         {formatBytes(lastExportedBlob.blob.size)}
                       </span>
                     </div>
+                    <Button
+                      variant="primary"
+                      icon={<Download size={15} />}
+                      onClick={() => downloadBlob(lastExportedBlob.blob, lastExportedBlob.filename)}
+                    >
+                      {t('Download again')}
+                    </Button>
                   </div>
                 )}
               </div>

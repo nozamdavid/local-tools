@@ -1,17 +1,21 @@
-import { useState, useRef, useId } from 'react';
+import { useState, useRef, useId, useEffect } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { Field, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { formatBytes } from '../../../lib/format';
 import { downloadBlob } from '../../../lib/download';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { usePdfSource } from '../_thumbs/usePdfSource';
-import { extractPdfText, chunkTextForInference, TRANSLATION_PAIRS, AiJob, type ExtractionResult } from '../_ai';
+import { chunkTextForInference, TRANSLATION_PAIRS, AiJob } from '../_ai';
+import { usePdfText } from '../_ai/usePdfText';
+import { translateAiProgressLabel } from '../_ai/progress';
 import styles from './Tool.module.css';
 
 export default function TranslateTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-translate');
   const source = usePdfSource();
 
@@ -21,8 +25,7 @@ export default function TranslateTool() {
   const [selectedPairId, setSelectedPairId] = useState<string>(TRANSLATION_PAIRS[0].id);
   const [pageScope, setPageScope] = useState<string>('all');
 
-  const [extracting, setExtracting] = useState(false);
-  const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
+  const { extracting, error: extractionError, result: extractionResult } = usePdfText(source.doc);
 
   const [running, setRunning] = useState(false);
   const [progressRatio, setProgressRatio] = useState(0);
@@ -32,6 +35,7 @@ export default function TranslateTool() {
   const [copied, setCopied] = useState(false);
 
   const activeJob = useRef<AiJob | null>(null);
+  useEffect(() => () => activeJob.current?.abort(), []);
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
@@ -45,8 +49,6 @@ export default function TranslateTool() {
       activeJob.current = null;
     }
     source.reset();
-    setExtracting(false);
-    setExtractionResult(null);
     setRunning(false);
     setProgressRatio(0);
     setProgressLabel('');
@@ -54,24 +56,6 @@ export default function TranslateTool() {
     setError(null);
     setCopied(false);
   };
-
-  const handleLoadDoc = async () => {
-    if (!source.doc) return;
-    setExtracting(true);
-    setError(null);
-    try {
-      const res = await extractPdfText(source.doc);
-      setExtractionResult(res);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to extract text from PDF.');
-    } finally {
-      setExtracting(false);
-    }
-  };
-
-  if (source.doc && !extractionResult && !extracting && !source.loading) {
-    handleLoadDoc();
-  }
 
   const currentPair = TRANSLATION_PAIRS.find((p) => p.id === selectedPairId) ?? TRANSLATION_PAIRS[0];
 
@@ -148,14 +132,14 @@ export default function TranslateTool() {
   const file = source.file;
   const pairOptions = TRANSLATION_PAIRS.map((p) => ({
     value: p.id,
-    label: `${p.label} (${p.sizeEstimate})`,
+    label: `${t(p.label)} (${p.sizeEstimate})`,
   }));
 
   const scopeOptions = [
-    { value: 'all', label: `All pages (${source.pages.length} pages)` },
-    { value: '3', label: 'First 3 pages' },
-    { value: '5', label: 'First 5 pages' },
-    { value: '10', label: 'First 10 pages' },
+    { value: 'all', label: t('All pages ({count} pages)', { count: source.pages.length }) },
+    { value: '3', label: t('First {count} pages', { count: 3 }) },
+    { value: '5', label: t('First {count} pages', { count: 5 }) },
+    { value: '10', label: t('First {count} pages', { count: 10 }) },
   ];
 
   const originalWords = extractionResult?.totalWords ?? 0;
@@ -168,53 +152,55 @@ export default function TranslateTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Translates PDF text locally on your device with on-device AI. Outputs plain translated text."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Translates PDF text locally on your device with on-device AI. Outputs plain translated text.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {error && <div className="error-banner">{error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {extractionError && <div className="error-banner">{t(extractionError)}</div>}
+          {error && <div className="error-banner">{t(error)}</div>}
 
           <div className={styles.topRow}>
             <div className="meta-chips">
               <span className="meta-chip">
-                File: <strong>{file.name}</strong>
+                {t('File:')} <strong>{file.name}</strong>
               </span>
               <span className="meta-chip">
-                Size: <strong>{formatBytes(file.size)}</strong>
+                {t('Size:')} <strong>{formatBytes(file.size)}</strong>
               </span>
               {source.pages.length > 0 && (
                 <span className="meta-chip">
-                  Pages: <strong>{source.pages.length}</strong>
+                  {t('Pages:')} <strong>{source.pages.length}</strong>
                 </span>
               )}
               {extractionResult && (
                 <span className="meta-chip">
-                  Words: <strong>{extractionResult.totalWords}</strong>
+                  {t('Words:')} <strong>{extractionResult.totalWords}</strong>
                 </span>
               )}
             </div>
             <Button variant="secondary" onClick={handleReset} disabled={running}>
-              Change PDF
+              {t('Change PDF')}
             </Button>
           </div>
 
           {(source.loading || extracting) && (
-            <p className="status-text">{source.loading ? 'Opening PDF document...' : 'Extracting document text...'}</p>
+            <p className="status-text">{source.loading ? t('Opening PDF document...') : t('Extracting document text...')}</p>
           )}
 
           {extractionResult && !extractionResult.hasText && !extracting && (
             <div className={styles.ocrNotice}>
-              <div className={styles.ocrNoticeTitle}>No Selectable Text Found</div>
+              <div className={styles.ocrNoticeTitle}>{t('No selectable text found')}</div>
               <p className={styles.ocrNoticeDesc}>
-                This PDF appears to be a scanned document or contains only images with no embedded text layer. Local translation requires
-                machine-readable text. Please process this PDF with the OCR PDF tool first to recognize and extract its text.
+                {t(
+                  'This PDF appears to be a scanned document or contains only images with no embedded text layer. Local translation requires machine-readable text. Please process this PDF with the OCR PDF tool first to recognize and extract its text.',
+                )}
               </p>
               <div className="action-buttons" style={{ justifyContent: 'center' }}>
                 <a href="/pdf/ocr" className="btn btn-primary" style={{ textDecoration: 'none' }}>
-                  Go to OCR PDF
+                  {t('Go to OCR PDF')}
                 </a>
               </div>
             </div>
@@ -223,7 +209,10 @@ export default function TranslateTool() {
           {extractionResult && extractionResult.hasText && !translation && !running && (
             <div>
               <div className={styles.controls}>
-                <Field label="Language pair" hint={`Model: ${currentPair.modelId} (${currentPair.sizeEstimate})`}>
+                <Field
+                  label={t('Language pair')}
+                  hint={t('Model: {model} ({size})', { model: currentPair.modelId, size: currentPair.sizeEstimate })}
+                >
                   <Select
                     id={pairSelectId}
                     value={selectedPairId}
@@ -233,28 +222,29 @@ export default function TranslateTool() {
                 </Field>
 
                 {source.pages.length > 3 && (
-                  <Field label="Page scope" hint="Select how many pages to include in the translation.">
+                  <Field label={t('Page scope')} hint={t('Select how many pages to include in the translation.')}>
                     <Select id={scopeSelectId} value={pageScope} onChange={(e) => setPageScope(e.target.value)} options={scopeOptions} />
                   </Field>
                 )}
               </div>
 
               <div className={styles.noticeBox}>
-                🔒 <strong>100% Private & In-Browser:</strong> Translation models execute entirely on your device using WebAssembly. Model
-                weights are downloaded directly from Hugging Face and cached in your browser. No document text or metadata is ever
-                transmitted over the network.
+                🔒 <strong>{t('100% private and in your browser:')}</strong>{' '}
+                {t(
+                  'Translation models execute entirely on your device using WebAssembly. Model weights are downloaded directly from Hugging Face and cached in your browser. No document text or metadata is ever transmitted over the network.',
+                )}
                 <br />
                 <small style={{ marginTop: '0.4rem', display: 'block' }}>
-                  Note: Output is formatted plain text with page and paragraph demarcations preserved.
+                  {t('Note: Output is formatted plain text with page and paragraph demarcations preserved.')}
                 </small>
               </div>
 
               <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
-                  Reset
+                  {t('Reset')}
                 </Button>
                 <Button variant="primary" onClick={handleTranslate}>
-                  Translate Document
+                  {t('Translate document')}
                 </Button>
               </div>
             </div>
@@ -262,7 +252,7 @@ export default function TranslateTool() {
 
           {running && (
             <div style={{ marginTop: '1.5rem' }}>
-              <ProgressBar value={progressRatio} label={progressLabel || 'Translating document...'} />
+              <ProgressBar value={progressRatio} label={translateAiProgressLabel(progressLabel || 'Translating document...', t)} />
               <div className="action-buttons" style={{ marginTop: '1rem' }}>
                 <Button
                   variant="secondary"
@@ -274,7 +264,7 @@ export default function TranslateTool() {
                     setRunning(false);
                   }}
                 >
-                  Cancel
+                  {t('Cancel')}
                 </Button>
               </div>
             </div>
@@ -282,25 +272,25 @@ export default function TranslateTool() {
 
           {translation && !running && (
             <div className={styles.outputArea}>
-              <h3 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Translated Text</h3>
+              <h3 style={{ marginTop: 0, marginBottom: '0.75rem' }}>{t('Translated text')}</h3>
               <textarea
                 className={styles.outputTextarea}
                 value={translation}
                 onChange={(e) => setTranslation(e.target.value)}
-                aria-label="Translated output"
+                aria-label={t('Translated output')}
               />
 
               <div className={styles.statsBar}>
                 <div className={styles.statItem}>
-                  <span className={styles.statLabel}>Original Words</span>
+                  <span className={styles.statLabel}>{t('Original words')}</span>
                   <span className={styles.statVal}>{originalWords}</span>
                 </div>
                 <div className={styles.statItem}>
-                  <span className={styles.statLabel}>Translated Words</span>
+                  <span className={styles.statLabel}>{t('Translated words')}</span>
                   <span className={styles.statVal}>{translatedWords}</span>
                 </div>
                 <div className={styles.statItem}>
-                  <span className={styles.statLabel}>Target Language</span>
+                  <span className={styles.statLabel}>{t('Target language')}</span>
                   <span className={styles.statVal} style={{ textTransform: 'uppercase' }}>
                     {currentPair.targetLang}
                   </span>
@@ -309,13 +299,13 @@ export default function TranslateTool() {
 
               <div className="action-buttons" style={{ marginTop: '1.25rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
-                  Start Over
+                  {t('Start over')}
                 </Button>
                 <Button variant="secondary" onClick={handleCopy}>
-                  {copied ? 'Copied!' : 'Copy Translated Text'}
+                  {copied ? t('Copied!') : t('Copy translated text')}
                 </Button>
                 <Button variant="primary" onClick={handleDownload}>
-                  Download Text (.txt)
+                  {t('Download text (.txt)')}
                 </Button>
               </div>
             </div>

@@ -6,6 +6,7 @@ import { Field, Select, Slider, Button } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { formatBytes, withSuffix } from '../../lib/format';
 import { downloadBlob } from '../../lib/download';
+import { useI18n } from '../../lib/i18n';
 import { SegmentClient } from '../_segment/segmentClient';
 import { drawTextLayers, calculateTargetSize } from '../_segment/composite';
 import type { TextLayer } from '../_segment/types';
@@ -31,13 +32,16 @@ const FONT_WEIGHTS = [
 ];
 
 export default function TextBehindImageTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('text-behind-image');
   const [file, setFile] = useState<File | null>(null);
   const [imageEl, setImageEl] = useState<HTMLImageElement | null>(null);
 
   const [segmenting, setSegmenting] = useState<boolean>(false);
   const [segmentProgress, setSegmentProgress] = useState<number>(0);
-  const [progressLabel, setProgressLabel] = useState<string>('');
+  const [progressMessage, setProgressMessage] = useState<{ key: string; params?: Record<string, string | number> }>({
+    key: 'Initializing AI subject segmentation...',
+  });
   const [error, setError] = useState<string | null>(null);
 
   const [layers, setLayers] = useState<TextLayer[]>([
@@ -121,7 +125,7 @@ export default function TextBehindImageTool() {
       setImageEl(img);
       setSegmenting(true);
       setSegmentProgress(0);
-      setProgressLabel('Initializing AI subject segmentation...');
+      setProgressMessage({ key: 'Initializing AI subject segmentation...' });
 
       const client = new SegmentClient();
       segmentClientRef.current = client;
@@ -129,11 +133,11 @@ export default function TextBehindImageTool() {
       await client.init((p) => {
         if (p?.progress !== undefined) {
           setSegmentProgress(Math.min(0.99, p.progress / 100));
-          setProgressLabel(`Loading model: ${Math.round(p.progress)}%`);
+          setProgressMessage({ key: 'Loading model: {percent}%', params: { percent: Math.round(p.progress) } });
         }
       });
 
-      setProgressLabel('Segmenting subject from image...');
+      setProgressMessage({ key: 'Segmenting subject from image...' });
       setSegmentProgress(0.5);
 
       // Model input size
@@ -328,24 +332,24 @@ export default function TextBehindImageTool() {
       {!file ? (
         <FileDrop
           accept="image/*"
-          label="Choose an image or drag it here"
-          hint="Place beautiful typography behind portrait subjects in 100% private browser processing."
+          label={t('Choose an image or drag it here')}
+          hint={t('Place beautiful typography behind portrait subjects in 100% private browser processing.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {error && <div className="error-banner">{error}</div>}
+          {error && <div className="error-banner">{t(error)}</div>}
 
           <div className="meta-chips">
             <span className="meta-chip">
-              Name: <strong>{file.name}</strong>
+              {t('Name:')} <strong>{file.name}</strong>
             </span>
             <span className="meta-chip">
-              Size: <strong>{formatBytes(file.size)}</strong>
+              {t('Size:')} <strong>{formatBytes(file.size)}</strong>
             </span>
             {imageEl && (
               <span className="meta-chip">
-                Resolution:{' '}
+                {t('Resolution:')}{' '}
                 <strong>
                   {imageEl.naturalWidth}x{imageEl.naturalHeight}
                 </strong>
@@ -355,22 +359,23 @@ export default function TextBehindImageTool() {
 
           {segmenting ? (
             <div style={{ marginTop: '2rem' }}>
-              <ProgressBar value={segmentProgress} label={progressLabel} />
+              <ProgressBar value={segmentProgress} label={t(progressMessage.key, progressMessage.params)} />
             </div>
           ) : (
             <div className={styles.editorLayout}>
               {/* Left / Top: Interactive Canvas Preview */}
               <div className={styles.canvasWrapper}>
                 <div className={styles.canvasHint} id={canvasHintId}>
-                  Click & drag anywhere on the image to position the selected text. With the preview focused, use the arrow keys to move it
-                  (Shift for larger steps).
+                  {t(
+                    'Click & drag anywhere on the image to position the selected text. With the preview focused, use the arrow keys to move it (Shift for larger steps).',
+                  )}
                 </div>
                 <canvas
                   ref={canvasRef}
                   className={styles.canvas}
                   tabIndex={0}
                   role="img"
-                  aria-label="Image preview with the selected text layer placed behind the subject"
+                  aria-label={t('Image preview with the selected text layer placed behind the subject')}
                   aria-describedby={canvasHintId}
                   onKeyDown={handleCanvasKeyDown}
                   onPointerDown={handlePointerDown}
@@ -380,10 +385,10 @@ export default function TextBehindImageTool() {
 
                 <div className="action-buttons" style={{ marginTop: '1.5rem', width: '100%' }}>
                   <Button variant="secondary" onClick={handleReset}>
-                    Choose another image
+                    {t('Choose another image')}
                   </Button>
                   <Button variant="primary" onClick={handleDownload}>
-                    Download PNG (Full Resolution)
+                    {t('Download PNG (Full Resolution)')}
                   </Button>
                 </div>
               </div>
@@ -393,9 +398,9 @@ export default function TextBehindImageTool() {
                 <div className={styles.controlsPanel}>
                   <div>
                     <div className={styles.layersHeader}>
-                      <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>Text Layers</span>
+                      <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{t('Text Layers')}</span>
                       <Button variant="secondary" onClick={handleAddLayer} style={{ padding: '4px 10px', fontSize: '0.8rem' }}>
-                        + Add Layer
+                        {t('+ Add Layer')}
                       </Button>
                     </div>
                     <div className={styles.layersTabs}>
@@ -405,43 +410,43 @@ export default function TextBehindImageTool() {
                           className={`${styles.layerTab} ${l.id === selectedLayer.id ? styles.layerTabActive : ''}`}
                           onClick={() => setSelectedLayerId(l.id)}
                         >
-                          Layer {index + 1}: {l.text || '(empty)'}
+                          {t('Layer {number}: {text}', { number: index + 1, text: l.text || t('(empty)') })}
                         </button>
                       ))}
                     </div>
                   </div>
 
-                  <Field label="Text content">
+                  <Field label={t('Text content')}>
                     <input
                       type="text"
                       className="select"
                       style={{ padding: '8px 12px' }}
                       value={selectedLayer.text}
                       onChange={(e) => updateSelectedLayer({ text: e.target.value })}
-                      placeholder="Enter text..."
+                      placeholder={t('Enter text...')}
                     />
                   </Field>
 
-                  <Field label="Font family">
+                  <Field label={t('Font family')}>
                     <Select
                       id={fontId}
                       value={selectedLayer.fontFamily}
                       onChange={(e) => updateSelectedLayer({ fontFamily: e.target.value })}
-                      options={SYSTEM_FONTS}
+                      options={SYSTEM_FONTS.map(({ value, label }) => ({ value, label: t(label) }))}
                     />
                   </Field>
 
                   <div className={styles.rowInputs}>
-                    <Field label="Font weight">
+                    <Field label={t('Font weight')}>
                       <Select
                         id={weightId}
                         value={selectedLayer.fontWeight}
                         onChange={(e) => updateSelectedLayer({ fontWeight: e.target.value })}
-                        options={FONT_WEIGHTS}
+                        options={FONT_WEIGHTS.map(({ value, label }) => ({ value, label: t(label) }))}
                       />
                     </Field>
 
-                    <Field label="Color">
+                    <Field label={t('Color')}>
                       <div className={styles.colorPickerRow}>
                         <input
                           type="color"
@@ -459,7 +464,7 @@ export default function TextBehindImageTool() {
                     </Field>
                   </div>
 
-                  <Field label="Font size">
+                  <Field label={t('Font size')}>
                     <Slider
                       value={selectedLayer.fontSize}
                       min={12}
@@ -470,7 +475,7 @@ export default function TextBehindImageTool() {
                     />
                   </Field>
 
-                  <Field label="Letter spacing">
+                  <Field label={t('Letter spacing')}>
                     <Slider
                       value={selectedLayer.letterSpacing}
                       min={-5}
@@ -481,7 +486,7 @@ export default function TextBehindImageTool() {
                     />
                   </Field>
 
-                  <Field label="Opacity">
+                  <Field label={t('Opacity')}>
                     <Slider
                       value={Math.round(selectedLayer.opacity * 100)}
                       min={0}
@@ -492,7 +497,7 @@ export default function TextBehindImageTool() {
                     />
                   </Field>
 
-                  <Field label="Rotation">
+                  <Field label={t('Rotation')}>
                     <Slider
                       value={selectedLayer.rotation}
                       min={-180}
@@ -505,7 +510,7 @@ export default function TextBehindImageTool() {
 
                   {layers.length > 1 && (
                     <button className={styles.deleteLayerBtn} onClick={() => handleDeleteLayer(selectedLayer.id)}>
-                      Delete this layer
+                      {t('Delete this layer')}
                     </button>
                   )}
                 </div>

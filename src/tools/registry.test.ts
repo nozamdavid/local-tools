@@ -27,6 +27,20 @@ describe('Tool Registry', () => {
     expect(new Set(paths).size, 'Expected all tool paths to be unique').toBe(TOOL_METAS.length);
   });
 
+  it('keeps the reserved routes for the new tools', () => {
+    const paths: Record<string, string> = {
+      'zip-extract': '/zip-extract',
+      'img-compare': '/image/compare',
+      'img-svg-optimize': '/image/svg-optimize',
+      'audio-trim': '/video/audio-trim',
+      'pdf-metadata-cleaner': '/pdf/metadata-cleaner',
+    };
+
+    for (const [id, path] of Object.entries(paths)) {
+      expect(TOOL_METAS.find((tool) => tool.id === id)?.path, `Tool "${id}" must keep reserved path "${path}"`).toBe(path);
+    }
+  });
+
   it('ensures every tool has between 3 and 8 tags', () => {
     for (const tool of TOOL_METAS) {
       expect(tool.tags.length, `Tool "${tool.id}" has ${tool.tags.length} tags, expected between 3 and 8`).toBeGreaterThanOrEqual(3);

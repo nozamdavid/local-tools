@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
-import { ArrowUpRight } from 'lucide-react';
-import { TOOL_METAS, type ToolMeta } from '../tools/registry';
+import { ChevronRight } from 'lucide-react';
+import { localizeToolMeta, TOOL_METAS, type ToolMeta } from '../tools/registry';
 import { MediaTile } from './Controls';
+import { getToolIcon } from '../design/tool-icons';
+import { useI18n } from '../lib/i18n';
 
 export interface ToolGridProps {
   tools?: ToolMeta[];
@@ -21,16 +23,20 @@ export function ToolCard({
   variant?: ToolGridProps['variant'];
   onSelect?: ToolGridProps['onSelect'];
 }) {
+  useI18n();
+  const localizedTool = localizeToolMeta(tool);
+  const Icon = getToolIcon(tool);
+
   return (
-    <Link to={tool.path} className={`tool-card tool-card-${variant}`} onClick={() => onSelect?.(tool)}>
+    <Link to={tool.path} className={`tool-card tool-card-${variant}`} onClick={() => onSelect?.(localizedTool)}>
       <MediaTile media={tool.media} size={variant === 'compact' ? 'sm' : 'md'}>
-        {tool.icon}
+        <Icon aria-hidden="true" />
       </MediaTile>
       <span className="tool-card-body">
-        <span className="tool-card-title">{tool.title}</span>
-        {variant === 'default' && <span className="tool-card-desc">{tool.description}</span>}
+        <span className="tool-card-title">{localizedTool.title}</span>
+        {variant === 'default' && <span className="tool-card-desc">{localizedTool.description}</span>}
       </span>
-      <ArrowUpRight className="tool-card-arrow" aria-hidden="true" />
+      <ChevronRight className="tool-card-arrow" aria-hidden="true" />
     </Link>
   );
 }

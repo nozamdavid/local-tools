@@ -1,0 +1,17 @@
+when:
+  - event: [push, pull_request]
+    branch: [main]
+
+engine: nixery
+dependencies:
+  nixpkgs: [nodejs_24]
+
+steps:
+  - name: Install locked dependencies
+    command: npm ci
+  - name: Check source
+    command: npm run lint && npm run format:check
+  - name: Run tests
+    command: npm test -- --maxWorkers=1
+  - name: Build production assets
+    command: npm run build

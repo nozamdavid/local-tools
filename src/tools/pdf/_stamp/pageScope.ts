@@ -38,3 +38,12 @@ export function getTargetPages(
 
   return list;
 }
+
+/** Keeps incomplete range drafts from throwing while controls render. */
+export function getTargetPagesResult(...args: Parameters<typeof getTargetPages>): { pages: number[]; error: string | null } {
+  try {
+    return { pages: getTargetPages(...args), error: null };
+  } catch (error) {
+    return { pages: [], error: error instanceof Error ? error.message : 'Invalid range.' };
+  }
+}

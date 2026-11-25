@@ -5,6 +5,7 @@ import { ProgressBar } from '../../../components/ProgressBar';
 import { ToolPage } from '../../../components/ToolPage';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
+import { useI18n } from '../../../lib/i18n';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { getToolMeta } from '../../registry';
@@ -14,6 +15,7 @@ import { usePdfSource } from '../_thumbs/usePdfSource';
 import styles from './Tool.module.css';
 
 export default function RedactTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-redact');
   const source = usePdfSource();
   const job = useJob();
@@ -150,14 +152,14 @@ export default function RedactTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Permanently black out sensitive areas and sanitize metadata. 100% in-browser."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Permanently black out sensitive areas and sanitize metadata. 100% in-browser.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.result ? (
             <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
@@ -166,31 +168,31 @@ export default function RedactTool() {
               <div className={styles.topRow}>
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    File: <strong>{file.name}</strong>
+                    {t('File:')} <strong>{file.name}</strong>
                   </span>
                   <span className="meta-chip">
-                    Size: <strong>{formatBytes(file.size)}</strong>
+                    {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                   </span>
                   {source.doc && (
                     <span className="meta-chip">
-                      Pages: <strong>{total}</strong>
+                      {t('Pages:')} <strong>{total}</strong>
                     </span>
                   )}
                 </div>
                 <Button variant="secondary" onClick={handleReset}>
-                  Change PDF
+                  {t('Change PDF')}
                 </Button>
               </div>
 
               {/* Prominent Permanent Redaction & Rasterization Disclosure */}
               <div className={styles.warningBanner}>
-                <strong>⚠️ Permanent Redaction &amp; Rasterization Disclosure:</strong> Redaction permanently removes underlying sensitive
-                data by rasterizing pages into high-resolution images, burning opaque rectangles directly into the pixel data, and
-                generating an entirely new PDF with zero source objects, metadata, or attachments. Because pages are rasterized to ensure
-                unrecoverable deletion, selectable text on those pages will be converted to page imagery.
+                <strong>{t('⚠️ Permanent Redaction & Rasterization Disclosure:')}</strong>{' '}
+                {t(
+                  'Redaction permanently removes underlying sensitive data by rasterizing pages into high-resolution images, burning opaque rectangles directly into the pixel data, and generating an entirely new PDF with zero source objects, metadata, or attachments. Because pages are rasterized to ensure unrecoverable deletion, selectable text on those pages will be converted to page imagery.',
+                )}
               </div>
 
-              {source.loading && <p className={styles.status}>Opening PDF document…</p>}
+              {source.loading && <p className={styles.status}>{t('Opening PDF document…')}</p>}
 
               {source.doc && (
                 <div className={styles.editorGrid}>
@@ -198,18 +200,18 @@ export default function RedactTool() {
                   <div className={styles.previewColumn}>
                     <div className={styles.pageNav}>
                       <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>
-                        Page {previewPage} of {total} ({currentPageBoxes.length} redactions)
+                        {t('Page {page} of {total} ({count} redactions)', { page: previewPage, total, count: currentPageBoxes.length })}
                       </span>
                       <div className={styles.pageNavButtons}>
                         <Button variant="secondary" disabled={previewPage <= 1} onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}>
-                          Prev
+                          {t('Prev')}
                         </Button>
                         <Button
                           variant="secondary"
                           disabled={previewPage >= total}
                           onClick={() => setPreviewPage((p) => Math.min(total, p + 1))}
                         >
-                          Next
+                          {t('Next')}
                         </Button>
                       </div>
                     </div>
@@ -217,7 +219,7 @@ export default function RedactTool() {
                     <div className={styles.previewContainer}>
                       {previewThumb ? (
                         <div className={styles.pageImgWrapper}>
-                          <img src={previewThumb} alt={`Page ${previewPage}`} className={styles.pageImg} />
+                          <img src={previewThumb} alt={t('Page {number}', { number: previewPage })} className={styles.pageImg} />
 
                           {/* Interactive selection overlay for drawing redactions */}
                           <div
@@ -247,7 +249,7 @@ export default function RedactTool() {
                                     e.stopPropagation();
                                     removeBox(box.id);
                                   }}
-                                  title="Remove redaction"
+                                  title={t('Remove redaction')}
                                 >
                                   ✕
                                 </button>
@@ -269,7 +271,7 @@ export default function RedactTool() {
                           </div>
                         </div>
                       ) : (
-                        <div style={{ color: 'var(--text-muted)' }}>Loading page preview…</div>
+                        <div style={{ color: 'var(--text-muted)' }}>{t('Loading page preview…')}</div>
                       )}
                     </div>
                   </div>
@@ -277,12 +279,12 @@ export default function RedactTool() {
                   {/* Right Column: Controls */}
                   <div className={styles.controlsColumn}>
                     <div className={styles.card}>
-                      <h3 style={{ margin: 0, fontSize: '1.05rem' }}>Redaction Tools</h3>
+                      <h3 style={{ margin: 0, fontSize: '1.05rem' }}>{t('Redaction Tools')}</h3>
                       <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
-                        Click and drag across sensitive text or images on the page preview to mark an opaque redaction area.
+                        {t('Click and drag across sensitive text or images on the page preview to mark an opaque redaction area.')}
                       </p>
 
-                      <Field label="Redaction Fill Color">
+                      <Field label={t('Redaction Fill Color')}>
                         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                             <input
@@ -292,7 +294,7 @@ export default function RedactTool() {
                               checked={boxColor === '#000000'}
                               onChange={() => setBoxColor('#000000')}
                             />
-                            <span>Solid Black</span>
+                            <span>{t('Solid Black')}</span>
                           </label>
                           <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                             <input
@@ -302,16 +304,19 @@ export default function RedactTool() {
                               checked={boxColor === '#ffffff'}
                               onChange={() => setBoxColor('#ffffff')}
                             />
-                            <span>Solid White</span>
+                            <span>{t('Solid White')}</span>
                           </label>
                         </div>
                       </Field>
 
-                      <Field label="Rasterization Quality / DPI" hint="Higher DPI produces sharper text but takes longer to process.">
+                      <Field
+                        label={t('Rasterization Quality / DPI')}
+                        hint={t('Higher DPI produces sharper text but takes longer to process.')}
+                      >
                         <Select
                           options={[
-                            { value: '150', label: '150 DPI (Balanced / Recommended)' },
-                            { value: '200', label: '200 DPI (High Resolution)' },
+                            { value: '150', label: t('150 DPI (Balanced / Recommended)') },
+                            { value: '200', label: t('200 DPI (High Resolution)') },
                           ]}
                           value={String(dpi)}
                           onChange={(e) => setDpi(Number(e.target.value))}
@@ -320,38 +325,44 @@ export default function RedactTool() {
 
                       {currentPageBoxes.length > 0 && (
                         <Button variant="secondary" onClick={clearPageBoxes}>
-                          Clear Page {previewPage} Redactions
+                          {t('Clear Page {page} Redactions', { page: previewPage })}
                         </Button>
                       )}
                     </div>
 
                     <div className={styles.card}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>Marked Redactions ({redactions.length})</span>
+                        <span style={{ fontWeight: 600, fontSize: '0.92rem' }}>
+                          {t('Marked Redactions ({count})', { count: redactions.length })}
+                        </span>
                         {redactions.length > 0 && (
                           <Button
                             variant="secondary"
                             onClick={() => setRedactions([])}
                             style={{ fontSize: '0.8rem', padding: '0.3rem 0.6rem' }}
                           >
-                            Clear All
+                            {t('Clear All')}
                           </Button>
                         )}
                       </div>
 
                       {redactions.length === 0 ? (
                         <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0 }}>
-                          No redactions marked. Drag across the preview to create one.
+                          {t('No redactions marked. Drag across the preview to create one.')}
                         </p>
                       ) : (
                         <div className={styles.boxList}>
                           {redactions.map((box, idx) => (
                             <div key={box.id} className={styles.boxListItem}>
                               <span>
-                                <strong>#{idx + 1}</strong> Page {box.pageNum} — {Math.round(box.widthPercent)}% ×{' '}
-                                {Math.round(box.heightPercent)}%
+                                <strong>#{idx + 1}</strong>{' '}
+                                {t('Page {page} — {width}% × {height}%', {
+                                  page: box.pageNum,
+                                  width: Math.round(box.widthPercent),
+                                  height: Math.round(box.heightPercent),
+                                })}
                               </span>
-                              <button className={styles.deleteListBtn} onClick={() => removeBox(box.id)} title="Remove">
+                              <button className={styles.deleteListBtn} onClick={() => removeBox(box.id)} title={t('Remove')}>
                                 ✕
                               </button>
                             </div>
@@ -361,10 +372,10 @@ export default function RedactTool() {
                     </div>
 
                     {job.status === 'running' ? (
-                      <ProgressBar value={job.progress} label="Redacting and rasterizing PDF..." />
+                      <ProgressBar value={job.progress} label={t('Redacting and rasterizing PDF...')} />
                     ) : (
                       <Button variant="primary" disabled={redactions.length === 0} onClick={handleRedact}>
-                        Permanently Redact PDF ({redactions.length} marked)
+                        {t('Permanently Redact PDF ({count} marked)', { count: redactions.length })}
                       </Button>
                     )}
                   </div>

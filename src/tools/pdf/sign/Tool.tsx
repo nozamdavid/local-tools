@@ -7,6 +7,7 @@ import { Field, Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
+import { useI18n } from '../../../lib/i18n';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { usePdfSource } from '../_thumbs/usePdfSource';
@@ -24,6 +25,7 @@ const TYPED_FONTS = [
 ];
 
 export default function SignTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-sign');
   const source = usePdfSource();
   const job = useJob();
@@ -325,14 +327,14 @@ export default function SignTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Draw, type or upload your signature and place it on any page."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Draw, type or upload your signature and place it on any page.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.result ? (
             <PdfPreview blob={job.result} filename={outName} pageCount={total} onReset={handleReset} />
@@ -341,28 +343,30 @@ export default function SignTool() {
               <div className={styles.topRow}>
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    File: <strong>{file.name}</strong>
+                    {t('File:')} <strong>{file.name}</strong>
                   </span>
                   <span className="meta-chip">
-                    Size: <strong>{formatBytes(file.size)}</strong>
+                    {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                   </span>
                   {source.doc && (
                     <span className="meta-chip">
-                      Pages: <strong>{total}</strong>
+                      {t('Pages:')} <strong>{total}</strong>
                     </span>
                   )}
                 </div>
                 <Button variant="secondary" onClick={handleReset}>
-                  Change PDF
+                  {t('Change PDF')}
                 </Button>
               </div>
 
               <div className={styles.noticeBanner}>
-                <strong>Visual signature only:</strong> This tool places a visual signature image stamp on selected PDF pages. It does not
-                create or attach a cryptographic / PKI digital signature certificate.
+                <strong>{t('Visual signature only:')}</strong>{' '}
+                {t(
+                  'This tool places a visual signature image stamp on selected PDF pages. It does not create or attach a cryptographic / PKI digital signature certificate.',
+                )}
               </div>
 
-              {source.loading && <p className={styles.status}>Opening PDF document…</p>}
+              {source.loading && <p className={styles.status}>{t('Opening PDF document…')}</p>}
 
               {source.doc && (
                 <>
@@ -373,7 +377,7 @@ export default function SignTool() {
                       aria-pressed={inputMode === 'draw'}
                       onClick={() => setInputMode('draw')}
                     >
-                      ✏️ Draw signature
+                      {t('✏️ Draw signature')}
                     </button>
                     <button
                       type="button"
@@ -381,7 +385,7 @@ export default function SignTool() {
                       aria-pressed={inputMode === 'type'}
                       onClick={() => setInputMode('type')}
                     >
-                      ⌨️ Type signature
+                      {t('⌨️ Type signature')}
                     </button>
                     <button
                       type="button"
@@ -389,7 +393,7 @@ export default function SignTool() {
                       aria-pressed={inputMode === 'upload'}
                       onClick={() => setInputMode('upload')}
                     >
-                      📁 Upload signature
+                      {t('📁 Upload signature')}
                     </button>
                   </div>
 
@@ -400,7 +404,9 @@ export default function SignTool() {
                         width={500}
                         height={160}
                         role="img"
-                        aria-label="Signature drawing area. Drawing needs a mouse, touch or pen. To sign with the keyboard, choose Type signature."
+                        aria-label={t(
+                          'Signature drawing area. Drawing needs a mouse, touch or pen. To sign with the keyboard, choose Type signature.',
+                        )}
                         className={styles.drawCanvas}
                         onPointerDown={startDrawing}
                         onPointerMove={draw}
@@ -413,18 +419,18 @@ export default function SignTool() {
                             className={`${styles.colorDot} ${penColor === '#000000' ? styles.colorDotActive : ''}`}
                             style={{ backgroundColor: '#000000' }}
                             onClick={() => setPenColor('#000000')}
-                            aria-label="Black pen"
+                            aria-label={t('Black pen')}
                           />
                           <button
                             type="button"
                             className={`${styles.colorDot} ${penColor === '#002b80' ? styles.colorDotActive : ''}`}
                             style={{ backgroundColor: '#002b80' }}
                             onClick={() => setPenColor('#002b80')}
-                            aria-label="Blue pen"
+                            aria-label={t('Blue pen')}
                           />
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <span style={{ fontSize: '0.85rem' }}>Width:</span>
+                          <span style={{ fontSize: '0.85rem' }}>{t('Width:')}</span>
                           <input
                             type="range"
                             min={1}
@@ -435,7 +441,7 @@ export default function SignTool() {
                           />
                         </div>
                         <Button variant="secondary" onClick={clearCanvas}>
-                          Clear signature
+                          {t('Clear signature')}
                         </Button>
                       </div>
                     </div>
@@ -443,17 +449,17 @@ export default function SignTool() {
 
                   {inputMode === 'type' && (
                     <div className={styles.typeSection}>
-                      <Field label="Your Name">
+                      <Field label={t('Your Name')}>
                         <input
                           type="text"
                           className={styles.textInput}
                           value={typedName}
                           onChange={(e) => setTypedName(e.target.value)}
-                          placeholder="Type your name"
+                          placeholder={t('Type your name')}
                         />
                       </Field>
 
-                      <Field label="Choose Signature Style">
+                      <Field label={t('Choose Signature Style')}>
                         <div className={styles.fontPicker}>
                           {TYPED_FONTS.map((font) => (
                             <div
@@ -462,7 +468,7 @@ export default function SignTool() {
                               style={{ fontFamily: font.family }}
                               onClick={() => setSelectedFont(font.family)}
                             >
-                              {typedName || 'Signature'}
+                              {typedName || t('Signature')}
                             </div>
                           ))}
                         </div>
@@ -475,14 +481,14 @@ export default function SignTool() {
                             className={`${styles.colorDot} ${typeColor === '#000000' ? styles.colorDotActive : ''}`}
                             style={{ backgroundColor: '#000000' }}
                             onClick={() => setTypeColor('#000000')}
-                            aria-label="Black ink"
+                            aria-label={t('Black ink')}
                           />
                           <button
                             type="button"
                             className={`${styles.colorDot} ${typeColor === '#002b80' ? styles.colorDotActive : ''}`}
                             style={{ backgroundColor: '#002b80' }}
                             onClick={() => setTypeColor('#002b80')}
-                            aria-label="Blue ink"
+                            aria-label={t('Blue ink')}
                           />
                         </div>
                       </div>
@@ -503,16 +509,16 @@ export default function SignTool() {
                       />
                       {uploadedUrl ? (
                         <div>
-                          <img src={uploadedUrl} alt="Uploaded signature" className={styles.uploadPreview} />
+                          <img src={uploadedUrl} alt={t('Uploaded signature')} className={styles.uploadPreview} />
                           <p style={{ marginTop: '0.75rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                            Click to choose a different signature image
+                            {t('Click to choose a different signature image')}
                           </p>
                         </div>
                       ) : (
                         <div>
-                          <p style={{ fontWeight: 600 }}>Click to upload signature image</p>
+                          <p style={{ fontWeight: 600 }}>{t('Click to upload signature image')}</p>
                           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                            Supports transparent PNG, JPG, or SVG
+                            {t('Supports transparent PNG, JPG, or SVG')}
                           </p>
                         </div>
                       )}
@@ -520,9 +526,9 @@ export default function SignTool() {
                   )}
 
                   <div className={styles.placementSection}>
-                    <h3>Position & Pages Preview</h3>
+                    <h3>{t('Position & Pages Preview')}</h3>
                     <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)' }}>
-                      Drag the signature in the preview below to place it, or use the position controls.
+                      {t('Drag the signature in the preview below to place it, or use the position controls.')}
                     </p>
 
                     <div className={styles.placementGrid}>
@@ -534,9 +540,16 @@ export default function SignTool() {
                           onPointerUp={handlePointerUpSig}
                         >
                           {previewThumb ? (
-                            <img src={previewThumb} alt={`Page ${previewPage}`} className={styles.previewPageImage} draggable={false} />
+                            <img
+                              src={previewThumb}
+                              alt={t('Page {number}', { number: previewPage })}
+                              className={styles.previewPageImage}
+                              draggable={false}
+                            />
                           ) : (
-                            <div style={{ padding: '4rem', color: 'var(--text-muted)' }}>Loading page {previewPage}…</div>
+                            <div style={{ padding: '4rem', color: 'var(--text-muted)' }}>
+                              {t('Loading page {number}…', { number: previewPage })}
+                            </div>
                           )}
 
                           {signatureUrl && (
@@ -550,7 +563,12 @@ export default function SignTool() {
                               }}
                               onPointerDown={handlePointerDownSig}
                             >
-                              <img src={signatureUrl} alt="Signature preview" className={styles.signatureOverlayImg} draggable={false} />
+                              <img
+                                src={signatureUrl}
+                                alt={t('Signature preview')}
+                                className={styles.signatureOverlayImg}
+                                draggable={false}
+                              />
                             </div>
                           )}
                         </div>
@@ -559,47 +577,47 @@ export default function SignTool() {
                           style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.75rem', marginTop: '0.5rem' }}
                         >
                           <Button variant="secondary" disabled={previewPage <= 1} onClick={() => setPreviewPage((p) => Math.max(1, p - 1))}>
-                            ‹ Prev
+                            ‹ {t('Prev')}
                           </Button>
                           <span style={{ fontSize: '0.9rem', fontWeight: 600 }}>
-                            Previewing page {previewPage} of {total}
+                            {t('Previewing page {page} of {total}', { page: previewPage, total })}
                           </span>
                           <Button
                             variant="secondary"
                             disabled={previewPage >= total}
                             onClick={() => setPreviewPage((p) => Math.min(total, p + 1))}
                           >
-                            Next ›
+                            {t('Next')} ›
                           </Button>
                         </div>
                       </div>
 
                       <div>
-                        <Field label="Signature Size">
+                        <Field label={t('Signature Size')}>
                           <Slider value={widthPercent} min={10} max={60} step={2} unit="%" onChange={setWidthPercent} />
                         </Field>
 
-                        <Field label="Quick Position Presets">
+                        <Field label={t('Quick Position Presets')}>
                           <div className={styles.presetButtons}>
                             <button type="button" className={styles.presetBtn} onClick={() => setPreset('bottom-right')}>
-                              Bottom Right
+                              {t('Bottom Right')}
                             </button>
                             <button type="button" className={styles.presetBtn} onClick={() => setPreset('bottom-center')}>
-                              Bottom Center
+                              {t('Bottom Center')}
                             </button>
                             <button type="button" className={styles.presetBtn} onClick={() => setPreset('bottom-left')}>
-                              Bottom Left
+                              {t('Bottom Left')}
                             </button>
                             <button type="button" className={styles.presetBtn} onClick={() => setPreset('center')}>
-                              Center
+                              {t('Center')}
                             </button>
                             <button type="button" className={styles.presetBtn} onClick={() => setPreset('top-right')}>
-                              Top Right
+                              {t('Top Right')}
                             </button>
                           </div>
                         </Field>
 
-                        <Field label="Target Pages">
+                        <Field label={t('Target Pages')}>
                           <div className={styles.scopeOptions}>
                             <label>
                               <input
@@ -608,7 +626,7 @@ export default function SignTool() {
                                 checked={targetMode === 'last'}
                                 onChange={() => setTargetMode('last')}
                               />
-                              Last page only
+                              {t('Last page only')}
                             </label>
                             <label>
                               <input
@@ -617,11 +635,11 @@ export default function SignTool() {
                                 checked={targetMode === 'first'}
                                 onChange={() => setTargetMode('first')}
                               />
-                              First page only
+                              {t('First page only')}
                             </label>
                             <label>
                               <input type="radio" name="targetMode" checked={targetMode === 'all'} onChange={() => setTargetMode('all')} />
-                              All pages
+                              {t('All pages')}
                             </label>
                             <label>
                               <input
@@ -630,7 +648,7 @@ export default function SignTool() {
                                 checked={targetMode === 'selected'}
                                 onChange={() => setTargetMode('selected')}
                               />
-                              Pick pages
+                              {t('Pick pages')}
                             </label>
                           </div>
 
@@ -644,7 +662,7 @@ export default function SignTool() {
                                     className={`${styles.pageMiniCard} ${isSel ? styles.pageMiniCardSelected : ''}`}
                                     onClick={() => toggleSelectedPage(pNum)}
                                   >
-                                    Page {pNum}
+                                    {t('Page {number}', { number: pNum })}
                                   </div>
                                 );
                               })}
@@ -656,14 +674,17 @@ export default function SignTool() {
                   </div>
 
                   {job.status === 'running' ? (
-                    <ProgressBar value={job.progress} label="Applying signature to PDF…" />
+                    <ProgressBar value={job.progress} label={t('Applying signature to PDF…')} />
                   ) : (
                     <div className="action-buttons" style={{ marginTop: '1.75rem' }}>
                       <Button variant="secondary" onClick={handleReset}>
-                        Choose different file
+                        {t('Choose different file')}
                       </Button>
                       <Button variant="primary" onClick={handleApply} disabled={!signatureUrl || targetPageList.length === 0}>
-                        Sign {targetPageList.length} {targetPageList.length === 1 ? 'page' : 'pages'}
+                        {t('Sign {count} {unit}', {
+                          count: targetPageList.length,
+                          unit: targetPageList.length === 1 ? t('page') : t('pages'),
+                        })}
                       </Button>
                     </div>
                   )}

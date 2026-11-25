@@ -6,6 +6,7 @@ import { Button, Field, Select } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
+import { useI18n } from '../../../lib/i18n';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { usePdfSource } from '../_thumbs/usePdfSource';
 import { DownloadResult } from '../_layout/DownloadResult';
@@ -13,15 +14,11 @@ import { parseNumber } from '../_layout/tables';
 import { analyzePdf, buildXlsx, toGrids, type PageBlocks, type SheetMode } from './buildXlsx';
 import styles from './Tool.module.css';
 
-const MODES = [
-  { value: 'per-page', label: 'One sheet per page' },
-  { value: 'combined', label: 'One combined sheet' },
-];
-
 const PREVIEW_GRIDS = 8;
 const PREVIEW_ROWS = 12;
 
 export default function PdfToExcelTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-pdf-to-excel');
   const source = usePdfSource();
   const job = useJob();
@@ -91,6 +88,10 @@ export default function PdfToExcelTool() {
   const file = source.file;
   const outName = file ? `${file.name.replace(/\.pdf$/i, '')}.xlsx` : 'tables.xlsx';
   const ready = analysis !== null && !analyzing;
+  const modes = [
+    { value: 'per-page', label: t('One sheet per page') },
+    { value: 'combined', label: t('One combined sheet') },
+  ];
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
@@ -99,73 +100,86 @@ export default function PdfToExcelTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Tables are detected from the text positions and become spreadsheet cells."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Tables are detected from the text positions and become spreadsheet cells.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {error && <div className="error-banner">{error}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {error && <div className="error-banner">{t(error)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           <div className={styles.topRow}>
             <div className="meta-chips">
               <span className="meta-chip">
-                File: <strong>{file.name}</strong>
+                {t('File:')} <strong>{file.name}</strong>
               </span>
               <span className="meta-chip">
-                Size: <strong>{formatBytes(file.size)}</strong>
+                {t('Size:')} <strong>{formatBytes(file.size)}</strong>
               </span>
               {doc && (
                 <span className="meta-chip">
-                  Pages: <strong>{source.pages.length}</strong>
+                  {t('Pages:')} <strong>{source.pages.length}</strong>
                 </span>
               )}
               {ready && (
                 <span className="meta-chip">
-                  Tables found: <strong>{tableCount}</strong>
+                  {t('Tables found:')} <strong>{tableCount}</strong>
                 </span>
               )}
             </div>
             <Button variant="secondary" onClick={handleReset}>
-              Change PDF
+              {t('Change PDF')}
             </Button>
           </div>
 
-          {source.loading && <p className={styles.status}>Opening PDF document…</p>}
-          {analyzing && <ProgressBar value={analysisProgress} label="Looking for tables…" />}
+          {source.loading && <p className={styles.status}>{t('Opening PDF document…')}</p>}
+          {analyzing && <ProgressBar value={analysisProgress} label={t('Looking for tables…')} />}
 
           {job.result ? (
             <DownloadResult
               blob={job.result}
               filename={outName}
-              summary={`${tableCount} ${tableCount === 1 ? 'table' : 'tables'} written to ${mode === 'combined' ? 'one sheet' : 'one sheet per page'}.`}
+              summary={t('{count} {unit} written to {target}.', {
+                count: tableCount,
+                unit: tableCount === 1 ? t('table') : t('tables'),
+                target: mode === 'combined' ? t('one sheet') : t('one sheet per page'),
+              })}
               onReset={handleReset}
             />
           ) : (
             ready && (
               <>
                 <div className={styles.controls}>
-                  <Field label="Sheets">
-                    <Select id={modeId} value={mode} onChange={(e) => setMode(e.target.value as SheetMode)} options={MODES} />
+                  <Field label={t('Sheets')}>
+                    <Select id={modeId} value={mode} onChange={(e) => setMode(e.target.value as SheetMode)} options={modes} />
                   </Field>
-                  <label className={styles.check}>
-                    <input type="checkbox" checked={includeText} onChange={(e) => setIncludeText(e.target.checked)} />
-                    <span>Include text outside tables</span>
-                  </label>
+                  <details className="tool-options">
+                    <summary>{t('Export options')}</summary>
+                    <div className="tool-options-body">
+                      <label className={styles.check}>
+                        <input type="checkbox" checked={includeText} onChange={(e) => setIncludeText(e.target.checked)} />
+                        <span>{t('Include text outside tables')}</span>
+                      </label>
+                    </div>
+                  </details>
                 </div>
 
                 {grids.length === 0 ? (
                   <p className={styles.status}>
-                    No tables found. Turn on &ldquo;Include text outside tables&rdquo; to export the page text instead.
+                    {t('No tables found. Turn on “Include text outside tables” to export the page text instead.')}
                   </p>
                 ) : (
-                  <div className={styles.previews} aria-label="Preview">
+                  <div className={styles.previews} aria-label={t('Preview')}>
                     {grids.slice(0, PREVIEW_GRIDS).map((grid, index) => (
                       <figure key={index} className={styles.preview} data-kind={grid.kind}>
                         <figcaption>
-                          Page {grid.page} · {grid.kind === 'table' ? 'Table' : 'Text'} · {grid.rows.length} rows
+                          {t('Page {number} · {kind} · {count} rows', {
+                            number: grid.page,
+                            kind: grid.kind === 'table' ? t('Table') : t('Text'),
+                            count: grid.rows.length,
+                          })}
                         </figcaption>
                         <div className={styles.scroll}>
                           <table className={styles.table}>
@@ -186,21 +200,23 @@ export default function PdfToExcelTool() {
                             </tbody>
                           </table>
                         </div>
-                        {grid.rows.length > PREVIEW_ROWS && <p className={styles.more}>+ {grid.rows.length - PREVIEW_ROWS} more rows</p>}
+                        {grid.rows.length > PREVIEW_ROWS && (
+                          <p className={styles.more}>{t('+ {count} more rows', { count: grid.rows.length - PREVIEW_ROWS })}</p>
+                        )}
                       </figure>
                     ))}
                     {grids.length > PREVIEW_GRIDS && (
-                      <p className={styles.more}>+ {grids.length - PREVIEW_GRIDS} more not shown in the preview</p>
+                      <p className={styles.more}>{t('+ {count} more not shown in the preview', { count: grids.length - PREVIEW_GRIDS })}</p>
                     )}
                   </div>
                 )}
 
                 {job.status === 'running' ? (
-                  <ProgressBar value={job.progress} label="Writing spreadsheet…" />
+                  <ProgressBar value={job.progress} label={t('Writing spreadsheet…')} />
                 ) : (
                   <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                     <Button variant="primary" onClick={handleConvert} disabled={grids.length === 0}>
-                      Convert to XLSX
+                      {t('Convert to XLSX')}
                     </Button>
                   </div>
                 )}

@@ -6,15 +6,17 @@ import { getToolMeta } from '../registry';
 import { downloadBlob } from '../../lib/download';
 import { peekPendingFiles } from '../../lib/handoff';
 import { classifyFile } from '../../lib/toolInputs';
+import { useI18n } from '../../lib/i18n';
 import { gpxToGeoData, kmlToGeoData, geoDataToGpx, geoDataToKml, getGeoSummary } from './gpxKml';
 import styles from './Tool.module.css';
 
 export default function GpxKmlTool() {
+  const { t, locale } = useI18n();
   const meta = getToolMeta('gpx-kml');
-  const title = meta.title !== 'gpx-kml' ? meta.title : 'GPX ↔ KML Converter';
+  const title = meta.title !== 'gpx-kml' ? meta.title : t('GPX ↔ KML Converter');
   const description =
     meta.description ||
-    'Convert GPS tracks, routes, and waypoints between GPX and KML while preserving multi-segment boundaries and elevations.';
+    t('Convert GPS tracks, routes, and waypoints between GPX and KML while preserving multi-segment boundaries and elevations.');
 
   const [direction, setDirection] = useState<'gpx-to-kml' | 'kml-to-gpx'>(() => {
     const pending = peekPendingFiles('/gpx-kml');
@@ -90,7 +92,9 @@ export default function GpxKmlTool() {
       const msg = err instanceof Error ? err.message : String(err);
       return { outputText: '', summary: null, error: msg };
     }
-  }, [inputText, direction]);
+    // Conversion helpers return localized errors.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inputText, direction, locale]);
 
   const outputFilename = useMemo(() => {
     const ext = direction === 'gpx-to-kml' ? '.kml' : '.gpx';
@@ -147,28 +151,28 @@ export default function GpxKmlTool() {
               className={`${styles.tab} ${inputTab === 'upload' ? styles.tabActive : ''}`}
               onClick={() => setInputTab('upload')}
             >
-              Upload file
+              {t('Upload file')}
             </button>
             <button
               type="button"
               className={`${styles.tab} ${inputTab === 'paste' ? styles.tabActive : ''}`}
               onClick={() => setInputTab('paste')}
             >
-              Paste XML
+              {t('Paste XML')}
             </button>
           </div>
 
           {inputTab === 'upload' ? (
             <FileDrop
               accept=".gpx,.kml,.xml,application/gpx+xml,application/vnd.google-earth.kml+xml"
-              label={direction === 'gpx-to-kml' ? 'Choose or drag a GPX file' : 'Choose or drag a KML file'}
-              hint="100% on-device. No maps, tiles, or GPS location data leave your device."
+              label={direction === 'gpx-to-kml' ? t('Choose or drag a GPX file') : t('Choose or drag a KML file')}
+              hint={t('100% on device. No maps, tiles, or GPS location data leave your device.')}
               onFiles={handleFiles}
             />
           ) : (
             <Field
-              label={direction === 'gpx-to-kml' ? 'GPX XML Data' : 'KML XML Data'}
-              hint="Paste raw XML containing waypoints, routes, or tracks"
+              label={direction === 'gpx-to-kml' ? t('GPX XML data') : t('KML XML data')}
+              hint={t('Paste raw XML containing waypoints, routes, or tracks')}
             >
               <textarea
                 className={styles.textarea}
@@ -186,7 +190,7 @@ export default function GpxKmlTool() {
 
         {conversion.error && (
           <div className={styles.errorBanner}>
-            <span>⚠️ {conversion.error}</span>
+            <span>⚠️ {t(conversion.error)}</span>
           </div>
         )}
 
@@ -194,57 +198,57 @@ export default function GpxKmlTool() {
           <div className={styles.summaryCard}>
             <div className={styles.summaryHeader}>
               <div className={styles.summaryTitle}>
-                Conversion Summary
+                {t('Conversion summary')}
                 <span className={styles.badge}>{outputFilename}</span>
               </div>
             </div>
 
             <div className={styles.statsGrid}>
               <div className={styles.statItem}>
-                <span className={styles.statLabel}>Waypoints</span>
+                <span className={styles.statLabel}>{t('Waypoints')}</span>
                 <span className={styles.statValue}>{conversion.summary.waypointsCount}</span>
               </div>
               <div className={styles.statItem}>
-                <span className={styles.statLabel}>Routes</span>
+                <span className={styles.statLabel}>{t('Routes')}</span>
                 <span className={styles.statValue}>{conversion.summary.routesCount}</span>
               </div>
               <div className={styles.statItem}>
-                <span className={styles.statLabel}>Tracks</span>
+                <span className={styles.statLabel}>{t('Tracks')}</span>
                 <span className={styles.statValue}>{conversion.summary.tracksCount}</span>
               </div>
               <div className={styles.statItem}>
-                <span className={styles.statLabel}>Segments</span>
+                <span className={styles.statLabel}>{t('Segments')}</span>
                 <span className={styles.statValue}>{conversion.summary.segmentsCount}</span>
               </div>
               <div className={styles.statItem}>
-                <span className={styles.statLabel}>Total Points</span>
+                <span className={styles.statLabel}>{t('Total points')}</span>
                 <span className={styles.statValue}>{conversion.summary.totalPointsCount}</span>
               </div>
               <div className={styles.statItem}>
-                <span className={styles.statLabel}>Elevation</span>
-                <span className={styles.statValue}>{conversion.summary.hasElevations ? 'Yes' : 'No'}</span>
+                <span className={styles.statLabel}>{t('Elevation')}</span>
+                <span className={styles.statValue}>{conversion.summary.hasElevations ? t('Yes') : t('No')}</span>
               </div>
             </div>
 
             {/* Unsupported loss disclosure */}
             <div className={styles.disclosureNotice}>
-              <div className={styles.disclosureTitle}>Data Fidelity Notice</div>
-              <div>{conversion.summary.disclosure}</div>
+              <div className={styles.disclosureTitle}>{t('Data fidelity notice')}</div>
+              <div>{t(conversion.summary.disclosure)}</div>
             </div>
 
-            <pre className={styles.previewText} tabIndex={0} aria-label="Converted output preview">
+            <pre className={styles.previewText} tabIndex={0} aria-label={t('Converted output preview')}>
               {conversion.outputText.slice(0, 1500)}...
             </pre>
 
             <div className={styles.actions}>
               <Button variant="primary" onClick={handleDownload}>
-                Download {outputFilename}
+                {t('Download {file}', { file: outputFilename })}
               </Button>
               <Button variant="secondary" onClick={handleCopy}>
-                {copied ? 'Copied to clipboard!' : 'Copy to clipboard'}
+                {copied ? t('Copied to clipboard!') : t('Copy to clipboard')}
               </Button>
               <Button variant="secondary" onClick={handleReset}>
-                Clear
+                {t('Clear')}
               </Button>
             </div>
           </div>

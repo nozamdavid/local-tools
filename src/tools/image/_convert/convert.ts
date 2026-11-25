@@ -1,6 +1,8 @@
 import { decodeImage, imageToCanvas, canvasToBlob, encodeBmp, encodeGif, loadImage } from '../../../lib/image';
 import { encodeJxlCanvas } from '../../../lib/jxl';
+import { translate } from '../../../lib/i18n';
 import type { ConvertOptions, SvgScale } from './types';
+import { createBoundedPngPreview, renderBoundedCanvas } from '../_basic/previews';
 
 let avifSupportPromise: Promise<boolean> | null = null;
 
@@ -39,123 +41,109 @@ function isSvgFile(file: File): boolean {
   return file.type === 'image/svg+xml' || /\.svg$/i.test(file.name);
 }
 
-async function loadSvgImage(file: File, scale: SvgScale, customWidth?: number): Promise<HTMLImageElement> {
-  const text = await file.text();
-  const doc = new DOMParser().parseFromString(text, 'image/svg+xml');
-  const root = doc.documentElement;
-  if (root.nodeName.toLowerCase() !== 'svg') {
-    return decodeImage(file);
+async function loadConversionSource(
+  file: File,
+  scale: SvgScale,
+  customWidth?: number,
+): Promise<{ img: HTMLImageElement; width: number; height: number }> {
+  let img = await decodeImage(file);
+  const sourceWidth = img.naturalWidth || img.width;
+  const sourceHeight = img.naturalHeight || img.height;
+  const factor =
+    scale === '4x' ? 4 : scale === '2x' ? 2 : scale === 'custom' && customWidth && customWidth > 0 ? customWidth / sourceWidth : 1;
+  const width = Math.max(1, Math.round(sourceWidth * factor));
+  const height = Math.max(1, Math.round(sourceHeight * factor));
+
+  if (factor !== 1 && isSvgFile(file)) {
+    const doc = new DOMParser().parseFromString(await file.text(), 'image/svg+xml');
+    const root = doc.documentElement;
+    if (!root.hasAttribute('viewBox')) root.setAttribute('viewBox', `0 0 ${sourceWidth} ${sourceHeight}`);
+    root.setAttribute('width', String(width));
+    root.setAttribute('height', String(height));
+    const source = new Blob([new XMLSerializer().serializeToString(root)], { type: 'image/svg+xml' });
+    img = await loadImage(source);
   }
 
-  let w = parseFloat(root.getAttribute('width') || '');
-  let h = parseFloat(root.getAttribute('height') || '');
-  if (!w || !h || isNaN(w) || isNaN(h)) {
-    const viewBox = root
-      .getAttribute('viewBox')
-      ?.trim()
-      .split(/[\s,]+/)
-      .map(Number);
-    if (viewBox && viewBox.length === 4 && viewBox[2] > 0 && viewBox[3] > 0) {
-      w = viewBox[2];
-      h = viewBox[3];
-    } else {
-      w = 512;
-      h = 512;
-    }
-  }
-
-  let targetW = Math.round(w);
-  let targetH = Math.round(h);
-
-  if (scale === '2x') {
-    targetW = Math.round(w * 2);
-    targetH = Math.round(h * 2);
-  } else if (scale === '4x') {
-    targetW = Math.round(w * 4);
-    targetH = Math.round(h * 4);
-  } else if (scale === 'custom' && customWidth && customWidth > 0) {
-    targetW = Math.round(customWidth);
-    targetH = Math.max(1, Math.round(h * (customWidth / w)));
-  }
-
-  root.setAttribute('width', String(targetW));
-  root.setAttribute('height', String(targetH));
-  const modifiedBlob = new Blob([new XMLSerializer().serializeToString(root)], {
-    type: 'image/svg+xml',
-  });
-  return loadImage(modifiedBlob);
+  return { img, width, height };
 }
 
 export async function convertSingleImage(options: ConvertOptions): Promise<Blob> {
-  const { file, format, quality, bgColor, svgScale = '1x', customWidth, lossless } = options;
-
-  let img: HTMLImageElement;
-  if (isSvgFile(file)) {
-    img = await loadSvgImage(file, svgScale, customWidth);
-  } else {
-    img = await decodeImage(file);
-  }
-
-  let width = img.naturalWidth || img.width;
-  let height = img.naturalHeight || img.height;
-
-  if (!isSvgFile(file) && svgScale) {
-    if (svgScale === '2x') {
-      width = Math.round(width * 2);
-      height = Math.round(height * 2);
-    } else if (svgScale === '4x') {
-      width = Math.round(width * 4);
-      height = Math.round(height * 4);
-    } else if (svgScale === 'custom' && customWidth && customWidth > 0) {
-      const origW = width;
-      width = Math.round(customWidth);
-      height = Math.max(1, Math.round(height * (customWidth / origW)));
-    }
-  }
-
+  const { file, svgScale = '1x', customWidth } = options;
+  const { img, width, height } = await loadConversionSource(file, svgScale, customWidth);
   const canvas = imageToCanvas(img, width, height);
+  return encodeOutputCanvas(canvas, options);
+}
 
-  let renderCanvas = canvas;
-  if (format === 'jpg' || format === 'bmp') {
-    const flatCanvas = document.createElement('canvas');
-    flatCanvas.width = canvas.width;
-    flatCanvas.height = canvas.height;
-    const ctx = flatCanvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas 2D is not available in this browser.');
-    ctx.fillStyle = bgColor || '#ffffff';
-    ctx.fillRect(0, 0, flatCanvas.width, flatCanvas.height);
-    ctx.drawImage(canvas, 0, 0);
-    renderCanvas = flatCanvas;
-  }
+async function encodeOutputCanvas(
+  canvas: HTMLCanvasElement,
+  options: Pick<ConvertOptions, 'format' | 'quality' | 'bgColor' | 'lossless'>,
+): Promise<Blob> {
+  const { format, quality, bgColor, lossless } = options;
+  const renderCanvas = format === 'jpg' || format === 'bmp' ? flattenOnBackground(canvas, bgColor) : canvas;
 
   const clampedQuality = Math.max(0.01, Math.min(1, (quality || 90) / 100));
-
   switch (format) {
     case 'jpg':
-      return await canvasToBlob(renderCanvas, 'image/jpeg', clampedQuality);
+      return canvasToBlob(renderCanvas, 'image/jpeg', clampedQuality);
     case 'png':
-      return await canvasToBlob(renderCanvas, 'image/png');
+      return canvasToBlob(renderCanvas, 'image/png');
     case 'webp':
-      return await canvasToBlob(renderCanvas, 'image/webp', clampedQuality);
-    case 'avif': {
+      return canvasToBlob(renderCanvas, 'image/webp', clampedQuality);
+    case 'avif':
       if (lossless) {
         const { encodeAvifCanvas } = await import('../../../lib/avif');
-        return await encodeAvifCanvas(renderCanvas, { lossless: true, quality: 100 });
+        return encodeAvifCanvas(renderCanvas, { lossless: true, quality: 100 });
       }
-      return await canvasToBlob(renderCanvas, 'image/avif', clampedQuality);
-    }
+      return canvasToBlob(renderCanvas, 'image/avif', clampedQuality);
     case 'bmp':
       return encodeBmp(renderCanvas);
     case 'gif':
-      return await encodeGif(renderCanvas);
+      return encodeGif(renderCanvas);
     case 'jxl': {
       const isLossless = lossless ?? quality === 100;
-      return await encodeJxlCanvas(renderCanvas, {
-        quality: quality || 90,
-        lossless: isLossless,
-      });
+      return encodeJxlCanvas(renderCanvas, { quality: quality || 90, lossless: isLossless });
     }
     default:
-      throw new Error(`Unsupported output format: ${format}`);
+      throw new Error(translate('Unsupported output format: {format}', { format }));
+  }
+}
+
+function flattenOnBackground(canvas: HTMLCanvasElement, bgColor: string): HTMLCanvasElement {
+  const flatCanvas = document.createElement('canvas');
+  flatCanvas.width = canvas.width;
+  flatCanvas.height = canvas.height;
+  const ctx = flatCanvas.getContext('2d');
+  if (!ctx) throw new Error(translate('Canvas 2D is not available in this browser.'));
+  ctx.fillStyle = bgColor || '#ffffff';
+  ctx.fillRect(0, 0, flatCanvas.width, flatCanvas.height);
+  ctx.drawImage(canvas, 0, 0);
+  return flatCanvas;
+}
+
+export interface ConverterPreviewResult {
+  blob: Blob;
+  outputWidth: number;
+  outputHeight: number;
+  isEncodedAppearance: boolean;
+}
+
+/** Encodes only a bounded sample for the interactive conversion preview. */
+export async function convertPreviewImage(options: ConvertOptions, maxEdge = 512): Promise<ConverterPreviewResult> {
+  const { file, format, svgScale = '1x', customWidth } = options;
+  const { img, width: outputWidth, height: outputHeight } = await loadConversionSource(file, svgScale, customWidth);
+
+  const sample = renderBoundedCanvas(img, outputWidth, outputHeight, maxEdge);
+  const appearanceCanvas = format === 'jpg' || format === 'bmp' ? flattenOnBackground(sample, options.bgColor) : sample;
+  const encoded = await encodeOutputCanvas(sample, options);
+  try {
+    const extension = format === 'jpg' ? 'jpg' : format;
+    const encodedFile = new File([encoded], `preview.${extension}`, { type: encoded.type });
+    const decoded = await decodeImage(encodedFile);
+    const blob = await createBoundedPngPreview(decoded, sample.width, sample.height, maxEdge);
+    return { blob, outputWidth, outputHeight, isEncodedAppearance: true };
+  } catch {
+    // Keep the target dimensions and background appearance visible when the browser cannot decode this format.
+    const fallback = await createBoundedPngPreview(appearanceCanvas, sample.width, sample.height, maxEdge);
+    return { blob: fallback, outputWidth, outputHeight, isEncodedAppearance: false };
   }
 }

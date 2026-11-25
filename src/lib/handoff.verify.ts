@@ -340,24 +340,23 @@ export function runHandoffVerification(): VerificationSummary {
     });
     const xlsxIds = suggestToolsForFiles([xlsx]).map((t) => t.id);
     assert(xlsxIds.includes('pdf-excel-to-pdf'), 'XLSX must include pdf-excel-to-pdf');
-    assert(!xlsxIds.includes('file-converter'), 'XLSX is not in file-converter matrix');
+    assert(xlsxIds.includes('file-converter'), 'XLSX must include the universal converter');
 
     const pptx = new File(['dummy'], 'slides.pptx', {
       type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
     });
     const pptxIds = suggestToolsForFiles([pptx]).map((t) => t.id);
     assert(pptxIds.includes('pdf-powerpoint-to-pdf'), 'PPTX must include pdf-powerpoint-to-pdf');
-    assert(!pptxIds.includes('file-converter'), 'PPTX is not in file-converter matrix');
+    assert(pptxIds.includes('file-converter'), 'PPTX must include the universal converter');
   });
 
-  // 15. Unsupported Legacy Office: .doc, .xls, .ppt, .odt, .ods, .odp, .rtf
-  runTest('Legacy Office: exclude converters, suggest file-inspector', () => {
-    const legacyNames = ['old.doc', 'sheet.xls', 'deck.ppt', 'doc.odt', 'table.ods', 'notes.rtf'];
-    for (const name of legacyNames) {
+  // The universal converter identifies legacy Office files and converts OpenDocument files.
+  runTest('Legacy Office and OpenDocument route to the universal converter and file inspector', () => {
+    for (const name of ['old.doc', 'sheet.xls', 'deck.ppt', 'doc.odt', 'table.ods', 'notes.rtf']) {
       const file = new File(['dummy'], name, { type: '' });
       const ids = suggestToolsForFiles([file]).map((t) => t.id);
       assert(ids.includes('file-inspector'), `${name} must include file-inspector`);
-      assert(!ids.includes('file-converter'), `${name} must NOT include file-converter`);
+      assert(ids.includes('file-converter'), `${name} must include file-converter`);
       assert(!ids.includes('pdf-word-to-pdf'), `${name} must NOT include pdf-word-to-pdf`);
       assert(!ids.includes('pdf-excel-to-pdf'), `${name} must NOT include pdf-excel-to-pdf`);
       assert(!ids.includes('pdf-powerpoint-to-pdf'), `${name} must NOT include pdf-powerpoint-to-pdf`);

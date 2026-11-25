@@ -1,9 +1,10 @@
 import { PDFDocument } from 'pdf-lib';
+import { MAX_PERSPECTIVE_SIDE } from './perspective';
 
 export type Enhance = 'none' | 'gray' | 'bw';
 export type PageSize = 'fit' | 'a4' | 'letter';
 
-const MAX_SIDE = 2400;
+const MAX_SIDE = MAX_PERSPECTIVE_SIDE;
 const PAGE_POINTS = {
   a4: { width: 595.28, height: 841.89 },
   letter: { width: 612, height: 792 },

@@ -19,13 +19,32 @@ function applyPreference(preference: ThemePreference) {
   else root.dataset.theme = preference;
 }
 
-/** Theme preference, persisted per browser. 'system' follows prefers-color-scheme. */
+function readSystemTheme(): 'light' | 'dark' {
+  if (typeof window === 'undefined' || !window.matchMedia) return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+
+/** Saved light/dark choices are persisted; the default follows the current OS preference. */
 export function useTheme() {
   const [preference, setPreferenceState] = useState<ThemePreference>(readPreference);
+  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(readSystemTheme);
 
   useEffect(() => {
     applyPreference(preference);
   }, [preference]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const query = window.matchMedia('(prefers-color-scheme: dark)');
+    const update = () => setSystemTheme(query.matches ? 'dark' : 'light');
+    update();
+    if (typeof query.addEventListener === 'function') {
+      query.addEventListener('change', update);
+      return () => query.removeEventListener('change', update);
+    }
+    query.addListener(update);
+    return () => query.removeListener(update);
+  }, []);
 
   const setPreference = useCallback((next: ThemePreference) => {
     try {
@@ -37,5 +56,5 @@ export function useTheme() {
     setPreferenceState(next);
   }, []);
 
-  return { preference, setPreference };
+  return { preference, theme: preference === 'system' ? systemTheme : preference, setPreference };
 }

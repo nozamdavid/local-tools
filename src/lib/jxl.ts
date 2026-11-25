@@ -239,27 +239,33 @@ export async function encodeJxlCanvas(canvas: HTMLCanvasElement, options?: JxlEn
 // decodes it via the JXL worker, and replaces the element's src with a rendered PNG blob.
 // -----------------------------------------------------------------------------
 if (typeof window !== 'undefined') {
+  const attemptedSources = new WeakMap<HTMLImageElement, string>();
   window.addEventListener(
     'error',
     (event: Event) => {
       const target = event.target;
-      if (target instanceof HTMLImageElement && target.src && target.src.startsWith('blob:') && !target.dataset.jxlHandled) {
-        target.dataset.jxlHandled = 'pending';
-        fetch(target.src)
+      if (target instanceof HTMLImageElement && target.src.startsWith('blob:') && attemptedSources.get(target) !== target.src) {
+        const source = target.src;
+        attemptedSources.set(target, source);
+        fetch(source)
           .then((res) => res.blob())
           .then(async (blob) => {
             if (blob.type === 'image/jxl' || (await isJxlFile(blob))) {
               const pngBlob = await decodeJxlToBlob(await blob.arrayBuffer());
+              if (target.src !== source) return;
               const pngUrl = URL.createObjectURL(pngBlob);
-              target.dataset.jxlHandled = 'true';
+              attemptedSources.set(target, pngUrl);
+              const release = () => {
+                URL.revokeObjectURL(pngUrl);
+                target.removeEventListener('load', release);
+                target.removeEventListener('error', release);
+              };
+              target.addEventListener('load', release);
+              target.addEventListener('error', release);
               target.src = pngUrl;
-            } else {
-              target.dataset.jxlHandled = 'ignored';
             }
           })
-          .catch(() => {
-            target.dataset.jxlHandled = 'error';
-          });
+          .catch(() => {});
       }
     },
     true, // capture phase

@@ -7,11 +7,13 @@ import { Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
+import { useI18n } from '../../../lib/i18n';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
+import { PageToolNav } from '../_pages/PageToolNav';
 import { PageThumb } from '../_thumbs/PageThumb';
 import { usePdfSource, type PageInfo } from '../_thumbs/usePdfSource';
-import { cleanDanglingLinks } from '../_pages/pdfPages';
+import { copySelectedPages } from '../_pages/pdfPages';
 import styles from './Tool.module.css';
 
 interface PageItem {
@@ -32,6 +34,7 @@ function initialItems(pages: PageInfo[]): PageItem[] {
 }
 
 export default function OrganizeTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-organize');
   const source = usePdfSource();
   const job = useJob();
@@ -115,8 +118,7 @@ export default function OrganizeTool() {
       setProgress(0.2);
 
       const srcIndices = plan.filter((it) => it.src !== null).map((it) => it.src as number);
-      cleanDanglingLinks(srcDoc, srcIndices);
-      const copied = await out.copyPages(srcDoc, srcIndices);
+      const copied = await copySelectedPages(srcDoc, srcIndices, out);
       const baseRotations = srcIndices.map((i) => srcDoc.getPage(i).getRotation().angle);
       setProgress(0.6);
 
@@ -145,19 +147,20 @@ export default function OrganizeTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
+      <PageToolNav currentId="pdf-organize" />
       {source.password && <PasswordDialog reason={source.password.reason} onSubmit={source.password.submit} onCancel={handleReset} />}
 
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Reorder, rotate, delete and insert blank pages."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Reorder, rotate or delete pages.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.result ? (
             <PdfPreview blob={job.result} filename={outName} pageCount={items?.length} onReset={handleReset} />
@@ -166,34 +169,36 @@ export default function OrganizeTool() {
               <div className={styles.topRow}>
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    File: <strong>{file.name}</strong>
+                    {t('File:')} <strong>{file.name}</strong>
                   </span>
                   <span className="meta-chip">
-                    Size: <strong>{formatBytes(file.size)}</strong>
+                    {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                   </span>
                   {items && (
                     <span className="meta-chip">
-                      Output pages: <strong>{items.length}</strong>
+                      {t('Output pages:')} <strong>{items.length}</strong>
                     </span>
                   )}
                 </div>
                 <div className={styles.topActions}>
                   {ready && (
                     <Button variant="secondary" onClick={() => setItems(initialItems(source.pages))}>
-                      Undo all changes
+                      {t('Undo all changes')}
                     </Button>
                   )}
                   <Button variant="secondary" onClick={handleReset}>
-                    Change PDF
+                    {t('Change PDF')}
                   </Button>
                 </div>
               </div>
 
-              {source.loading && <p className={styles.status}>Opening PDF document…</p>}
+              {source.loading && <p className={styles.status}>{t('Opening PDF document…')}</p>}
 
               {ready && (
                 <>
-                  <p className={styles.hint}>Drag pages to reorder them, or focus a page and press Alt + ← / →.</p>
+                  <p className={styles.hint}>
+                    {t('Drag pages or focus one and press Alt + ← / → to reorder. Rotate or delete pages here.')}
+                  </p>
 
                   <div className={styles.pageGrid}>
                     {items.map((it, index) => (
@@ -235,78 +240,84 @@ export default function OrganizeTool() {
                           width={it.width}
                           height={it.height}
                           rotation={it.rot}
-                          alt={it.src === null ? 'Blank page' : `Page ${it.src + 1}`}
+                          alt={it.src === null ? t('Blank page') : t('Page {number}', { number: it.src + 1 })}
                         />
 
-                        <span className={styles.pageLabel}>{it.src === null ? 'Blank page' : `Page ${it.src + 1}`}</span>
+                        <span className={styles.pageLabel}>
+                          {it.src === null ? t('Blank page') : t('Page {number}', { number: it.src + 1 })}
+                        </span>
 
                         <div className={styles.cardActions}>
                           <button
                             type="button"
-                            title="Move earlier"
-                            aria-label={`Move position ${index + 1} earlier`}
-                            disabled={index === 0}
-                            onClick={() => move(index, index - 1)}
-                          >
-                            ◀
-                          </button>
-                          <button
-                            type="button"
-                            title="Rotate left"
-                            aria-label={`Rotate position ${index + 1} left`}
+                            title={t('Rotate left')}
+                            aria-label={t('Rotate position {number} left', { number: index + 1 })}
                             onClick={() => rotate(index, -90)}
                           >
                             ↺
                           </button>
                           <button
                             type="button"
-                            title="Rotate right"
-                            aria-label={`Rotate position ${index + 1} right`}
+                            title={t('Rotate right')}
+                            aria-label={t('Rotate position {number} right', { number: index + 1 })}
                             onClick={() => rotate(index, 90)}
                           >
                             ↻
                           </button>
                           <button
                             type="button"
-                            title="Insert blank page after"
-                            aria-label={`Insert blank page after position ${index + 1}`}
-                            onClick={() => insertBlank(index)}
-                          >
-                            ＋
-                          </button>
-                          <button
-                            type="button"
-                            title="Delete page"
-                            aria-label={`Delete position ${index + 1}`}
+                            title={t('Delete page')}
+                            aria-label={t('Delete position {number}', { number: index + 1 })}
                             onClick={() => remove(index)}
                           >
                             🗑
                           </button>
-                          <button
-                            type="button"
-                            title="Move later"
-                            aria-label={`Move position ${index + 1} later`}
-                            disabled={index === items.length - 1}
-                            onClick={() => move(index, index + 1)}
-                          >
-                            ▶
-                          </button>
                         </div>
+                        <details className="tool-options">
+                          <summary>{t('Move / insert')}</summary>
+                          <div className="tool-options-body">
+                            <div className={styles.secondaryActions}>
+                              <button
+                                type="button"
+                                title={t('Move earlier')}
+                                aria-label={t('Move position {number} earlier', { number: index + 1 })}
+                                disabled={index === 0}
+                                onClick={() => move(index, index - 1)}
+                              >
+                                {t('Move earlier')}
+                              </button>
+                              <button
+                                type="button"
+                                title={t('Move later')}
+                                aria-label={t('Move position {number} later', { number: index + 1 })}
+                                disabled={index === items.length - 1}
+                                onClick={() => move(index, index + 1)}
+                              >
+                                {t('Move later')}
+                              </button>
+                              <button
+                                type="button"
+                                title={t('Insert blank page after')}
+                                aria-label={t('Insert blank page after position {number}', { number: index + 1 })}
+                                onClick={() => insertBlank(index)}
+                              >
+                                {t('Insert blank after')}
+                              </button>
+                            </div>
+                          </div>
+                        </details>
                       </div>
                     ))}
                   </div>
 
-                  {items.length === 0 && <p className={styles.status}>All pages were removed. Undo changes to start again.</p>}
+                  {items.length === 0 && <p className={styles.status}>{t('All pages were removed. Undo changes to start again.')}</p>}
 
                   {job.status === 'running' ? (
-                    <ProgressBar value={job.progress} label="Building PDF…" />
+                    <ProgressBar value={job.progress} label={t('Building PDF…')} />
                   ) : (
                     <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
-                      <Button variant="secondary" onClick={handleReset}>
-                        Choose different file
-                      </Button>
                       <Button variant="primary" onClick={handleSave} disabled={items.length === 0}>
-                        Save PDF ({items.length} {items.length === 1 ? 'page' : 'pages'})
+                        {t('Save PDF ({count} {unit})', { count: items.length, unit: items.length === 1 ? t('page') : t('pages') })}
                       </Button>
                     </div>
                   )}

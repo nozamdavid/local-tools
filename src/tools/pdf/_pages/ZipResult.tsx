@@ -1,6 +1,7 @@
 import { formatBytes } from '../../../lib/format';
 import { downloadBlob } from '../../../lib/download';
 import { Button } from '../../../components/Controls';
+import { useI18n } from '../../../lib/i18n';
 
 export interface ZipResultProps {
   zip: Blob;
@@ -11,6 +12,7 @@ export interface ZipResultProps {
 
 /** Lists the files inside a freshly built ZIP and offers each file or the whole archive for download. */
 export function ZipResult({ zip, zipName, items, onReset }: ZipResultProps) {
+  const { t } = useI18n();
   return (
     <div className="batch-results">
       <ul className="batch-list">
@@ -26,7 +28,7 @@ export function ZipResult({ zip, zipName, items, onReset }: ZipResultProps) {
               <div className="batch-meta">{formatBytes(item.blob.size)}</div>
             </div>
             <Button variant="secondary" onClick={() => downloadBlob(item.blob, item.name)}>
-              Download
+              {t('Download')}
             </Button>
           </li>
         ))}
@@ -34,10 +36,10 @@ export function ZipResult({ zip, zipName, items, onReset }: ZipResultProps) {
 
       <div className="batch-actions">
         <Button variant="secondary" onClick={onReset}>
-          Start over
+          {t('Start over')}
         </Button>
         <Button variant="primary" onClick={() => downloadBlob(zip, zipName)}>
-          Download {zipName}
+          {t('Download {filename}', { filename: zipName })}
         </Button>
       </div>
     </div>

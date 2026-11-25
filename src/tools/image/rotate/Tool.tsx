@@ -9,6 +9,7 @@ import { decodeImage, canvasToBlob, IMAGE_ACCEPT, type EncodableMime } from '../
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
 import { useObjectUrl } from '../../../lib/useObjectUrl';
+import { useI18n } from '../../../lib/i18n';
 import { getDefaultFormat, formatOutputFile } from '../_basic';
 import styles from '../_basic/basic.module.css';
 
@@ -23,6 +24,7 @@ type BgOption = 'transparent' | 'white' | 'black' | 'custom';
 
 export default function RotateTool() {
   const meta = getToolMeta('img-rotate');
+  const { t } = useI18n();
   const [file, setFile] = useState<File | null>(null);
   const [decodedImg, setDecodedImg] = useState<HTMLImageElement | null>(null);
   const [angle, setAngle] = useState<number>(0);
@@ -177,14 +179,14 @@ export default function RotateTool() {
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose an image or drag it here"
-          hint="Supports JPG, PNG, WEBP, GIF, BMP, SVG, HEIC and AVIF."
+          label={t('Choose an image or drag it here')}
+          hint={t('Supports JPG, PNG, WebP, GIF, BMP, SVG, HEIC and AVIF.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result && resultInfo ? (
             <ResultPanel
@@ -197,10 +199,10 @@ export default function RotateTool() {
             >
               <div className="meta-chips" style={{ marginBottom: '1rem' }}>
                 <span className="meta-chip">
-                  Rotation: <strong>{angle}°</strong>
+                  {t('Rotation')}: <strong>{angle}°</strong>
                 </span>
                 <span className="meta-chip">
-                  New dimensions:{' '}
+                  {t('New dimensions')}:{' '}
                   <strong>
                     {resultInfo.width}×{resultInfo.height} px
                   </strong>
@@ -211,14 +213,14 @@ export default function RotateTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name')}: <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size')}: <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {decodedImg && (
                   <span className="meta-chip">
-                    Dimensions:{' '}
+                    {t('Dimensions')}:{' '}
                     <strong>
                       {decodedImg.width}×{decodedImg.height} px
                     </strong>
@@ -227,7 +229,7 @@ export default function RotateTool() {
               </div>
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Applying rotation..." />
+                <ProgressBar value={job.progress} label={t('Applying rotation…')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
                   {/* Live preview */}
@@ -235,66 +237,69 @@ export default function RotateTool() {
                     <canvas
                       ref={previewCanvasRef}
                       role="img"
-                      aria-label="Rotated image preview"
+                      aria-label={t('Rotated image preview')}
                       style={{ maxWidth: '100%', maxHeight: '420px', objectFit: 'contain' }}
                     />
                   </div>
 
                   {/* Preset buttons */}
-                  <Field label="Quick rotate">
+                  <Field label={t('Quick rotate')}>
                     <div className={styles.btnGroup}>
                       <Button variant="secondary" onClick={() => rotateBy(-90)}>
-                        ↶ 90° Left
+                        {t('↶ 90° Left')}
                       </Button>
                       <Button variant="secondary" onClick={() => rotateBy(90)}>
-                        ↷ 90° Right
+                        {t('↷ 90° Right')}
                       </Button>
                       <Button variant="secondary" onClick={() => rotateBy(180)}>
                         ↻ 180°
                       </Button>
                       <Button variant="secondary" onClick={() => setAngle(0)} disabled={angle === 0}>
-                        Reset angle (0°)
+                        {t('Reset angle (0°)')}
                       </Button>
                     </div>
                   </Field>
 
                   {/* Free angle slider */}
-                  <Field label={`Free angle: ${angle}°`} hint="Adjust angle freely with automatic canvas expansion to fit">
+                  <Field
+                    label={t('Free angle: {angle}°', { angle })}
+                    hint={t('Adjust angle freely with automatic canvas expansion to fit')}
+                  >
                     <Slider value={angle} min={-180} max={180} step={1} unit="°" onChange={setAngle} />
                   </Field>
 
                   {/* Flip toggles */}
-                  <Field label="Flip image">
+                  <Field label={t('Flip image')}>
                     <div className={styles.btnGroup}>
                       <button
                         type="button"
                         className={`${styles.presetChip} ${flipH ? styles.presetChipActive : ''}`}
                         onClick={() => setFlipH(!flipH)}
                       >
-                        ↔ Flip Horizontal
+                        {t('↔ Flip Horizontal')}
                       </button>
                       <button
                         type="button"
                         className={`${styles.presetChip} ${flipV ? styles.presetChipActive : ''}`}
                         onClick={() => setFlipV(!flipV)}
                       >
-                        ↕ Flip Vertical
+                        {t('↕ Flip Vertical')}
                       </button>
                     </div>
                   </Field>
 
                   {/* Background option */}
-                  <Field label="Background fill" hint="Color for uncovered corner areas created by angle rotation">
+                  <Field label={t('Background fill')} hint={t('Color for uncovered corner areas created by angle rotation')}>
                     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
                       <Select
                         id={bgSelectId}
                         value={bgOption}
                         onChange={(e) => setBgOption(e.target.value as BgOption)}
                         options={[
-                          { value: 'transparent', label: 'Transparent (outputs PNG)' },
-                          { value: 'white', label: 'White' },
-                          { value: 'black', label: 'Black' },
-                          { value: 'custom', label: 'Custom color' },
+                          { value: 'transparent', label: t('Transparent (outputs PNG)') },
+                          { value: 'white', label: t('White') },
+                          { value: 'black', label: t('Black') },
+                          { value: 'custom', label: t('Custom color') },
                         ]}
                       />
                       {bgOption === 'custom' && (
@@ -310,10 +315,10 @@ export default function RotateTool() {
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different image
+                      {t('Choose different image')}
                     </Button>
                     <Button variant="primary" onClick={handleApply}>
-                      Save rotated image
+                      {t('Save rotated image')}
                     </Button>
                   </div>
                 </div>

@@ -1,11 +1,13 @@
 import JSZip from 'jszip';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
+import { readZipEntry } from '../../../../lib/zip';
 import type { MeshModel } from '../types';
 import { MAX_TRIANGLE_COUNT, MAX_VERTEX_COUNT, MAX_ZIP_ENTRY_COUNT, MAX_ZIP_UNCOMPRESSED_BYTES } from '../validation';
 
 type Matrix3x4 = [number, number, number, number, number, number, number, number, number, number, number, number];
 
 const IDENTITY_MATRIX: Matrix3x4 = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
+const TRIANGLE_INDEX_ATTRIBUTES = ['@_v1', '@_v2', '@_v3'];
 
 function matrixDeterminant(M: Matrix3x4): number {
   return M[0] * (M[4] * M[8] - M[5] * M[7]) - M[1] * (M[3] * M[8] - M[5] * M[6]) + M[2] * (M[3] * M[7] - M[4] * M[6]);
@@ -111,12 +113,13 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
 
   let actualDecompressedBytes = 0;
   async function safeReadText(entry: JSZip.JSZipObject): Promise<string> {
-    const text = await entry.async('string');
-    actualDecompressedBytes += text.length;
-    if (actualDecompressedBytes > MAX_ZIP_UNCOMPRESSED_BYTES) {
-      throw new Error('3MF archive exceeded maximum actual decompressed size during extraction.');
-    }
-    return text;
+    const bytes = await readZipEntry(
+      entry,
+      MAX_ZIP_UNCOMPRESSED_BYTES - actualDecompressedBytes,
+      '3MF archive exceeded maximum actual decompressed size during extraction.',
+    );
+    actualDecompressedBytes += bytes.byteLength;
+    return new TextDecoder().decode(bytes);
   }
 
   const xmlParser = new XMLParser({
@@ -263,7 +266,9 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
     for (const objNode of objectNodes) {
       const obj = objNode as Record<string, unknown>;
       const objId = String(obj['@_id'] || '');
-      if (!objId) continue;
+      if (!objId || rawObjectsMap.has(objId)) {
+        throw new Error(`Invalid 3MF object ID "${objId}". Object IDs must be present and unique.`);
+      }
 
       const rawObj: RawObject = {
         id: objId,
@@ -281,17 +286,22 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
         const positions = new Float32Array(vList.length * 3);
         for (let i = 0; i < vList.length; i++) {
           const v = vList[i] as Record<string, unknown>;
-          positions[i * 3] = parseFloat(String(v['@_x'] || '0'));
-          positions[i * 3 + 1] = parseFloat(String(v['@_y'] || '0'));
-          positions[i * 3 + 2] = parseFloat(String(v['@_z'] || '0'));
+          positions[i * 3] = Number(v['@_x']);
+          positions[i * 3 + 1] = Number(v['@_y']);
+          positions[i * 3 + 2] = Number(v['@_z']);
         }
 
         const indices = new Uint32Array(tList.length * 3);
         for (let t = 0; t < tList.length; t++) {
           const tri = tList[t] as Record<string, unknown>;
-          indices[t * 3] = parseInt(String(tri['@_v1'] || '0'), 10);
-          indices[t * 3 + 1] = parseInt(String(tri['@_v2'] || '0'), 10);
-          indices[t * 3 + 2] = parseInt(String(tri['@_v3'] || '0'), 10);
+          for (const [corner, attribute] of TRIANGLE_INDEX_ATTRIBUTES.entries()) {
+            const value = String(tri[attribute] ?? '').trim();
+            const index = Number(value);
+            if (!/^\d+$/.test(value) || index >= vList.length) {
+              throw new Error(`Invalid 3MF vertex index "${value}" in object "${objId}".`);
+            }
+            indices[t * 3 + corner] = index;
+          }
         }
 
         rawObj.mesh = { positions, indices };
@@ -330,7 +340,7 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
     }
 
     const obj = rawObjectsMap.get(objectId);
-    if (!obj) return;
+    if (!obj) throw new Error(`Invalid 3MF reference to missing object "${objectId}".`);
 
     cumulativeInstances++;
     if (cumulativeInstances > 10_000) {
@@ -346,7 +356,7 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
           `3MF model exceeds maximum allowed triangles (${expectedTriangles.toLocaleString()} > ${MAX_TRIANGLE_COUNT.toLocaleString()}).`,
         );
       }
-      if (expectedVertices > MAX_VERTEX_COUNT) {
+      if (expectedVertices * 3 > MAX_VERTEX_COUNT) {
         throw new Error('3MF model exceeds maximum allowed vertices.');
       }
     }

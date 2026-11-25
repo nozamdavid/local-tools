@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyFile, isToolEligibleForFile } from './toolInputs';
+import { classifyFile, isToolEligibleForBatch, isToolEligibleForFile } from './toolInputs';
 import { fileKind, matchesAccept, suggestToolsForFiles } from './handoff';
 import { getToolMeta } from '../tools/registry';
 
@@ -10,6 +10,12 @@ function createFile(name: string, type = ''): File {
 }
 
 describe('toolInputs and handoff classification', () => {
+  it('offers inspection for an unknown extension that matches an object property', () => {
+    const file = createFile('example.constructor');
+    expect(classifyFile(file).format).toBe('unknown');
+    expect(suggestToolsForFiles([file]).map((tool) => tool.id)).toContain('file-inspector');
+  });
+
   it('classifies OpenDocument formats into opendocument grouping distinct from legacy-office', () => {
     const odt = classifyFile(createFile('document.odt'));
     expect(odt.format).toBe('opendocument');
@@ -89,5 +95,59 @@ describe('toolInputs and handoff classification', () => {
     expect(suggestionsOdt).toContain('file-converter');
     expect(suggestionsOdt).toContain('file-inspector');
     expect(suggestionsOdt).not.toContain('pdf-word-to-pdf');
+  });
+
+  it('classifies ordinary ZIP archives without reclassifying document packages', () => {
+    const zip = createFile('assets.zip', 'application/zip');
+    const docx = createFile('report.docx', 'application/zip');
+    const odt = createFile('report.odt', 'application/zip');
+    const zipExtractor = getToolMeta('zip-extract');
+
+    expect(classifyFile(zip).format).toBe('zip');
+    expect(classifyFile(docx).format).toBe('docx');
+    expect(classifyFile(odt).format).toBe('opendocument');
+    expect(isToolEligibleForFile(zipExtractor, zip)).toBe(true);
+    expect(isToolEligibleForFile(zipExtractor, docx)).toBe(false);
+    expect(matchesAccept(zip, '.zip')).toBe(true);
+    expect(suggestToolsForFiles([zip]).map((tool) => tool.id)[0]).toBe('zip-extract');
+  });
+
+  it('routes SRT and VTT files to subtitles for import and editing', () => {
+    for (const name of ['captions.srt', 'captions.vtt']) {
+      const file = createFile(name);
+      const classification = classifyFile(file);
+
+      expect(classification.isSubtitle).toBe(true);
+      expect(fileKind(file)).toBe('text');
+      expect(isToolEligibleForFile(getToolMeta('subtitles'), file)).toBe(true);
+      expect(suggestToolsForFiles([file]).map((tool) => tool.id)[0]).toBe('subtitles');
+    }
+  });
+
+  it('ranks SVG optimization, audio trimming, and PDF metadata cleaning for matching outputs', () => {
+    const svg = createFile('art.svg', 'image/svg+xml');
+    const audio = createFile('voice.wav', 'audio/wav');
+    const pdf = createFile('scan.pdf', 'application/pdf');
+
+    expect(suggestToolsForFiles([svg]).map((tool) => tool.id)[0]).toBe('img-svg-optimize');
+    expect(suggestToolsForFiles([audio]).map((tool) => tool.id)[0]).toBe('audio-trim');
+    expect(suggestToolsForFiles([pdf]).map((tool) => tool.id)[0]).toBe('pdf-metadata-cleaner');
+    expect(isToolEligibleForFile(getToolMeta('audio-trim'), audio)).toBe(true);
+    expect(isToolEligibleForFile(getToolMeta('audio-trim'), createFile('clip.mp4', 'video/mp4'))).toBe(false);
+    expect(isToolEligibleForFile(getToolMeta('pdf-metadata-cleaner'), pdf)).toBe(true);
+    expect(isToolEligibleForFile(getToolMeta('pdf-metadata-cleaner'), svg)).toBe(false);
+  });
+
+  it('suggests image comparison only for exactly two supported images', () => {
+    const first = createFile('first.png', 'image/png');
+    const second = createFile('second.jpg', 'image/jpeg');
+    const third = createFile('third.webp', 'image/webp');
+    const compare = getToolMeta('img-compare');
+
+    expect(isToolEligibleForFile(compare, first)).toBe(false);
+    expect(isToolEligibleForBatch(compare, [first, second])).toBe(true);
+    expect(isToolEligibleForBatch(compare, [first, second, third])).toBe(false);
+    expect(isToolEligibleForBatch(compare, [first, createFile('archive.zip', 'application/zip')])).toBe(false);
+    expect(suggestToolsForFiles([first, second]).map((tool) => tool.id)[0]).toBe('img-compare');
   });
 });

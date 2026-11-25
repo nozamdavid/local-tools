@@ -1,0 +1,173 @@
+.tool {
+  display: grid;
+  gap: var(--space-5);
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+.images {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.imageCard {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+}
+
+.imageSummary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+.fileName {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.thumbnail {
+  display: block;
+  width: 100%;
+  height: 160px;
+  border-radius: var(--radius-md);
+  background: var(--surface-raised);
+  object-fit: contain;
+}
+
+.comparison {
+  display: grid;
+  gap: var(--space-4);
+}
+
+.hint,
+.status {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.modeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.modeLabel {
+  margin-right: var(--space-2);
+  font-weight: var(--weight-semibold);
+}
+
+.stage,
+.sideStage {
+  position: relative;
+  width: 100%;
+  height: min(62vh, 640px);
+  min-height: 260px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--surface-raised);
+  background-image: conic-gradient(var(--border) 25%, transparent 0 50%, var(--border) 0 75%, transparent 0);
+  background-size: 20px 20px;
+}
+
+.stageImage {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.reveal {
+  position: absolute;
+  inset: 0;
+}
+
+.divider {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: white;
+  box-shadow:
+    0 0 0 1px rgb(0 0 0 / 35%),
+    0 0 10px rgb(0 0 0 / 45%);
+  pointer-events: none;
+}
+
+.imageLabel {
+  position: absolute;
+  top: var(--space-3);
+  z-index: 1;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: rgb(0 0 0 / 65%);
+  color: white;
+  font-size: var(--text-sm);
+  font-weight: var(--weight-semibold);
+  pointer-events: none;
+}
+
+.labelA {
+  left: var(--space-3);
+}
+
+.labelB {
+  right: var(--space-3);
+}
+
+.sideBySide {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--space-4);
+}
+
+.sidePanel {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  margin: 0;
+}
+
+.sidePanel figcaption {
+  overflow: hidden;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+@media (max-width: 640px) {
+  .images,
+  .sideBySide {
+    grid-template-columns: 1fr;
+  }
+
+  .modeRow {
+    flex-wrap: wrap;
+  }
+
+  .stage,
+  .sideStage {
+    height: min(58vh, 520px);
+    min-height: 220px;
+  }
+}

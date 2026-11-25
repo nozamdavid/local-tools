@@ -1,4 +1,5 @@
 import type { FitMode, BgType, TransformState } from './types';
+import { translate } from '../../../lib/i18n';
 
 export interface RenderOptions {
   width: number;
@@ -18,7 +19,7 @@ export function renderFrameCanvas(img: HTMLImageElement, options: RenderOptions)
   canvas.height = Math.max(1, Math.round(height));
 
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D is not available in this browser.');
+  if (!ctx) throw new Error(translate('Canvas 2D is not available in this browser.'));
   ctx.imageSmoothingQuality = 'high';
 
   // 1. Draw background

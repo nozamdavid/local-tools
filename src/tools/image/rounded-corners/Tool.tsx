@@ -99,7 +99,7 @@ export default function RoundedCornersTool() {
       defaultFormat="image/png"
       suffix="-rounded"
       render={renderRoundedCorners}
-      renderControls={(options, setOptions) => {
+      renderControls={(options, setOptions, { t }) => {
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -109,13 +109,13 @@ export default function RoundedCornersTool() {
                   checked={options.independent}
                   onChange={(e) => setOptions((prev) => ({ ...prev, independent: e.target.checked }))}
                 />
-                <span>Configure each corner independently</span>
+                <span>{t('Configure each corner independently')}</span>
               </label>
             </div>
 
             {!options.independent ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <Field label={`Corner radius (${options.radius}px)`}>
+                <Field label={t('Corner radius ({radius}px)', { radius: options.radius })}>
                   <Slider
                     value={options.radius}
                     min={0}
@@ -127,7 +127,7 @@ export default function RoundedCornersTool() {
                 </Field>
 
                 <div>
-                  <label className="field-label">Active corners</label>
+                  <label className="field-label">{t('Active corners')}</label>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '0.75rem' }}>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                       <input
@@ -135,7 +135,7 @@ export default function RoundedCornersTool() {
                         checked={options.tlActive}
                         onChange={(e) => setOptions((prev) => ({ ...prev, tlActive: e.target.checked }))}
                       />
-                      <span>Top Left</span>
+                      <span>{t('Top left')}</span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                       <input
@@ -143,7 +143,7 @@ export default function RoundedCornersTool() {
                         checked={options.trActive}
                         onChange={(e) => setOptions((prev) => ({ ...prev, trActive: e.target.checked }))}
                       />
-                      <span>Top Right</span>
+                      <span>{t('Top right')}</span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                       <input
@@ -151,7 +151,7 @@ export default function RoundedCornersTool() {
                         checked={options.brActive}
                         onChange={(e) => setOptions((prev) => ({ ...prev, brActive: e.target.checked }))}
                       />
-                      <span>Bottom Right</span>
+                      <span>{t('Bottom right')}</span>
                     </label>
                     <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                       <input
@@ -159,14 +159,14 @@ export default function RoundedCornersTool() {
                         checked={options.blActive}
                         onChange={(e) => setOptions((prev) => ({ ...prev, blActive: e.target.checked }))}
                       />
-                      <span>Bottom Left</span>
+                      <span>{t('Bottom left')}</span>
                     </label>
                   </div>
                 </div>
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                <Field label={`Top Left radius (${options.tlRadius}px)`}>
+                <Field label={t('Top left radius ({radius}px)', { radius: options.tlRadius })}>
                   <Slider
                     value={options.tlRadius}
                     min={0}
@@ -176,7 +176,7 @@ export default function RoundedCornersTool() {
                     onChange={(v) => setOptions((prev) => ({ ...prev, tlRadius: v, tlActive: v > 0 }))}
                   />
                 </Field>
-                <Field label={`Top Right radius (${options.trRadius}px)`}>
+                <Field label={t('Top right radius ({radius}px)', { radius: options.trRadius })}>
                   <Slider
                     value={options.trRadius}
                     min={0}
@@ -186,7 +186,7 @@ export default function RoundedCornersTool() {
                     onChange={(v) => setOptions((prev) => ({ ...prev, trRadius: v, trActive: v > 0 }))}
                   />
                 </Field>
-                <Field label={`Bottom Right radius (${options.brRadius}px)`}>
+                <Field label={t('Bottom right radius ({radius}px)', { radius: options.brRadius })}>
                   <Slider
                     value={options.brRadius}
                     min={0}
@@ -196,7 +196,7 @@ export default function RoundedCornersTool() {
                     onChange={(v) => setOptions((prev) => ({ ...prev, brRadius: v, brActive: v > 0 }))}
                   />
                 </Field>
-                <Field label={`Bottom Left radius (${options.blRadius}px)`}>
+                <Field label={t('Bottom left radius ({radius}px)', { radius: options.blRadius })}>
                   <Slider
                     value={options.blRadius}
                     min={0}
@@ -216,12 +216,12 @@ export default function RoundedCornersTool() {
                   checked={options.fillBackground}
                   onChange={(e) => setOptions((prev) => ({ ...prev, fillBackground: e.target.checked }))}
                 />
-                <span>Fill corners with solid background colour (recommended for JPG)</span>
+                <span>{t('Fill corners with solid background colour (recommended for JPG)')}</span>
               </label>
 
               {options.fillBackground && (
                 <div style={{ marginTop: '0.75rem', maxWidth: '200px' }}>
-                  <Field label="Background colour">
+                  <Field label={t('Background colour')}>
                     <input
                       type="color"
                       value={options.bgColor}

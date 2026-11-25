@@ -1,4 +1,4 @@
-import { useState, useId } from 'react';
+import { useState, useId, useRef, useEffect } from 'react';
 import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { ProgressBar } from '../../components/ProgressBar';
@@ -7,10 +7,13 @@ import { Field, Select, Button } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { getVideoMeta, type VideoMeta } from '../../lib/media';
 import { formatBytes, formatDuration, withSuffix } from '../../lib/format';
-import { runFFmpeg } from '../../lib/ffmpeg';
+import { runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
+import { withMediabunnyFallback } from '../../lib/mediabunny';
 import { useJob } from '../../lib/useJob';
 import { useObjectUrl } from '../../lib/useObjectUrl';
 import styles from './Tool.module.css';
+import { useI18n } from '../../lib/i18n';
+import { SourcePreview } from '../../components/SourcePreview';
 
 type PresetOption = '2160p' | '1440p' | '1080p' | '720p' | '480p' | '360p' | 'custom';
 type FitMode = 'stretch' | 'fit' | 'fill';
@@ -31,6 +34,7 @@ function ensureEven(num: number): number {
 }
 
 export default function ResizeTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('resize');
   const [file, setFile] = useState<File | null>(null);
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
@@ -41,6 +45,8 @@ export default function ResizeTool() {
   const [customHeight, setCustomHeight] = useState<number>(1080);
   const [lockAspect, setLockAspect] = useState<boolean>(true);
   const [fitMode, setFitMode] = useState<FitMode>('fit');
+  const [previewMaxHeight, setPreviewMaxHeight] = useState(360);
+  const metadataRequestRef = useRef(0);
 
   const job = useJob();
   const originalUrl = useObjectUrl(file);
@@ -52,6 +58,7 @@ export default function ResizeTool() {
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
+    const requestId = ++metadataRequestRef.current;
     setFile(selected);
     setMetaError(null);
     setVideoMeta(null);
@@ -59,17 +66,20 @@ export default function ResizeTool() {
 
     try {
       const vMeta = await getVideoMeta(selected);
+      if (requestId !== metadataRequestRef.current) return;
       setVideoMeta(vMeta);
       if (vMeta.width && vMeta.height) {
         setCustomWidth(ensureEven(vMeta.width));
         setCustomHeight(ensureEven(vMeta.height));
       }
     } catch {
+      if (requestId !== metadataRequestRef.current) return;
       setMetaError('Could not read video metadata, but you can still attempt resizing.');
     }
   };
 
   const handleReset = () => {
+    metadataRequestRef.current += 1;
     setFile(null);
     setVideoMeta(null);
     setMetaError(null);
@@ -80,6 +90,13 @@ export default function ResizeTool() {
   const srcW = videoMeta?.width || 1920;
   const srcH = videoMeta?.height || 1080;
   const aspect = srcW / srcH;
+
+  useEffect(() => {
+    const updatePreviewHeight = () => setPreviewMaxHeight(Math.min(480, Math.max(120, window.innerHeight * 0.55)));
+    updatePreviewHeight();
+    window.addEventListener('resize', updatePreviewHeight);
+    return () => window.removeEventListener('resize', updatePreviewHeight);
+  }, []);
 
   const handleCustomWidthChange = (val: number) => {
     setCustomWidth(val);
@@ -108,7 +125,7 @@ export default function ResizeTool() {
   }
 
   const handleResize = () => {
-    if (!file) return;
+    if (!file || (!videoMeta && !metaError)) return;
 
     job.run(async (setProgress) => {
       const inputExt = file.name.includes('.') ? file.name.slice(file.name.lastIndexOf('.')) : '.mp4';
@@ -154,28 +171,46 @@ export default function ResizeTool() {
         outputName,
       ];
 
-      return await runFFmpeg({
-        inputs: [{ name: inputName, data: file }],
-        args,
-        output: outputName,
-        onProgress: setProgress,
-      });
+      const fit = preset !== 'custom' || lockAspect || fitMode === 'stretch' ? 'fill' : fitMode === 'fit' ? 'contain' : 'cover';
+
+      return withMediabunnyFallback(
+        {
+          input: file,
+          output: 'mp4',
+          video: { codec: 'avc', quality: 'high', forceTranscode: true, width: targetW, height: targetH, fit },
+          tracks: { video: 'primary', audio: 'all' },
+          requireVideo: true,
+          allowDiscardedTrackTypes: ['subtitle'],
+          onProgress: setProgress,
+        },
+        (onProgress) =>
+          runFFmpegWithinMediaJob({
+            inputs: [{ name: inputName, data: file }],
+            args,
+            output: outputName,
+            onProgress,
+          }),
+      );
     });
   };
+
+  const previewFitMode: FitMode = preset !== 'custom' || lockAspect ? 'stretch' : fitMode;
+  const previewObjectFit = previewFitMode === 'stretch' ? 'fill' : previewFitMode === 'fit' ? 'contain' : 'cover';
+  const previewFrameWidth = Math.min(640, previewMaxHeight * (targetW / targetH));
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="resize">
       {!file ? (
         <FileDrop
           accept="video/*"
-          label="Choose a video or drag it here"
-          hint="Resize to standard presets or custom dimensions."
+          label={t('Choose a video or drag it here')}
+          hint={t('Resize to standard presets or custom dimensions.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result ? (
             <ResultPanel
@@ -190,18 +225,18 @@ export default function ResizeTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name:')} <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {videoMeta && (
                   <>
                     <span className="meta-chip">
-                      Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
+                      {t('Duration:')} <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Source size:{' '}
+                      {t('Source size:')}{' '}
                       <strong>
                         {videoMeta.width}x{videoMeta.height}
                       </strong>
@@ -210,23 +245,25 @@ export default function ResizeTool() {
                 )}
               </div>
 
+              <SourcePreview file={file} note="Source preview only. Resize output is created during export." />
+
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Resizing video..." />
+                <ProgressBar value={job.progress} label={t('Resizing video...')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
-                  <Field label="Resolution preset" hint="Choose a standard resolution or enter custom dimensions.">
+                  <Field label={t('Resolution preset')} hint={t('Choose a standard resolution or enter custom dimensions.')}>
                     <Select
                       id={presetId}
                       value={preset}
                       onChange={(e) => setPreset(e.target.value as PresetOption)}
                       options={[
-                        { value: '2160p', label: '2160p (4K UHD)' },
-                        { value: '1440p', label: '1440p (QHD)' },
-                        { value: '1080p', label: '1080p (Full HD)' },
-                        { value: '720p', label: '720p (HD)' },
-                        { value: '480p', label: '480p (SD)' },
-                        { value: '360p', label: '360p (Low)' },
-                        { value: 'custom', label: 'Custom dimensions' },
+                        { value: '2160p', label: t('2160p (4K UHD)') },
+                        { value: '1440p', label: t('1440p (QHD)') },
+                        { value: '1080p', label: t('1080p (Full HD)') },
+                        { value: '720p', label: t('720p (HD)') },
+                        { value: '480p', label: t('480p (SD)') },
+                        { value: '360p', label: t('360p (Low)') },
+                        { value: 'custom', label: t('Custom dimensions') },
                       ]}
                     />
                   </Field>
@@ -234,7 +271,7 @@ export default function ResizeTool() {
                   {preset === 'custom' && (
                     <>
                       <div className={styles.row}>
-                        <Field label="Width (px)">
+                        <Field label={t('Width (px)')}>
                           <input
                             type="number"
                             min="2"
@@ -246,7 +283,7 @@ export default function ResizeTool() {
                           />
                         </Field>
 
-                        <Field label="Height (px)">
+                        <Field label={t('Height (px)')}>
                           <input
                             type="number"
                             min="2"
@@ -262,20 +299,20 @@ export default function ResizeTool() {
                       <div className="field">
                         <label className="checkbox-label" htmlFor={lockAspectId}>
                           <input id={lockAspectId} type="checkbox" checked={lockAspect} onChange={(e) => setLockAspect(e.target.checked)} />
-                          <span>Lock aspect ratio</span>
+                          <span>{t('Lock aspect ratio')}</span>
                         </label>
                       </div>
 
                       {!lockAspect && (
-                        <Field label="Fit mode" hint="How to adapt the video to the target resolution when aspect ratio changes.">
+                        <Field label={t('Fit mode')} hint={t('How to adapt the video to the target resolution when aspect ratio changes.')}>
                           <Select
                             id={fitModeId}
                             value={fitMode}
                             onChange={(e) => setFitMode(e.target.value as FitMode)}
                             options={[
-                              { value: 'stretch', label: 'Stretch (distort to fill target)' },
-                              { value: 'fit', label: 'Fit (letterbox with black pad)' },
-                              { value: 'fill', label: 'Fill (scale + center crop)' },
+                              { value: 'stretch', label: t('Stretch (distort to fill target)') },
+                              { value: 'fit', label: t('Fit (letterbox with black pad)') },
+                              { value: 'fill', label: t('Fill (scale + center crop)') },
                             ]}
                           />
                         </Field>
@@ -284,18 +321,45 @@ export default function ResizeTool() {
                   )}
 
                   <div className={styles.targetBox}>
-                    <span className={styles.targetLabel}>Target size</span>
+                    <span className={styles.targetLabel}>{t('Target size')}</span>
                     <span className={styles.targetDimensions}>
                       {targetW}x{targetH}
                     </span>
                   </div>
 
+                  <section className={styles.livePreview} aria-label={t('Live resize preview')}>
+                    <div className={styles.previewHeader}>
+                      <strong>{t('Live resize preview')}</strong>
+                      <span>
+                        {targetW} × {targetH}
+                      </span>
+                    </div>
+                    <div
+                      className={styles.targetFrame}
+                      style={{ width: `${previewFrameWidth}px`, maxWidth: '100%', aspectRatio: `${targetW} / ${targetH}` }}
+                    >
+                      {originalUrl && (
+                        <video
+                          controls
+                          playsInline
+                          preload="metadata"
+                          src={originalUrl}
+                          className={styles.targetVideo}
+                          style={{ objectFit: previewObjectFit }}
+                        />
+                      )}
+                    </div>
+                    <p className={styles.previewNote}>
+                      {t('Preview matches the target frame and {mode} fit. Output has not been encoded.', { mode: t(previewFitMode) })}
+                    </p>
+                  </section>
+
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different file
+                      {t('Choose different file')}
                     </Button>
-                    <Button variant="primary" onClick={handleResize}>
-                      Resize video
+                    <Button variant="primary" onClick={handleResize} disabled={!videoMeta && !metaError}>
+                      {t('Resize video')}
                     </Button>
                   </div>
                 </div>

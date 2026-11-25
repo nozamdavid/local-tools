@@ -1,4 +1,10 @@
 import type { SegmentWorkerOutMessage } from './types';
+import { translate } from '../../lib/i18n';
+
+function translateSegmentError(message: string): string {
+  if (message === 'Pipeline produced invalid mask output') return translate(message);
+  return translate('Video segmentation failed: {message}', { message });
+}
 
 export class SegmentClient {
   private worker: Worker | null = null;
@@ -52,9 +58,9 @@ export class SegmentClient {
           if (msg.id !== undefined && this.pendingRequests.has(msg.id)) {
             const pending = this.pendingRequests.get(msg.id);
             this.pendingRequests.delete(msg.id);
-            pending?.reject(new Error(msg.error));
+            pending?.reject(new Error(translateSegmentError(msg.error)));
           } else if (this.initReject) {
-            this.initReject(new Error(msg.error));
+            this.initReject(new Error(translateSegmentError(msg.error)));
             this.initResolve = null;
             this.initReject = null;
           }
@@ -63,20 +69,23 @@ export class SegmentClient {
     };
 
     this.worker.onerror = (err) => {
-      const errorMsg = err.message || 'Worker encounter error';
+      const errorMsg = err.message || translate('Worker encountered an error.');
+      const localizedError = translate('Video segmentation worker failed: {message}', { message: errorMsg });
       if (this.initReject) {
-        this.initReject(new Error(errorMsg));
+        this.initReject(new Error(localizedError));
         this.initResolve = null;
         this.initReject = null;
       }
       for (const [, pending] of this.pendingRequests) {
-        pending.reject(new Error(errorMsg));
+        pending.reject(new Error(localizedError));
       }
       this.pendingRequests.clear();
     };
   }
 
   public async init(onProgress?: (progress: any) => void, modelId?: string): Promise<{ device: string; model: string }> {
+    const worker = this.worker;
+    if (!worker) throw new Error(translate('Video segmentation worker is not running.'));
     if (this.initPromise) {
       this.onProgressCallback = onProgress;
       return this.initPromise;
@@ -86,7 +95,7 @@ export class SegmentClient {
     this.initPromise = new Promise((resolve, reject) => {
       this.initResolve = resolve;
       this.initReject = reject;
-      this.worker?.postMessage({ type: 'init', modelId });
+      worker.postMessage({ type: 'init', modelId });
     });
 
     return this.initPromise;
@@ -98,7 +107,7 @@ export class SegmentClient {
     height: number,
   ): Promise<{ mask: Uint8ClampedArray; width: number; height: number }> {
     if (!this.worker) {
-      throw new Error('Worker is not running');
+      throw new Error(translate('Video segmentation worker is not running.'));
     }
 
     const id = ++this.reqIdCounter;
@@ -122,8 +131,10 @@ export class SegmentClient {
   }
 
   public terminate() {
+    const error = new Error(translate('Video segmentation was cancelled.'));
+    this.initReject?.(error);
     for (const [, pending] of this.pendingRequests) {
-      pending.reject(new Error('Segmenter terminated'));
+      pending.reject(error);
     }
     this.pendingRequests.clear();
     if (this.worker) {

@@ -8,8 +8,10 @@ import { PageSetupFields } from '../_render/PageSetupFields';
 import { DEFAULT_PAGE_SETUP, pdfFileName, type PageSetup } from '../_render/render';
 import { checkXlsx, excelToPdf } from './convert';
 import styles from './Tool.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 export default function ExcelToPdfTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-excel-to-pdf');
   const job = useJob();
 
@@ -54,11 +56,11 @@ export default function ExcelToPdfTool() {
         <>
           <FileDrop
             accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            label="Choose an XLSX file or drag it here"
-            hint="Converted in your browser. Legacy .xls files are not supported."
+            label={t('Choose an XLSX file or drag it here')}
+            hint={t("XLSX only; legacy XLS files aren't supported.")}
             onFiles={handleFiles}
           />
-          {fileError && <div className="error-banner">{fileError}</div>}
+          {fileError && <div className="error-banner">{t(fileError)}</div>}
         </>
       ) : (
         <ConvertPanel
@@ -67,18 +69,19 @@ export default function ExcelToPdfTool() {
           pageCount={pages}
           outName={pdfFileName(file, 'spreadsheet.pdf')}
           sourceSize={file.size}
-          actionLabel="Convert to PDF"
+          actionLabel={t('Convert to PDF')}
           actionDisabled={!!fileError}
-          progressLabel="Rendering spreadsheet…"
-          changeLabel="Change file"
+          progressLabel={t('Rendering spreadsheet…')}
+          changeLabel={t('Change file')}
           loadError={fileError}
           onConvert={handleConvert}
           onReset={handleReset}
         >
           <PageSetupFields value={setup} onChange={setSetup} />
           <p className={styles.note}>
-            Each worksheet is converted to PDF pages with its cell data and formatting. Wide tables are scaled to fit the page width.
-            Embedded charts, macros, and floating drawings are not rendered.
+            {t(
+              'Each worksheet is converted to PDF pages with its cell data and formatting. Wide tables are scaled to fit the page width. Embedded charts, macros, and floating drawings are not rendered.',
+            )}
           </p>
         </ConvertPanel>
       )}

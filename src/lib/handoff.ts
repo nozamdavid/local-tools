@@ -104,6 +104,7 @@ export function fileKind(file: File): FileKind {
   if (c.isPptx || ['ppt', 'pps', 'odp', 'otp', 'fodp'].includes(c.ext)) return 'powerpoint';
   if (c.isHtml || c.isMhtml || c.isCss) return 'web';
   if (c.isJson || c.isCsv || c.isTsv || c.isGpx || c.isKml) return 'data';
+  if (c.isSubtitle) return 'text';
   if (c.isAnyImage) return 'image';
   if (c.isVideo) return 'video';
   if (c.isAudio) return 'audio';
@@ -125,7 +126,7 @@ const PRIMARY_SINGLE_TOOLS: Record<string, string[]> = {
   jpg: ['img-jpg-to-png', 'pdf-jpg-to-pdf'],
   webp: ['img-webp-to-jpg', 'img-webp-to-png'],
   heic: ['img-heic-to-jpg', 'img-exif-viewer'],
-  svg: ['img-svg-to-png'],
+  svg: ['img-svg-optimize', 'img-svg-to-png'],
   ico: ['img-icon-converter', 'file-converter'],
   tiff: ['img-exif-viewer', 'img-exif-remover', 'file-converter'],
 
@@ -135,17 +136,18 @@ const PRIMARY_SINGLE_TOOLS: Record<string, string[]> = {
   mkv: ['video-health', 'convert', 'compress', 'trim', 'video-info'],
   avi: ['video-health', 'convert', 'compress', 'trim', 'video-info'],
 
-  mp3: ['video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
-  wav: ['video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
-  m4a: ['video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
-  ogg: ['video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
-  opus: ['video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
-  flac: ['video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
-  aiff: ['video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
-  wma: ['video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
-  'webm-audio': ['video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
+  mp3: ['audio-trim', 'video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
+  'audio-other': ['audio-trim'],
+  wav: ['audio-trim', 'video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
+  m4a: ['audio-trim', 'video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
+  ogg: ['audio-trim', 'video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
+  opus: ['audio-trim', 'video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
+  flac: ['audio-trim', 'video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
+  aiff: ['audio-trim', 'video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
+  wma: ['audio-trim', 'video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
+  'webm-audio': ['audio-trim', 'video-to-text', 'subtitles', 'video-info', 'media-speed', 'file-converter'],
 
-  pdf: ['pdf-split', 'pdf-compress', 'pdf-pdf-to-jpg', 'pdf-pdf-to-word', 'img-pdf-to-image'],
+  pdf: ['pdf-metadata-cleaner', 'pdf-split', 'pdf-compress', 'pdf-pdf-to-jpg', 'pdf-pdf-to-word', 'img-pdf-to-image'],
 
   docx: ['pdf-word-to-pdf', 'img-docx-to-jpg', 'img-docx-to-png', 'file-converter'],
   xlsx: ['pdf-excel-to-pdf', 'file-converter'],
@@ -173,6 +175,9 @@ const PRIMARY_SINGLE_TOOLS: Record<string, string[]> = {
   log: ['txt-to-csv'],
   gpx: ['gpx-kml'],
   kml: ['gpx-kml'],
+  zip: ['zip-extract'],
+  srt: ['subtitles'],
+  vtt: ['subtitles'],
 
   unknown: ['file-inspector'],
 };
@@ -197,6 +202,7 @@ export function suggestToolsForFiles(files: File[]): ToolMeta[] {
     const batchPriority = [
       'pdf-merge',
       'pdf-compare',
+      'img-compare',
       'merge',
       'three-merge',
       'img-bulk-convert',

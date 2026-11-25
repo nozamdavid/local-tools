@@ -7,7 +7,8 @@ import { downloadBlob } from '../../lib/download';
 import { zipFiles } from '../../lib/zip';
 import { peekPendingFiles } from '../../lib/handoff';
 import { classifyFile } from '../../lib/toolInputs';
-import { parseCsv, csvToRecords, jsonToCsv, detectDelimiter, validateHeaders } from '../_tabular/csv';
+import { useI18n } from '../../lib/i18n';
+import { parseCsv, csvToRecords, jsonToCsv, detectDelimiter } from '../_tabular/csv';
 import styles from './Tool.module.css';
 
 interface BatchResult {
@@ -20,10 +21,37 @@ interface BatchResult {
 }
 
 export default function JsonCsvTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('json-csv');
-  const title = meta.title !== 'json-csv' ? meta.title : 'JSON ↔ CSV Converter';
+  const title = meta.title !== 'json-csv' ? meta.title : t('JSON ↔ CSV Converter');
   const description =
-    meta.description || 'Convert between JSON and CSV with batch processing, stable union headers, and leading zero preservation.';
+    meta.description || t('Convert between JSON and CSV with batch processing, stable union headers, and leading zero preservation.');
+
+  const errorText = (message: string) => {
+    if (message === 'Invalid JSON format: file does not contain valid JSON') return t('The file does not contain valid JSON.');
+    const prefix = 'Invalid JSON format: ';
+    if (message.startsWith(prefix)) return t('Invalid JSON format: {message}', { message: message.slice(prefix.length) });
+
+    const emptyHeader = message.match(/^Malformed header: column (\d+) is empty\. All header columns must have names\.$/);
+    if (emptyHeader)
+      return t('Malformed header: column {number} is empty. All header columns must have names.', { number: emptyHeader[1] });
+
+    const duplicateHeader = message.match(
+      /^Duplicate header column detected: "(.*)" at column (\d+) duplicates column (\d+)\. All header column names must be unique to prevent data loss\.$/,
+    );
+    if (duplicateHeader) {
+      return t(
+        'Duplicate header column detected: "{header}" at column {number} duplicates column {prior}. All header column names must be unique to prevent data loss.',
+        {
+          header: duplicateHeader[1],
+          number: duplicateHeader[2],
+          prior: duplicateHeader[3],
+        },
+      );
+    }
+
+    return t(message);
+  };
 
   const [direction, setDirection] = useState<'json-to-csv' | 'csv-to-json'>(() => {
     const pending = peekPendingFiles('/json-csv');
@@ -75,12 +103,13 @@ export default function JsonCsvTool() {
 
     try {
       if (direction === 'json-to-csv') {
+        let data: unknown;
         try {
-          JSON.parse(inputText);
+          data = JSON.parse(inputText);
         } catch (e: unknown) {
           throw new Error('Invalid JSON format: ' + (e instanceof Error ? e.message : String(e)), { cause: e });
         }
-        const csv = jsonToCsv(inputText, { delimiter });
+        const csv = jsonToCsv(data, { delimiter });
         return { outputText: csv, error: null };
       } else {
         // CSV to JSON
@@ -98,11 +127,6 @@ export default function JsonCsvTool() {
         const rows = parseCsv(inputText, { delimiter: effectiveDelim });
         if (rows.length === 0) {
           return { outputText: '[]', error: null };
-        }
-
-        if (hasHeader) {
-          const headerRow = rows[0].map((h) => h.trim());
-          validateHeaders(headerRow);
         }
 
         const records = csvToRecords(rows, {
@@ -210,12 +234,13 @@ export default function JsonCsvTool() {
         let outText = '';
 
         if (batchDirection === 'json-to-csv') {
+          let data: unknown;
           try {
-            JSON.parse(text);
+            data = JSON.parse(text);
           } catch {
             throw new Error('Invalid JSON format: file does not contain valid JSON');
           }
-          outText = jsonToCsv(text, { delimiter });
+          outText = jsonToCsv(data, { delimiter });
         } else {
           const effectiveDelim = isTsvFile ? '\t' : delimiter === '\t' || delimiter === 'auto' ? detectDelimiter(text) : delimiter;
 
@@ -232,9 +257,6 @@ export default function JsonCsvTool() {
           }
 
           const rows = parseCsv(text, { delimiter: effectiveDelim });
-          if (hasHeader && rows.length > 0) {
-            validateHeaders(rows[0].map((h) => h.trim()));
-          }
           const records = csvToRecords(rows, {
             hasHeader,
             preserveLeadingZeros,
@@ -320,7 +342,7 @@ export default function JsonCsvTool() {
               if (delimiter === '\t') setDelimiter(',');
             }}
           >
-            JSON → CSV
+            {t('JSON → CSV')}
           </button>
           <button
             type="button"
@@ -330,7 +352,7 @@ export default function JsonCsvTool() {
               setIsBatch(false);
             }}
           >
-            CSV → JSON
+            {t('CSV → JSON')}
           </button>
         </div>
 
@@ -341,14 +363,14 @@ export default function JsonCsvTool() {
               className={`${styles.tab} ${inputTab === 'paste' ? styles.tabActive : ''}`}
               onClick={() => setInputTab('paste')}
             >
-              Paste text
+              {t('Paste text')}
             </button>
             <button
               type="button"
               className={`${styles.tab} ${inputTab === 'upload' ? styles.tabActive : ''}`}
               onClick={() => setInputTab('upload')}
             >
-              Upload file(s)
+              {t('Upload file(s)')}
             </button>
           </div>
 
@@ -356,14 +378,16 @@ export default function JsonCsvTool() {
             <FileDrop
               accept=".json,application/json,.csv,.tsv,text/csv,text/tab-separated-values,text/*"
               multiple
-              label={direction === 'json-to-csv' ? 'Choose or drag JSON file(s)' : 'Choose or drag CSV/TSV file(s)'}
-              hint="Multiple files are automatically processed in batch."
+              label={direction === 'json-to-csv' ? t('Choose or drag JSON file(s)') : t('Choose or drag CSV/TSV file(s)')}
+              hint={t('Multiple files are automatically processed in batch.')}
               onFiles={handleFiles}
             />
           ) : (
             <Field
-              label={direction === 'json-to-csv' ? 'Input JSON' : 'Input CSV'}
-              hint={direction === 'json-to-csv' ? 'Array of objects, array of arrays, or single object' : 'Delimited text with headers'}
+              label={direction === 'json-to-csv' ? t('Input JSON') : t('Input CSV')}
+              hint={
+                direction === 'json-to-csv' ? t('Array of objects, array of arrays, or single object') : t('Delimited text with headers')
+              }
             >
               <textarea
                 className={styles.textarea}
@@ -383,16 +407,16 @@ export default function JsonCsvTool() {
 
           {/* Controls */}
           <div className={styles.controlsRow}>
-            <Field label="Delimiter">
+            <Field label={t('Delimiter')}>
               <Select
                 value={delimiter}
                 onChange={(e) => setDelimiter(e.target.value)}
                 options={[
-                  { value: ',', label: 'Comma (,)' },
-                  { value: ';', label: 'Semicolon (;)' },
-                  { value: '\t', label: 'Tab (\\t)' },
-                  { value: '|', label: 'Pipe (|)' },
-                  ...(direction === 'csv-to-json' ? [{ value: 'auto', label: 'Auto-detect' }] : []),
+                  { value: ',', label: t('Comma (,)') },
+                  { value: ';', label: t('Semicolon (;)') },
+                  { value: '\t', label: t('Tab (\\t)') },
+                  { value: '|', label: t('Pipe (|)') },
+                  ...(direction === 'csv-to-json' ? [{ value: 'auto', label: t('Auto-detect') }] : []),
                 ]}
               />
             </Field>
@@ -401,17 +425,17 @@ export default function JsonCsvTool() {
               <>
                 <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
                   <input type="checkbox" checked={hasHeader} onChange={(e) => setHasHeader(e.target.checked)} />
-                  First row is header
+                  {t('First row is header')}
                 </label>
 
                 <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
                   <input type="checkbox" checked={preserveLeadingZeros} onChange={(e) => setPreserveLeadingZeros(e.target.checked)} />
-                  Preserve leading zeros & string IDs
+                  {t('Preserve leading zeros & string IDs')}
                 </label>
 
                 <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
                   <input type="checkbox" checked={parseNumbers} onChange={(e) => setParseNumbers(e.target.checked)} />
-                  Parse numbers & booleans
+                  {t('Parse numbers & booleans')}
                 </label>
               </>
             )}
@@ -422,7 +446,7 @@ export default function JsonCsvTool() {
         {conversion.error && (
           <div className={styles.errorBanner}>
             <span>⚠️</span>
-            <span>{conversion.error}</span>
+            <span>{errorText(conversion.error)}</span>
           </div>
         )}
 
@@ -431,24 +455,24 @@ export default function JsonCsvTool() {
           <div className={styles.resultCard}>
             <div className={styles.resultHeader}>
               <div className={styles.resultTitle}>
-                Converted {direction === 'json-to-csv' ? 'CSV' : 'JSON'} Result
+                {t('Converted {format} result', { format: direction === 'json-to-csv' ? 'CSV' : 'JSON' })}
                 <span className={styles.metaBadge}>{outputFilename}</span>
               </div>
             </div>
 
-            <pre className={styles.previewText} tabIndex={0} aria-label="Converted output preview">
+            <pre className={styles.previewText} tabIndex={0} aria-label={t('Converted output preview')}>
               {conversion.outputText}
             </pre>
 
             <div className={styles.actions}>
               <Button variant="primary" onClick={handleDownloadSingle}>
-                Download {outputFilename}
+                {t('Download {file}', { file: outputFilename })}
               </Button>
               <Button variant="secondary" onClick={handleCopy}>
-                {copied ? 'Copied to clipboard!' : 'Copy to clipboard'}
+                {copied ? t('Copied to clipboard!') : t('Copy to clipboard')}
               </Button>
               <Button variant="secondary" onClick={handleReset}>
-                Clear
+                {t('Clear')}
               </Button>
             </div>
           </div>
@@ -458,9 +482,9 @@ export default function JsonCsvTool() {
         {isBatch && batchResults.length > 0 && (
           <div className={styles.resultCard}>
             <div className={styles.resultHeader}>
-              <div className={styles.resultTitle}>Batch Conversion Results ({batchResults.length} files)</div>
+              <div className={styles.resultTitle}>{t('Batch conversion results ({count} files)', { count: batchResults.length })}</div>
               <Button variant="primary" onClick={handleDownloadZip}>
-                Download All as ZIP
+                {t('Download all as ZIP')}
               </Button>
             </div>
 
@@ -472,14 +496,18 @@ export default function JsonCsvTool() {
                       {item.originalName} → {item.outputName}
                     </div>
                     {item.error ? (
-                      <span style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>Error: {item.error}</span>
+                      <span style={{ color: 'var(--danger)', fontSize: '0.85rem' }}>
+                        {t('Error:')} {errorText(item.error)}
+                      </span>
                     ) : (
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Ready ({item.blob.size} bytes)</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                        {t('Ready ({size} bytes)', { size: item.blob.size })}
+                      </span>
                     )}
                   </div>
                   {!item.error && (
                     <Button variant="secondary" onClick={() => downloadBlob(item.blob, item.outputName)}>
-                      Download
+                      {t('Download')}
                     </Button>
                   )}
                 </div>
@@ -488,7 +516,7 @@ export default function JsonCsvTool() {
 
             <div className={styles.actions}>
               <Button variant="secondary" onClick={handleReset}>
-                Clear batch
+                {t('Clear batch')}
               </Button>
             </div>
           </div>

@@ -1,7 +1,15 @@
 import { decodeImage, canvasToBlob, type EncodableMime } from '../../../lib/image';
 import { getDefaultFormat, renderScaledCanvas, formatOutputFile, detectAlpha } from './utils';
 
+const extensions: Record<EncodableMime, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'image/avif': 'avif',
+};
+
 export interface ResizeOptions {
+  source?: HTMLImageElement;
   width: number;
   height: number;
   format?: EncodableMime;
@@ -17,10 +25,10 @@ export interface ResizeResult {
 }
 
 export async function resizeImage(file: File, options: ResizeOptions): Promise<ResizeResult> {
-  const img = await decodeImage(file);
+  const img = options.source ?? (await decodeImage(file));
   const defaultFmt = getDefaultFormat(file, 'image/png');
   const mime = options.format || defaultFmt.mime;
-  const ext = mime === 'image/jpeg' ? 'jpg' : mime === 'image/webp' ? 'webp' : 'png';
+  const ext = extensions[mime];
 
   const scaledCanvas = renderScaledCanvas(img, img.width, img.height, options.width, options.height);
   const quality = mime === 'image/png' ? undefined : (options.quality ?? 0.85);
@@ -83,7 +91,7 @@ export async function compressImage(file: File, options: CompressOptions = {}): 
     }
   }
 
-  const ext = mime === 'image/webp' ? 'webp' : 'jpg';
+  const ext = extensions[mime];
   const quality = options.quality ?? 0.75;
   const blob = await canvasToBlob(canvas, mime, quality);
   const filename = formatOutputFile(file.name, '-compressed', ext);

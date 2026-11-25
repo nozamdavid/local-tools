@@ -48,14 +48,23 @@ export function rebuildXref(bytes: Uint8Array): Uint8Array {
   }
   if (!rootRef) throw new Error('The document catalog could not be found.');
 
-  const maxObj = Math.max(...offsets.keys());
   const header = body.startsWith('%PDF-') ? '' : '%PDF-1.7\n';
   const prefix = header.length;
 
-  let xref = `xref\n0 ${maxObj + 1}\n`;
-  for (let n = 0; n <= maxObj; n++) {
-    const entry = offsets.get(n);
-    xref += entry ? `${pad(entry.offset + prefix, 10)} ${pad(entry.gen, 5)} n \n` : `${pad(0, 10)} ${pad(n === 0 ? 65535 : 0, 5)} f \n`;
+  // Sparse object numbers are valid. Emit only runs of objects present in the file.
+  offsets.delete(0);
+  const entries = Array.from(offsets).sort(([a], [b]) => a - b);
+  const maxObj = entries.at(-1)?.[0] ?? 0;
+  let xref = 'xref\n0 1\n0000000000 65535 f \n';
+  for (let first = 0; first < entries.length;) {
+    let end = first + 1;
+    while (end < entries.length && entries[end][0] === entries[end - 1][0] + 1) end++;
+    xref += `${entries[first][0]} ${end - first}\n`;
+    for (let i = first; i < end; i++) {
+      const [, { offset, gen }] = entries[i];
+      xref += `${pad(offset + prefix, 10)} ${pad(gen, 5)} n \n`;
+    }
+    first = end;
   }
 
   const xrefOffset = prefix + body.length + 1;

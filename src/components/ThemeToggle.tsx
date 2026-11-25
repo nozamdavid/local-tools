@@ -1,25 +1,23 @@
-import { Monitor, Moon, Sun } from 'lucide-react';
-import { useTheme, type ThemePreference } from '../design/theme';
+import { Moon, Sun } from 'lucide-react';
+import { useTheme } from '../design/theme';
+import { useI18n } from '../lib/i18n';
 
-const ORDER: ThemePreference[] = ['system', 'light', 'dark'];
-const ICONS = { system: Monitor, light: Sun, dark: Moon };
-const LABELS = { system: 'System theme', light: 'Light theme', dark: 'Dark theme' };
-
-/** Cycles system → light → dark. */
+/** Switches directly between light and dark themes. */
 export function ThemeToggle() {
-  const { preference, setPreference } = useTheme();
-  const Icon = ICONS[preference];
-  const next = ORDER[(ORDER.indexOf(preference) + 1) % ORDER.length];
+  const { theme, setPreference } = useTheme();
+  const { t } = useI18n();
+  const next = theme === 'dark' ? 'light' : 'dark';
+  const Icon = theme === 'dark' ? Moon : Sun;
 
   return (
     <button
       type="button"
       className="btn btn-ghost btn-icon"
       onClick={() => setPreference(next)}
-      title={`${LABELS[preference]} (switch to ${LABELS[next].toLowerCase()})`}
-      aria-label={`${LABELS[preference]}. Switch to ${LABELS[next].toLowerCase()}`}
+      title={t('Switch to {theme} theme', { theme: t(next) })}
+      aria-label={t('Switch to {theme} theme', { theme: t(next) })}
     >
-      <Icon />
+      <Icon aria-hidden="true" />
     </button>
   );
 }

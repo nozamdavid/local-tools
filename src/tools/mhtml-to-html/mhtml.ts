@@ -1,4 +1,5 @@
 import { unescapeCss, sanitizeCssText } from '../../lib/inertMarkup';
+import { translate } from '../../lib/i18n';
 
 export interface MhtmlPart {
   headers: Record<string, string>;
@@ -123,7 +124,7 @@ export function extractBoundary(contentType: string): string | null {
 export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
   const splitIdx = mhtmlText.search(/\r?\n\r?\n/);
   if (splitIdx === -1) {
-    throw new Error('Invalid MHTML: Missing MIME header separator.');
+    throw new Error(translate('Invalid MHTML: Missing MIME header separator.'));
   }
 
   const topHeaderText = mhtmlText.slice(0, splitIdx);
@@ -136,27 +137,42 @@ export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
   const boundary = extractBoundary(contentType);
 
   if (!boundary) {
-    throw new Error('Invalid MHTML: Could not find multipart boundary in Content-Type header.');
+    throw new Error(translate('Invalid MHTML: Could not find multipart boundary in Content-Type header.'));
   }
 
   const subject = topHeaders['subject'];
   const startCid = (contentType.match(/start="?([^";]+)"?/i)?.[1] || '').replace(/[<>]/g, '');
 
-  const delimiter = `--${boundary}`;
-  const rawParts = bodyText.split(delimiter);
+  const escapedBoundary = boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const delimiters = bodyText.matchAll(new RegExp(`^--${escapedBoundary}(--)?[\\t ]*(?:\\r?\\n|$)`, 'gm'));
+  const rawParts: string[] = [];
+  let partStart: number | undefined;
+  for (const delimiter of delimiters) {
+    if (partStart !== undefined) {
+      rawParts.push(bodyText.slice(partStart, delimiter.index));
+    }
+    if (delimiter[1]) {
+      partStart = undefined;
+      break;
+    }
+    partStart = delimiter.index + delimiter[0].length;
+  }
+  if (partStart !== undefined) rawParts.push(bodyText.slice(partStart));
 
   const parts: MhtmlPart[] = [];
-  let rootHtmlPart: MhtmlPart | null = null;
 
   for (const rawPart of rawParts) {
     const trimmed = rawPart.trim();
-    if (!trimmed || trimmed === '--') continue;
+    if (!trimmed) continue;
 
     const partHeaderSplit = rawPart.search(/\r?\n\r?\n/);
     if (partHeaderSplit === -1) continue;
 
     const partHeaderStr = rawPart.slice(0, partHeaderSplit);
-    const partBodyStr = rawPart.slice(partHeaderSplit).replace(/^\r?\n\r?\n/, '');
+    const partBodyStr = rawPart
+      .slice(partHeaderSplit)
+      .replace(/^\r?\n\r?\n/, '')
+      .replace(/\r?\n$/, '');
 
     const partHeaders = parseHeaderLines(unfoldHeaders(partHeaderStr));
     const partContentType = partHeaders['content-type'] || 'text/plain';
@@ -209,20 +225,10 @@ export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
     };
 
     parts.push(part);
-
-    if (!rootHtmlPart) {
-      if (startCid && contentId && contentId === startCid) {
-        rootHtmlPart = part;
-      } else if (mimeType === 'text/html') {
-        rootHtmlPart = part;
-      }
-    }
   }
 
-  if (!rootHtmlPart && parts.length > 0) {
-    rootHtmlPart = parts[0];
-  }
-
+  const declaredRoot = startCid ? parts.find((part) => part.contentId === startCid) : undefined;
+  const rootHtmlPart = declaredRoot ?? parts.find((part) => part.mimeType === 'text/html') ?? parts[0];
   const rootHtml = rootHtmlPart?.text || '';
   return {
     rootHtml,

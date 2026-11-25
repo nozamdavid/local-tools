@@ -1,13 +1,19 @@
 import { loadPdfjs } from '../../../lib/pdf';
+import { translate } from '../../../lib/i18n';
+import { canvasToBlob } from '../../../lib/image';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 export interface LoadPdfOptions {
   onPassword?: (verifyPassword: (password: string) => void, reason: number) => void;
+  signal?: AbortSignal;
 }
 
 export async function loadPdfDocument(file: File | Blob, options?: LoadPdfOptions): Promise<PDFDocumentProxy> {
+  const signal = options?.signal;
+  signal?.throwIfAborted();
   const pdfjs = await loadPdfjs();
   const arrayBuffer = await file.arrayBuffer();
+  signal?.throwIfAborted();
 
   const loadingTask = pdfjs.getDocument({
     data: new Uint8Array(arrayBuffer),
@@ -19,33 +25,63 @@ export async function loadPdfDocument(file: File | Blob, options?: LoadPdfOption
     };
   }
 
-  return await loadingTask.promise;
+  let abort: (() => void) | undefined;
+  try {
+    return await new Promise<PDFDocumentProxy>((resolve, reject) => {
+      abort = () => {
+        reject(signal?.reason);
+        void loadingTask.destroy().catch(() => {});
+      };
+      signal?.addEventListener('abort', abort, { once: true });
+      loadingTask.promise.then(resolve, reject);
+    });
+  } catch (error) {
+    if (abort) signal?.removeEventListener('abort', abort);
+    if (!signal?.aborted) await loadingTask.destroy().catch(() => {});
+    throw error;
+  }
 }
 
-export async function renderPdfThumbnail(pdfDoc: PDFDocumentProxy, pageNumber: number, maxDim: number = 160): Promise<string> {
+export async function renderPdfThumbnail(
+  pdfDoc: PDFDocumentProxy,
+  pageNumber: number,
+  maxDim: number = 160,
+  signal?: AbortSignal,
+): Promise<string> {
+  signal?.throwIfAborted();
   const page = await pdfDoc.getPage(pageNumber);
-  const unscaled = page.getViewport({ scale: 1 });
-  const scale = maxDim / Math.max(unscaled.width, unscaled.height);
-  const viewport = page.getViewport({ scale });
-
   const canvas = document.createElement('canvas');
-  canvas.width = Math.max(1, Math.floor(viewport.width));
-  canvas.height = Math.max(1, Math.floor(viewport.height));
+  let cancelRender: (() => void) | undefined;
+  try {
+    signal?.throwIfAborted();
+    const unscaled = page.getViewport({ scale: 1 });
+    const scale = maxDim / Math.max(unscaled.width, unscaled.height);
+    const viewport = page.getViewport({ scale });
 
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D unavailable');
+    canvas.width = Math.max(1, Math.floor(viewport.width));
+    canvas.height = Math.max(1, Math.floor(viewport.height));
 
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error(translate('Canvas 2D unavailable'));
 
-  await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-  const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  canvas.width = 0;
-  canvas.height = 0;
-  page.cleanup();
+    const task = page.render({ canvasContext: ctx, viewport, canvas });
+    cancelRender = () => task.cancel();
+    signal?.addEventListener('abort', cancelRender, { once: true });
+    if (signal?.aborted) task.cancel();
+    await task.promise;
+    signal?.throwIfAborted();
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
 
-  return dataUrl;
+    return dataUrl;
+  } finally {
+    if (cancelRender) signal?.removeEventListener('abort', cancelRender);
+    canvas.width = 0;
+    canvas.height = 0;
+    page.cleanup();
+  }
 }
 
 export async function renderPdfPageToBlob(
@@ -62,27 +98,67 @@ export async function renderPdfPageToBlob(
   canvas.width = Math.max(1, Math.floor(viewport.width));
   canvas.height = Math.max(1, Math.floor(viewport.height));
 
+  try {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error(translate('Canvas 2D unavailable'));
+    await page.render({ canvasContext: ctx, viewport, canvas }).promise;
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, format, quality));
+    if (!blob?.size || blob.type !== format) {
+      throw new Error(translate('Failed to encode PDF page {page} to {format}', { page: pageNumber, format }));
+    }
+    return blob;
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+    page.cleanup();
+  }
+}
+
+interface PdfImageData {
+  width: number;
+  height: number;
+  bitmap?: ImageBitmap;
+  kind?: number;
+  data?: Uint8ClampedArray | Uint8Array;
+}
+
+function drawPdfImage(canvas: HTMLCanvasElement, image: PdfImageData, kinds: typeof import('pdfjs-dist').ImageKind): boolean {
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D unavailable');
-
-  if (format === 'image/jpeg') {
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  if (!ctx) throw new Error(translate('Canvas 2D unavailable'));
+  if (image.bitmap) {
+    ctx.drawImage(image.bitmap, 0, 0);
+    return true;
   }
 
-  await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, format, quality));
-
-  canvas.width = 0;
-  canvas.height = 0;
-  page.cleanup();
-
-  if (!blob) {
-    throw new Error(`Failed to encode PDF page ${pageNumber} to ${format}`);
+  const { width, height, kind, data } = image;
+  if (!data) return false;
+  const pixels = ctx.createImageData(width, height);
+  const rgba = pixels.data;
+  if (kind === kinds.RGBA_32BPP) {
+    rgba.set(data.subarray(0, rgba.length));
+  } else if (kind === kinds.RGB_24BPP) {
+    for (let src = 0, dest = 0; src + 2 < data.length && dest < rgba.length; src += 3, dest += 4) {
+      rgba[dest] = data[src];
+      rgba[dest + 1] = data[src + 1];
+      rgba[dest + 2] = data[src + 2];
+      rgba[dest + 3] = 255;
+    }
+  } else if (kind === kinds.GRAYSCALE_1BPP) {
+    const stride = Math.ceil(width / 8);
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const byte = data[y * stride + (x >> 3)];
+        const shade = ((byte >> (7 - (x & 7))) & 1) * 255;
+        const dest = (y * width + x) * 4;
+        rgba[dest] = rgba[dest + 1] = rgba[dest + 2] = shade;
+        rgba[dest + 3] = 255;
+      }
+    }
+  } else {
+    return false;
   }
-
-  return blob;
+  ctx.putImageData(pixels, 0, 0);
+  return true;
 }
 
 export async function extractEmbeddedImagesOrPages(
@@ -108,74 +184,39 @@ export async function extractEmbeddedImagesOrPages(
     for (let p = 1; p <= numPages; p++) {
       options.onProgress?.(p - 1, numPages);
       const page = await pdfDoc.getPage(p);
-      const ops = await page.getOperatorList();
+      try {
+        const ops = await page.getOperatorList();
 
-      for (let i = 0; i < ops.fnArray.length; i++) {
-        const fn = ops.fnArray[i];
-        if (fn === pdfjs.OPS.paintImageXObject) {
-          const objId = ops.argsArray[i][0];
+        for (let i = 0; i < ops.fnArray.length; i++) {
+          const fn = ops.fnArray[i];
+          let image: PdfImageData | null;
+          if (fn === pdfjs.OPS.paintInlineImageXObject) {
+            image = ops.argsArray[i][0];
+          } else if (fn === pdfjs.OPS.paintImageXObject || fn === pdfjs.OPS.paintImageXObjectRepeat) {
+            const objId = ops.argsArray[i][0];
+            const objs = objId.startsWith('g_') ? page.commonObjs : page.objs;
+            image = objs.has(objId) ? objs.get(objId) : await new Promise((resolve) => objs.get(objId, resolve));
+          } else {
+            continue;
+          }
+
+          if (!image?.width || !image.height) continue;
+          const canvas = document.createElement('canvas');
+          canvas.width = image.width;
+          canvas.height = image.height;
           try {
-            const objs =
-              typeof objId === 'string' && objId.startsWith('g_')
-                ? (page as unknown as { commonObjs: { has(id: string): boolean; get(id: string, cb?: (res: unknown) => void): unknown } })
-                    .commonObjs
-                : (page as unknown as { objs: { has(id: string): boolean; get(id: string, cb?: (res: unknown) => void): unknown } }).objs;
-
-            let imgData: unknown = null;
-            if (objs) {
-              if (objs.has(objId)) {
-                imgData = objs.get(objId);
-              } else {
-                imgData = await new Promise((resolve) => objs.get(objId, resolve));
-              }
-            }
-
-            if (imgData && typeof imgData === 'object' && 'width' in imgData && 'height' in imgData) {
-              const rawImg = imgData as {
-                width: number;
-                height: number;
-                data?: Uint8ClampedArray | Uint8Array;
-              };
-
-              const canvas = document.createElement('canvas');
-              canvas.width = rawImg.width;
-              canvas.height = rawImg.height;
-              const ctx = canvas.getContext('2d');
-
-              if (ctx) {
-                if (options.format === 'image/jpeg') {
-                  ctx.fillStyle = '#ffffff';
-                  ctx.fillRect(0, 0, canvas.width, canvas.height);
-                }
-
-                if (typeof ImageBitmap !== 'undefined' && rawImg instanceof ImageBitmap) {
-                  ctx.drawImage(rawImg, 0, 0);
-                } else if (rawImg.data) {
-                  const imgDataObj = ctx.createImageData(rawImg.width, rawImg.height);
-                  imgDataObj.data.set(rawImg.data);
-                  ctx.putImageData(imgDataObj, 0, 0);
-                }
-
-                const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, options.format, options.quality ?? 0.92));
-                canvas.width = 0;
-                canvas.height = 0;
-
-                if (blob) {
-                  items.push({
-                    name: `${cleanBase}-image-${imgIdx}.${ext}`,
-                    blob,
-                  });
-                  imgIdx++;
-                }
-              }
-            }
-          } catch {
-            // continue parsing other operators
+            if (!drawPdfImage(canvas, image, pdfjs.ImageKind)) continue;
+            const blob = await canvasToBlob(canvas, options.format, options.quality ?? 0.92);
+            items.push({ name: `${cleanBase}-image-${imgIdx}.${ext}`, blob });
+            imgIdx++;
+          } finally {
+            canvas.width = 0;
+            canvas.height = 0;
           }
         }
+      } finally {
+        page.cleanup();
       }
-
-      page.cleanup();
     }
 
     if (items.length === 0) {

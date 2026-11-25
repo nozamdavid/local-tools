@@ -6,6 +6,7 @@ import { getToolMeta } from '../../registry';
 import { downloadBlob } from '../../../lib/download';
 import { type QrContentType, type WifiData, type EmailData, type SmsData, type VCardData, buildQrString } from '../_generate/qr';
 import styles from './Tool.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 type ErrorCorrection = 'L' | 'M' | 'Q' | 'H';
 
@@ -21,6 +22,7 @@ const CONTENT_TYPES: { id: QrContentType; label: string }[] = [
 
 export default function QrCodeGeneratorTool() {
   const meta = getToolMeta('img-qr-code-generator');
+  const { t } = useI18n();
 
   const [contentType, setContentType] = useState<QrContentType>('url');
   const [urlVal, setUrlVal] = useState<string>('https://loconvert.com');
@@ -223,14 +225,15 @@ export default function QrCodeGeneratorTool() {
     <ToolPage title={meta.title} description={meta.description} currentId="img-qr-code-generator">
       <div className={styles.container}>
         <div className={styles.typeTabs}>
-          {CONTENT_TYPES.map((t) => (
+          {CONTENT_TYPES.map((content) => (
             <button
-              key={t.id}
+              key={content.id}
               type="button"
-              className={`${styles.typeTab} ${contentType === t.id ? styles.typeTabActive : ''}`}
-              onClick={() => setContentType(t.id)}
+              className={`${styles.typeTab} ${contentType === content.id ? styles.typeTabActive : ''}`}
+              aria-pressed={contentType === content.id}
+              onClick={() => setContentType(content.id)}
             >
-              {t.label}
+              {t(content.label)}
             </button>
           ))}
         </div>
@@ -239,7 +242,7 @@ export default function QrCodeGeneratorTool() {
           {/* Controls Column */}
           <div className={styles.panel}>
             {contentType === 'url' && (
-              <Field label="Website URL" hint="Enter complete address, e.g. https://example.com">
+              <Field label={t('Website URL')} hint={t('Enter the complete address, for example https://example.com')}>
                 <input
                   type="url"
                   className="input"
@@ -251,12 +254,12 @@ export default function QrCodeGeneratorTool() {
             )}
 
             {contentType === 'text' && (
-              <Field label="Text Content" hint="Any plain text up to several hundred characters.">
+              <Field label={t('Text content')} hint={t('Any plain text up to several hundred characters.')}>
                 <textarea
                   className="input"
                   rows={4}
                   value={textVal}
-                  placeholder="Type anything..."
+                  placeholder={t('Type anything…')}
                   onChange={(e) => setTextVal(e.target.value)}
                 />
               </Field>
@@ -264,45 +267,45 @@ export default function QrCodeGeneratorTool() {
 
             {contentType === 'wifi' && (
               <div className={styles.formGrid}>
-                <Field label="Network SSID (Name)">
+                <Field label={t('Network SSID (name)')}>
                   <input
                     type="text"
                     className="input"
                     value={wifiVal.ssid}
-                    placeholder="WiFi Network Name"
+                    placeholder={t('WiFi network name')}
                     onChange={(e) => setWifiVal({ ...wifiVal, ssid: e.target.value })}
                   />
                 </Field>
-                <Field label="Password">
+                <Field label={t('Password')}>
                   <input
                     type="text"
                     className="input"
                     value={wifiVal.password}
-                    placeholder="Network password (leave blank if open)"
+                    placeholder={t('Network password (leave blank if open)')}
                     disabled={wifiVal.auth === 'nopass'}
                     onChange={(e) => setWifiVal({ ...wifiVal, password: e.target.value })}
                   />
                 </Field>
                 <div className={styles.twoCols}>
-                  <Field label="Encryption">
+                  <Field label={t('Encryption')}>
                     <Select
                       value={wifiVal.auth}
                       onChange={(e) => setWifiVal({ ...wifiVal, auth: e.target.value as 'WPA' | 'WEP' | 'nopass' })}
                       options={[
                         { value: 'WPA', label: 'WPA / WPA2 / WPA3' },
                         { value: 'WEP', label: 'WEP' },
-                        { value: 'nopass', label: 'Open (No password)' },
+                        { value: 'nopass', label: t('Open (no password)') },
                       ]}
                     />
                   </Field>
-                  <Field label="Hidden Network">
+                  <Field label={t('Hidden network')}>
                     <label className={styles.checkboxLabel} style={{ marginTop: '0.5rem' }}>
                       <input
                         type="checkbox"
                         checked={wifiVal.hidden}
                         onChange={(e) => setWifiVal({ ...wifiVal, hidden: e.target.checked })}
                       />
-                      Hidden SSID
+                      {t('Hidden SSID')}
                     </label>
                   </Field>
                 </div>
@@ -311,7 +314,7 @@ export default function QrCodeGeneratorTool() {
 
             {contentType === 'email' && (
               <div className={styles.formGrid}>
-                <Field label="Send To (Email)">
+                <Field label={t('Send to (email)')}>
                   <input
                     type="email"
                     className="input"
@@ -320,21 +323,21 @@ export default function QrCodeGeneratorTool() {
                     onChange={(e) => setEmailVal({ ...emailVal, to: e.target.value })}
                   />
                 </Field>
-                <Field label="Subject Line">
+                <Field label={t('Subject line')}>
                   <input
                     type="text"
                     className="input"
                     value={emailVal.subject}
-                    placeholder="Subject"
+                    placeholder={t('Subject')}
                     onChange={(e) => setEmailVal({ ...emailVal, subject: e.target.value })}
                   />
                 </Field>
-                <Field label="Message Body">
+                <Field label={t('Message body')}>
                   <textarea
                     className="input"
                     rows={3}
                     value={emailVal.body}
-                    placeholder="Pre-filled email message..."
+                    placeholder={t('Pre-filled email message…')}
                     onChange={(e) => setEmailVal({ ...emailVal, body: e.target.value })}
                   />
                 </Field>
@@ -342,7 +345,7 @@ export default function QrCodeGeneratorTool() {
             )}
 
             {contentType === 'phone' && (
-              <Field label="Phone Number" hint="Include country code, e.g. +14155552671">
+              <Field label={t('Phone number')} hint={t('Include the country code, for example +14155552671')}>
                 <input
                   type="tel"
                   className="input"
@@ -355,7 +358,7 @@ export default function QrCodeGeneratorTool() {
 
             {contentType === 'sms' && (
               <div className={styles.formGrid}>
-                <Field label="Recipient Phone Number">
+                <Field label={t('Recipient phone number')}>
                   <input
                     type="tel"
                     className="input"
@@ -364,12 +367,12 @@ export default function QrCodeGeneratorTool() {
                     onChange={(e) => setSmsVal({ ...smsVal, phone: e.target.value })}
                   />
                 </Field>
-                <Field label="SMS Message">
+                <Field label={t('SMS message')}>
                   <textarea
                     className="input"
                     rows={3}
                     value={smsVal.message}
-                    placeholder="Text message..."
+                    placeholder={t('Text message…')}
                     onChange={(e) => setSmsVal({ ...smsVal, message: e.target.value })}
                   />
                 </Field>
@@ -379,7 +382,7 @@ export default function QrCodeGeneratorTool() {
             {contentType === 'vcard' && (
               <div className={styles.formGrid}>
                 <div className={styles.twoCols}>
-                  <Field label="First Name">
+                  <Field label={t('First name')}>
                     <input
                       type="text"
                       className="input"
@@ -387,7 +390,7 @@ export default function QrCodeGeneratorTool() {
                       onChange={(e) => setVcardVal({ ...vcardVal, firstName: e.target.value })}
                     />
                   </Field>
-                  <Field label="Last Name">
+                  <Field label={t('Last name')}>
                     <input
                       type="text"
                       className="input"
@@ -397,7 +400,7 @@ export default function QrCodeGeneratorTool() {
                   </Field>
                 </div>
                 <div className={styles.twoCols}>
-                  <Field label="Organization / Company">
+                  <Field label={t('Organization / company')}>
                     <input
                       type="text"
                       className="input"
@@ -405,7 +408,7 @@ export default function QrCodeGeneratorTool() {
                       onChange={(e) => setVcardVal({ ...vcardVal, org: e.target.value })}
                     />
                   </Field>
-                  <Field label="Job Title">
+                  <Field label={t('Job title')}>
                     <input
                       type="text"
                       className="input"
@@ -415,7 +418,7 @@ export default function QrCodeGeneratorTool() {
                   </Field>
                 </div>
                 <div className={styles.twoCols}>
-                  <Field label="Phone">
+                  <Field label={t('Phone')}>
                     <input
                       type="tel"
                       className="input"
@@ -423,7 +426,7 @@ export default function QrCodeGeneratorTool() {
                       onChange={(e) => setVcardVal({ ...vcardVal, phone: e.target.value })}
                     />
                   </Field>
-                  <Field label="Email">
+                  <Field label={t('Email')}>
                     <input
                       type="email"
                       className="input"
@@ -432,7 +435,7 @@ export default function QrCodeGeneratorTool() {
                     />
                   </Field>
                 </div>
-                <Field label="Website / URL">
+                <Field label={t('Website / URL')}>
                   <input
                     type="url"
                     className="input"
@@ -440,7 +443,7 @@ export default function QrCodeGeneratorTool() {
                     onChange={(e) => setVcardVal({ ...vcardVal, url: e.target.value })}
                   />
                 </Field>
-                <Field label="Street Address">
+                <Field label={t('Street address')}>
                   <input
                     type="text"
                     className="input"
@@ -449,7 +452,7 @@ export default function QrCodeGeneratorTool() {
                   />
                 </Field>
                 <div className={styles.twoCols}>
-                  <Field label="City">
+                  <Field label={t('City')}>
                     <input
                       type="text"
                       className="input"
@@ -457,7 +460,7 @@ export default function QrCodeGeneratorTool() {
                       onChange={(e) => setVcardVal({ ...vcardVal, city: e.target.value })}
                     />
                   </Field>
-                  <Field label="State / Province">
+                  <Field label={t('State / province')}>
                     <input
                       type="text"
                       className="input"
@@ -467,7 +470,7 @@ export default function QrCodeGeneratorTool() {
                   </Field>
                 </div>
                 <div className={styles.twoCols}>
-                  <Field label="Postal / ZIP Code">
+                  <Field label={t('Postal / ZIP code')}>
                     <input
                       type="text"
                       className="input"
@@ -475,7 +478,7 @@ export default function QrCodeGeneratorTool() {
                       onChange={(e) => setVcardVal({ ...vcardVal, zip: e.target.value })}
                     />
                   </Field>
-                  <Field label="Country">
+                  <Field label={t('Country')}>
                     <input
                       type="text"
                       className="input"
@@ -487,107 +490,111 @@ export default function QrCodeGeneratorTool() {
               </div>
             )}
 
-            <hr style={{ border: 'none', borderTop: '1px solid var(--border)' }} />
+            <details className="tool-options">
+              <summary>{t('Appearance')}</summary>
+              <div className="tool-options-body">
+                <div className={styles.twoCols}>
+                  <Field
+                    label={t('Error correction')}
+                    hint={logoImg ? t('Locked to high (30%) because a center logo is active.') : undefined}
+                  >
+                    <Select
+                      id={ecId}
+                      value={effectiveEcLevel}
+                      disabled={!!logoImg}
+                      onChange={(e) => setEcLevel(e.target.value as ErrorCorrection)}
+                      options={[
+                        { value: 'L', label: t('Low (~7%)') },
+                        { value: 'M', label: t('Medium (~15%)') },
+                        { value: 'Q', label: t('Quartile (~25%)') },
+                        { value: 'H', label: t('High (~30%)') },
+                      ]}
+                    />
+                  </Field>
 
-            {/* Customization Options */}
-            <div className={styles.twoCols}>
-              <Field label="Error Correction" hint={logoImg ? 'Locked to High (30%) because center logo is active' : undefined}>
-                <Select
-                  id={ecId}
-                  value={effectiveEcLevel}
-                  disabled={!!logoImg}
-                  onChange={(e) => setEcLevel(e.target.value as ErrorCorrection)}
-                  options={[
-                    { value: 'L', label: 'Low (~7%)' },
-                    { value: 'M', label: 'Medium (~15%)' },
-                    { value: 'Q', label: 'Quartile (~25%)' },
-                    { value: 'H', label: 'High (~30%)' },
-                  ]}
-                />
-              </Field>
-
-              <Field label="Margin (Quiet Zone)">
-                <Slider min={0} max={8} step={1} value={margin} onChange={setMargin} />
-              </Field>
-            </div>
-
-            <Field label="Output Size">
-              <Slider min={160} max={800} step={20} unit="px" value={size} onChange={setSize} />
-            </Field>
-
-            <div className={styles.twoCols}>
-              <Field label="Foreground Colour">
-                <div className={styles.colorPickerRow}>
-                  <input
-                    type="color"
-                    className={styles.colorInput}
-                    value={darkColor}
-                    aria-label="Foreground colour"
-                    onChange={(e) => setDarkColor(e.target.value)}
-                  />
-                  <span>{darkColor}</span>
+                  <Field label={t('Margin (quiet zone)')}>
+                    <Slider min={0} max={8} step={1} value={margin} onChange={setMargin} />
+                  </Field>
                 </div>
-              </Field>
 
-              <Field label="Background Colour">
-                <div className={styles.colorPickerRow}>
-                  <input
-                    type="color"
-                    className={styles.colorInput}
-                    value={lightColor}
-                    disabled={transparentBg}
-                    aria-label="Background colour"
-                    onChange={(e) => setLightColor(e.target.value)}
-                  />
-                  <label className={styles.checkboxLabel}>
-                    <input type="checkbox" checked={transparentBg} onChange={(e) => setTransparentBg(e.target.checked)} />
-                    Transparent
-                  </label>
+                <Field label={t('Output size')}>
+                  <Slider min={160} max={800} step={20} unit="px" value={size} onChange={setSize} />
+                </Field>
+
+                <div className={styles.twoCols}>
+                  <Field label={t('Foreground colour')}>
+                    <div className={styles.colorPickerRow}>
+                      <input
+                        type="color"
+                        className={styles.colorInput}
+                        value={darkColor}
+                        aria-label={t('Foreground colour')}
+                        onChange={(e) => setDarkColor(e.target.value)}
+                      />
+                      <span>{darkColor}</span>
+                    </div>
+                  </Field>
+
+                  <Field label={t('Background colour')}>
+                    <div className={styles.colorPickerRow}>
+                      <input
+                        type="color"
+                        className={styles.colorInput}
+                        value={lightColor}
+                        disabled={transparentBg}
+                        aria-label={t('Background colour')}
+                        onChange={(e) => setLightColor(e.target.value)}
+                      />
+                      <label className={styles.checkboxLabel}>
+                        <input type="checkbox" checked={transparentBg} onChange={(e) => setTransparentBg(e.target.checked)} />
+                        {t('Transparent')}
+                      </label>
+                    </div>
+                  </Field>
                 </div>
-              </Field>
-            </div>
 
-            {/* Center Logo */}
-            <Field label="Center Logo Image" hint="Optional icon in center. Automatically enables High error correction.">
-              <div className={styles.logoUploadArea}>
-                <input
-                  ref={logoInputRef}
-                  type="file"
-                  accept="image/png,image/jpeg,image/svg+xml,image/webp"
-                  style={{ display: 'none' }}
-                  onChange={handleLogoUpload}
-                />
-                {logoDataUrl ? (
-                  <>
-                    <img src={logoDataUrl} alt="Logo preview" className={styles.logoPreview} />
-                    <Button variant="secondary" onClick={() => logoInputRef.current?.click()}>
-                      Change
-                    </Button>
-                    <Button variant="secondary" onClick={removeLogo}>
-                      Remove
-                    </Button>
-                  </>
-                ) : (
-                  <Button variant="secondary" onClick={() => logoInputRef.current?.click()}>
-                    Upload Logo Image
-                  </Button>
-                )}
+                <Field label={t('Center logo image')} hint={t('Optional icon in the center. Automatically enables high error correction.')}>
+                  <div className={styles.logoUploadArea}>
+                    <input
+                      ref={logoInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                      style={{ display: 'none' }}
+                      onChange={handleLogoUpload}
+                    />
+                    {logoDataUrl ? (
+                      <>
+                        <img src={logoDataUrl} alt={t('Logo preview')} className={styles.logoPreview} />
+                        <Button variant="secondary" onClick={() => logoInputRef.current?.click()}>
+                          {t('Change')}
+                        </Button>
+                        <Button variant="secondary" onClick={removeLogo}>
+                          {t('Remove')}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="secondary" onClick={() => logoInputRef.current?.click()}>
+                        {t('Upload logo image')}
+                      </Button>
+                    )}
+                  </div>
+                </Field>
               </div>
-            </Field>
+            </details>
           </div>
 
           {/* Preview & Download Column */}
           <div className={styles.previewCard}>
             <div className={styles.previewWrapper}>
-              <canvas ref={canvasRef} className={styles.previewCanvas} role="img" aria-label="QR code preview" />
+              <canvas ref={canvasRef} className={styles.previewCanvas} role="img" aria-label={t('QR code preview')} />
             </div>
 
             <div className={styles.actions}>
               <Button className={styles.actionBtn} onClick={handleDownloadPng}>
-                Download PNG
+                {t('Download PNG')}
               </Button>
               <Button variant="secondary" className={styles.actionBtn} onClick={handleDownloadSvg}>
-                Download SVG
+                {t('Download SVG')}
               </Button>
             </div>
           </div>

@@ -4,6 +4,7 @@ import { FileDrop } from '../../../components/FileDrop';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { Field, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { formatBytes } from '../../../lib/format';
 import { IMAGE_ACCEPT } from '../../../lib/image';
 import { useJob } from '../../../lib/useJob';
@@ -25,6 +26,7 @@ function ScreenshotCard({
   onMove: (from: number, to: number) => void;
   onRemove: (index: number) => void;
 }) {
+  const { t } = useI18n();
   const url = useObjectUrl(file);
 
   return (
@@ -43,7 +45,7 @@ function ScreenshotCard({
           className={styles.iconBtn}
           disabled={index === 0}
           onClick={() => onMove(index, index - 1)}
-          title="Move earlier"
+          title={t('Move earlier')}
         >
           ◀
         </button>
@@ -52,11 +54,16 @@ function ScreenshotCard({
           className={styles.iconBtn}
           disabled={index === total - 1}
           onClick={() => onMove(index, index + 1)}
-          title="Move later"
+          title={t('Move later')}
         >
           ▶
         </button>
-        <button type="button" className={`${styles.iconBtn} ${styles.removeBtn}`} onClick={() => onRemove(index)} title="Remove screenshot">
+        <button
+          type="button"
+          className={`${styles.iconBtn} ${styles.removeBtn}`}
+          onClick={() => onRemove(index)}
+          title={t('Remove screenshot')}
+        >
           ✕
         </button>
       </div>
@@ -65,6 +72,7 @@ function ScreenshotCard({
 }
 
 export default function ScreenshotToPdfTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-screenshot-to-pdf');
   const [files, setFiles] = useState<File[]>([]);
   const [pageSize, setPageSize] = useState<PageSizeOption>('fit');
@@ -126,13 +134,13 @@ export default function ScreenshotToPdfTool() {
         <FileDrop
           accept={IMAGE_ACCEPT}
           multiple
-          label="Choose screenshots or drag them here"
-          hint="Supports PNG, JPG, WebP. Tuned for full-page and app screenshots."
+          label={t('Choose screenshots or drag them here')}
+          hint={t('Supports PNG, JPG, WebP. Tuned for full-page and app screenshots.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result ? (
             <PdfPreview
@@ -155,10 +163,10 @@ export default function ScreenshotToPdfTool() {
               >
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    Screenshots: <strong>{files.length}</strong>
+                    {t('Screenshots')}: <strong>{files.length}</strong>
                   </span>
                   <span className="meta-chip">
-                    Total size: <strong>{formatBytes(totalInputSize)}</strong>
+                    {t('Total size')}: <strong>{formatBytes(totalInputSize)}</strong>
                   </span>
                 </div>
 
@@ -175,10 +183,10 @@ export default function ScreenshotToPdfTool() {
                     }}
                   />
                   <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-                    Add more screenshots
+                    {t('Add more screenshots')}
                   </Button>
                   <Button variant="secondary" onClick={handleReset}>
-                    Clear all
+                    {t('Clear all')}
                   </Button>
                 </div>
               </div>
@@ -197,12 +205,12 @@ export default function ScreenshotToPdfTool() {
               </div>
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Converting screenshots into PDF..." />
+                <ProgressBar value={job.progress} label={t('Converting screenshots into PDF...')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
                   <Field
-                    label="Screenshot page layout"
-                    hint="Choose whether tall scrolling captures stay on one seamless page or get split for printing."
+                    label={t('Screenshot page layout')}
+                    hint={t('Choose whether tall scrolling captures stay on one seamless page or get split for printing.')}
                   >
                     <Select
                       id={layoutModeId}
@@ -211,50 +219,50 @@ export default function ScreenshotToPdfTool() {
                       options={[
                         {
                           value: 'single',
-                          label: 'One long page per screenshot (preserves full scrolling height)',
+                          label: t('One long page per screenshot (preserves full scrolling height)'),
                         },
                         {
                           value: 'split',
-                          label: 'Split tall screenshots across standard A4 pages',
+                          label: t('Split tall screenshots across standard A4 pages'),
                         },
                       ]}
                     />
                   </Field>
 
                   {pageLayoutMode === 'single' && (
-                    <Field label="Page size" hint="Fit to image sizes each page to the screenshot without borders.">
+                    <Field label={t('Page size')} hint={t('Fit to image sizes each page to the screenshot without borders.')}>
                       <Select
                         id={pageSizeId}
                         value={pageSize}
                         onChange={(e) => setPageSize(e.target.value as PageSizeOption)}
                         options={[
-                          { value: 'fit', label: 'Fit to screenshot (recommended)' },
-                          { value: 'a4', label: 'A4 (210 × 297 mm)' },
-                          { value: 'letter', label: 'US Letter (8.5 × 11 in)' },
+                          { value: 'fit', label: t('Fit to screenshot (recommended)') },
+                          { value: 'a4', label: t('A4 (210 × 297 mm)') },
+                          { value: 'letter', label: t('US Letter (8.5 × 11 in)') },
                         ]}
                       />
                     </Field>
                   )}
 
-                  <Field label="Page margins" hint="Screenshots look best with no margins.">
+                  <Field label={t('Page margins')} hint={t('Screenshots look best with no margins.')}>
                     <Select
                       id={marginId}
                       value={margin}
                       onChange={(e) => setMargin(e.target.value as MarginOption)}
                       options={[
-                        { value: 'none', label: 'None (edge-to-edge - recommended)' },
-                        { value: 'small', label: 'Small margin (18 pt / 0.25 in)' },
-                        { value: 'large', label: 'Large margin (36 pt / 0.5 in)' },
+                        { value: 'none', label: t('None (edge-to-edge - recommended)') },
+                        { value: 'small', label: t('Small margin (18 pt / 0.25 in)') },
+                        { value: 'large', label: t('Large margin (36 pt / 0.5 in)') },
                       ]}
                     />
                   </Field>
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different files
+                      {t('Choose different files')}
                     </Button>
                     <Button variant="primary" onClick={handleConvert}>
-                      Create PDF
+                      {t('Create PDF')}
                     </Button>
                   </div>
                 </div>

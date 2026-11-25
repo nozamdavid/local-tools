@@ -1,5 +1,6 @@
 import { runFFmpeg, type RunFFmpegInput } from '../../lib/ffmpeg';
 import { withSuffix } from '../../lib/format';
+import { translate } from '../../lib/i18n';
 import type { SubtitleCue } from '../_whisper';
 
 export interface SubtitleStyleOptions {
@@ -43,7 +44,7 @@ async function renderCueToPng(cue: SubtitleCue, width: number, height: number, s
   const ctx = canvas.getContext('2d') as CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D | null;
 
   if (!ctx) {
-    throw new Error('Canvas 2D context not available');
+    throw new Error(translate('Canvas 2D context not available'));
   }
 
   ctx.clearRect(0, 0, width, height);
@@ -124,7 +125,7 @@ async function canvasToUint8Array(canvas: HTMLCanvasElement | OffscreenCanvas): 
   }
 
   if (!blob) {
-    throw new Error('Failed to convert canvas to PNG blob');
+    throw new Error(translate('Failed to convert canvas to PNG blob'));
   }
 
   const ab = await blob.arrayBuffer();

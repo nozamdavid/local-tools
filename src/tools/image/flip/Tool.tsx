@@ -5,6 +5,7 @@ import { ProgressBar } from '../../../components/ProgressBar';
 import { ResultPanel } from '../../../components/ResultPanel';
 import { Field, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { decodeImage, canvasToBlob, IMAGE_ACCEPT, type EncodableMime } from '../../../lib/image';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
@@ -18,6 +19,7 @@ interface FlipResult {
 }
 
 export default function FlipTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-flip');
   const [file, setFile] = useState<File | null>(null);
   const [flipH, setFlipH] = useState<boolean>(false);
@@ -59,7 +61,7 @@ export default function FlipTool() {
       canvas.width = img.width;
       canvas.height = img.height;
       const ctx = canvas.getContext('2d');
-      if (!ctx) throw new Error('Canvas 2D unavailable');
+      if (!ctx) throw new Error(t('Canvas 2D unavailable'));
 
       ctx.imageSmoothingEnabled = true;
       ctx.imageSmoothingQuality = 'high';
@@ -90,14 +92,14 @@ export default function FlipTool() {
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose an image or drag it here"
-          hint="Supports JPG, PNG, WEBP, GIF, BMP, SVG, HEIC and AVIF."
+          label={t('Choose an image or drag it here')}
+          hint={t('Supports JPG, PNG, WEBP, GIF, BMP, SVG, HEIC and AVIF.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result && resultInfo ? (
             <ResultPanel
@@ -112,15 +114,15 @@ export default function FlipTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name')}: <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size')}: <strong>{formatBytes(file.size)}</strong>
                 </span>
               </div>
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Flipping image..." />
+                <ProgressBar value={job.progress} label={t('Flipping image...')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
                   {/* Live preview */}
@@ -128,7 +130,7 @@ export default function FlipTool() {
                     {originalUrl && (
                       <img
                         src={originalUrl}
-                        alt="Preview"
+                        alt={t('Preview')}
                         style={{
                           maxWidth: '100%',
                           maxHeight: '400px',
@@ -140,7 +142,7 @@ export default function FlipTool() {
                     )}
                   </div>
 
-                  <Field label="Flip orientation">
+                  <Field label={t('Flip orientation')}>
                     <div className={styles.btnGroup}>
                       <button
                         type="button"
@@ -149,7 +151,7 @@ export default function FlipTool() {
                           setFlipH(!flipH);
                         }}
                       >
-                        ↔ Flip Horizontal
+                        ↔ {t('Flip horizontal')}
                       </button>
                       <button
                         type="button"
@@ -158,7 +160,7 @@ export default function FlipTool() {
                           setFlipV(!flipV);
                         }}
                       >
-                        ↕ Flip Vertical
+                        ↕ {t('Flip vertical')}
                       </button>
                       <button
                         type="button"
@@ -168,7 +170,7 @@ export default function FlipTool() {
                           setFlipV(true);
                         }}
                       >
-                        🔄 Flip Both
+                        🔄 {t('Flip both')}
                       </button>
                       <button
                         type="button"
@@ -179,17 +181,17 @@ export default function FlipTool() {
                         }}
                         disabled={!flipH && !flipV}
                       >
-                        Reset
+                        {t('Reset')}
                       </button>
                     </div>
                   </Field>
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different image
+                      {t('Choose different image')}
                     </Button>
                     <Button variant="primary" onClick={handleApply}>
-                      Save flipped image
+                      {t('Save flipped image')}
                     </Button>
                   </div>
                 </div>

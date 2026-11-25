@@ -2,6 +2,7 @@ import { degrees, PDFDocument } from 'pdf-lib';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { mapVisualToPdf } from '../_stamp/coords';
 import type { RedactionBox } from './types';
+import { translate } from '../../../lib/i18n';
 
 export interface RedactOptions {
   dpi?: number;
@@ -64,16 +65,16 @@ export async function redactPdf(doc: PDFDocumentProxy, redactions: RedactionBox[
     await page.render({ canvasContext: ctx, viewport, canvas }).promise;
     page.cleanup();
 
-    // Burn opaque redaction rectangles directly into pixel data
+    // Cover every raster pixel touched by the selected area.
     const pageRedactions = byPage.get(pNum) ?? [];
     for (const box of pageRedactions) {
-      const rx = (box.xPercent / 100) * canvas.width;
-      const ry = (box.yTopPercent / 100) * canvas.height;
-      const rw = (box.widthPercent / 100) * canvas.width;
-      const rh = (box.heightPercent / 100) * canvas.height;
+      const left = Math.floor((box.xPercent / 100) * viewport.width);
+      const top = Math.floor((box.yTopPercent / 100) * viewport.height);
+      const right = Math.ceil(((box.xPercent + box.widthPercent) / 100) * viewport.width);
+      const bottom = Math.ceil(((box.yTopPercent + box.heightPercent) / 100) * viewport.height);
 
-      ctx.fillStyle = box.color || '#000000';
-      ctx.fillRect(rx, ry, rw, rh);
+      ctx.fillStyle = box.color === '#ffffff' ? '#ffffff' : '#000000';
+      ctx.fillRect(left, top, right - left, bottom - top);
     }
 
     // Convert rasterized canvas to JPEG
@@ -82,7 +83,7 @@ export async function redactPdf(doc: PDFDocumentProxy, redactions: RedactionBox[
     canvas.height = 0;
 
     if (!jpegBlob) {
-      throw new Error(`Failed to encode rasterized page ${pNum} to JPEG.`);
+      throw new Error(translate('Failed to encode rasterized page {page} to JPEG.', { page: pNum }));
     }
 
     const jpegBytes = new Uint8Array(await jpegBlob.arrayBuffer());

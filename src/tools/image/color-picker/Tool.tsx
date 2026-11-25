@@ -3,6 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { decodeImage } from '../../../lib/image';
 import {
   type RGBA,
@@ -42,6 +43,7 @@ function makeColorEntry(rgba: RGBA): ColorEntry {
 }
 
 export default function ColorPickerTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-color-picker');
   const [file, setFile] = useState<File | null>(null);
   const [imgElement, setImgElement] = useState<HTMLImageElement | null>(null);
@@ -76,7 +78,7 @@ export default function ColorPickerTool() {
       canvas.width = img.naturalWidth || img.width;
       canvas.height = img.naturalHeight || img.height;
       const ctx = canvas.getContext('2d', { willReadFrequently: true });
-      if (!ctx) throw new Error('Canvas 2D unavailable');
+      if (!ctx) throw new Error(t('Canvas 2D unavailable'));
       ctx.drawImage(img, 0, 0);
 
       offscreenCanvasRef.current = canvas;
@@ -241,24 +243,24 @@ export default function ColorPickerTool() {
           <div>
             {hasEyeDropper && (
               <Button variant="secondary" onClick={handleEyeDropper}>
-                🔍 Pick from screen
+                🔍 {t('Pick from screen')}
               </Button>
             )}
           </div>
           {file && (
             <Button variant="secondary" onClick={handleReset}>
-              Choose different image
+              {t('Choose different image')}
             </Button>
           )}
         </div>
 
-        {error && <div className="error-banner">{error}</div>}
+        {error && <div className="error-banner">{t(error)}</div>}
 
         {!file ? (
           <FileDrop
             accept="image/*"
-            label="Drop an image here to pick colours"
-            hint="Supports JPG, PNG, WEBP, SVG, HEIC and more."
+            label={t('Drop an image here to pick colours')}
+            hint={t('Supports JPG, PNG, WEBP, SVG, HEIC and more.')}
             onFiles={handleFiles}
           />
         ) : (
@@ -267,7 +269,7 @@ export default function ColorPickerTool() {
               <img
                 ref={imgRef}
                 src={imgElement ? imgElement.src : undefined}
-                alt="Source for color picking"
+                alt={t('Source for color picking')}
                 className={styles.imageDisplay}
               />
 
@@ -305,7 +307,7 @@ export default function ColorPickerTool() {
                         onClick={() => copyToClipboard(item.val, item.key)}
                         style={{ padding: '0.25rem 0.6rem', fontSize: '0.8rem' }}
                       >
-                        {copiedKey === item.key ? 'Copied!' : 'Copy'}
+                        {copiedKey === item.key ? t('Copied!') : t('Copy')}
                       </Button>
                     </div>
                   ))}
@@ -316,9 +318,9 @@ export default function ColorPickerTool() {
             {history.length > 0 && (
               <div className={styles.historySection}>
                 <div className={styles.historyTitle}>
-                  <span>Pick history ({history.length})</span>
+                  <span>{t('Pick history ({count})', { count: history.length })}</span>
                   <Button variant="secondary" onClick={() => setHistory([])} style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}>
-                    Clear history
+                    {t('Clear history')}
                   </Button>
                 </div>
                 <div className={styles.historySwatches}>
@@ -327,7 +329,7 @@ export default function ColorPickerTool() {
                       key={`${c.hex}-${idx}`}
                       className={`${styles.historySwatch} ${selectedColor?.hex === c.hex ? styles.selected : ''}`}
                       style={{ backgroundColor: c.hex }}
-                      title={`${c.hex} - click to inspect`}
+                      title={t('{color} - click to inspect', { color: c.hex })}
                       onClick={() => setSelectedColor(c)}
                     />
                   ))}

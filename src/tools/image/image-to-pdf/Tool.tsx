@@ -4,6 +4,7 @@ import { FileDrop } from '../../../components/FileDrop';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { Field, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { formatBytes } from '../../../lib/format';
 import { IMAGE_ACCEPT } from '../../../lib/image';
 import { useJob } from '../../../lib/useJob';
@@ -25,6 +26,7 @@ function ImageCard({
   onMove: (from: number, to: number) => void;
   onRemove: (index: number) => void;
 }) {
+  const { t } = useI18n();
   const url = useObjectUrl(file);
 
   return (
@@ -43,7 +45,7 @@ function ImageCard({
           className={styles.iconBtn}
           disabled={index === 0}
           onClick={() => onMove(index, index - 1)}
-          title="Move earlier"
+          title={t('Move earlier')}
         >
           ◀
         </button>
@@ -52,11 +54,11 @@ function ImageCard({
           className={styles.iconBtn}
           disabled={index === total - 1}
           onClick={() => onMove(index, index + 1)}
-          title="Move later"
+          title={t('Move later')}
         >
           ▶
         </button>
-        <button type="button" className={`${styles.iconBtn} ${styles.removeBtn}`} onClick={() => onRemove(index)} title="Remove image">
+        <button type="button" className={`${styles.iconBtn} ${styles.removeBtn}`} onClick={() => onRemove(index)} title={t('Remove image')}>
           ✕
         </button>
       </div>
@@ -64,8 +66,9 @@ function ImageCard({
   );
 }
 
-export default function ImageToPdfTool() {
-  const meta = getToolMeta('img-image-to-pdf');
+export default function ImageToPdfTool({ toolId = 'img-image-to-pdf' }: { toolId?: string }) {
+  const { t } = useI18n();
+  const meta = getToolMeta(toolId);
   const [files, setFiles] = useState<File[]>([]);
   const [pageSize, setPageSize] = useState<PageSizeOption>('a4');
   const [orientation, setOrientation] = useState<OrientationOption>('auto');
@@ -120,18 +123,18 @@ export default function ImageToPdfTool() {
   const totalInputSize = files.reduce((acc, f) => acc + f.size, 0);
 
   return (
-    <ToolPage title={meta.title} description={meta.description} currentId="img-image-to-pdf">
+    <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
       {files.length === 0 ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
           multiple
-          label="Choose images or drag them here"
-          hint="Supports JPG, PNG, WebP, GIF, SVG, BMP, HEIC and more."
+          label={t('Choose images or drag them here')}
+          hint={t('Supports JPG, PNG, WebP, GIF, SVG, BMP, HEIC and more.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result ? (
             <PdfPreview
@@ -154,10 +157,10 @@ export default function ImageToPdfTool() {
               >
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    Images: <strong>{files.length}</strong>
+                    {t('Images')}: <strong>{files.length}</strong>
                   </span>
                   <span className="meta-chip">
-                    Total size: <strong>{formatBytes(totalInputSize)}</strong>
+                    {t('Total size')}: <strong>{formatBytes(totalInputSize)}</strong>
                   </span>
                 </div>
 
@@ -174,10 +177,10 @@ export default function ImageToPdfTool() {
                     }}
                   />
                   <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
-                    Add more images
+                    {t('Add more images')}
                   </Button>
                   <Button variant="secondary" onClick={handleReset}>
-                    Clear all
+                    {t('Clear all')}
                   </Button>
                 </div>
               </div>
@@ -196,56 +199,56 @@ export default function ImageToPdfTool() {
               </div>
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Combining images into PDF..." />
+                <ProgressBar value={job.progress} label={t('Combining images into PDF...')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
-                  <Field label="Page size" hint="Fit to image creates pages sized exactly to each image.">
+                  <Field label={t('Page size')} hint={t('Fit to image creates pages sized exactly to each image.')}>
                     <Select
                       id={pageSizeId}
                       value={pageSize}
                       onChange={(e) => setPageSize(e.target.value as PageSizeOption)}
                       options={[
-                        { value: 'a4', label: 'A4 (210 × 297 mm)' },
-                        { value: 'letter', label: 'US Letter (8.5 × 11 in)' },
-                        { value: 'fit', label: 'Fit to image (natural dimensions)' },
+                        { value: 'a4', label: t('A4 (210 × 297 mm)') },
+                        { value: 'letter', label: t('US Letter (8.5 × 11 in)') },
+                        { value: 'fit', label: t('Fit to image (natural dimensions)') },
                       ]}
                     />
                   </Field>
 
                   {pageSize !== 'fit' && (
-                    <Field label="Page orientation" hint="Auto sets landscape or portrait based on each image's shape.">
+                    <Field label={t('Page orientation')} hint={t("Auto sets landscape or portrait based on each image's shape.")}>
                       <Select
                         id={orientationId}
                         value={orientation}
                         onChange={(e) => setOrientation(e.target.value as OrientationOption)}
                         options={[
-                          { value: 'auto', label: 'Auto (match image orientation)' },
-                          { value: 'portrait', label: 'Portrait' },
-                          { value: 'landscape', label: 'Landscape' },
+                          { value: 'auto', label: t('Auto (match image orientation)') },
+                          { value: 'portrait', label: t('Portrait') },
+                          { value: 'landscape', label: t('Landscape') },
                         ]}
                       />
                     </Field>
                   )}
 
-                  <Field label="Page margins" hint="White margin around images on the page.">
+                  <Field label={t('Page margins')} hint={t('White margin around images on the page.')}>
                     <Select
                       id={marginId}
                       value={margin}
                       onChange={(e) => setMargin(e.target.value as MarginOption)}
                       options={[
-                        { value: 'none', label: 'None (edge-to-edge)' },
-                        { value: 'small', label: 'Small (18 pt / 0.25 in)' },
-                        { value: 'large', label: 'Large (36 pt / 0.5 in)' },
+                        { value: 'none', label: t('None (edge-to-edge)') },
+                        { value: 'small', label: t('Small (18 pt / 0.25 in)') },
+                        { value: 'large', label: t('Large (36 pt / 0.5 in)') },
                       ]}
                     />
                   </Field>
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different files
+                      {t('Choose different files')}
                     </Button>
                     <Button variant="primary" onClick={handleConvert}>
-                      Create PDF
+                      {t('Create PDF')}
                     </Button>
                   </div>
                 </div>

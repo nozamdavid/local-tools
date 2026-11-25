@@ -1,0 +1,125 @@
+import type { Locale } from '../lib/i18n';
+
+// Spanish, Italian, German, Portuguese, French.
+const rows: Record<string, [string, string, string, string, string]> = {
+  'Choose HEIC photos or drag them here': [
+    'Elige fotos HEIC o arrástralas aquí',
+    'Scegli foto HEIC o trascinale qui',
+    'HEIC-Fotos auswählen oder hierher ziehen',
+    'Escolha fotos HEIC ou arraste-as para aqui',
+    'Choisissez des photos HEIC ou déposez-les ici',
+  ],
+  'Convert Apple iPhone HEIC and HEIF photos to JPG.': [
+    'Convierte fotos HEIC y HEIF de iPhone a JPG.',
+    'Converti foto HEIC e HEIF di iPhone in JPG.',
+    'HEIC- und HEIF-Fotos vom iPhone in JPG umwandeln.',
+    'Converta fotos HEIC e HEIF do iPhone para JPG.',
+    'Convertissez les photos HEIC et HEIF de l’iPhone en JPG.',
+  ],
+  'Choose WEBP images or drag them here': [
+    'Elige imágenes WEBP o arrástralas aquí',
+    'Scegli immagini WEBP o trascinale qui',
+    'WEBP-Bilder auswählen oder hierher ziehen',
+    'Escolha imagens WEBP ou arraste-as para aqui',
+    'Choisissez des images WEBP ou déposez-les ici',
+  ],
+  'Convert WebP images to PNG with transparency preserved.': [
+    'Convierte imágenes WebP a PNG conservando la transparencia.',
+    'Converti immagini WebP in PNG mantenendo la trasparenza.',
+    'WebP-Bilder in PNG umwandeln und Transparenz beibehalten.',
+    'Converta imagens WebP para PNG preservando a transparência.',
+    'Convertissez les images WebP en PNG en conservant la transparence.',
+  ],
+  'Convert WebP images to universal JPG format.': [
+    'Convierte imágenes WebP al formato universal JPG.',
+    'Converti immagini WebP nel formato universale JPG.',
+    'WebP-Bilder in das universelle JPG-Format umwandeln.',
+    'Converta imagens WebP para o formato universal JPG.',
+    'Convertissez les images WebP au format universel JPG.',
+  ],
+  'Choose JPG images or drag them here': [
+    'Elige imágenes JPG o arrástralas aquí',
+    'Scegli immagini JPG o trascinale qui',
+    'JPG-Bilder auswählen oder hierher ziehen',
+    'Escolha imagens JPG ou arraste-as para aqui',
+    'Choisissez des images JPG ou déposez-les ici',
+  ],
+  'Convert JPG images to lossless PNG format.': [
+    'Convierte imágenes JPG al formato PNG sin pérdidas.',
+    'Converti immagini JPG nel formato PNG senza perdita di qualità.',
+    'JPG-Bilder in das verlustfreie PNG-Format umwandeln.',
+    'Converta imagens JPG para o formato PNG sem perdas.',
+    'Convertissez les images JPG au format PNG sans perte.',
+  ],
+  'Choose PNG images or drag them here': [
+    'Elige imágenes PNG o arrástralas aquí',
+    'Scegli immagini PNG o trascinale qui',
+    'PNG-Bilder auswählen oder hierher ziehen',
+    'Escolha imagens PNG ou arraste-as para aqui',
+    'Choisissez des images PNG ou déposez-les ici',
+  ],
+  'Convert PNG images to standard JPG format.': [
+    'Convierte imágenes PNG al formato estándar JPG.',
+    'Converti immagini PNG nel formato standard JPG.',
+    'PNG-Bilder in das Standardformat JPG umwandeln.',
+    'Converta imagens PNG para o formato padrão JPG.',
+    'Convertissez les images PNG au format standard JPG.',
+  ],
+  'Choose SVG files or drag them here': [
+    'Elige archivos SVG o arrástralos aquí',
+    'Scegli file SVG o trascinali qui',
+    'SVG-Dateien auswählen oder hierher ziehen',
+    'Escolha ficheiros SVG ou arraste-os para aqui',
+    'Choisissez des fichiers SVG ou déposez-les ici',
+  ],
+  'Rasterise vector SVGs to crisp PNGs at any scale.': [
+    'Convierte vectores SVG en imágenes PNG nítidas a cualquier escala.',
+    'Converti vettori SVG in immagini PNG nitide a qualsiasi scala.',
+    'SVG-Vektoren in scharfe PNG-Bilder in beliebiger Größe umwandeln.',
+    'Converta vetores SVG em imagens PNG nítidas a qualquer escala.',
+    'Convertissez les SVG vectoriels en PNG nets à toute échelle.',
+  ],
+  'Convert JPG, PNG, GIF, BMP or SVG to lightweight WEBP.': [
+    'Convierte JPG, PNG, GIF, BMP o SVG a WEBP ligero.',
+    'Converti JPG, PNG, GIF, BMP o SVG in WEBP leggeri.',
+    'JPG, PNG, GIF, BMP oder SVG in platzsparendes WEBP umwandeln.',
+    'Converta JPG, PNG, GIF, BMP ou SVG para WEBP leve.',
+    'Convertissez JPG, PNG, GIF, BMP ou SVG en WEBP légers.',
+  ],
+  'Batch convert dozens or hundreds of images at once and download as a ZIP.': [
+    'Convierte decenas o cientos de imágenes a la vez y descárgalas en un ZIP.',
+    'Converti decine o centinaia di immagini insieme e scaricale in un file ZIP.',
+    'Dutzende oder Hunderte Bilder gleichzeitig umwandeln und als ZIP herunterladen.',
+    'Converta dezenas ou centenas de imagens de uma vez e descarregue-as num ZIP.',
+    'Convertissez des dizaines ou centaines d’images à la fois et téléchargez-les en ZIP.',
+  ],
+  'This image could not be decoded. The file may be corrupt or in an unsupported format.': [
+    'No se pudo decodificar la imagen. Puede estar dañada o en un formato no compatible.',
+    'Impossibile decodificare l’immagine. Il file potrebbe essere danneggiato o in un formato non supportato.',
+    'Das Bild konnte nicht decodiert werden. Die Datei ist möglicherweise beschädigt oder hat ein nicht unterstütztes Format.',
+    'Não foi possível descodificar a imagem. O ficheiro pode estar danificado ou num formato não suportado.',
+    'Impossible de décoder l’image. Le fichier est peut-être endommagé ou dans un format non pris en charge.',
+  ],
+  'Mixed input formats: cannot process ICO and image files in the same batch. Please upload either ICO files or supported images.': [
+    'No se pueden procesar archivos ICO y otras imágenes en el mismo lote. Elige solo archivos ICO o imágenes compatibles.',
+    'Non è possibile elaborare file ICO e altre immagini nello stesso lotto. Scegli solo file ICO oppure immagini supportate.',
+    'ICO-Dateien und andere Bilder können nicht gemeinsam verarbeitet werden. Nur ICO-Dateien oder unterstützte Bilder auswählen.',
+    'Não é possível processar ficheiros ICO e outras imagens no mesmo lote. Escolha apenas ficheiros ICO ou imagens suportadas.',
+    'Impossible de traiter des fichiers ICO et d’autres images dans le même lot. Choisissez uniquement des fichiers ICO ou des images prises en charge.',
+  ],
+  Coral: ['Coral', 'Corallo', 'Koralle', 'Coral', 'Corail'],
+  Amber: ['Ámbar', 'Ambra', 'Bernstein', 'Âmbar', 'Ambre'],
+  Emerald: ['Esmeralda', 'Smeraldo', 'Smaragd', 'Esmeralda', 'Émeraude'],
+  'Sky Blue': ['Azul cielo', 'Azzurro', 'Himmelblau', 'Azul-céu', 'Bleu ciel'],
+  Indigo: ['Índigo', 'Indaco', 'Indigo', 'Índigo', 'Indigo'],
+  Purple: ['Morado', 'Viola', 'Violett', 'Roxo', 'Violet'],
+  Fuchsia: ['Fucsia', 'Fucsia', 'Fuchsia', 'Fúcsia', 'Fuchsia'],
+  Slate: ['Pizarra', 'Ardesia', 'Schiefer', 'Ardósia', 'Ardoise'],
+};
+
+export const messages: Partial<Record<Locale, Record<string, string>>> = Object.fromEntries(
+  (['es', 'it', 'de', 'pt', 'fr'] as const).map((locale, index) => [
+    locale,
+    Object.fromEntries(Object.entries(rows).map(([source, values]) => [source, values[index]])),
+  ]),
+);

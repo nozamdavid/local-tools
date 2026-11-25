@@ -1,5 +1,6 @@
-import type * as DocxModule from 'docx-preview';
 import { toCanvas } from 'html-to-image';
+import { translate } from '../../../lib/i18n';
+import { prepareDocxBuffer } from '../../_office/prepareDocx';
 
 export interface DocxRenderOptions {
   format: 'image/jpeg' | 'image/png';
@@ -12,8 +13,8 @@ export async function renderDocxToImages(
   baseFilename: string,
   options: DocxRenderOptions,
 ): Promise<{ name: string; blob: Blob }[]> {
-  const docxModuleUrl = '/node_modules/docx-preview/dist/docx-preview.mjs';
-  const docx = (await import(/* @vite-ignore */ docxModuleUrl)) as typeof DocxModule;
+  const cleanBuffer = await prepareDocxBuffer(file);
+  const docx = await import('docx-preview');
 
   const container = document.createElement('div');
   container.style.position = 'fixed';
@@ -26,7 +27,7 @@ export async function renderDocxToImages(
   document.body.appendChild(container);
 
   try {
-    await docx.renderAsync(file, container, undefined, {
+    await docx.renderAsync(cleanBuffer, container, undefined, {
       inWrapper: false,
       breakPages: true,
       useBase64URL: true,
@@ -67,7 +68,7 @@ export async function renderDocxToImages(
       canvas.height = 0;
 
       if (!blob) {
-        throw new Error(`Failed to rasterize DOCX page ${idx + 1}`);
+        throw new Error(translate('Failed to rasterize DOCX page {page}', { page: idx + 1 }));
       }
 
       items.push({

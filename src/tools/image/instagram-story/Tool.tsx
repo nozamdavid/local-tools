@@ -3,6 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { getToolMeta } from '../../registry';
 import { IMAGE_ACCEPT } from '../../../lib/image';
+import { useI18n } from '../../../lib/i18n';
 import { FitToFrameEditor } from '../_layout/FitToFrameEditor';
 import type { FrameConfig } from '../_layout/types';
 
@@ -18,6 +19,7 @@ const CONFIG: FrameConfig = {
 };
 
 export default function InstagramStoryTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-instagram-story');
   const [file, setFile] = useState<File | null>(null);
 
@@ -30,8 +32,8 @@ export default function InstagramStoryTool() {
       {!file ? (
         <FileDrop
           accept={IMAGE_ACCEPT}
-          label="Choose an image for your Instagram Story"
-          hint="Supports JPG, PNG, WebP, HEIC and SVG. Exact 1080×1920 export."
+          label={t('Choose an image for your Instagram Story')}
+          hint={t('Supports JPG, PNG, WebP, HEIC and SVG. Exact 1080×1920 export.')}
           onFiles={handleFiles}
         />
       ) : (
@@ -41,8 +43,9 @@ export default function InstagramStoryTool() {
           onReset={() => setFile(null)}
           additionalInfo={
             <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>
-              Keep essential text, stickers, and faces inside the safe center area (between 250 px from top and 340 px from bottom) to avoid
-              being hidden by Instagram&apos;s UI elements.
+              {t(
+                "Keep essential text, stickers, and faces inside the safe center area (between 250 px from top and 340 px from bottom) to avoid being hidden by Instagram's UI elements.",
+              )}
             </div>
           }
         />

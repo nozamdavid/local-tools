@@ -1,10 +1,11 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, ShieldCheck } from 'lucide-react';
-import { ToolGrid } from './ToolGrid';
-import { Badge, MediaTile } from './Controls';
-import { categories, TOOL_METAS, getToolMeta } from '../tools/registry';
-import { MEDIA_INFO } from '../design/media';
+import { ChevronRight } from 'lucide-react';
+import { MediaTile } from './Controls';
+import { categories, getToolMeta, localizeCategory } from '../tools/registry';
+import { getMediaInfo } from '../design/media';
+import { getToolIcon } from '../design/tool-icons';
+import { useI18n } from '../lib/i18n';
 
 export interface ToolPageProps {
   title: string;
@@ -13,32 +14,23 @@ export interface ToolPageProps {
   children: React.ReactNode;
 }
 
-const MORE_TOOLS_LIMIT = 8;
-
-function moreTools(currentId?: string) {
-  if (!currentId) return TOOL_METAS.filter((t) => t.popular).slice(0, MORE_TOOLS_LIMIT);
-
-  const current = getToolMeta(currentId);
-  const sameMedia = TOOL_METAS.filter((t) => t.media === current.media && t.id !== currentId);
-  const sameCategory = sameMedia.filter((t) => t.category === current.category);
-  const popular = sameMedia.filter((t) => t.category !== current.category && t.popular);
-  const rest = sameMedia.filter((t) => t.category !== current.category && !t.popular);
-
-  return [...sameCategory, ...popular, ...rest].slice(0, MORE_TOOLS_LIMIT);
-}
-
 export function ToolPage({ title, description, currentId, children }: ToolPageProps) {
+  const { t } = useI18n();
   const meta = currentId ? getToolMeta(currentId) : null;
-  const media = meta ? MEDIA_INFO[meta.media] : null;
-  const category = meta ? categories.find((c) => c.id === meta.category) : null;
+  const media = meta ? getMediaInfo(meta.media) : null;
+  const rawCategory = meta ? categories.find((c) => c.id === meta.category) : null;
+  const category = rawCategory ? localizeCategory(rawCategory) : null;
+  const ToolIcon = meta ? getToolIcon(meta) : null;
+  const displayTitle = meta?.title ?? title;
+  const displayDescription = meta?.description ?? description;
 
   return (
     <div className="tool-page">
       {media && (
-        <nav className="breadcrumb" aria-label="Breadcrumb">
+        <nav className="breadcrumb" aria-label={t('Breadcrumb')}>
           <ol>
             <li>
-              <Link to="/">Home</Link>
+              <Link to="/">{t('Home')}</Link>
             </li>
             <li aria-hidden="true">
               <ChevronRight />
@@ -61,38 +53,27 @@ export function ToolPage({ title, description, currentId, children }: ToolPagePr
       )}
 
       <header className="tool-header">
-        {meta && (
+        {meta && ToolIcon && (
           <MediaTile media={meta.media} size="lg">
-            {meta.icon}
+            <ToolIcon aria-hidden="true" />
           </MediaTile>
         )}
         <div className="tool-header-text">
-          <h1 className="tool-title">{title}</h1>
-          <p className="tool-desc">{description}</p>
-        </div>
-        <div className="tool-header-badge">
-          <Badge tone="success" icon={<ShieldCheck />}>
-            Runs on this device
-          </Badge>
+          <h1 className="tool-title">{displayTitle}</h1>
+          <p className="tool-desc">{displayDescription}</p>
         </div>
       </header>
 
       <div className="tool-content">{children}</div>
 
-      <section className="more-tools-section" aria-labelledby="more-tools-title">
-        <div className="section-head">
-          <h2 className="section-title" id="more-tools-title">
-            {category ? `More ${media?.label.toLowerCase()} tools` : 'More tools'}
-          </h2>
-          {media && (
-            <Link to={media.path} className="section-link">
-              All {media.title.toLowerCase()}
-              <ChevronRight aria-hidden="true" />
-            </Link>
-          )}
+      {media && (
+        <div className="tool-page-footer">
+          <Link to={media.path} className="tool-page-more-link">
+            {t('All {media} tools', { media: media.label.toLowerCase() })}
+            <ChevronRight aria-hidden="true" />
+          </Link>
         </div>
-        <ToolGrid tools={moreTools(currentId)} currentId={currentId} />
-      </section>
+      )}
     </div>
   );
 }

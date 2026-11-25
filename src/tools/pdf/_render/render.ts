@@ -197,6 +197,10 @@ export function rasterize(el: HTMLElement, width: number, height: number, offset
   return toCanvas(el, {
     pixelRatio: PIXEL_RATIO,
     skipFonts: true,
+    // The rasterizer resolves CSS and image URLs from the app window, outside the stage CSP.
+    // Data URLs are already embedded and bypass its fetch path.
+    fetchRequestInit: { signal: AbortSignal.abort() },
+    imagePlaceholder: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAA=',
     backgroundColor: '#ffffff',
     width,
     height,

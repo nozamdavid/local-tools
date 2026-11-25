@@ -12,15 +12,10 @@ export interface AiProgress {
 }
 
 export class AiJob {
-  private worker: Worker | null = null;
-  private aborted = false;
+  private cancel: (() => void) | null = null;
 
   public abort() {
-    this.aborted = true;
-    if (this.worker) {
-      this.worker.terminate();
-      this.worker = null;
-    }
+    this.cancel?.();
   }
 
   public async summarize(
@@ -33,7 +28,6 @@ export class AiJob {
     } = {},
   ): Promise<string> {
     const { maxLength, minLength, onProgress } = options;
-    this.aborted = false;
 
     return this.runWorker(
       {
@@ -55,7 +49,6 @@ export class AiJob {
     } = {},
   ): Promise<string> {
     const { onProgress } = options;
-    this.aborted = false;
 
     return this.runWorker(
       {
@@ -68,15 +61,14 @@ export class AiJob {
   }
 
   private runWorker(inMsg: AiWorkerInMessage, onProgress?: (p: AiProgress) => void): Promise<string> {
+    this.abort();
     return new Promise<string>((resolve, reject) => {
       try {
         const worker = new Worker(new URL('./aiWorker.ts', import.meta.url), {
           type: 'module',
         });
-        this.worker = worker;
-
         const startTime = Date.now();
-        let timer: ReturnType<typeof setInterval> | null = setInterval(() => {
+        const timer = setInterval(() => {
           const elapsed = Math.round((Date.now() - startTime) / 1000);
           onProgress?.({
             phase: 'inferring',
@@ -87,23 +79,18 @@ export class AiJob {
         }, 1000);
 
         const cleanup = () => {
-          if (timer) {
-            clearInterval(timer);
-            timer = null;
-          }
-          if (this.worker) {
-            this.worker.terminate();
-            this.worker = null;
-          }
+          clearInterval(timer);
+          worker.onmessage = null;
+          worker.onerror = null;
+          worker.terminate();
+          this.cancel = null;
+        };
+        this.cancel = () => {
+          cleanup();
+          reject(new Error('Operation cancelled by user.'));
         };
 
         worker.onmessage = (e: MessageEvent<AiWorkerOutMessage>) => {
-          if (this.aborted) {
-            cleanup();
-            reject(new Error('Operation cancelled by user.'));
-            return;
-          }
-
           const data = e.data;
           if (!data) return;
 
@@ -165,7 +152,12 @@ export class AiJob {
           reject(new Error(err.message || 'Worker execution failed.'));
         };
 
-        worker.postMessage(inMsg);
+        try {
+          worker.postMessage(inMsg);
+        } catch (err) {
+          cleanup();
+          reject(err);
+        }
       } catch (err) {
         reject(err);
       }

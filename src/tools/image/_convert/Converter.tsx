@@ -6,21 +6,24 @@ import { ResultPanel } from '../../../components/ResultPanel';
 import { BatchResults } from '../../../components/BatchResults';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
-import { IMAGE_ACCEPT, decodeImage, imageToCanvas } from '../../../lib/image';
+import { useI18n } from '../../../lib/i18n';
+import { IMAGE_ACCEPT, decodeImage } from '../../../lib/image';
 import { formatBytes, replaceExt } from '../../../lib/format';
 import { useObjectUrl } from '../../../lib/useObjectUrl';
-import { checkAvifSupport, convertSingleImage } from './convert';
+import { checkAvifSupport, convertPreviewImage, convertSingleImage } from './convert';
 import type { ConverterPreset, OutputFormat, SvgScale } from './types';
 import styles from './Converter.module.css';
+import { createBoundedPngPreview } from '../_basic/previews';
+import { ImagePreviewPair } from '../_basic/ImagePreviewPair';
 
 const ALL_FORMAT_LABELS: Record<OutputFormat, string> = {
-  jpg: 'JPG (Standard JPEG)',
-  png: 'PNG (Lossless with transparency)',
-  webp: 'WEBP (Modern compact web format)',
-  gif: 'GIF (Single-frame)',
-  bmp: 'BMP (24-bit uncompressed)',
-  avif: 'AVIF (Next-generation)',
-  jxl: 'JXL (JPEG XL Next-generation)',
+  jpg: 'JPG',
+  png: 'PNG (lossless, transparency)',
+  webp: 'WebP',
+  gif: 'GIF (single frame)',
+  bmp: 'BMP (24-bit, uncompressed)',
+  avif: 'AVIF',
+  jxl: 'JPEG XL',
 };
 
 function isNonNativePreview(file: File): boolean {
@@ -28,6 +31,7 @@ function isNonNativePreview(file: File): boolean {
 }
 
 export function Converter({ preset }: { preset: ConverterPreset }) {
+  const { t } = useI18n();
   const meta = getToolMeta(preset.toolId);
 
   const [files, setFiles] = useState<File[]>([]);
@@ -45,6 +49,18 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
 
   const [outputResults, setOutputResults] = useState<{ name: string; blob: Blob; originalSize: number }[]>([]);
   const [failedResults, setFailedResults] = useState<{ name: string; error: string }[]>([]);
+  const [customPreview, setCustomPreview] = useState<{ file: File; blob: Blob } | null>(null);
+  const [sourcePreviewError, setSourcePreviewError] = useState(false);
+  const [targetPreview, setTargetPreview] = useState<{
+    file: File;
+    key: string;
+    url: string;
+    outputWidth: number;
+    outputHeight: number;
+    isEncodedAppearance: boolean;
+  } | null>(null);
+  const [targetPreviewPending, setTargetPreviewPending] = useState(false);
+  const [targetPreviewError, setTargetPreviewError] = useState(false);
 
   const formatSelectId = useId();
   const scaleSelectId = useId();
@@ -54,39 +70,82 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
     checkAvifSupport().then(setAvifSupported);
   }, []);
 
-  // Single file original preview
-  const rawPreviewUrl = useObjectUrl(files.length === 1 && !isNonNativePreview(files[0]) ? files[0] : null);
-  const [customPreviewUrl, setCustomPreviewUrl] = useState<string | null>(null);
+  const previewFile = files[0] || null;
+  const rawPreviewUrl = useObjectUrl(previewFile && !isNonNativePreview(previewFile) ? previewFile : null);
+  const customPreviewUrl = useObjectUrl(customPreview?.file === previewFile ? customPreview.blob : null);
+  const sourcePreviewUrl = rawPreviewUrl || customPreviewUrl;
 
   useEffect(() => {
-    if (files.length !== 1 || !isNonNativePreview(files[0])) {
-      setCustomPreviewUrl(null);
+    if (!previewFile || !isNonNativePreview(previewFile)) {
+      setCustomPreview(null);
+      setSourcePreviewError(false);
       return;
     }
     let active = true;
-    let createdUrl: string | null = null;
-
-    decodeImage(files[0])
+    setCustomPreview(null);
+    setSourcePreviewError(false);
+    decodeImage(previewFile)
       .then((img) => {
         if (!active) return;
-        const canvas = imageToCanvas(img);
-        canvas.toBlob((blob) => {
-          if (!active || !blob) return;
-          createdUrl = URL.createObjectURL(blob);
-          setCustomPreviewUrl(createdUrl);
-        }, 'image/png');
+        return createBoundedPngPreview(img, img.naturalWidth || img.width, img.naturalHeight || img.height).then((blob) => {
+          if (active) setCustomPreview({ file: previewFile, blob });
+        });
       })
       .catch(() => {
-        // If decoding preview fails, leave preview empty
+        if (active) setSourcePreviewError(true);
       });
 
     return () => {
       active = false;
+    };
+  }, [previewFile]);
+
+  const targetPreviewKey = `${format}:${quality}:${lossless}:${bgColor}:${svgScale}:${customWidth}`;
+  const currentTargetPreview = targetPreview?.file === previewFile && targetPreview.key === targetPreviewKey ? targetPreview : null;
+  const targetPreviewUrl = currentTargetPreview?.url;
+
+  useEffect(() => {
+    if (!previewFile || status !== 'idle') {
+      setTargetPreviewPending(false);
+      return;
+    }
+    let active = true;
+    let createdUrl: string | null = null;
+    setTargetPreviewPending(true);
+    setTargetPreviewError(false);
+    const timeout = window.setTimeout(async () => {
+      try {
+        const result = await convertPreviewImage({
+          file: previewFile,
+          format,
+          quality,
+          lossless,
+          bgColor,
+          svgScale,
+          customWidth,
+        });
+        if (!active) return;
+        createdUrl = URL.createObjectURL(result.blob);
+        setTargetPreview({
+          file: previewFile,
+          key: targetPreviewKey,
+          url: createdUrl,
+          outputWidth: result.outputWidth,
+          outputHeight: result.outputHeight,
+          isEncodedAppearance: result.isEncodedAppearance,
+        });
+      } catch {
+        if (active) setTargetPreviewError(true);
+      } finally {
+        if (active) setTargetPreviewPending(false);
+      }
+    }, 320);
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
       if (createdUrl) URL.revokeObjectURL(createdUrl);
     };
-  }, [files]);
-
-  const previewUrl = rawPreviewUrl || customPreviewUrl;
+  }, [bgColor, customWidth, format, lossless, previewFile, quality, status, svgScale, targetPreviewKey]);
 
   const handleFiles = (incoming: File[]) => {
     if (!incoming || incoming.length === 0) return;
@@ -96,6 +155,11 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
     setCurrentIndex(0);
     setOutputResults([]);
     setFailedResults([]);
+    setCustomPreview(null);
+    setSourcePreviewError(false);
+    setTargetPreview(null);
+    setTargetPreviewPending(false);
+    setTargetPreviewError(false);
   };
 
   const handleReset = () => {
@@ -105,6 +169,11 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
     setCurrentIndex(0);
     setOutputResults([]);
     setFailedResults([]);
+    setCustomPreview(null);
+    setSourcePreviewError(false);
+    setTargetPreview(null);
+    setTargetPreviewPending(false);
+    setTargetPreviewError(false);
     setLossless(false);
     setFormat(preset.defaultFormat);
   };
@@ -121,9 +190,15 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
     if (mismatched.length > 0) {
       const label = preset.expectedLabel || preset.expectedFormats.map((e) => e.toUpperCase()).join('/');
       if (mismatched.length === 1) {
-        wrongInputNote = `Note: "${mismatched[0].name}" is not a ${label} file, but it will still be converted.`;
+        wrongInputNote = t('Note: "{filename}" is not a {format} file, but it will still be converted.', {
+          filename: mismatched[0].name,
+          format: label,
+        });
       } else {
-        wrongInputNote = `Note: ${mismatched.length} files are not ${label} files, but they will still be converted.`;
+        wrongInputNote = t('Note: {count} files are not {format} files, but they will still be converted.', {
+          count: mismatched.length,
+          format: label,
+        });
       }
     }
   }
@@ -134,7 +209,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
     .filter((fmt) => fmt !== 'avif' || avifSupported)
     .map((fmt) => ({
       value: fmt,
-      label: ALL_FORMAT_LABELS[fmt],
+      label: t(ALL_FORMAT_LABELS[fmt]),
     }));
 
   const handleConvert = async () => {
@@ -193,8 +268,8 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
         <FileDrop
           accept={IMAGE_ACCEPT}
           multiple={true}
-          label={preset.dropLabel || 'Choose images or drag them here'}
-          hint={preset.dropHint || '100% private. Files never leave your browser.'}
+          label={t(preset.dropLabel || 'Choose images or drag them here')}
+          hint={t(preset.dropHint || '100% private. Files never leave your browser.')}
           onFiles={handleFiles}
         />
       ) : (
@@ -204,19 +279,22 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
             {files.length === 1 ? (
               <>
                 <span className="meta-chip">
-                  Name: <strong>{files[0].name}</strong>
+                  {t('Name')}: <strong>{files[0].name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(files[0].size)}</strong>
+                  {t('Size')}: <strong>{formatBytes(files[0].size)}</strong>
                 </span>
               </>
             ) : (
               <>
                 <span className="meta-chip">
-                  Files: <strong>{files.length} images</strong>
+                  {t('Files')}:{' '}
+                  <strong>
+                    {files.length} {t('images')}
+                  </strong>
                 </span>
                 <span className="meta-chip">
-                  Total size: <strong>{formatBytes(files.reduce((acc, f) => acc + f.size, 0))}</strong>
+                  {t('Total size')}: <strong>{formatBytes(files.reduce((acc, f) => acc + f.size, 0))}</strong>
                 </span>
               </>
             )}
@@ -232,10 +310,41 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
             </div>
           )}
 
+          {status === 'idle' && previewFile && (
+            <ImagePreviewPair
+              sourceUrl={sourcePreviewUrl}
+              outputUrl={targetPreviewUrl}
+              sourceAlt={t('Source image preview: {filename}', { filename: previewFile.name })}
+              outputAlt={t('Converted image preview: {filename}', { filename: previewFile.name })}
+              sourceLabel={files.length > 1 ? t('Source image (first of {count})', { count: files.length }) : t('Source image')}
+              outputLabel={t('Target appearance')}
+              sourceDetails={`${previewFile.name} · ${formatBytes(previewFile.size)}`}
+              outputDetails={
+                currentTargetPreview ? `${currentTargetPreview.outputWidth}×${currentTargetPreview.outputHeight} px` : undefined
+              }
+              note={
+                currentTargetPreview && !currentTargetPreview.isEncodedAppearance
+                  ? t(
+                      'The browser cannot decode this encoded preview, so the target canvas appearance is shown. Compression detail may differ.',
+                    )
+                  : t('This preview encodes a bounded sample. Fine detail and final file size can differ from the full-resolution export.')
+              }
+              pending={targetPreviewPending}
+              pendingLabel={t('Preparing preview…')}
+              sourcePending={!sourcePreviewUrl && !sourcePreviewError}
+              sourceUnavailable={t('Source preview is unavailable for this image.')}
+              outputUnavailable={
+                targetPreviewError
+                  ? t('Preview could not be created for this format. The conversion is still available.')
+                  : t('Preparing preview…')
+              }
+            />
+          )}
+
           {/* Idle: Controls & Options */}
           {status === 'idle' && (
             <div style={{ marginTop: '1.25rem' }}>
-              <Field label="Output format" hint="Select the image format to convert to.">
+              <Field label={t('Convert to')}>
                 <Select
                   id={formatSelectId}
                   value={format}
@@ -245,65 +354,32 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
               </Field>
 
               {format === 'jxl' && (
-                <div style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
-                    <input type="checkbox" checked={lossless} onChange={(e) => setLossless(e.target.checked)} />
-                    <span>Lossless compression</span>
-                  </label>
-                  <p style={{ margin: '0.35rem 0 0 1.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                    Encodes static SDR images. Animation and HDR gain maps are not preserved.
-                  </p>
+                <div className={styles.noteBanner} role="status">
+                  <span className={styles.noteIcon} aria-hidden="true">
+                    ℹ️
+                  </span>
+                  <span>{t('JPEG XL exports static SDR images. Animation and HDR gain maps are not preserved.')}</span>
                 </div>
-              )}
-
-              {showQuality && (
-                <Field
-                  label={`Quality (${quality}%)`}
-                  hint={
-                    format === 'jpg'
-                      ? 'Controls JPEG compression quality. Higher means cleaner image, larger file.'
-                      : format === 'jxl'
-                        ? 'Controls JPEG XL compression quality (1-100).'
-                        : 'Compression quality slider (1-100).'
-                  }
-                >
-                  <Slider value={quality} min={1} max={100} step={1} unit="%" onChange={setQuality} />
-                </Field>
-              )}
-
-              {showBgColor && (
-                <Field label="Background colour" hint="Used to fill transparent areas when flattening transparency into JPG or BMP.">
-                  <div className={styles.colorPickerRow}>
-                    <input
-                      type="color"
-                      aria-label="Background colour picker"
-                      className={styles.colorInput}
-                      value={bgColor}
-                      onChange={(e) => setBgColor(e.target.value)}
-                    />
-                    <span className={styles.colorHex}>{bgColor.toUpperCase()}</span>
-                  </div>
-                </Field>
               )}
 
               {preset.hasScaleOption && (
                 <>
-                  <Field label="Output scale / width" hint="SVGs are vector graphics that can be rendered crisply at any size.">
+                  <Field label={t('Output scale / width')} hint={t('SVGs are vector graphics that can be rendered crisply at any size.')}>
                     <Select
                       id={scaleSelectId}
                       value={svgScale}
                       onChange={(e) => setSvgScale(e.target.value as SvgScale)}
                       options={[
-                        { value: '1x', label: '1× (Original size)' },
-                        { value: '2x', label: '2× (Double resolution)' },
-                        { value: '4x', label: '4× (High resolution)' },
-                        { value: 'custom', label: 'Custom width' },
+                        { value: '1x', label: t('1× (Original size)') },
+                        { value: '2x', label: t('2× (Double resolution)') },
+                        { value: '4x', label: t('4× (High resolution)') },
+                        { value: 'custom', label: t('Custom width') },
                       ]}
                     />
                   </Field>
 
                   {svgScale === 'custom' && (
-                    <Field label="Custom width (px)" hint="Height will scale proportionally.">
+                    <Field label={t('Custom width (px)')} hint={t('Height will scale proportionally.')}>
                       <input
                         type="number"
                         className={styles.customWidthInput}
@@ -317,12 +393,56 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
                 </>
               )}
 
+              <details className="tool-options">
+                <summary>{t('Advanced options')}</summary>
+                <div className="tool-options-body">
+                  {format === 'jxl' && (
+                    <div style={{ marginTop: '0.75rem', marginBottom: '0.75rem' }}>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontSize: '0.9rem' }}>
+                        <input type="checkbox" checked={lossless} onChange={(e) => setLossless(e.target.checked)} />
+                        <span>{t('Lossless compression')}</span>
+                      </label>
+                    </div>
+                  )}
+
+                  {showQuality && (
+                    <Field
+                      label={t('Quality ({quality}%)', { quality })}
+                      hint={
+                        format === 'jpg'
+                          ? t('Higher quality keeps more detail and creates larger files.')
+                          : format === 'jxl'
+                            ? t('Controls JPEG XL compression quality (1-100).')
+                            : t('Higher quality keeps more detail and creates larger files.')
+                      }
+                    >
+                      <Slider value={quality} min={1} max={100} step={1} unit="%" onChange={setQuality} />
+                    </Field>
+                  )}
+
+                  {showBgColor && (
+                    <Field label={t('Background colour')} hint={t('Fills transparent areas when converting to JPG or BMP.')}>
+                      <div className={styles.colorPickerRow}>
+                        <input
+                          type="color"
+                          aria-label={t('Background colour picker')}
+                          className={styles.colorInput}
+                          value={bgColor}
+                          onChange={(e) => setBgColor(e.target.value)}
+                        />
+                        <span className={styles.colorHex}>{bgColor.toUpperCase()}</span>
+                      </div>
+                    </Field>
+                  )}
+                </div>
+              </details>
+
               <div className="action-buttons" style={{ marginTop: '2rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
-                  Choose different {files.length === 1 ? 'file' : 'files'}
+                  {files.length === 1 ? t('Choose different file') : t('Choose different files')}
                 </Button>
                 <Button variant="primary" onClick={handleConvert}>
-                  Convert {files.length === 1 ? 'image' : `${files.length} images`}
+                  {files.length === 1 ? t('Convert image') : t('Convert {count} images', { count: files.length })}
                 </Button>
               </div>
             </div>
@@ -333,7 +453,11 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
             <div style={{ marginTop: '1.5rem' }}>
               <ProgressBar
                 value={progress}
-                label={`Converting ${files[currentIndex]?.name || 'image'} (${currentIndex + 1} of ${files.length})...`}
+                label={t('Converting {filename} ({current} of {total})...', {
+                  filename: files[currentIndex]?.name || t('image'),
+                  current: currentIndex + 1,
+                  total: files.length,
+                })}
               />
             </div>
           )}
@@ -344,9 +468,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
               {/* Failed Items Banner */}
               {failedResults.length > 0 && (
                 <div className="error-banner" role="alert">
-                  <strong>
-                    {failedResults.length} file{failedResults.length > 1 ? 's' : ''} failed to convert:
-                  </strong>
+                  <strong>{t('{count} files failed to convert:', { count: failedResults.length })}</strong>
                   <ul className={styles.failedList}>
                     {failedResults.map((f, i) => (
                       <li key={i}>
@@ -365,13 +487,13 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
                     filename={outputResults[0].name}
                     kind="image"
                     originalSize={outputResults[0].originalSize}
-                    beforePreview={previewUrl ? <img src={previewUrl} alt={files[0].name} className="preview-media" /> : null}
+                    beforePreview={sourcePreviewUrl ? <img src={sourcePreviewUrl} alt={files[0].name} className="preview-media" /> : null}
                     onReset={handleReset}
                   />
                 ) : (
                   <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Try another file
+                      {t('Try another file')}
                     </Button>
                   </div>
                 )
@@ -383,7 +505,7 @@ export function Converter({ preset }: { preset: ConverterPreset }) {
                   ) : (
                     <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                       <Button variant="secondary" onClick={handleReset}>
-                        Start over
+                        {t('Start over')}
                       </Button>
                     </div>
                   )}

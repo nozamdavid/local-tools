@@ -7,6 +7,7 @@ import { getToolMeta } from '../../registry';
 import { decodeImage, imageToCanvas, canvasToBlob, encodeIco } from '../../../lib/image';
 import { zipFiles } from '../../../lib/zip';
 import { downloadBlob } from '../../../lib/download';
+import { useI18n } from '../../../lib/i18n';
 import styles from './Tool.module.css';
 
 interface GeneratedFile {
@@ -36,6 +37,7 @@ const HTML_SNIPPET = `<link rel="icon" type="image/x-icon" href="/favicon.ico">
 
 export default function FaviconGeneratorTool() {
   const meta = getToolMeta('img-favicon-generator');
+  const { t } = useI18n();
 
   const [mode, setMode] = useState<'upload' | 'text'>('upload');
   const [file, setFile] = useState<File | null>(null);
@@ -222,7 +224,7 @@ export default function FaviconGeneratorTool() {
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="img-favicon-generator">
       <div className={styles.container}>
-        {error && <div className="error-banner">{error}</div>}
+        {error && <div className="error-banner">{t(error)}</div>}
 
         {generatedFiles.length > 0 && zipBlob ? (
           <div>
@@ -236,13 +238,15 @@ export default function FaviconGeneratorTool() {
                 marginBottom: '1.5rem',
               }}
             >
-              <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>Favicon package ready ({generatedFiles.length + 2} files)</div>
+              <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
+                {t('Favicon package ready ({count} files)', { count: generatedFiles.length + 2 })}
+              </div>
               <div style={{ display: 'flex', gap: '0.75rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
-                  Create new favicon
+                  {t('Create a new favicon')}
                 </Button>
                 <Button variant="primary" onClick={() => downloadBlob(zipBlob, 'favicon_package.zip')}>
-                  Download all (.zip)
+                  {t('Download all (.zip)')}
                 </Button>
               </div>
             </div>
@@ -270,7 +274,7 @@ export default function FaviconGeneratorTool() {
                   onClick={() => icoBlob && downloadBlob(icoBlob, 'favicon.ico')}
                   style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
                 >
-                  Download
+                  {t('Download')}
                 </Button>
               </div>
 
@@ -286,7 +290,7 @@ export default function FaviconGeneratorTool() {
                     onClick={() => downloadBlob(f.blob, f.name)}
                     style={{ padding: '0.2rem 0.5rem', fontSize: '0.75rem' }}
                   >
-                    Download
+                    {t('Download')}
                   </Button>
                 </div>
               ))}
@@ -294,9 +298,9 @@ export default function FaviconGeneratorTool() {
 
             <div className={styles.codeBox} style={{ marginTop: '1.5rem' }}>
               <div className={styles.codeHeader}>
-                <span className={styles.codeTitle}>HTML &lt;head&gt; code</span>
+                <span className={styles.codeTitle}>{t('HTML <head> code')}</span>
                 <Button variant="secondary" onClick={copyHtml} style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}>
-                  {copiedSnippet ? 'Copied HTML!' : 'Copy HTML'}
+                  {copiedSnippet ? t('HTML copied!') : t('Copy HTML')}
                 </Button>
               </div>
               <pre className={styles.codeSnippet}>{HTML_SNIPPET}</pre>
@@ -306,10 +310,10 @@ export default function FaviconGeneratorTool() {
           <div>
             <div className={styles.modeTabs}>
               <Button variant={mode === 'upload' ? 'primary' : 'secondary'} onClick={() => setMode('upload')}>
-                Upload image
+                {t('Upload image')}
               </Button>
               <Button variant={mode === 'text' ? 'primary' : 'secondary'} onClick={() => setMode('text')}>
-                Text / Emoji icon
+                {t('Text / emoji icon')}
               </Button>
             </div>
 
@@ -319,23 +323,23 @@ export default function FaviconGeneratorTool() {
                   {!file ? (
                     <FileDrop
                       accept="image/*"
-                      label="Drop an icon or logo here"
-                      hint="Recommended: 512×512 PNG, SVG, or high-res JPG."
+                      label={t('Drop an icon or logo here')}
+                      hint={t('Recommended: 512×512 PNG, SVG or high-resolution JPG.')}
                       onFiles={handleUploadFiles}
                     />
                   ) : (
                     <div>
                       <div className="meta-chips">
                         <span className="meta-chip">
-                          Selected file: <strong>{file.name}</strong>
+                          {t('Selected file')}: <strong>{file.name}</strong>
                         </span>
                       </div>
                       <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                         <Button variant="secondary" onClick={() => setFile(null)}>
-                          Choose different file
+                          {t('Choose a different file')}
                         </Button>
                         <Button variant="primary" onClick={handleGenerate} disabled={generating}>
-                          Generate favicon package
+                          {t('Generate favicon package')}
                         </Button>
                       </div>
                     </div>
@@ -348,13 +352,13 @@ export default function FaviconGeneratorTool() {
                       ref={previewCanvasRef}
                       className={styles.designerPreviewCanvas}
                       role="img"
-                      aria-label="Favicon preview, 128 by 128 pixels"
+                      aria-label={t('Favicon preview, 128 by 128 pixels')}
                     />
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Preview (128×128)</span>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{t('Preview (128×128)')}</span>
                   </div>
 
                   <div className={styles.designerControls}>
-                    <Field label="Letter or Emoji">
+                    <Field label={t('Letter or emoji')}>
                       <input
                         type="text"
                         maxLength={2}
@@ -365,19 +369,19 @@ export default function FaviconGeneratorTool() {
                       />
                     </Field>
 
-                    <Field label="Font Family">
+                    <Field label={t('Font family')}>
                       <Select
                         value={fontFamily}
                         onChange={(e) => setFontFamily(e.target.value)}
                         options={[
-                          { value: 'sans-serif', label: 'Sans-Serif' },
-                          { value: 'serif', label: 'Serif' },
-                          { value: 'monospace', label: 'Monospace' },
+                          { value: 'sans-serif', label: t('Sans-serif') },
+                          { value: 'serif', label: t('Serif') },
+                          { value: 'monospace', label: t('Monospace') },
                         ]}
                       />
                     </Field>
 
-                    <Field label="Text Colour">
+                    <Field label={t('Text colour')}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <input
                           type="color"
@@ -395,7 +399,7 @@ export default function FaviconGeneratorTool() {
                       </div>
                     </Field>
 
-                    <Field label="Background Colour">
+                    <Field label={t('Background colour')}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <input
                           type="color"
@@ -413,21 +417,21 @@ export default function FaviconGeneratorTool() {
                       </div>
                     </Field>
 
-                    <Field label="Icon Shape">
+                    <Field label={t('Icon shape')}>
                       <Select
                         value={shape}
                         onChange={(e) => setShape(e.target.value as 'square' | 'rounded' | 'circle')}
                         options={[
-                          { value: 'rounded', label: 'Rounded corners' },
-                          { value: 'circle', label: 'Circle' },
-                          { value: 'square', label: 'Square' },
+                          { value: 'rounded', label: t('Rounded corners') },
+                          { value: 'circle', label: t('Circle') },
+                          { value: 'square', label: t('Square') },
                         ]}
                       />
                     </Field>
 
                     <div style={{ display: 'flex', alignItems: 'flex-end' }}>
                       <Button variant="primary" onClick={handleGenerate} disabled={generating} style={{ width: '100%', height: '42px' }}>
-                        Generate favicon package
+                        {t('Generate favicon package')}
                       </Button>
                     </div>
                   </div>
@@ -436,7 +440,7 @@ export default function FaviconGeneratorTool() {
 
               {generating && (
                 <div style={{ marginTop: '1.5rem' }}>
-                  <ProgressBar value={progress} label="Generating favicon sizes and package…" />
+                  <ProgressBar value={progress} label={t('Generating favicon sizes and package…')} />
                 </div>
               )}
             </div>

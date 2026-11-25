@@ -8,12 +8,14 @@ import { DesignSystem } from './pages/DesignSystem';
 import { NotFound } from './pages/NotFound';
 import { RouteErrorBoundary } from './components/ErrorBoundary';
 import { tools } from './tools/registry';
+import { useI18n } from './lib/i18n';
 
 function LoadingFallback() {
+  const { t } = useI18n();
   return (
     <div className="page-loading" role="status">
       <span className="spinner" aria-hidden="true" />
-      Loading tool…
+      {t('Loading tool…')}
     </div>
   );
 }
@@ -25,11 +27,11 @@ export function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/file" element={<MediaIndex media="file" />} />
-          <Route path="/video" element={<MediaIndex media="video" />} />
-          <Route path="/image" element={<MediaIndex media="image" />} />
-          <Route path="/pdf" element={<MediaIndex media="pdf" />} />
-          <Route path="/3d" element={<MediaIndex media="3d" />} />
+          <Route path="/file" element={<MediaIndex key="file" media="file" />} />
+          <Route path="/video" element={<MediaIndex key="video" media="video" />} />
+          <Route path="/image" element={<MediaIndex key="image" media="image" />} />
+          <Route path="/pdf" element={<MediaIndex key="pdf" media="pdf" />} />
+          <Route path="/3d" element={<MediaIndex key="3d" media="3d" />} />
           <Route path="/design" element={<DesignSystem />} />
           {tools.map((tool) => {
             const Component = tool.component;

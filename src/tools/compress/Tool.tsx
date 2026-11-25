@@ -1,4 +1,4 @@
-import { useState, useId } from 'react';
+import { useState, useId, useRef } from 'react';
 import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { ProgressBar } from '../../components/ProgressBar';
@@ -7,9 +7,12 @@ import { Field, Select, Button } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { getVideoMeta, type VideoMeta } from '../../lib/media';
 import { formatBytes, formatDuration, withSuffix } from '../../lib/format';
-import { runFFmpeg } from '../../lib/ffmpeg';
+import { runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
+import { withMediabunnyFallback } from '../../lib/mediabunny';
 import { useJob } from '../../lib/useJob';
 import { useObjectUrl } from '../../lib/useObjectUrl';
+import { useI18n } from '../../lib/i18n';
+import { SourcePreview } from '../../components/SourcePreview';
 
 type QualityPreset = 'high' | 'balanced' | 'small';
 type MaxResolution = 'original' | '1080p' | '720p' | '480p';
@@ -27,6 +30,7 @@ const RES_MAP: Record<Exclude<MaxResolution, 'original'>, { w: number; h: number
 };
 
 export default function CompressTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('compress');
   const [file, setFile] = useState<File | null>(null);
   const [videoMeta, setVideoMeta] = useState<VideoMeta | null>(null);
@@ -35,6 +39,7 @@ export default function CompressTool() {
   const [quality, setQuality] = useState<QualityPreset>('balanced');
   const [resolution, setResolution] = useState<MaxResolution>('original');
   const [removeAudio, setRemoveAudio] = useState<boolean>(false);
+  const metadataRequestRef = useRef(0);
 
   const job = useJob();
   const originalUrl = useObjectUrl(file);
@@ -46,6 +51,7 @@ export default function CompressTool() {
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
+    const requestId = ++metadataRequestRef.current;
     setFile(selected);
     setMetaError(null);
     setVideoMeta(null);
@@ -53,13 +59,16 @@ export default function CompressTool() {
 
     try {
       const vMeta = await getVideoMeta(selected);
+      if (requestId !== metadataRequestRef.current) return;
       setVideoMeta(vMeta);
     } catch {
+      if (requestId !== metadataRequestRef.current) return;
       setMetaError('Could not read video metadata, but you can still attempt compression.');
     }
   };
 
   const handleReset = () => {
+    metadataRequestRef.current += 1;
     setFile(null);
     setVideoMeta(null);
     setMetaError(null);
@@ -99,12 +108,37 @@ export default function CompressTool() {
         outputName,
       ];
 
-      return await runFFmpeg({
-        inputs: [{ name: inputName, data: file }],
-        args,
-        output: outputName,
-        onProgress: setProgress,
-      });
+      const qualityLevel = quality === 'high' ? 'high' : quality === 'balanced' ? 'medium' : 'low';
+      const target = resolution === 'original' ? null : RES_MAP[resolution];
+
+      return withMediabunnyFallback(
+        {
+          input: file,
+          output: 'mp4',
+          video: async (track) => {
+            const width = await track.getDisplayWidth();
+            const height = await track.getDisplayHeight();
+            if (!target) return { codec: 'avc', quality: qualityLevel, forceTranscode: true };
+            const scale = Math.min(1, target.w / width, target.h / height);
+            const outputWidth = Math.max(2, Math.floor((width * scale) / 2) * 2);
+            const outputHeight = Math.max(2, Math.floor((height * scale) / 2) * 2);
+            return { codec: 'avc', quality: qualityLevel, forceTranscode: true, width: outputWidth, height: outputHeight, fit: 'fill' };
+          },
+          audio: removeAudio ? { discard: true } : { codec: 'aac', bitrate: 128_000, forceTranscode: true },
+          copy: false,
+          tracks: { video: 'all', audio: removeAudio ? 'none' : 'all' },
+          requireVideo: true,
+          audioEncoderFallback: 'aac',
+          onProgress: setProgress,
+        },
+        (onProgress) =>
+          runFFmpegWithinMediaJob({
+            inputs: [{ name: inputName, data: file }],
+            args,
+            output: outputName,
+            onProgress,
+          }),
+      );
     });
   };
 
@@ -113,14 +147,14 @@ export default function CompressTool() {
       {!file ? (
         <FileDrop
           accept="video/*"
-          label="Choose a video or drag it here"
-          hint="Supports MP4, MOV, WebM, MKV, AVI and more."
+          label={t('Choose a video or drag it here')}
+          hint={t('Supports MP4, MOV, WebM, MKV, AVI and more.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {metaError && <div className="error-banner">{metaError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {metaError && <div className="error-banner">{t(metaError)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {job.status === 'done' && job.result ? (
             <ResultPanel
@@ -135,18 +169,18 @@ export default function CompressTool() {
             <div>
               <div className="meta-chips">
                 <span className="meta-chip">
-                  Name: <strong>{file.name}</strong>
+                  {t('Name:')} <strong>{file.name}</strong>
                 </span>
                 <span className="meta-chip">
-                  Size: <strong>{formatBytes(file.size)}</strong>
+                  {t('Size:')} <strong>{formatBytes(file.size)}</strong>
                 </span>
                 {videoMeta && (
                   <>
                     <span className="meta-chip">
-                      Duration: <strong>{formatDuration(videoMeta.duration)}</strong>
+                      {t('Duration:')} <strong>{formatDuration(videoMeta.duration)}</strong>
                     </span>
                     <span className="meta-chip">
-                      Resolution:{' '}
+                      {t('Resolution:')}{' '}
                       <strong>
                         {videoMeta.width}x{videoMeta.height}
                       </strong>
@@ -155,50 +189,62 @@ export default function CompressTool() {
                 )}
               </div>
 
+              <SourcePreview file={file} note="Source preview only. Compression quality and final file size depend on export settings." />
+
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Compressing video..." />
+                <ProgressBar value={job.progress} label={t('Compressing video...')} />
               ) : (
                 <div style={{ marginTop: '1.5rem' }}>
-                  <Field label="Quality preset" hint="Balanced offers high visual fidelity with significant size reduction.">
+                  <Field label={t('Quality')} hint={t('Balanced is a good fit for most videos.')}>
                     <Select
                       id={qualityId}
                       value={quality}
                       onChange={(e) => setQuality(e.target.value as QualityPreset)}
                       options={[
-                        { value: 'high', label: 'High (CRF 23 - larger file, best quality)' },
-                        { value: 'balanced', label: 'Balanced (CRF 28 - recommended)' },
-                        { value: 'small', label: 'Small (CRF 32 - smallest file)' },
+                        { value: 'high', label: t('High quality') },
+                        { value: 'balanced', label: t('Balanced (recommended)') },
+                        { value: 'small', label: t('Smaller file') },
                       ]}
                     />
                   </Field>
 
-                  <Field label="Max resolution" hint="Downscales if video exceeds target; never upscales.">
-                    <Select
-                      id={resolutionId}
-                      value={resolution}
-                      onChange={(e) => setResolution(e.target.value as MaxResolution)}
-                      options={[
-                        { value: 'original', label: 'Original resolution' },
-                        { value: '1080p', label: '1080p (Full HD)' },
-                        { value: '720p', label: '720p (HD)' },
-                        { value: '480p', label: '480p (SD)' },
-                      ]}
-                    />
-                  </Field>
+                  <details className="tool-options">
+                    <summary>{t('Advanced compression settings')}</summary>
+                    <div className="tool-options-body">
+                      <Field label={t('Max resolution')} hint={t('Downscales if the video exceeds this size; never upscales.')}>
+                        <Select
+                          id={resolutionId}
+                          value={resolution}
+                          onChange={(e) => setResolution(e.target.value as MaxResolution)}
+                          options={[
+                            { value: 'original', label: t('Original resolution') },
+                            { value: '1080p', label: '1080p' },
+                            { value: '720p', label: '720p' },
+                            { value: '480p', label: '480p' },
+                          ]}
+                        />
+                      </Field>
 
-                  <div className="field">
-                    <label className="checkbox-label" htmlFor={removeAudioId}>
-                      <input id={removeAudioId} type="checkbox" checked={removeAudio} onChange={(e) => setRemoveAudio(e.target.checked)} />
-                      <span>Remove audio track</span>
-                    </label>
-                  </div>
+                      <div className="field">
+                        <label className="checkbox-label" htmlFor={removeAudioId}>
+                          <input
+                            id={removeAudioId}
+                            type="checkbox"
+                            checked={removeAudio}
+                            onChange={(e) => setRemoveAudio(e.target.checked)}
+                          />
+                          <span>{t('Remove audio track')}</span>
+                        </label>
+                      </div>
+                    </div>
+                  </details>
 
                   <div className="action-buttons" style={{ marginTop: '2rem' }}>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose different file
+                      {t('Choose different file')}
                     </Button>
                     <Button variant="primary" onClick={handleCompress}>
-                      Compress video
+                      {t('Compress video')}
                     </Button>
                   </div>
                 </div>

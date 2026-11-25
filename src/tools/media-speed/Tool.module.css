@@ -197,6 +197,25 @@
   font-size: 0.9rem;
 }
 
+.previewCard {
+  display: grid;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.previewAudio {
+  width: 100%;
+}
+
+.previewNote {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
 @media (max-width: 640px) {
   .durationGrid {
     grid-template-columns: 1fr;

@@ -1,4 +1,5 @@
 import type { Cell, CellValue, Worksheet } from 'exceljs';
+import { translate } from '../../../lib/i18n';
 
 export interface CellModel {
   text: string;
@@ -123,7 +124,7 @@ function sheetToModel(ws: Worksheet): SheetModel | null {
   const colCount = ws.columnCount;
   if (rowCount === 0 || colCount === 0) return null;
   if (rowCount * colCount > MAX_CELLS) {
-    throw new Error(`Sheet "${ws.name}" is too large to convert in the browser.`);
+    throw new Error(translate('Sheet "{name}" is too large to convert in the browser.', { name: ws.name }));
   }
 
   const hiddenCols = new Set<number>();

@@ -6,10 +6,12 @@ import { Field, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
+import { useI18n } from '../../../lib/i18n';
 import { zipFiles } from '../../../lib/zip';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { ZipResult } from '../_pages/ZipResult';
+import { PageToolNav } from '../_pages/PageToolNav';
 import { usePdfPages } from '../_pages/usePdfPages';
 import { baseName, copyPagesToPdf, expandRange, parseRanges, pdfToBlob } from '../_pages/pdfPages';
 import styles from './Tool.module.css';
@@ -27,6 +29,7 @@ function pad(n: number, width: number): string {
 }
 
 export default function SplitPdfTool() {
+  const { t, locale } = useI18n();
   const meta = getToolMeta('pdf-split');
   const [file, setFile] = useState<File | null>(null);
   const [mode, setMode] = useState<SplitMode>('ranges');
@@ -63,7 +66,9 @@ export default function SplitPdfTool() {
     } catch (err) {
       return { groups: [], error: err instanceof Error ? err.message : 'Invalid range.' };
     }
-  }, [pdf.doc, pdf.pageCount, mode, rangeText, everyN]);
+    // Range helpers return localized errors.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pdf.doc, pdf.pageCount, mode, rangeText, everyN, locale]);
 
   const reset = () => {
     setFile(null);
@@ -104,10 +109,15 @@ export default function SplitPdfTool() {
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="pdf-split">
+      <PageToolNav currentId="pdf-split" />
       {pdf.password && <PasswordDialog reason={pdf.password.reason} onSubmit={pdf.password.submit} onCancel={reset} />}
 
       {!file ? (
-        <FileDrop accept="application/pdf,.pdf" label="Choose a PDF file or drag it here" onFiles={(files) => setFile(files[0] ?? null)} />
+        <FileDrop
+          accept="application/pdf,.pdf"
+          label={t('Choose a PDF file or drag it here')}
+          onFiles={(files) => setFile(files[0] ?? null)}
+        />
       ) : job.status === 'done' && job.result && result ? (
         result.zip ? (
           <ZipResult zip={result.zip} zipName={`${result.base}-split.zip`} items={result.items} onReset={reset} />
@@ -121,56 +131,59 @@ export default function SplitPdfTool() {
         )
       ) : (
         <div>
-          {pdf.error && <div className="error-banner">{pdf.error}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {pdf.error && <div className="error-banner">{t(pdf.error)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           <div className={styles.header}>
             <div className="meta-chips">
               <span className="meta-chip">
-                File: <strong>{file.name}</strong>
+                {t('File:')} <strong>{file.name}</strong>
               </span>
               <span className="meta-chip">
-                Size: <strong>{formatBytes(file.size)}</strong>
+                {t('Size:')} <strong>{formatBytes(file.size)}</strong>
               </span>
               {pdf.doc && (
                 <span className="meta-chip">
-                  Pages: <strong>{pdf.pageCount}</strong>
+                  {t('Pages:')} <strong>{pdf.pageCount}</strong>
                 </span>
               )}
             </div>
             <Button variant="secondary" onClick={reset}>
-              Change PDF
+              {t('Change PDF')}
             </Button>
           </div>
 
           {pdf.loading && (
             <div style={{ margin: '2rem 0', textAlign: 'center' }}>
-              <p>Opening PDF document…</p>
+              <p>{t('Opening PDF document…')}</p>
             </div>
           )}
 
           {pdf.doc && (
             <div>
-              <Field label="Split method">
+              <Field label={t('Split method')}>
                 <Select
                   id={modeId}
                   value={mode}
                   onChange={(e) => setMode(e.target.value as SplitMode)}
                   options={[
-                    { value: 'ranges', label: 'Custom page ranges' },
-                    { value: 'every-n', label: 'Every N pages' },
-                    { value: 'each', label: 'Every page as its own file' },
+                    { value: 'ranges', label: t('Custom page ranges') },
+                    { value: 'every-n', label: t('Every N pages') },
+                    { value: 'each', label: t('Every page as its own file') },
                   ]}
                 />
               </Field>
 
               {mode === 'ranges' && (
-                <Field label="Page ranges" hint="Separate ranges with commas. Each range becomes its own PDF, for example 1-3, 5, 7-9.">
+                <Field
+                  label={t('Page ranges')}
+                  hint={t('Separate ranges with commas. Each range becomes its own PDF, for example 1-3, 5, 7-9.')}
+                >
                   <input
                     id={rangesId}
                     type="text"
                     className={styles.textInput}
-                    aria-label="Page ranges"
+                    aria-label={t('Page ranges')}
                     placeholder="1-3, 5, 7-9"
                     value={rangeText}
                     onChange={(e) => setRangeText(e.target.value)}
@@ -179,36 +192,35 @@ export default function SplitPdfTool() {
               )}
 
               {mode === 'every-n' && (
-                <Field label="Pages per file" hint="The last file holds the remaining pages.">
+                <Field label={t('Pages per file')} hint={t('The last file holds the remaining pages.')}>
                   <input
                     id={everyId}
                     type="number"
                     min={1}
                     max={pdf.pageCount}
                     className={styles.textInput}
-                    aria-label="Pages per file"
+                    aria-label={t('Pages per file')}
                     value={everyN}
                     onChange={(e) => setEveryN(Number(e.target.value))}
                   />
                 </Field>
               )}
 
-              {plan.error && <div className="error-banner">{plan.error}</div>}
+              {plan.error && <div className="error-banner">{t(plan.error)}</div>}
               {!plan.error && outputCount > 0 && (
                 <p className="field-hint">
-                  {outputCount === 1 ? 'This will create 1 PDF.' : `This will create ${outputCount} PDFs, delivered as one ZIP.`}
+                  {outputCount === 1
+                    ? t('This will create 1 PDF.')
+                    : t('This will create {count} PDFs, delivered as one ZIP.', { count: outputCount })}
                 </p>
               )}
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Splitting PDF…" />
+                <ProgressBar value={job.progress} label={t('Splitting PDF…')} />
               ) : (
                 <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
-                  <Button variant="secondary" onClick={reset}>
-                    Choose different file
-                  </Button>
                   <Button variant="primary" onClick={run} disabled={outputCount === 0 || plan.error !== null}>
-                    Split PDF
+                    {t('Split PDF')}
                   </Button>
                 </div>
               )}

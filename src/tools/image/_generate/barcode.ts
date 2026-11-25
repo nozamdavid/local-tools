@@ -1,3 +1,5 @@
+import { translate } from '../../../lib/i18n';
+
 export type BarcodeFormat = 'CODE128' | 'EAN13' | 'EAN8' | 'UPC' | 'CODE39' | 'ITF14' | 'MSI' | 'pharmacode';
 
 export interface BarcodeFormatDef {
@@ -7,7 +9,6 @@ export interface BarcodeFormatDef {
   example: string;
   description: string;
 }
-
 export const BARCODE_FORMATS: BarcodeFormatDef[] = [
   {
     id: 'CODE128',
@@ -96,7 +97,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
       valid: false,
       code: '',
       displayCode: '',
-      error: 'Please enter a barcode value.',
+      error: translate('Please enter a barcode value.'),
     };
   }
 
@@ -108,7 +109,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
           valid: false,
           code: clean,
           displayCode: clean,
-          error: 'EAN-13 must contain only numeric digits (0-9).',
+          error: translate('EAN-13 must contain only numeric digits (0-9).'),
         };
       }
       if (clean.length === 12) {
@@ -117,7 +118,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
           valid: true,
           code: clean + check,
           displayCode: clean + check,
-          warning: `12 digits entered. Auto-calculated check digit: ${check}`,
+          warning: translate('12 digits entered. Auto-calculated check digit: {digit}', { digit: check }),
         };
       }
       if (clean.length === 13) {
@@ -129,7 +130,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
             valid: false,
             code: clean,
             displayCode: clean,
-            error: `Invalid EAN-13 check digit "${actual}". Expected check digit is "${expected}".`,
+            error: translate('Invalid EAN-13 check digit "{actual}". Expected check digit is "{expected}".', { actual, expected }),
             autoFixAvailable: true,
             expectedCheckDigit: expected,
           };
@@ -140,7 +141,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
         valid: false,
         code: clean,
         displayCode: clean,
-        error: `EAN-13 requires exactly 12 or 13 digits (received ${clean.length}).`,
+        error: translate('EAN-13 requires exactly 12 or 13 digits (received {count}).', { count: clean.length }),
       };
     }
 
@@ -151,7 +152,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
           valid: false,
           code: clean,
           displayCode: clean,
-          error: 'EAN-8 must contain only numeric digits (0-9).',
+          error: translate('EAN-8 must contain only numeric digits (0-9).'),
         };
       }
       if (clean.length === 7) {
@@ -160,7 +161,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
           valid: true,
           code: clean + check,
           displayCode: clean + check,
-          warning: `7 digits entered. Auto-calculated check digit: ${check}`,
+          warning: translate('7 digits entered. Auto-calculated check digit: {digit}', { digit: check }),
         };
       }
       if (clean.length === 8) {
@@ -172,7 +173,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
             valid: false,
             code: clean,
             displayCode: clean,
-            error: `Invalid EAN-8 check digit "${actual}". Expected check digit is "${expected}".`,
+            error: translate('Invalid EAN-8 check digit "{actual}". Expected check digit is "{expected}".', { actual, expected }),
             autoFixAvailable: true,
             expectedCheckDigit: expected,
           };
@@ -183,7 +184,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
         valid: false,
         code: clean,
         displayCode: clean,
-        error: `EAN-8 requires exactly 7 or 8 digits (received ${clean.length}).`,
+        error: translate('EAN-8 requires exactly 7 or 8 digits (received {count}).', { count: clean.length }),
       };
     }
 
@@ -194,7 +195,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
           valid: false,
           code: clean,
           displayCode: clean,
-          error: 'UPC-A must contain only numeric digits (0-9).',
+          error: translate('UPC-A must contain only numeric digits (0-9).'),
         };
       }
       if (clean.length === 11) {
@@ -203,7 +204,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
           valid: true,
           code: clean + check,
           displayCode: clean + check,
-          warning: `11 digits entered. Auto-calculated check digit: ${check}`,
+          warning: translate('11 digits entered. Auto-calculated check digit: {digit}', { digit: check }),
         };
       }
       if (clean.length === 12) {
@@ -215,7 +216,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
             valid: false,
             code: clean,
             displayCode: clean,
-            error: `Invalid UPC-A check digit "${actual}". Expected check digit is "${expected}".`,
+            error: translate('Invalid UPC-A check digit "{actual}". Expected check digit is "{expected}".', { actual, expected }),
             autoFixAvailable: true,
             expectedCheckDigit: expected,
           };
@@ -226,7 +227,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
         valid: false,
         code: clean,
         displayCode: clean,
-        error: `UPC-A requires exactly 11 or 12 digits (received ${clean.length}).`,
+        error: translate('UPC-A requires exactly 11 or 12 digits (received {count}).', { count: clean.length }),
       };
     }
 
@@ -237,7 +238,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
           valid: false,
           code: clean,
           displayCode: clean,
-          error: 'ITF-14 must contain only numeric digits (0-9).',
+          error: translate('ITF-14 must contain only numeric digits (0-9).'),
         };
       }
       if (clean.length === 13) {
@@ -246,7 +247,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
           valid: true,
           code: clean + check,
           displayCode: clean + check,
-          warning: `13 digits entered. Auto-calculated check digit: ${check}`,
+          warning: translate('13 digits entered. Auto-calculated check digit: {digit}', { digit: check }),
         };
       }
       if (clean.length === 14) {
@@ -258,7 +259,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
             valid: false,
             code: clean,
             displayCode: clean,
-            error: `Invalid ITF-14 check digit "${actual}". Expected check digit is "${expected}".`,
+            error: translate('Invalid ITF-14 check digit "{actual}". Expected check digit is "{expected}".', { actual, expected }),
             autoFixAvailable: true,
             expectedCheckDigit: expected,
           };
@@ -269,7 +270,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
         valid: false,
         code: clean,
         displayCode: clean,
-        error: `ITF-14 requires exactly 13 or 14 digits (received ${clean.length}).`,
+        error: translate('ITF-14 requires exactly 13 or 14 digits (received {count}).', { count: clean.length }),
       };
     }
 
@@ -280,7 +281,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
           valid: false,
           code: upper,
           displayCode: upper,
-          error: 'Code 39 only allows uppercase letters A-Z, numbers 0-9, and characters: - . $ / + % [space]',
+          error: translate('Code 39 only allows uppercase letters A-Z, numbers 0-9, and characters: - . $ / + % [space]'),
         };
       }
       return { valid: true, code: upper, displayCode: upper };
@@ -293,7 +294,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
           valid: false,
           code: trimmed,
           displayCode: trimmed,
-          error: 'Pharmacode must be an integer between 3 and 131070.',
+          error: translate('Pharmacode must be an integer between 3 and 131070.'),
         };
       }
       return { valid: true, code: String(num), displayCode: String(num) };
@@ -306,7 +307,7 @@ export function validateBarcode(format: BarcodeFormat, input: string): BarcodeVa
           valid: false,
           code: clean,
           displayCode: clean,
-          error: 'MSI Plessey must contain only numeric digits.',
+          error: translate('MSI Plessey must contain only numeric digits.'),
         };
       }
       return { valid: true, code: clean, displayCode: clean };

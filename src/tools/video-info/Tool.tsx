@@ -3,11 +3,13 @@ import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { Button } from '../../components/Controls';
 import { getToolMeta } from '../registry';
-import { getFFmpeg, mimeFromName } from '../../lib/ffmpeg';
+import { mimeFromName, runFFmpeg } from '../../lib/ffmpeg';
 import { getVideoMeta, type VideoMeta } from '../../lib/media';
+import { probeMedia, type MediaSummary } from '../../lib/mediabunny';
 import { formatBytes, formatDuration, replaceExt } from '../../lib/format';
 import { downloadBlob } from '../../lib/download';
 import { parseFFmpegLog, type ParsedVideoInfo } from './parse';
+import { useI18n } from '../../lib/i18n';
 import styles from './Tool.module.css';
 
 interface FullReport {
@@ -21,9 +23,71 @@ interface FullReport {
   videoMeta: VideoMeta | null;
   ffmpegInfo: ParsedVideoInfo;
   rawLog: string;
+  inspectionEngine: 'Mediabunny' | 'FFmpeg';
+}
+
+function bitrateLabel(value: number | null): string | undefined {
+  return value && value > 0 ? `${(value / 1000).toFixed(1)} kb/s` : undefined;
+}
+
+function parsedMediaSummary(summary: MediaSummary): ParsedVideoInfo {
+  const creationTime = Object.entries(summary.metadata).find(([key]) => key.toLowerCase() === 'creation_time')?.[1];
+  return {
+    container: summary.format,
+    duration: summary.duration === null ? '' : formatDuration(summary.duration),
+    bitrate: '',
+    creationTime,
+    metadata: summary.metadata,
+    streams: summary.tracks.map((track) => ({
+      index: track.index,
+      type: track.type,
+      codecProfile: track.codec || 'Unknown',
+      resolution: track.width && track.height ? `${Math.round(track.width)}x${Math.round(track.height)}` : undefined,
+      sarDar: track.pixelAspectRatio ? `SAR ${track.pixelAspectRatio}` : undefined,
+      rotation: track.rotation ? `${track.rotation}°` : '0°',
+      audioSampleRate: track.sampleRate ? `${track.sampleRate} Hz` : undefined,
+      channelsLayout: track.channels ? `${track.channels} channels` : undefined,
+      bitrate: bitrateLabel(track.bitrate),
+      language: track.language === 'und' ? undefined : track.language,
+      metadata: {
+        ...(track.name ? { name: track.name } : {}),
+        ...(track.primary ? { primary: 'true' } : {}),
+      },
+      raw: [
+        track.type,
+        track.codec ?? 'unknown',
+        track.width && track.height ? `${track.width}x${track.height}` : '',
+        track.sampleRate ? `${track.sampleRate} Hz` : '',
+      ]
+        .filter(Boolean)
+        .join(', '),
+    })),
+  };
+}
+
+function formatMediaSummary(summary: MediaSummary): string {
+  const lines = [
+    'Mediabunny metadata report',
+    `Container: ${summary.format}`,
+    `MIME type: ${summary.mimeType}`,
+    `Duration: ${summary.duration === null ? 'Unknown' : `${summary.duration.toFixed(3)} s`}`,
+    `Tracks: ${summary.tracks.length}`,
+  ];
+  for (const track of summary.tracks) {
+    const details = [track.codec ?? 'unknown'];
+    if (track.width && track.height) details.push(`${Math.round(track.width)}x${Math.round(track.height)}`);
+    if (track.sampleRate) details.push(`${track.sampleRate} Hz`);
+    if (track.channels) details.push(`${track.channels} channels`);
+    if (track.bitrate) details.push(`${Math.round(track.bitrate / 1000)} kb/s`);
+    if (track.language !== 'und') details.push(`language ${track.language}`);
+    lines.push(`Track ${track.index} (${track.type}): ${details.join(', ')}`);
+  }
+  for (const [key, value] of Object.entries(summary.metadata)) lines.push(`Metadata ${key}: ${value}`);
+  return lines.join('\n');
 }
 
 export default function VideoInfoTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('video-info');
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
@@ -40,44 +104,55 @@ export default function VideoInfoTool() {
     setLoading(true);
 
     try {
-      // 1. Extract HTML Video Meta (safe fallback if it fails)
+      const summary = await probeMedia(selected);
       let vMeta: VideoMeta | null = null;
-      try {
-        vMeta = await getVideoMeta(selected);
-      } catch {
-        // Audio or unsupported container for HTML5 video element
-      }
-
-      // 2. Run FFmpeg directly to collect log output
-      const ffmpeg = await getFFmpeg();
-      const logLines: string[] = [];
-      const handleLog = ({ message }: { message: string }) => {
-        logLines.push(message);
-      };
-
-      ffmpeg.on('log', handleLog);
-
-      const dotIdx = selected.name.lastIndexOf('.');
-      const ext = dotIdx >= 0 ? selected.name.slice(dotIdx) : '.bin';
-      const inputName = `probe_${Date.now()}${ext}`;
-
-      try {
-        const ab = await selected.arrayBuffer();
-        await ffmpeg.writeFile(inputName, new Uint8Array(ab));
-        await ffmpeg.exec(['-hide_banner', '-i', inputName]);
-      } catch {
-        // Expected: ffmpeg exits with code 1 when no output file is provided
-      } finally {
-        try {
-          await ffmpeg.deleteFile(inputName);
-        } catch {
-          // Ignore cleanup error
+      if (summary) {
+        const primaryVideo =
+          summary.tracks.find((track) => track.type === 'video' && track.primary) ?? summary.tracks.find((track) => track.type === 'video');
+        if (primaryVideo?.width && primaryVideo.height) {
+          vMeta = {
+            duration: summary.duration ?? 0,
+            width: Math.round(primaryVideo.width),
+            height: Math.round(primaryVideo.height),
+            hasAudio: summary.tracks.some((track) => track.type === 'audio'),
+          };
         }
-        ffmpeg.off('log', handleLog);
+      } else {
+        try {
+          vMeta = await getVideoMeta(selected);
+        } catch {
+          // Audio or unsupported container for HTML5 video element
+        }
       }
 
-      const rawLog = logLines.join('\n');
-      const parsed = parseFFmpegLog(rawLog);
+      let parsed: ParsedVideoInfo;
+      let rawLog: string;
+      let inspectionEngine: FullReport['inspectionEngine'];
+      if (summary) {
+        parsed = parsedMediaSummary(summary);
+        rawLog = formatMediaSummary(summary);
+        inspectionEngine = 'Mediabunny';
+      } else {
+        const logLines: string[] = [];
+        const dotIdx = selected.name.lastIndexOf('.');
+        const ext = dotIdx >= 0 ? selected.name.slice(dotIdx) : '.bin';
+        const inputName = `probe_${Date.now()}${ext}`;
+
+        try {
+          await runFFmpeg({
+            inputs: [{ name: inputName, data: selected }],
+            args: ['-hide_banner', '-i', inputName],
+            output: 'probe-output.tmp',
+            onLog: (line) => logLines.push(line),
+          });
+        } catch {
+          // FFmpeg exits with code 1 when no output file is provided.
+        }
+
+        rawLog = logLines.join('\n');
+        parsed = parseFFmpegLog(rawLog);
+        inspectionEngine = 'FFmpeg';
+      }
 
       const fullReport: FullReport = {
         file: {
@@ -90,6 +165,7 @@ export default function VideoInfoTool() {
         videoMeta: vMeta,
         ffmpegInfo: parsed,
         rawLog,
+        inspectionEngine,
       };
 
       setReport(fullReport);
@@ -174,8 +250,8 @@ export default function VideoInfoTool() {
       {!file && (
         <FileDrop
           accept="video/*,audio/*"
-          label="Choose a video or audio file to inspect"
-          hint="Inspect codecs, bitrates, audio tracks, and metadata."
+          label={t('Choose a video or audio file to inspect')}
+          hint={t('Inspect codecs, bitrates, audio tracks, and metadata.')}
           onFiles={handleFiles}
         />
       )}
@@ -183,16 +259,16 @@ export default function VideoInfoTool() {
       {loading && (
         <div className={styles.loadingBox}>
           <div className={styles.loadingSpinner} />
-          <p>Analyzing media stream headers with FFmpeg...</p>
+          <p>{t('Analyzing media stream headers...')}</p>
         </div>
       )}
 
       {error && (
         <div>
-          <div className="error-banner">{error}</div>
+          <div className="error-banner">{t(error)}</div>
           <div className="action-buttons">
             <Button variant="secondary" onClick={handleReset}>
-              Try another file
+              {t('Try another file')}
             </Button>
           </div>
         </div>
@@ -204,72 +280,72 @@ export default function VideoInfoTool() {
           <div className={styles.actionBar}>
             <div className={styles.actionBarLeft}>
               <Button variant="primary" onClick={handleCopyText}>
-                {copied ? '✓ Copied to clipboard!' : 'Copy as text'}
+                {copied ? `✓ ${t('Copied to clipboard!')}` : t('Copy as text')}
               </Button>
               <Button variant="secondary" onClick={handleDownloadJSON}>
-                Download JSON
+                {t('Download JSON')}
               </Button>
             </div>
             <Button variant="secondary" onClick={handleReset}>
-              Analyze another file
+              {t('Analyze another file')}
             </Button>
           </div>
 
           {/* Group: General */}
           <div className={styles.tableGroup}>
             <div className={styles.groupHeader}>
-              <h3 className={styles.groupTitle}>General Information</h3>
-              <span className={`${styles.badge} ${styles.badgeOther}`}>Overview</span>
+              <h3 className={styles.groupTitle}>{t('General Information')}</h3>
+              <span className={`${styles.badge} ${styles.badgeOther}`}>{t('Overview')}</span>
             </div>
             <div className={styles.tableWrapper}>
               <table className={styles.infoTable}>
                 <tbody>
                   <tr>
-                    <td className={styles.propKey}>File Name</td>
+                    <td className={styles.propKey}>{t('File Name')}</td>
                     <td className={styles.propVal}>{report.file.name}</td>
                   </tr>
                   <tr>
-                    <td className={styles.propKey}>File Size</td>
+                    <td className={styles.propKey}>{t('File Size')}</td>
                     <td className={styles.propVal}>
                       {report.file.formattedSize} ({report.file.size.toLocaleString()} bytes)
                     </td>
                   </tr>
                   <tr>
-                    <td className={styles.propKey}>MIME Type</td>
+                    <td className={styles.propKey}>{t('MIME Type')}</td>
                     <td className={styles.propVal}>{report.file.mimeType}</td>
                   </tr>
                   <tr>
-                    <td className={styles.propKey}>Last Modified</td>
+                    <td className={styles.propKey}>{t('Last Modified')}</td>
                     <td className={styles.propVal}>{report.file.lastModified}</td>
                   </tr>
                   <tr>
-                    <td className={styles.propKey}>Container / Format</td>
+                    <td className={styles.propKey}>{t('Container / Format')}</td>
                     <td className={styles.propVal}>{report.ffmpegInfo.container || 'Unknown'}</td>
                   </tr>
                   <tr>
-                    <td className={styles.propKey}>Duration (FFmpeg)</td>
+                    <td className={styles.propKey}>{t('Duration')}</td>
                     <td className={styles.propVal}>{report.ffmpegInfo.duration || 'N/A'}</td>
                   </tr>
                   <tr>
-                    <td className={styles.propKey}>Overall Bitrate</td>
+                    <td className={styles.propKey}>{t('Overall Bitrate')}</td>
                     <td className={styles.propVal}>{report.ffmpegInfo.bitrate || 'N/A'}</td>
                   </tr>
                   {report.ffmpegInfo.creationTime && (
                     <tr>
-                      <td className={styles.propKey}>Creation Time</td>
+                      <td className={styles.propKey}>{t('Creation Time')}</td>
                       <td className={styles.propVal}>{report.ffmpegInfo.creationTime}</td>
                     </tr>
                   )}
                   {report.videoMeta && (
                     <>
                       <tr>
-                        <td className={styles.propKey}>HTML5 Video Dimensions</td>
+                        <td className={styles.propKey}>{t('HTML5 Video Dimensions')}</td>
                         <td className={styles.propVal}>
                           {report.videoMeta.width}x{report.videoMeta.height}
                         </td>
                       </tr>
                       <tr>
-                        <td className={styles.propKey}>HTML5 Video Duration</td>
+                        <td className={styles.propKey}>{t('HTML5 Video Duration')}</td>
                         <td className={styles.propVal}>
                           {formatDuration(report.videoMeta.duration)} ({report.videoMeta.duration.toFixed(2)}s)
                         </td>
@@ -280,7 +356,9 @@ export default function VideoInfoTool() {
                     if (key.toLowerCase() === 'creation_time') return null;
                     return (
                       <tr key={key}>
-                        <td className={styles.propKey}>Tag: {key}</td>
+                        <td className={styles.propKey}>
+                          {t('Tag:')} {key}
+                        </td>
                         <td className={styles.propVal}>{val}</td>
                       </tr>
                     );
@@ -294,51 +372,53 @@ export default function VideoInfoTool() {
           {videoStreams.map((stream) => (
             <div key={`video-${stream.index}`} className={styles.tableGroup}>
               <div className={styles.groupHeader}>
-                <h3 className={styles.groupTitle}>Video #{stream.index}</h3>
-                <span className={`${styles.badge} ${styles.badgeVideo}`}>Video Stream</span>
+                <h3 className={styles.groupTitle}>{t('Video #{number}', { number: stream.index })}</h3>
+                <span className={`${styles.badge} ${styles.badgeVideo}`}>{t('Video Stream')}</span>
               </div>
               <div className={styles.tableWrapper}>
                 <table className={styles.infoTable}>
                   <tbody>
                     <tr>
-                      <td className={styles.propKey}>Stream Index</td>
+                      <td className={styles.propKey}>{t('Stream Index')}</td>
                       <td className={styles.propVal}>#{stream.index}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Codec + Profile</td>
+                      <td className={styles.propKey}>{t('Codec + Profile')}</td>
                       <td className={styles.propVal}>{stream.codecProfile || 'N/A'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Resolution</td>
+                      <td className={styles.propKey}>{t('Resolution')}</td>
                       <td className={styles.propVal}>{stream.resolution || 'N/A'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>SAR / DAR</td>
+                      <td className={styles.propKey}>{t('SAR / DAR')}</td>
                       <td className={styles.propVal}>{stream.sarDar || 'N/A'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Pixel Format</td>
+                      <td className={styles.propKey}>{t('Pixel Format')}</td>
                       <td className={styles.propVal}>{stream.pixelFormat || 'N/A'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Frame Rate</td>
+                      <td className={styles.propKey}>{t('Frame Rate')}</td>
                       <td className={styles.propVal}>{stream.fps || 'N/A'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Bitrate</td>
+                      <td className={styles.propKey}>{t('Bitrate')}</td>
                       <td className={styles.propVal}>{stream.bitrate || 'N/A'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Rotation</td>
+                      <td className={styles.propKey}>{t('Rotation')}</td>
                       <td className={styles.propVal}>{stream.rotation || '0°'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Language</td>
+                      <td className={styles.propKey}>{t('Language')}</td>
                       <td className={styles.propVal}>{stream.language || 'N/A'}</td>
                     </tr>
                     {Object.entries(stream.metadata).map(([key, val]) => (
                       <tr key={`v-meta-${key}`}>
-                        <td className={styles.propKey}>Tag: {key}</td>
+                        <td className={styles.propKey}>
+                          {t('Tag:')} {key}
+                        </td>
                         <td className={styles.propVal}>{val}</td>
                       </tr>
                     ))}
@@ -352,39 +432,41 @@ export default function VideoInfoTool() {
           {audioStreams.map((stream) => (
             <div key={`audio-${stream.index}`} className={styles.tableGroup}>
               <div className={styles.groupHeader}>
-                <h3 className={styles.groupTitle}>Audio #{stream.index}</h3>
-                <span className={`${styles.badge} ${styles.badgeAudio}`}>Audio Stream</span>
+                <h3 className={styles.groupTitle}>{t('Audio #{number}', { number: stream.index })}</h3>
+                <span className={`${styles.badge} ${styles.badgeAudio}`}>{t('Audio Stream')}</span>
               </div>
               <div className={styles.tableWrapper}>
                 <table className={styles.infoTable}>
                   <tbody>
                     <tr>
-                      <td className={styles.propKey}>Stream Index</td>
+                      <td className={styles.propKey}>{t('Stream Index')}</td>
                       <td className={styles.propVal}>#{stream.index}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Codec + Profile</td>
+                      <td className={styles.propKey}>{t('Codec + Profile')}</td>
                       <td className={styles.propVal}>{stream.codecProfile || 'N/A'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Sample Rate</td>
+                      <td className={styles.propKey}>{t('Sample Rate')}</td>
                       <td className={styles.propVal}>{stream.audioSampleRate || 'N/A'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Channels / Layout</td>
+                      <td className={styles.propKey}>{t('Channels / Layout')}</td>
                       <td className={styles.propVal}>{stream.channelsLayout || 'N/A'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Bitrate</td>
+                      <td className={styles.propKey}>{t('Bitrate')}</td>
                       <td className={styles.propVal}>{stream.bitrate || 'N/A'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Language</td>
+                      <td className={styles.propKey}>{t('Language')}</td>
                       <td className={styles.propVal}>{stream.language || 'N/A'}</td>
                     </tr>
                     {Object.entries(stream.metadata).map(([key, val]) => (
                       <tr key={`a-meta-${key}`}>
-                        <td className={styles.propKey}>Tag: {key}</td>
+                        <td className={styles.propKey}>
+                          {t('Tag:')} {key}
+                        </td>
                         <td className={styles.propVal}>{val}</td>
                       </tr>
                     ))}
@@ -399,34 +481,36 @@ export default function VideoInfoTool() {
             <div key={`other-${stream.index}`} className={styles.tableGroup}>
               <div className={styles.groupHeader}>
                 <h3 className={styles.groupTitle}>
-                  {stream.type.charAt(0).toUpperCase() + stream.type.slice(1)} #{stream.index}
+                  {t('{type} #{number}', { type: t(stream.type.charAt(0).toUpperCase() + stream.type.slice(1)), number: stream.index })}
                 </h3>
                 <span className={`${styles.badge} ${stream.type === 'subtitle' ? styles.badgeSubtitle : styles.badgeOther}`}>
-                  {stream.type}
+                  {t(stream.type)}
                 </span>
               </div>
               <div className={styles.tableWrapper}>
                 <table className={styles.infoTable}>
                   <tbody>
                     <tr>
-                      <td className={styles.propKey}>Stream Index</td>
+                      <td className={styles.propKey}>{t('Stream Index')}</td>
                       <td className={styles.propVal}>#{stream.index}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Type</td>
+                      <td className={styles.propKey}>{t('Type')}</td>
                       <td className={styles.propVal}>{stream.type}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Codec / Format</td>
+                      <td className={styles.propKey}>{t('Codec / Format')}</td>
                       <td className={styles.propVal}>{stream.codecProfile || 'N/A'}</td>
                     </tr>
                     <tr>
-                      <td className={styles.propKey}>Language</td>
+                      <td className={styles.propKey}>{t('Language')}</td>
                       <td className={styles.propVal}>{stream.language || 'N/A'}</td>
                     </tr>
                     {Object.entries(stream.metadata).map(([key, val]) => (
                       <tr key={`o-meta-${key}`}>
-                        <td className={styles.propKey}>Tag: {key}</td>
+                        <td className={styles.propKey}>
+                          {t('Tag:')} {key}
+                        </td>
                         <td className={styles.propVal}>{val}</td>
                       </tr>
                     ))}
@@ -436,9 +520,13 @@ export default function VideoInfoTool() {
             </div>
           ))}
 
-          {/* Collapsible raw ffmpeg output */}
+          {/* The raw section reflects the inspector used above. */}
           <details className={styles.rawDetails}>
-            <summary className={styles.rawSummary}>Raw ffmpeg output ({report.rawLog.split('\n').length} lines)</summary>
+            <summary className={styles.rawSummary}>
+              {report.inspectionEngine === 'Mediabunny'
+                ? t('Mediabunny metadata report ({count} lines)', { count: report.rawLog.split('\n').length })
+                : t('Raw FFmpeg log ({count} lines)', { count: report.rawLog.split('\n').length })}
+            </summary>
             <pre className={styles.rawPre}>{report.rawLog}</pre>
           </details>
         </div>

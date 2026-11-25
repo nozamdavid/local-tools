@@ -1,30 +1,34 @@
-import { useState, useRef, useId } from 'react';
+import { useState, useRef, useId, useEffect } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { Field, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { formatBytes } from '../../../lib/format';
 import { downloadBlob } from '../../../lib/download';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { usePdfSource } from '../_thumbs/usePdfSource';
-import { extractPdfText, chunkTextForInference, SUMMARIZE_MODELS, AiJob, type ExtractionResult } from '../_ai';
+import { chunkTextForInference, SUMMARIZE_MODELS, AiJob } from '../_ai';
+import { usePdfText } from '../_ai/usePdfText';
+import { translateAiProgressLabel } from '../_ai/progress';
 import styles from './Tool.module.css';
 
 export default function SummarizeTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-summarize');
   const source = usePdfSource();
 
   const modelSelectId = useId();
   const lengthSelectId = useId();
   const scopeSelectId = useId();
+  const summaryNoticeId = useId();
 
   const [selectedModel, setSelectedModel] = useState<string>(SUMMARIZE_MODELS[0].id);
   const [summaryLength, setSummaryLength] = useState<'concise' | 'standard' | 'detailed'>('standard');
   const [pageScope, setPageScope] = useState<string>('all');
 
-  const [extracting, setExtracting] = useState(false);
-  const [extractionResult, setExtractionResult] = useState<ExtractionResult | null>(null);
+  const { extracting, error: extractionError, result: extractionResult } = usePdfText(source.doc);
 
   const [running, setRunning] = useState(false);
   const [progressRatio, setProgressRatio] = useState(0);
@@ -34,6 +38,7 @@ export default function SummarizeTool() {
   const [copied, setCopied] = useState(false);
 
   const activeJob = useRef<AiJob | null>(null);
+  useEffect(() => () => activeJob.current?.abort(), []);
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
@@ -47,8 +52,6 @@ export default function SummarizeTool() {
       activeJob.current = null;
     }
     source.reset();
-    setExtracting(false);
-    setExtractionResult(null);
     setRunning(false);
     setProgressRatio(0);
     setProgressLabel('');
@@ -56,26 +59,6 @@ export default function SummarizeTool() {
     setError(null);
     setCopied(false);
   };
-
-  // When document is loaded, extract text
-  const handleLoadDoc = async () => {
-    if (!source.doc) return;
-    setExtracting(true);
-    setError(null);
-    try {
-      const res = await extractPdfText(source.doc);
-      setExtractionResult(res);
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Failed to extract text from PDF.');
-    } finally {
-      setExtracting(false);
-    }
-  };
-
-  // Automatically trigger extraction once source.doc is ready and extraction hasn't happened yet
-  if (source.doc && !extractionResult && !extracting && !source.loading) {
-    handleLoadDoc();
-  }
 
   const handleSummarize = async () => {
     if (!extractionResult || !extractionResult.hasText) return;
@@ -163,20 +146,20 @@ export default function SummarizeTool() {
 
   const modelOptions = SUMMARIZE_MODELS.map((m) => ({
     value: m.id,
-    label: `${m.name} (${m.sizeEstimate})${m.recommended ? ' - Recommended' : ''}`,
+    label: `${m.name} (${m.sizeEstimate})${m.recommended ? ` - ${t('Recommended')}` : ''}`,
   }));
 
   const lengthOptions = [
-    { value: 'concise', label: 'Concise (~1-2 paragraphs)' },
-    { value: 'standard', label: 'Standard overview' },
-    { value: 'detailed', label: 'Detailed summary' },
+    { value: 'concise', label: t('Concise (~1-2 paragraphs)') },
+    { value: 'standard', label: t('Standard overview') },
+    { value: 'detailed', label: t('Detailed summary') },
   ];
 
   const scopeOptions = [
-    { value: 'all', label: `All pages (${source.pages.length} pages)` },
-    { value: '3', label: 'First 3 pages' },
-    { value: '5', label: 'First 5 pages' },
-    { value: '10', label: 'First 10 pages' },
+    { value: 'all', label: t('All pages ({count} pages)', { count: source.pages.length }) },
+    { value: '3', label: t('First {count} pages', { count: 3 }) },
+    { value: '5', label: t('First {count} pages', { count: 5 }) },
+    { value: '10', label: t('First {count} pages', { count: 10 }) },
   ];
 
   const originalWords = extractionResult?.totalWords ?? 0;
@@ -191,53 +174,55 @@ export default function SummarizeTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Summarizes PDF documents completely on your device using local WebAssembly AI."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Summarizes PDF documents completely on your device using local WebAssembly AI.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {source.error && <div className="error-banner">{source.error}</div>}
-          {error && <div className="error-banner">{error}</div>}
+          {source.error && <div className="error-banner">{t(source.error)}</div>}
+          {extractionError && <div className="error-banner">{t(extractionError)}</div>}
+          {error && <div className="error-banner">{t(error)}</div>}
 
           <div className={styles.topRow}>
             <div className="meta-chips">
               <span className="meta-chip">
-                File: <strong>{file.name}</strong>
+                {t('File:')} <strong>{file.name}</strong>
               </span>
               <span className="meta-chip">
-                Size: <strong>{formatBytes(file.size)}</strong>
+                {t('Size:')} <strong>{formatBytes(file.size)}</strong>
               </span>
               {source.pages.length > 0 && (
                 <span className="meta-chip">
-                  Pages: <strong>{source.pages.length}</strong>
+                  {t('Pages:')} <strong>{source.pages.length}</strong>
                 </span>
               )}
               {extractionResult && (
                 <span className="meta-chip">
-                  Words: <strong>{extractionResult.totalWords}</strong>
+                  {t('Words:')} <strong>{extractionResult.totalWords}</strong>
                 </span>
               )}
             </div>
             <Button variant="secondary" onClick={handleReset} disabled={running}>
-              Change PDF
+              {t('Change PDF')}
             </Button>
           </div>
 
           {(source.loading || extracting) && (
-            <p className="status-text">{source.loading ? 'Opening PDF document...' : 'Extracting document text...'}</p>
+            <p className="status-text">{source.loading ? t('Opening PDF document...') : t('Extracting document text...')}</p>
           )}
 
           {extractionResult && !extractionResult.hasText && !extracting && (
             <div className={styles.ocrNotice}>
-              <div className={styles.ocrNoticeTitle}>No Selectable Text Found</div>
+              <div className={styles.ocrNoticeTitle}>{t('No selectable text found')}</div>
               <p className={styles.ocrNoticeDesc}>
-                This PDF appears to be a scanned document or contains only images with no embedded text layer. Local summarization requires
-                machine-readable text. Please process this PDF with the OCR PDF tool first to recognize and extract its text.
+                {t(
+                  'This PDF appears to be a scanned document or contains only images with no embedded text layer. Local summarization requires machine-readable text. Please process this PDF with the OCR PDF tool first to recognize and extract its text.',
+                )}
               </p>
               <div className="action-buttons" style={{ justifyContent: 'center' }}>
                 <a href="/pdf/ocr" className="btn btn-primary" style={{ textDecoration: 'none' }}>
-                  Go to OCR PDF
+                  {t('Go to OCR PDF')}
                 </a>
               </div>
             </div>
@@ -246,7 +231,10 @@ export default function SummarizeTool() {
           {extractionResult && extractionResult.hasText && !summary && !running && (
             <div>
               <div className={styles.controls}>
-                <Field label="Summarization model" hint={`Download size: ${currentModel.sizeEstimate}. Stored in browser cache.`}>
+                <Field
+                  label={t('Summarization model')}
+                  hint={t('Download size: {size}. Stored in browser cache.', { size: currentModel.sizeEstimate })}
+                >
                   <Select
                     id={modelSelectId}
                     value={selectedModel}
@@ -255,7 +243,7 @@ export default function SummarizeTool() {
                   />
                 </Field>
 
-                <Field label="Summary length" hint="Controls the depth and conciseness of the output.">
+                <Field label={t('Summary length')} hint={t('Controls the depth and conciseness of the output.')}>
                   <Select
                     id={lengthSelectId}
                     value={summaryLength}
@@ -265,23 +253,25 @@ export default function SummarizeTool() {
                 </Field>
 
                 {source.pages.length > 3 && (
-                  <Field label="Page scope" hint="Select how many pages to include in the summary.">
+                  <Field label={t('Page scope')} hint={t('Select how many pages to include in the summary.')}>
                     <Select id={scopeSelectId} value={pageScope} onChange={(e) => setPageScope(e.target.value)} options={scopeOptions} />
                   </Field>
                 )}
               </div>
 
               <div className={styles.noticeBox}>
-                🔒 <strong>100% Private & In-Browser:</strong> The AI model runs directly in your browser via WebAssembly. Model weights are
-                downloaded directly from Hugging Face and cached locally. Your PDF contents never leave your device.
+                🔒 <strong>{t('100% private and in your browser:')}</strong>{' '}
+                {t(
+                  'The AI model runs directly in your browser via WebAssembly. Model weights are downloaded directly from Hugging Face and cached locally. Your PDF contents never leave your device.',
+                )}
               </div>
 
               <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
-                  Reset
+                  {t('Reset')}
                 </Button>
                 <Button variant="primary" onClick={handleSummarize}>
-                  Generate Summary
+                  {t('Generate summary')}
                 </Button>
               </div>
             </div>
@@ -289,7 +279,7 @@ export default function SummarizeTool() {
 
           {running && (
             <div style={{ marginTop: '1.5rem' }}>
-              <ProgressBar value={progressRatio} label={progressLabel || 'Running summarization...'} />
+              <ProgressBar value={progressRatio} label={translateAiProgressLabel(progressLabel || 'Running summarization...', t)} />
               <div className="action-buttons" style={{ marginTop: '1rem' }}>
                 <Button
                   variant="secondary"
@@ -301,7 +291,7 @@ export default function SummarizeTool() {
                     setRunning(false);
                   }}
                 >
-                  Cancel
+                  {t('Cancel')}
                 </Button>
               </div>
             </div>
@@ -309,40 +299,42 @@ export default function SummarizeTool() {
 
           {summary && !running && (
             <div className={styles.outputArea}>
-              <h3 style={{ marginTop: 0, marginBottom: '0.75rem' }}>Document Summary</h3>
+              <h3 style={{ marginTop: 0, marginBottom: '0.75rem' }}>{t('Document summary')}</h3>
+              <p id={summaryNoticeId}>{t('The AI can invent details. Check the summary against the original PDF.')}</p>
               <textarea
                 className={styles.outputTextarea}
                 value={summary}
                 onChange={(e) => setSummary(e.target.value)}
-                aria-label="Generated summary"
+                aria-label={t('Generated summary')}
+                aria-describedby={summaryNoticeId}
               />
 
               <div className={styles.statsBar}>
                 <div className={styles.statItem}>
-                  <span className={styles.statLabel}>Original Words</span>
+                  <span className={styles.statLabel}>{t('Original words')}</span>
                   <span className={styles.statVal}>{originalWords}</span>
                 </div>
                 <div className={styles.statItem}>
-                  <span className={styles.statLabel}>Summary Words</span>
+                  <span className={styles.statLabel}>{t('Summary words')}</span>
                   <span className={styles.statVal}>{summaryWords}</span>
                 </div>
                 {reductionPct > 0 && (
                   <div className={styles.statItem}>
-                    <span className={styles.statLabel}>Reduction</span>
-                    <span className="badge badge-success">{reductionPct}% shorter</span>
+                    <span className={styles.statLabel}>{t('Reduction')}</span>
+                    <span className="badge badge-success">{t('{percent}% shorter', { percent: reductionPct })}</span>
                   </div>
                 )}
               </div>
 
               <div className="action-buttons" style={{ marginTop: '1.25rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
-                  Start Over
+                  {t('Start over')}
                 </Button>
                 <Button variant="secondary" onClick={handleCopy}>
-                  {copied ? 'Copied!' : 'Copy Summary'}
+                  {copied ? t('Copied!') : t('Copy summary')}
                 </Button>
                 <Button variant="primary" onClick={handleDownload}>
-                  Download Summary (.txt)
+                  {t('Download summary (.txt)')}
                 </Button>
               </div>
             </div>

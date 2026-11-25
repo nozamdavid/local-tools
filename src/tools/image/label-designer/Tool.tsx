@@ -4,6 +4,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { Field, Select, Button, Slider } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { downloadBlob } from '../../../lib/download';
+import { useI18n } from '../../../lib/i18n';
 import { type LabelElement, type ImageElement, LABEL_PRESETS, renderLabelToCanvas } from '../_generate/label';
 import styles from './Tool.module.css';
 
@@ -47,6 +48,7 @@ const DEFAULT_ELEMENTS: LabelElement[] = [
 
 export default function LabelDesignerTool() {
   const meta = getToolMeta('img-label-designer');
+  const { t } = useI18n();
 
   // Presets and dimensions
   const [selectedPresetId, setSelectedPresetId] = useState<string>('50x25');
@@ -402,6 +404,16 @@ export default function LabelDesignerTool() {
   };
 
   const selectedElement = elements.find((el) => el.id === selectedId);
+  const selectedElementTypeLabel = selectedElement
+    ? {
+        text: t('Text'),
+        rect: t('Rectangle'),
+        line: t('Line'),
+        image: t('Image'),
+        qr: t('QR code'),
+        barcode: t('Barcode'),
+      }[selectedElement.type]
+    : '';
 
   // Sheet dimensions in mm
   const sheetWidthMm = sheetType === 'A4' ? 210 : 215.9;
@@ -420,7 +432,7 @@ export default function LabelDesignerTool() {
                 className={`${styles.tabBtn} ${activeTab === 'designer' ? styles.tabBtnActive : ''}`}
                 onClick={() => setActiveTab('designer')}
               >
-                Design Label
+                {t('Design label')}
               </button>
               <button
                 type="button"
@@ -430,20 +442,20 @@ export default function LabelDesignerTool() {
                   updateSingleLabelPreview();
                 }}
               >
-                Fill Sheet ({cols * rows} Labels)
+                {t('Fill sheet ({count} labels)', { count: cols * rows })}
               </button>
             </div>
           </div>
 
           <div className={styles.toolbarGroup}>
             <Button variant="secondary" className={styles.smallBtn} onClick={handleExportSinglePng}>
-              Export Label (300 DPI PNG)
+              {t('Export label (300 DPI PNG)')}
             </Button>
             <Button className={styles.smallBtn} onClick={handleExportSheetPdf}>
-              Export Sheet PDF
+              {t('Export sheet PDF')}
             </Button>
             <Button variant="secondary" className={styles.smallBtn} onClick={handlePrint}>
-              Print Sheet
+              {t('Print sheet')}
             </Button>
           </div>
         </div>
@@ -455,18 +467,18 @@ export default function LabelDesignerTool() {
             {activeTab === 'designer' ? (
               <>
                 <div className={styles.propSection}>
-                  <span className={styles.propTitle}>Label Size Preset</span>
+                  <span className={styles.propTitle}>{t('Label size preset')}</span>
                   <Select
                     id={presetSelectId}
                     value={selectedPresetId}
-                    aria-label="Label Size Preset"
+                    aria-label={t('Label size preset')}
                     onChange={(e) => handlePresetChange(e.target.value)}
-                    options={LABEL_PRESETS.map((p) => ({ value: p.id, label: p.name }))}
+                    options={LABEL_PRESETS.map((p) => ({ value: p.id, label: t(p.name) }))}
                   />
 
                   {selectedPresetId === 'custom' && (
                     <div className={styles.twoCols}>
-                      <Field label="Width (mm)">
+                      <Field label={t('Width (mm)')}>
                         <input
                           type="number"
                           className="input"
@@ -476,7 +488,7 @@ export default function LabelDesignerTool() {
                           onChange={(e) => setLabelWidth(Number(e.target.value) || 10)}
                         />
                       </Field>
-                      <Field label="Height (mm)">
+                      <Field label={t('Height (mm)')}>
                         <input
                           type="number"
                           className="input"
@@ -491,38 +503,38 @@ export default function LabelDesignerTool() {
                 </div>
 
                 <div className={styles.propSection}>
-                  <span className={styles.propTitle}>Add Element</span>
+                  <span className={styles.propTitle}>{t('Add element')}</span>
                   <div className={styles.btnGroup} style={{ flexWrap: 'wrap' }}>
                     <Button variant="secondary" className={styles.smallBtn} onClick={() => addElement('text')}>
-                      + Text
+                      {t('+ Text')}
                     </Button>
                     <Button variant="secondary" className={styles.smallBtn} onClick={() => addElement('barcode')}>
-                      + Barcode
+                      {t('+ Barcode')}
                     </Button>
                     <Button variant="secondary" className={styles.smallBtn} onClick={() => addElement('qr')}>
-                      + QR Code
+                      {t('+ QR code')}
                     </Button>
                     <Button variant="secondary" className={styles.smallBtn} onClick={() => addElement('rect')}>
-                      + Box
+                      {t('+ Box')}
                     </Button>
                     <Button variant="secondary" className={styles.smallBtn} onClick={() => addElement('line')}>
-                      + Line
+                      {t('+ Line')}
                     </Button>
                     <Button variant="secondary" className={styles.smallBtn} onClick={() => fileInputRef.current?.click()}>
-                      + Image
+                      {t('+ Image')}
                     </Button>
                     <input ref={fileInputRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={handleImageUpload} />
                   </div>
                 </div>
 
                 <div className={styles.propSection}>
-                  <span className={styles.propTitle}>Grid & Snapping</span>
+                  <span className={styles.propTitle}>{t('Grid and snapping')}</span>
                   <label className={styles.checkboxLabel}>
                     <input type="checkbox" checked={snapToGrid} onChange={(e) => setSnapToGrid(e.target.checked)} />
-                    Snap to grid
+                    {t('Snap to grid')}
                   </label>
                   {snapToGrid && (
-                    <Slider min={1} max={5} step={1} unit="mm" value={gridStep} onChange={setGridStep} aria-label="Grid size" />
+                    <Slider min={1} max={5} step={1} unit="mm" value={gridStep} onChange={setGridStep} aria-label={t('Grid size')} />
                   )}
                 </div>
 
@@ -530,32 +542,32 @@ export default function LabelDesignerTool() {
                 {selectedElement && (
                   <div className={styles.propSection}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span className={styles.propTitle}>Edit {selectedElement.type}</span>
+                      <span className={styles.propTitle}>{t('Edit {type}', { type: selectedElementTypeLabel })}</span>
                       <div className={styles.btnGroup}>
                         <button
                           type="button"
                           className={styles.smallBtn}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--accent-text)' }}
                           onClick={() => duplicateElement(selectedElement.id)}
-                          title="Duplicate element"
+                          title={t('Duplicate element')}
                         >
-                          Copy
+                          {t('Copy')}
                         </button>
                         <button
                           type="button"
                           className={styles.smallBtn}
                           style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}
                           onClick={() => deleteElement(selectedElement.id)}
-                          title="Delete element"
+                          title={t('Delete element')}
                         >
-                          Delete
+                          {t('Delete')}
                         </button>
                       </div>
                     </div>
 
                     {selectedElement.type === 'text' && (
                       <>
-                        <Field label="Text">
+                        <Field label={t('Text')}>
                           <textarea
                             className="input"
                             rows={2}
@@ -565,7 +577,7 @@ export default function LabelDesignerTool() {
                             }
                           />
                         </Field>
-                        <Field label="Font Size">
+                        <Field label={t('Font size')}>
                           <Slider
                             min={6}
                             max={32}
@@ -588,7 +600,7 @@ export default function LabelDesignerTool() {
                                 )
                               }
                             />
-                            Bold
+                            {t('Bold')}
                           </label>
                           <label className={styles.checkboxLabel}>
                             <input
@@ -600,7 +612,7 @@ export default function LabelDesignerTool() {
                                 )
                               }
                             />
-                            Italic
+                            {t('Italic')}
                           </label>
                         </div>
                       </>
@@ -608,7 +620,7 @@ export default function LabelDesignerTool() {
 
                     {selectedElement.type === 'barcode' && (
                       <>
-                        <Field label="Barcode Format">
+                        <Field label={t('Barcode format')}>
                           <Select
                             value={selectedElement.format}
                             onChange={(e) =>
@@ -617,14 +629,14 @@ export default function LabelDesignerTool() {
                               )
                             }
                             options={[
-                              { value: 'CODE128', label: 'Code 128' },
-                              { value: 'EAN13', label: 'EAN-13' },
-                              { value: 'UPC', label: 'UPC-A' },
-                              { value: 'CODE39', label: 'Code 39' },
+                              { value: 'CODE128', label: t('Code 128') },
+                              { value: 'EAN13', label: t('EAN-13') },
+                              { value: 'UPC', label: t('UPC-A') },
+                              { value: 'CODE39', label: t('Code 39') },
                             ]}
                           />
                         </Field>
-                        <Field label="Value">
+                        <Field label={t('Value')}>
                           <input
                             type="text"
                             className="input"
@@ -646,14 +658,14 @@ export default function LabelDesignerTool() {
                               )
                             }
                           />
-                          Show code text
+                          {t('Show code text')}
                         </label>
                       </>
                     )}
 
                     {selectedElement.type === 'qr' && (
                       <>
-                        <Field label="Content / URL">
+                        <Field label={t('Content / URL')}>
                           <input
                             type="text"
                             className="input"
@@ -663,7 +675,7 @@ export default function LabelDesignerTool() {
                             }
                           />
                         </Field>
-                        <Field label="Error Correction">
+                        <Field label={t('Error correction')}>
                           <Select
                             value={selectedElement.ecLevel}
                             onChange={(e) =>
@@ -672,10 +684,10 @@ export default function LabelDesignerTool() {
                               )
                             }
                             options={[
-                              { value: 'L', label: 'Low (7%)' },
-                              { value: 'M', label: 'Medium (15%)' },
-                              { value: 'Q', label: 'Quartile (25%)' },
-                              { value: 'H', label: 'High (30%)' },
+                              { value: 'L', label: t('Low (7%)') },
+                              { value: 'M', label: t('Medium (15%)') },
+                              { value: 'Q', label: t('Quartile (25%)') },
+                              { value: 'H', label: t('High (30%)') },
                             ]}
                           />
                         </Field>
@@ -684,7 +696,7 @@ export default function LabelDesignerTool() {
 
                     {selectedElement.type === 'rect' && (
                       <>
-                        <Field label="Fill Color">
+                        <Field label={t('Fill colour')}>
                           <input
                             type="text"
                             className="input"
@@ -694,11 +706,11 @@ export default function LabelDesignerTool() {
                             }
                           />
                         </Field>
-                        <Field label="Border Color">
+                        <Field label={t('Border colour')}>
                           <input
                             type="color"
                             value={selectedElement.stroke}
-                            aria-label="Border Color"
+                            aria-label={t('Border colour')}
                             onChange={(e) =>
                               setElements((prev) =>
                                 prev.map((el) => (el.id === selectedElement.id ? { ...el, stroke: e.target.value } : el)),
@@ -706,7 +718,7 @@ export default function LabelDesignerTool() {
                             }
                           />
                         </Field>
-                        <Field label="Border Width">
+                        <Field label={t('Border width')}>
                           <Slider
                             min={0}
                             max={4}
@@ -723,11 +735,11 @@ export default function LabelDesignerTool() {
 
                     {selectedElement.type === 'line' && (
                       <>
-                        <Field label="Line Color">
+                        <Field label={t('Line colour')}>
                           <input
                             type="color"
                             value={selectedElement.color}
-                            aria-label="Line Color"
+                            aria-label={t('Line colour')}
                             onChange={(e) =>
                               setElements((prev) =>
                                 prev.map((el) => (el.id === selectedElement.id ? { ...el, color: e.target.value } : el)),
@@ -735,7 +747,7 @@ export default function LabelDesignerTool() {
                             }
                           />
                         </Field>
-                        <Field label="Line Thickness">
+                        <Field label={t('Line thickness')}>
                           <Slider
                             min={0.2}
                             max={3}
@@ -756,28 +768,28 @@ export default function LabelDesignerTool() {
               /* Sheet Layout Options */
               <>
                 <div className={styles.propSection}>
-                  <span className={styles.propTitle}>Sheet Paper</span>
+                  <span className={styles.propTitle}>{t('Sheet paper')}</span>
                   <Select
                     id={sheetSelectId}
                     value={sheetType}
-                    aria-label="Sheet Paper"
+                    aria-label={t('Sheet paper')}
                     onChange={(e) => setSheetType(e.target.value as 'A4' | 'Letter')}
                     options={[
-                      { value: 'A4', label: 'A4 (210 × 297 mm)' },
-                      { value: 'Letter', label: 'US Letter (8.5 × 11 in)' },
+                      { value: 'A4', label: t('A4 (210 × 297 mm)') },
+                      { value: 'Letter', label: t('US Letter (8.5 × 11 in)') },
                     ]}
                   />
                 </div>
 
                 <div className={styles.propSection}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span className={styles.propTitle}>Grid Layout</span>
+                    <span className={styles.propTitle}>{t('Grid layout')}</span>
                     <Button variant="secondary" className={styles.smallBtn} onClick={handleAutoFitSheet}>
-                      Auto-Fit
+                      {t('Auto-fit')}
                     </Button>
                   </div>
                   <div className={styles.twoCols}>
-                    <Field label="Columns">
+                    <Field label={t('Columns')}>
                       <input
                         type="number"
                         className="input"
@@ -787,7 +799,7 @@ export default function LabelDesignerTool() {
                         onChange={(e) => setCols(Math.max(1, Number(e.target.value) || 1))}
                       />
                     </Field>
-                    <Field label="Rows">
+                    <Field label={t('Rows')}>
                       <input
                         type="number"
                         className="input"
@@ -801,9 +813,9 @@ export default function LabelDesignerTool() {
                 </div>
 
                 <div className={styles.propSection}>
-                  <span className={styles.propTitle}>Margins (mm)</span>
+                  <span className={styles.propTitle}>{t('Margins (mm)')}</span>
                   <div className={styles.twoCols}>
-                    <Field label="Top">
+                    <Field label={t('Top')}>
                       <input
                         type="number"
                         className="input"
@@ -812,7 +824,7 @@ export default function LabelDesignerTool() {
                         onChange={(e) => setMarginTop(Number(e.target.value) || 0)}
                       />
                     </Field>
-                    <Field label="Left">
+                    <Field label={t('Left')}>
                       <input
                         type="number"
                         className="input"
@@ -825,12 +837,12 @@ export default function LabelDesignerTool() {
                 </div>
 
                 <div className={styles.propSection}>
-                  <span className={styles.propTitle}>Spacing / Gaps (mm)</span>
+                  <span className={styles.propTitle}>{t('Spacing / gaps (mm)')}</span>
                   <div className={styles.twoCols}>
-                    <Field label="Horizontal">
+                    <Field label={t('Horizontal')}>
                       <input type="number" className="input" value={gapX} min={0} onChange={(e) => setGapX(Number(e.target.value) || 0)} />
                     </Field>
-                    <Field label="Vertical">
+                    <Field label={t('Vertical')}>
                       <input type="number" className="input" value={gapY} min={0} onChange={(e) => setGapY(Number(e.target.value) || 0)} />
                     </Field>
                   </div>

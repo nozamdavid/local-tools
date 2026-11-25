@@ -7,6 +7,7 @@ import { ResultPanel } from '../../../components/ResultPanel';
 import { BatchResults, type BatchResultItem } from '../../../components/BatchResults';
 import { Field, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
 import { loadPdfDocument, renderPdfThumbnail, renderPdfPageToBlob } from '../_pdf/pdfRenderer';
@@ -15,8 +16,9 @@ import styles from './Tool.module.css';
 
 type ImageFormat = 'image/jpeg' | 'image/png' | 'image/webp';
 
-export default function PdfToImageTool() {
-  const meta = getToolMeta('img-pdf-to-image');
+export default function PdfToImageTool({ toolId = 'img-pdf-to-image' }: { toolId?: string }) {
+  const { t } = useI18n();
+  const meta = getToolMeta(toolId);
   const [file, setFile] = useState<File | null>(null);
   const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
   const [thumbnails, setThumbnails] = useState<Record<number, string>>({});
@@ -37,40 +39,47 @@ export default function PdfToImageTool() {
   const job = useJob();
   const formatId = useId();
   const dpiId = useId();
-  const activeFileRef = useRef<File | null>(null);
+  const documentLoad = useRef<AbortController | null>(null);
+
+  useEffect(() => () => documentLoad.current?.abort(), []);
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
-    activeFileRef.current = selected;
+    documentLoad.current?.abort();
+    const controller = new AbortController();
+    documentLoad.current = controller;
     setFile(selected);
     setPdfDoc(null);
     setThumbnails({});
     setSelectedPages(new Set());
     setItems(null);
     setLoadError(null);
+    setPasswordState(null);
     setDocLoading(true);
     job.reset();
 
     try {
       const doc = await loadPdfDocument(selected, {
+        signal: controller.signal,
         onPassword: (verify, reason) => {
           setPasswordState({ isOpen: true, reason, verify });
         },
       });
 
-      if (activeFileRef.current === selected) {
+      if (!controller.signal.aborted) {
         setPdfDoc(doc);
         setPasswordState(null);
         const count = doc.numPages;
         setSelectedPages(new Set(Array.from({ length: count }, (_, i) => i + 1)));
       }
     } catch (err) {
-      if (activeFileRef.current === selected) {
+      if (!controller.signal.aborted) {
         setLoadError(err instanceof Error ? err.message : 'Failed to load PDF document.');
+        setPasswordState(null);
       }
     } finally {
-      setDocLoading(false);
+      if (!controller.signal.aborted) setDocLoading(false);
     }
   };
 
@@ -101,7 +110,8 @@ export default function PdfToImageTool() {
   }, [pdfDoc, file]);
 
   const handleReset = () => {
-    activeFileRef.current = null;
+    documentLoad.current?.abort();
+    documentLoad.current = null;
     setFile(null);
     setPdfDoc(null);
     setThumbnails({});
@@ -109,6 +119,7 @@ export default function PdfToImageTool() {
     setItems(null);
     setLoadError(null);
     setPasswordState(null);
+    setDocLoading(false);
     job.reset();
   };
 
@@ -161,7 +172,7 @@ export default function PdfToImageTool() {
   };
 
   return (
-    <ToolPage title={meta.title} description={meta.description} currentId="img-pdf-to-image">
+    <ToolPage title={meta.title} description={meta.description} currentId={meta.id}>
       {passwordState?.isOpen && passwordState.verify && (
         <PasswordDialog
           reason={passwordState.reason}
@@ -175,14 +186,14 @@ export default function PdfToImageTool() {
       {!file ? (
         <FileDrop
           accept="application/pdf,.pdf"
-          label="Choose a PDF file or drag it here"
-          hint="Supports multi-page and password-protected PDFs."
+          label={t('Choose a PDF file or drag it here')}
+          hint={t('Supports multi-page and password-protected PDFs.')}
           onFiles={handleFiles}
         />
       ) : (
         <div>
-          {loadError && <div className="error-banner">{loadError}</div>}
-          {job.error && <div className="error-banner">{job.error}</div>}
+          {loadError && <div className="error-banner">{t(loadError)}</div>}
+          {job.error && <div className="error-banner">{t(job.error)}</div>}
 
           {items && items.length > 0 ? (
             items.length === 1 ? (
@@ -203,42 +214,40 @@ export default function PdfToImageTool() {
               >
                 <div className="meta-chips">
                   <span className="meta-chip">
-                    File: <strong>{file.name}</strong>
+                    {t('File')}: <strong>{file.name}</strong>
                   </span>
                   <span className="meta-chip">
-                    Size: <strong>{formatBytes(file.size)}</strong>
+                    {t('Size')}: <strong>{formatBytes(file.size)}</strong>
                   </span>
                   {pdfDoc && (
                     <span className="meta-chip">
-                      Pages: <strong>{pdfDoc.numPages}</strong>
+                      {t('Pages')}: <strong>{pdfDoc.numPages}</strong>
                     </span>
                   )}
                   {pdfDoc && (
                     <span className="meta-chip">
-                      Selected:{' '}
-                      <strong>
-                        {selectedPages.size} of {pdfDoc.numPages}
-                      </strong>
+                      {t('Selected')}:{' '}
+                      <strong>{t('{selected} of {total}', { selected: selectedPages.size, total: pdfDoc.numPages })}</strong>
                     </span>
                   )}
                 </div>
 
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <Button variant="secondary" onClick={selectAll}>
-                    Select all
+                    {t('Select all')}
                   </Button>
                   <Button variant="secondary" onClick={deselectAll}>
-                    Deselect all
+                    {t('Deselect all')}
                   </Button>
                   <Button variant="secondary" onClick={handleReset}>
-                    Change PDF
+                    {t('Change PDF')}
                   </Button>
                 </div>
               </div>
 
               {docLoading ? (
                 <div style={{ margin: '2rem 0', textAlign: 'center' }}>
-                  <p>Opening PDF document...</p>
+                  <p>{t('Opening PDF document...')}</p>
                 </div>
               ) : pdfDoc ? (
                 <div className={styles.pageGrid}>
@@ -260,12 +269,12 @@ export default function PdfToImageTool() {
                         />
                         <div className={styles.pageThumbWrapper}>
                           {thumb ? (
-                            <img src={thumb} alt={`Page ${pageNum}`} className={styles.pageThumb} />
+                            <img src={thumb} alt={t('Page {number}', { number: pageNum })} className={styles.pageThumb} />
                           ) : (
-                            <div className={styles.pageThumbPlaceholder}>Loading…</div>
+                            <div className={styles.pageThumbPlaceholder}>{t('Loading…')}</div>
                           )}
                         </div>
-                        <span className={styles.pageLabel}>Page {pageNum}</span>
+                        <span className={styles.pageLabel}>{t('Page {number}', { number: pageNum })}</span>
                       </div>
                     );
                   })}
@@ -273,42 +282,42 @@ export default function PdfToImageTool() {
               ) : null}
 
               {job.status === 'running' ? (
-                <ProgressBar value={job.progress} label="Converting PDF pages to images..." />
+                <ProgressBar value={job.progress} label={t('Converting PDF pages to images...')} />
               ) : (
                 pdfDoc && (
                   <div style={{ marginTop: '1.5rem' }}>
-                    <Field label="Output image format" hint="JPG is compact; PNG preserves crisp graphics; WebP offers both.">
+                    <Field label={t('Output image format')} hint={t('JPG is compact; PNG preserves crisp graphics; WebP offers both.')}>
                       <Select
                         id={formatId}
                         value={format}
                         onChange={(e) => setFormat(e.target.value as ImageFormat)}
                         options={[
-                          { value: 'image/jpeg', label: 'JPG (standard photo format)' },
-                          { value: 'image/png', label: 'PNG (lossless / crisp text)' },
-                          { value: 'image/webp', label: 'WEBP (modern high efficiency)' },
+                          { value: 'image/jpeg', label: t('JPG (standard photo format)') },
+                          { value: 'image/png', label: t('PNG (lossless / crisp text)') },
+                          { value: 'image/webp', label: t('WEBP (modern high efficiency)') },
                         ]}
                       />
                     </Field>
 
-                    <Field label="Resolution / DPI" hint="Higher DPI yields sharper images with larger file sizes.">
+                    <Field label={t('Resolution / DPI')} hint={t('Higher DPI yields sharper images with larger file sizes.')}>
                       <Select
                         id={dpiId}
                         value={String(dpi)}
                         onChange={(e) => setDpi(Number(e.target.value))}
                         options={[
-                          { value: '72', label: '72 DPI (Standard screen resolution)' },
-                          { value: '150', label: '150 DPI (Medium / Crisp - recommended)' },
-                          { value: '300', label: '300 DPI (High resolution / Print quality)' },
+                          { value: '72', label: t('72 DPI (Standard screen resolution)') },
+                          { value: '150', label: t('150 DPI (Medium / Crisp - recommended)') },
+                          { value: '300', label: t('300 DPI (High resolution / Print quality)') },
                         ]}
                       />
                     </Field>
 
                     <div className="action-buttons" style={{ marginTop: '2rem' }}>
                       <Button variant="secondary" onClick={handleReset}>
-                        Choose different file
+                        {t('Choose different file')}
                       </Button>
                       <Button variant="primary" onClick={handleConvert} disabled={selectedPages.size === 0}>
-                        Convert {selectedPages.size} {selectedPages.size === 1 ? 'page' : 'pages'}
+                        {selectedPages.size === 1 ? t('Convert one page') : t('Convert {count} pages', { count: selectedPages.size })}
                       </Button>
                     </div>
                   </div>

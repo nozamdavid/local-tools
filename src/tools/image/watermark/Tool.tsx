@@ -11,6 +11,7 @@ import { useCanvasHistory } from '../_canvas/useCanvasHistory';
 import { CanvasStage } from '../_canvas/CanvasStage';
 import { exportDocument } from '../_canvas/render';
 import { BatchResults, BatchResultItem } from '../../../components/BatchResults';
+import { useI18n } from '../../../lib/i18n';
 import styles from './Tool.module.css';
 
 type WatermarkType = 'text' | 'image';
@@ -30,6 +31,7 @@ const GRID_POSITIONS: Array<{ id: GridPos; label: string; symbol: string }> = [
 
 export default function Tool() {
   const meta = getToolMeta('img-watermark');
+  const { t } = useI18n();
 
   const [files, setFiles] = useState<File[]>([]);
   const [batchResults, setBatchResults] = useState<BatchResultItem[] | null>(null);
@@ -248,7 +250,7 @@ export default function Tool() {
       resetHistory(newDoc);
       setSelectedLayerId('wm-layer');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to decode image.');
+      alert(t(err instanceof Error ? err.message : 'Failed to decode image.'));
     }
   };
 
@@ -259,7 +261,7 @@ export default function Tool() {
       setLogoImg(img);
       setWmType('image');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Failed to load logo.');
+      alert(t(err instanceof Error ? err.message : 'Failed to load logo.'));
     }
   };
 
@@ -293,7 +295,7 @@ export default function Tool() {
 
       setBatchResults(results);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Batch processing failed.');
+      alert(t(err instanceof Error ? err.message : 'Batch processing failed.'));
     } finally {
       setIsProcessingBatch(false);
     }
@@ -308,7 +310,7 @@ export default function Tool() {
       const outName = withSuffix(files[0] ? files[0].name : 'watermarked.png', '-watermarked', ext);
       downloadBlob(blob, outName);
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Export failed.');
+      alert(t(err instanceof Error ? err.message : 'Export failed.'));
     } finally {
       setIsExporting(false);
     }
@@ -320,8 +322,8 @@ export default function Tool() {
         <FileDrop
           accept={IMAGE_ACCEPT}
           multiple={true}
-          label="Choose one or more images to watermark"
-          hint="Supports JPG, PNG, WebP, GIF, BMP, AVIF, HEIC, SVG"
+          label={t('Choose one or more images to watermark')}
+          hint={t('Supports JPG, PNG, WebP, GIF, BMP, AVIF, HEIC and SVG.')}
           onFiles={handleFileDrop}
         />
       ) : batchResults ? (
@@ -334,7 +336,7 @@ export default function Tool() {
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="Undo (Ctrl+Z)"
+                title={t('Undo (Ctrl+Z)')}
                 data-testid="undo-btn"
                 disabled={!canUndo}
                 onClick={undo}
@@ -344,7 +346,7 @@ export default function Tool() {
               <button
                 type="button"
                 className={styles.iconBtn}
-                title="Redo (Ctrl+Shift+Z)"
+                title={t('Redo (Ctrl+Shift+Z)')}
                 data-testid="redo-btn"
                 disabled={!canRedo}
                 onClick={redo}
@@ -356,11 +358,11 @@ export default function Tool() {
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
               {files.length > 1 && (
                 <Button variant="primary" disabled={isProcessingBatch} onClick={processAllImages}>
-                  {isProcessingBatch ? 'Processing…' : `Apply to all (${files.length} images)`}
+                  {isProcessingBatch ? t('Processing…') : t('Apply to all ({count} images)', { count: files.length })}
                 </Button>
               )}
               <Button variant="secondary" onClick={() => setFiles([])}>
-                Change Images
+                {t('Change images')}
               </Button>
             </div>
           </div>
@@ -379,21 +381,21 @@ export default function Tool() {
           <div className={styles.settingsPanel}>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <Button variant={wmType === 'text' ? 'primary' : 'secondary'} onClick={() => setWmType('text')}>
-                Text Watermark
+                {t('Text watermark')}
               </Button>
               <Button variant={wmType === 'image' ? 'primary' : 'secondary'} onClick={() => setWmType('image')}>
-                Logo Image
+                {t('Logo image')}
               </Button>
             </div>
 
             <div className={styles.grid}>
               {wmType === 'text' ? (
                 <>
-                  <Field label="Watermark Text">
+                  <Field label={t('Watermark text')}>
                     <input type="text" className="input" value={wmText} onChange={(e) => setWmText(e.target.value)} />
                   </Field>
 
-                  <Field label="Text Color">
+                  <Field label={t('Text colour')}>
                     <div className={styles.colorRow}>
                       <input type="color" className={styles.colorInput} value={wmColor} onChange={(e) => setWmColor(e.target.value)} />
                       <span>{wmColor}</span>
@@ -401,39 +403,48 @@ export default function Tool() {
                   </Field>
                 </>
               ) : (
-                <Field label="Logo Image">
+                <Field label={t('Logo image')}>
                   {!logoImg ? (
-                    <FileDrop accept="image/*" label="Upload logo" hint="PNG with transparency recommended" onFiles={handleLogoDrop} />
+                    <FileDrop
+                      accept="image/*"
+                      label={t('Upload logo')}
+                      hint={t('PNG with transparency recommended')}
+                      onFiles={handleLogoDrop}
+                    />
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <img src={logoImg.src} alt="Logo preview" style={{ maxHeight: '48px', maxWidth: '100px', objectFit: 'contain' }} />
+                      <img
+                        src={logoImg.src}
+                        alt={t('Logo preview')}
+                        style={{ maxHeight: '48px', maxWidth: '100px', objectFit: 'contain' }}
+                      />
                       <Button variant="secondary" onClick={() => setLogoImg(null)}>
-                        Change Logo
+                        {t('Change logo')}
                       </Button>
                     </div>
                   )}
                 </Field>
               )}
 
-              <Field label="Size (percentage of image width)">
+              <Field label={t('Size (percentage of image width)')}>
                 <Slider value={wmSizePercent} min={5} max={100} unit="%" onChange={setWmSizePercent} />
               </Field>
 
-              <Field label="Opacity">
+              <Field label={t('Opacity')}>
                 <Slider value={wmOpacity} min={5} max={100} unit="%" onChange={setWmOpacity} />
               </Field>
 
-              <Field label="Rotation">
+              <Field label={t('Rotation')}>
                 <Slider value={wmRotation} min={-180} max={180} unit="°" onChange={setWmRotation} />
               </Field>
 
-              <Field label="Position (9-Grid)">
+              <Field label={t('Position (9-grid)')}>
                 <div className={styles.grid9}>
                   {GRID_POSITIONS.map((gp) => (
                     <button
                       key={gp.id}
                       type="button"
-                      title={gp.label}
+                      title={t(gp.label)}
                       className={`${styles.grid9Btn} ${activeGridPos === gp.id && !isTiled ? styles.grid9BtnActive : ''}`}
                       disabled={isTiled}
                       onClick={() => setActiveGridPos(gp.id)}
@@ -444,7 +455,7 @@ export default function Tool() {
                 </div>
               </Field>
 
-              <Field label="Margin from Edge">
+              <Field label={t('Margin from edge')}>
                 <Slider value={marginPercent} min={0} max={25} unit="%" disabled={isTiled} onChange={setMarginPercent} />
               </Field>
             </div>
@@ -461,12 +472,12 @@ export default function Tool() {
             >
               <label className="checkbox-label">
                 <input type="checkbox" checked={isTiled} onChange={(e) => setIsTiled(e.target.checked)} />
-                <span>Tile watermark diagonally across the image</span>
+                <span>{t('Tile watermark diagonally across the image')}</span>
               </label>
 
               {isTiled && (
                 <div className={styles.grid}>
-                  <Field label="Tile Spacing">
+                  <Field label={t('Tile spacing')}>
                     <Slider value={tileSpacing} min={60} max={300} unit="px" onChange={setTileSpacing} />
                   </Field>
                 </div>
@@ -477,27 +488,27 @@ export default function Tool() {
           {/* Export Row */}
           <div className={styles.exportRow}>
             <div className={styles.exportControls}>
-              <Field label="Format">
+              <Field label={t('Format')}>
                 <Select
                   value={exportMime}
                   onChange={(e) => setExportMime(e.target.value as EncodableMime)}
                   options={[
-                    { value: 'image/png', label: 'PNG' },
-                    { value: 'image/jpeg', label: 'JPEG' },
-                    { value: 'image/webp', label: 'WebP' },
+                    { value: 'image/png', label: t('PNG') },
+                    { value: 'image/jpeg', label: t('JPEG') },
+                    { value: 'image/webp', label: t('WebP') },
                   ]}
                 />
               </Field>
 
               {exportMime !== 'image/png' && (
-                <Field label="Quality">
+                <Field label={t('Quality')}>
                   <Slider value={quality} min={10} max={100} unit="%" onChange={setQuality} />
                 </Field>
               )}
             </div>
 
             <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleSingleExport}>
-              {isExporting ? 'Exporting…' : 'Download Image'}
+              {isExporting ? t('Exporting…') : t('Download image')}
             </Button>
           </div>
         </div>

@@ -19,7 +19,7 @@ Status values:
 | [ADR-006](#adr-006-ship-a-static-client-only-build) | Accepted | Produce a static Vite SPA with no application server runtime |
 | [ADR-007](#adr-007-serve-the-production-build-as-static-files) | Accepted | Serve `dist/` from a static host with SPA fallback; no long-running preview in production |
 | [ADR-008](#adr-008-use-tangled-ci) | Accepted | Run install, checks, tests and the production build in Tangled CI |
-| [ADR-009](#adr-009-set-production-cache-headers) | Proposed | Set immutable caching for hashed assets and no-cache for HTML |
+| [ADR-009](#adr-009-set-production-cache-headers) | Accepted | Cache hashed assets immutably and revalidate stable files and HTML |
 
 ## ADR-001: Keep user files in the browser
 
@@ -135,7 +135,7 @@ Tools may import shared modules. Shared modules must not import a tool folder, a
 - Deployments can be copied as a static directory; server secrets and server-side data stores are not part of the architecture.
 - `vite preview` is a local verification server, not the production architecture.
 - Browser support, memory limits and first-load size are product constraints.
-- Hosting is static (ADR-007) and CI runs on Tangled (ADR-008); production cache headers remain open in ADR-009.
+- Hosting is static (ADR-007). ADR-008 describes the hosted checks, and ADR-009 specifies the production cache headers.
 
 ## ADR-007: Serve the production build as static files
 
@@ -153,9 +153,9 @@ The exact host and its deployment configuration remain an implementation choice 
 - Production has no Node process to supervise and no application server to patch.
 - Deep links such as `/video/trim` must return `index.html` from the host, not a host-level 404.
 - Publishing a release means replacing the contents of the served `dist/` directory; keep the previous artifact for rollback.
-- Cache behavior is host-specific and remains open in ADR-009.
+- Static hosts must implement the cache behavior in ADR-009.
 - A CDN can be placed in front of the static build later. That evaluation is tracked in the backlog and must preserve the browser-only privacy boundary and the CSP allow-list.
-- Deployment documentation still needs the exact host, publish command, SPA fallback and restart or rollback steps.
+- The [deployment guide](deployment.md) covers Caddy, staging, switching and rollback. The operator supplies the production hostname.
 
 ## ADR-008: Use Tangled CI
 
@@ -182,21 +182,18 @@ A Tangled remote or mirror must receive the same commits as the GitHub origin; T
 - A failing check blocks a release; the pipeline configuration and mirror setup are tracked in the CI build task.
 - Pull-request checks can be added with the same workflow once the Tangled remote is active.
 
+**Origin checks, 2026-11-25.** The private GitHub origin runs the same install, lint, formatting, unit test and production build checks on pushes and pull requests to `main`. The workflow has read-only repository permissions. The Tangled workflow is ready for a separately authorized mirror. A passing GitHub run validates the origin commit. Tangled runner compatibility requires a run on Tangled. [GitHub workflow](../.github/workflows/check.yml) · [Tangled workflow](../.tangled/workflows/check.yml)
+
 ## ADR-009: Set production cache headers
 
-- **Status:** Proposed
-- **Date:** 2026-10-21
+- **Status:** Accepted
+- **Date:** Proposed 2026-10-21, accepted 2026-11-25
 
 **Context.** Vite emits content-hashed files under `assets/`. Static hosting is now accepted (ADR-007), but the exact host is still open. The preview server sends `Cache-Control: no-cache` for everything, so repeat visits still make conditional requests. [The performance audit](performance-verification.md) recommends immutable caching for hashed assets and no-cache for the HTML entry point.
 
-**Decision.** Not made yet. The recommended policy is:
+**Decision.** Content-hashed build assets use `Cache-Control: public, max-age=31536000, immutable`. HTML, the SPA fallback and stable URLs such as `/theme-init.js` and `/assets/icon.svg` use `Cache-Control: no-cache`. Missing files return 404 and `no-store`.
 
-- `/assets/*`: `Cache-Control: public, max-age=31536000, immutable`
-- `/index.html` and the SPA fallback: `Cache-Control: no-cache`
-
-The implementation mechanism depends on the exact static host chosen under ADR-007 and may be a `_headers` file, a Cloudflare rule, nginx configuration, or the static host's control panel.
-
-**Consequences of deferring.** Repeat visits pay avoidable round trips. Setting the policy incorrectly can pin a stale `index.html` or serve mismatched assets, so it needs verification after the host is chosen.
+**Consequences.** Open tabs can still fetch the lazy chunks for their original release after a switch or rollback. The hosting configuration keeps those hashed assets available across releases. Verify the headers through the production hostname, including any proxy in front of the static host. [Caddy configuration](../deploy/Caddyfile) · [Deployment guide](deployment.md)
 
 ## When to record a decision
 

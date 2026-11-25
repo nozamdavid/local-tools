@@ -12,25 +12,12 @@
   background-color: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-sm);
 }
 
 .detectionHeader {
   display: flex;
   align-items: center;
   gap: 1rem;
-}
-
-.detectionIcon {
-  font-size: 2.2rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-md);
-  background-color: var(--accent-soft);
-  flex-shrink: 0;
 }
 
 .detectionDetails {
@@ -75,62 +62,6 @@
 .mismatchIcon {
   font-size: 1.15rem;
   flex-shrink: 0;
-}
-
-.familyGroup {
-  margin-bottom: 1.25rem;
-}
-
-.familyTitle {
-  font-size: 0.9rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--text-muted);
-  margin-bottom: 0.6rem;
-}
-
-.targetGrid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
-  gap: 0.6rem;
-}
-
-.targetChip {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 0.65rem 0.5rem;
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  transition: all 0.15s ease;
-  user-select: none;
-}
-
-.targetChip:hover {
-  border-color: var(--accent);
-  background-color: var(--accent-soft);
-}
-
-.targetChipActive {
-  border-color: var(--accent);
-  background-color: var(--accent-soft);
-  box-shadow: 0 0 0 1px var(--accent);
-}
-
-.targetLabel {
-  font-weight: 700;
-  font-size: 0.95rem;
-  color: var(--text);
-}
-
-.targetDesc {
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  text-align: center;
 }
 
 .optionsCard {

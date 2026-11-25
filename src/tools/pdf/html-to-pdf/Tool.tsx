@@ -10,6 +10,7 @@ import { PageSetupFields } from '../_render/PageSetupFields';
 import { DEFAULT_PAGE_SETUP, type PageSetup } from '../_render/render';
 import { checkHtml, htmlToPdf, sanitizeHtml, withDoctype } from './convert';
 import styles from './Tool.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 interface Source {
   name: string;
@@ -17,15 +18,16 @@ interface Source {
 }
 
 function Notice() {
+  const { t } = useI18n();
   return (
     <p className={styles.notice}>
-      Web addresses cannot be fetched: files stay on your device, so there are no network requests. Open the page, save it as an .html file,
-      and drop it here. Images embedded as data: URIs show up. Linked or remote images and stylesheets will not load. Scripts are not run.
+      {t('Embedded images are supported. Linked or remote images and stylesheets will not load, and scripts do not run.')}
     </p>
   );
 }
 
 export default function HtmlToPdfTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('pdf-html-to-pdf');
   const job = useJob();
 
@@ -85,14 +87,14 @@ export default function HtmlToPdfTool() {
         <>
           <FileDrop
             accept=".html,.htm,text/html"
-            label="Choose an HTML file or drag it here"
-            hint="Rendered in your browser. Nothing is uploaded."
+            label={t('Choose an HTML file or drag it here')}
+            hint={t('Or paste HTML below.')}
             onFiles={handleFiles}
           />
 
           <div className={styles.paste}>
             <label className="field-label" htmlFor="html-to-pdf-paste">
-              Or paste HTML
+              {t('Or paste HTML')}
             </label>
             <textarea
               id="html-to-pdf-paste"
@@ -104,38 +106,37 @@ export default function HtmlToPdfTool() {
             />
             <div>
               <Button variant="secondary" onClick={handleUsePasted}>
-                Use pasted HTML
+                {t('Use pasted HTML')}
               </Button>
             </div>
           </div>
 
-          {error && <div className="error-banner">{error}</div>}
-          <Notice />
+          {error && <div className="error-banner">{t(error)}</div>}
         </>
       ) : (
         <ConvertPanel
           chips={
             <>
               <span className="meta-chip">
-                Source: <strong>{source.name}</strong>
+                {t('Source:')} <strong>{source.name}</strong>
               </span>
               <span className="meta-chip">
-                Size: <strong>{formatBytes(new Blob([source.html]).size)}</strong>
+                {t('Size:')} <strong>{formatBytes(new Blob([source.html]).size)}</strong>
               </span>
             </>
           }
           job={job}
           pageCount={pages}
           outName={`${source.name}.pdf`}
-          actionLabel="Convert to PDF"
-          progressLabel="Rendering pages…"
-          changeLabel="Change HTML"
+          actionLabel={t('Convert to PDF')}
+          progressLabel={t('Rendering pages…')}
+          changeLabel={t('Change HTML')}
           onConvert={handleConvert}
           onReset={handleReset}
           preview={
             <div className={styles.previewWrap}>
-              <div className="preview-box-title">Preview</div>
-              <iframe className={styles.preview} title="HTML preview" sandbox="" srcDoc={withDoctype(sanitizeHtml(source.html))} />
+              <div className="preview-box-title">{t('Preview')}</div>
+              <iframe className={styles.preview} title={t('HTML preview')} sandbox="" srcDoc={withDoctype(sanitizeHtml(source.html))} />
             </div>
           }
         >

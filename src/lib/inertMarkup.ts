@@ -47,6 +47,14 @@ export function escapeStyleTagBreakout(css: string): string {
  * from editable sample HTML to prevent privacy leaks and unintended redirects.
  */
 export function sanitizeSampleHtml(html: string): string {
+  if (typeof document !== 'undefined') {
+    const template = document.createElement('template');
+    template.innerHTML = html;
+    sanitizeSampleFragment(template.content);
+    return template.innerHTML;
+  }
+
+  // Keep the string path for standalone Node verification.
   let clean = html;
 
   // 1. Strip script elements
@@ -62,22 +70,54 @@ export function sanitizeSampleHtml(html: string): string {
     /<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*>.*?<\/(?:iframe|frame|frameset|object|embed|applet|form)>/gis,
     '',
   );
-  clean = clean.replace(/<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*\/>/gi, '');
+  clean = clean.replace(/<(?:iframe|frame|frameset|object|embed|applet|form)\b[^>]*>/gi, '');
 
   // 4. Strip inline event handlers
   clean = clean.replace(/\s+on[a-zA-Z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '');
 
   // 5. Neutralize outbound navigation on links (preserve local hash anchors)
-  clean = clean.replace(/<a\b([^>]*)>/gi, (match, attrs) => {
-    const hrefMatch = attrs.match(/\bhref\s*=\s*(["'])(.*?)\1/i);
-    const href = hrefMatch ? hrefMatch[2] : '';
-    if (href.startsWith('#')) {
-      return match.replace(/\starget\s*=\s*(["']).*?\1/gi, '');
-    }
-    return match.replace(/\bhref\s*=\s*(["']).*?\1/gi, 'href="#"').replace(/\starget\s*=\s*(["']).*?\1/gi, '');
+  clean = clean.replace(/(<(?:a|area)(?=[\s/>]))((?:[^>"']|"[^"]*"|'[^']*')*)>/gi, (_match, tag, attrs: string) => {
+    const safeAttrs = attrs.replace(
+      /\s+([^\s/=>]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+)))?/g,
+      (attr, name: string, doubleQuoted, singleQuoted, unquoted) => {
+        name = name.toLowerCase();
+        if (name === 'target' || name === 'ping') return '';
+        if (name !== 'href' && name !== 'xlink:href') return attr;
+        const href = doubleQuoted ?? singleQuoted ?? unquoted ?? '';
+        return href.startsWith('#') ? attr : ` ${name}="#"`;
+      },
+    );
+    return `${tag}${safeAttrs}>`;
   });
 
   return clean;
+}
+
+function sanitizeSampleFragment(fragment: DocumentFragment): void {
+  // A sandboxed document parses noscript contents as markup.
+  for (const element of fragment.querySelectorAll('script, noscript, base, iframe, frame, frameset, object, embed, applet, form')) {
+    element.remove();
+  }
+  for (const element of fragment.querySelectorAll('*')) {
+    if (element.localName === 'meta' && element.getAttribute('http-equiv')?.trim().toLowerCase() === 'refresh') {
+      element.remove();
+      continue;
+    }
+    for (const attr of Array.from(element.attributes)) {
+      if (attr.name.toLowerCase().startsWith('on')) element.removeAttributeNode(attr);
+    }
+    if (element.localName === 'a' || element.localName === 'area') {
+      element.removeAttribute('target');
+      element.removeAttribute('ping');
+      for (const name of ['href', 'xlink:href']) {
+        const href = element.getAttribute(name);
+        if (href === null) continue;
+        // Bare fragments in srcdoc resolve against the embedding page's URL.
+        element.setAttribute(name, `about:srcdoc${href.startsWith('#') ? href : '#'}`);
+      }
+    }
+    if (element instanceof HTMLTemplateElement) sanitizeSampleFragment(element.content);
+  }
 }
 
 /**

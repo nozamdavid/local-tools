@@ -15,133 +15,42 @@ export interface WorkerMessageResponse {
   error?: string;
 }
 
-// 1D Box blur horizontally
-function boxBlurH(scl: Uint8ClampedArray, tcl: Uint8ClampedArray, w: number, h: number, r: number) {
-  if (r <= 0) {
-    tcl.set(scl);
-    return;
-  }
-  const iarr = 1 / (r + r + 1);
-  for (let i = 0; i < h; i++) {
-    let ti = i * w * 4;
-    let li = ti;
-    let ri = ti + r * 4;
-    const fvr = scl[ti];
-    const fvg = scl[ti + 1];
-    const fvb = scl[ti + 2];
-    const lvr = scl[ti + (w - 1) * 4];
-    const lvg = scl[ti + (w - 1) * 4 + 1];
-    const lvb = scl[ti + (w - 1) * 4 + 2];
-    let valr = (r + 1) * fvr;
-    let valg = (r + 1) * fvg;
-    let valb = (r + 1) * fvb;
+// Blur each row or column by extending its end pixels past the image boundary.
+function boxBlur(
+  source: Uint8ClampedArray,
+  target: Uint8ClampedArray,
+  length: number,
+  lineCount: number,
+  pixelStride: number,
+  lineStride: number,
+  radius: number,
+) {
+  const windowSize = 2 * radius + 1;
+  for (let line = 0; line < lineCount; line++) {
+    const start = line * lineStride;
+    const last = length - 1;
+    let red = (radius + 1) * source[start];
+    let green = (radius + 1) * source[start + 1];
+    let blue = (radius + 1) * source[start + 2];
+    for (let pixel = 1; pixel <= radius; pixel++) {
+      const index = start + Math.min(last, pixel) * pixelStride;
+      red += source[index];
+      green += source[index + 1];
+      blue += source[index + 2];
+    }
 
-    for (let j = 0; j < r; j++) {
-      const idx = ti + Math.min(j, w - 1) * 4;
-      valr += scl[idx];
-      valg += scl[idx + 1];
-      valb += scl[idx + 2];
-    }
-    for (let j = 0; j <= r; j++) {
-      const idx = ri < ti + w * 4 ? ri : ti + (w - 1) * 4;
-      valr += scl[idx] - fvr;
-      valg += scl[idx + 1] - fvg;
-      valb += scl[idx + 2] - fvb;
-      tcl[ti] = Math.round(valr * iarr);
-      tcl[ti + 1] = Math.round(valg * iarr);
-      tcl[ti + 2] = Math.round(valb * iarr);
-      tcl[ti + 3] = scl[ti + 3];
-      ri += 4;
-      ti += 4;
-    }
-    for (let j = r + 1; j < w - r; j++) {
-      valr += scl[ri] - scl[li];
-      valg += scl[ri + 1] - scl[li + 1];
-      valb += scl[ri + 2] - scl[li + 2];
-      tcl[ti] = Math.round(valr * iarr);
-      tcl[ti + 1] = Math.round(valg * iarr);
-      tcl[ti + 2] = Math.round(valb * iarr);
-      tcl[ti + 3] = scl[ti + 3];
-      ri += 4;
-      li += 4;
-      ti += 4;
-    }
-    for (let j = w - r; j < w; j++) {
-      valr += lvr - scl[li];
-      valg += lvg - scl[li + 1];
-      valb += lvb - scl[li + 2];
-      tcl[ti] = Math.round(valr * iarr);
-      tcl[ti + 1] = Math.round(valg * iarr);
-      tcl[ti + 2] = Math.round(valb * iarr);
-      tcl[ti + 3] = scl[ti + 3];
-      li += 4;
-      ti += 4;
-    }
-  }
-}
+    for (let pixel = 0; pixel < length; pixel++) {
+      const index = start + pixel * pixelStride;
+      target[index] = Math.round(red / windowSize);
+      target[index + 1] = Math.round(green / windowSize);
+      target[index + 2] = Math.round(blue / windowSize);
+      target[index + 3] = source[index + 3];
 
-// 1D Box blur vertically
-function boxBlurV(scl: Uint8ClampedArray, tcl: Uint8ClampedArray, w: number, h: number, r: number) {
-  if (r <= 0) {
-    tcl.set(scl);
-    return;
-  }
-  const iarr = 1 / (r + r + 1);
-  const rowStride = w * 4;
-  for (let i = 0; i < w; i++) {
-    let ti = i * 4;
-    let li = ti;
-    let ri = ti + r * rowStride;
-    const fvr = scl[ti];
-    const fvg = scl[ti + 1];
-    const fvb = scl[ti + 2];
-    const lvr = scl[ti + (h - 1) * rowStride];
-    const lvg = scl[ti + (h - 1) * rowStride + 1];
-    const lvb = scl[ti + (h - 1) * rowStride + 2];
-    let valr = (r + 1) * fvr;
-    let valg = (r + 1) * fvg;
-    let valb = (r + 1) * fvb;
-
-    for (let j = 0; j < r; j++) {
-      const idx = ti + Math.min(j, h - 1) * rowStride;
-      valr += scl[idx];
-      valg += scl[idx + 1];
-      valb += scl[idx + 2];
-    }
-    for (let j = 0; j <= r; j++) {
-      const idx = ri < ti + h * rowStride ? ri : ti + (h - 1) * rowStride;
-      valr += scl[idx] - fvr;
-      valg += scl[idx + 1] - fvg;
-      valb += scl[idx + 2] - fvb;
-      tcl[ti] = Math.round(valr * iarr);
-      tcl[ti + 1] = Math.round(valg * iarr);
-      tcl[ti + 2] = Math.round(valb * iarr);
-      tcl[ti + 3] = scl[ti + 3];
-      ri += rowStride;
-      ti += rowStride;
-    }
-    for (let j = r + 1; j < h - r; j++) {
-      valr += scl[ri] - scl[li];
-      valg += scl[ri + 1] - scl[li + 1];
-      valb += scl[ri + 2] - scl[li + 2];
-      tcl[ti] = Math.round(valr * iarr);
-      tcl[ti + 1] = Math.round(valg * iarr);
-      tcl[ti + 2] = Math.round(valb * iarr);
-      tcl[ti + 3] = scl[ti + 3];
-      ri += rowStride;
-      li += rowStride;
-      ti += rowStride;
-    }
-    for (let j = h - r; j < h; j++) {
-      valr += lvr - scl[li];
-      valg += lvg - scl[li + 1];
-      valb += lvb - scl[li + 2];
-      tcl[ti] = Math.round(valr * iarr);
-      tcl[ti + 1] = Math.round(valg * iarr);
-      tcl[ti + 2] = Math.round(valb * iarr);
-      tcl[ti + 3] = scl[ti + 3];
-      li += rowStride;
-      ti += rowStride;
+      const entering = start + Math.min(last, pixel + radius + 1) * pixelStride;
+      const leaving = start + Math.max(0, pixel - radius) * pixelStride;
+      red += source[entering] - source[leaving];
+      green += source[entering + 1] - source[leaving + 1];
+      blue += source[entering + 2] - source[leaving + 2];
     }
   }
 }
@@ -153,8 +62,8 @@ function fastGaussianBlur(src: Uint8ClampedArray, w: number, h: number, radius: 
   const bufB = new Uint8ClampedArray(src.length);
 
   for (let pass = 0; pass < 3; pass++) {
-    boxBlurH(bufA, bufB, w, h, r);
-    boxBlurV(bufB, bufA, w, h, r);
+    boxBlur(bufA, bufB, w, h, 4, w * 4, r);
+    boxBlur(bufB, bufA, h, w, w * 4, 4, r);
   }
   return bufA;
 }

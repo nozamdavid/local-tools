@@ -92,10 +92,10 @@ export default function GrayscaleTool() {
       defaultOptions={DEFAULT_OPTIONS}
       suffix="-grayscale"
       render={renderGrayscale}
-      renderControls={(options, setOptions) => {
+      renderControls={(options, setOptions, { t }) => {
         return (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.25rem' }}>
-            <Field label="Grayscale method">
+            <Field label={t('Grayscale method')}>
               <Select
                 value={options.method}
                 onChange={(e) =>
@@ -105,14 +105,14 @@ export default function GrayscaleTool() {
                   }))
                 }
                 options={[
-                  { value: 'luminance', label: 'Luminance (perceptual, standard)' },
-                  { value: 'average', label: 'Average ((R+G+B)/3)' },
-                  { value: 'desaturate', label: 'Desaturate (lightness)' },
+                  { value: 'luminance', label: t('Luminance (perceptual, standard)') },
+                  { value: 'average', label: t('Average ((R+G+B)/3)') },
+                  { value: 'desaturate', label: t('Desaturate (lightness)') },
                 ]}
               />
             </Field>
 
-            <Field label={`Grayscale intensity (${options.amount}%)`}>
+            <Field label={t('Grayscale intensity ({amount}%)', { amount: options.amount })}>
               <Slider
                 value={options.amount}
                 min={0}
@@ -123,7 +123,7 @@ export default function GrayscaleTool() {
               />
             </Field>
 
-            <Field label="Tint / Tone">
+            <Field label={t('Tint / Tone')}>
               <Select
                 value={options.tint}
                 onChange={(e) =>
@@ -133,16 +133,16 @@ export default function GrayscaleTool() {
                   }))
                 }
                 options={[
-                  { value: 'none', label: 'None (Pure Black & White)' },
-                  { value: 'sepia', label: 'Sepia tone' },
-                  { value: 'duotone', label: 'Duotone colours' },
+                  { value: 'none', label: t('None (Pure Black & White)') },
+                  { value: 'sepia', label: t('Sepia tone') },
+                  { value: 'duotone', label: t('Duotone colours') },
                 ]}
               />
             </Field>
 
             {options.tint === 'duotone' && (
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <Field label="Shadow colour">
+                <Field label={t('Shadow colour')}>
                   <input
                     type="color"
                     value={options.duotoneShadow}
@@ -150,7 +150,7 @@ export default function GrayscaleTool() {
                     style={{ width: '100%', height: '38px', borderRadius: '6px', border: 'none', cursor: 'pointer' }}
                   />
                 </Field>
-                <Field label="Highlight colour">
+                <Field label={t('Highlight colour')}>
                   <input
                     type="color"
                     value={options.duotoneHighlight}

@@ -3,6 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
+import { useI18n } from '../../../lib/i18n';
 import { decodeImage, IMAGE_ACCEPT } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
 import { formatBytes } from '../../../lib/format';
@@ -11,6 +12,7 @@ import { generateEmbeddedSvg, generatePixelSvg } from '../_utility/svg';
 type SvgMode = 'embed' | 'pixel';
 
 export default function ImageToSvgTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('img-image-to-svg');
   const title = meta.title && meta.title !== 'img-image-to-svg' ? meta.title : 'Image to SVG Converter';
   const description = meta.description || 'Convert raster images (PNG, JPG, WebP) into scalable SVG vector graphics or embed them safely.';
@@ -128,8 +130,8 @@ export default function ImageToSvgTool() {
         {!file ? (
           <FileDrop
             accept={IMAGE_ACCEPT}
-            label="Choose an image or drag it here"
-            hint="Supports PNG, JPG, WebP and more."
+            label={t('Choose an image or drag it here')}
+            hint={t('Supports PNG, JPG, WebP and more.')}
             onFiles={handleFiles}
           />
         ) : (
@@ -146,19 +148,19 @@ export default function ImageToSvgTool() {
               }}
             >
               <Field
-                label="Conversion Mode"
+                label={t('Conversion mode')}
                 hint={
                   mode === 'embed'
-                    ? 'Wraps original raster image inside an SVG container. Retains full photo detail.'
-                    : 'Maps pixels to geometric vector rectangles. 100% scalable vector art with alpha transparency.'
+                    ? t('Wraps original raster image inside an SVG container. Retains full photo detail.')
+                    : t('Maps pixels to geometric vector rectangles. 100% scalable vector art with alpha transparency.')
                 }
               >
                 <Select
                   value={mode}
                   onChange={(e) => setMode(e.target.value as SvgMode)}
                   options={[
-                    { value: 'embed', label: 'Raster Embed (Preserve original image data)' },
-                    { value: 'pixel', label: 'Pixel Vector Shapes (Crisp geometric <rect> paths, max 128px)' },
+                    { value: 'embed', label: t('Raster embed (preserve original image data)') },
+                    { value: 'pixel', label: t('Pixel vector shapes (crisp geometric paths, max 128px)') },
                   ]}
                 />
               </Field>
@@ -176,23 +178,29 @@ export default function ImageToSvgTool() {
               >
                 {mode === 'embed' ? (
                   <div>
-                    💡 <strong>Raster Embed Mode:</strong> Packages your exact original image bytes inside an SVG container with proper
-                    viewBox and width/height dimensions. Best for web workflows, documents, and lightweight vector wrappers without altering
-                    pixels.
+                    💡 <strong>{t('Raster embed mode:')}</strong>{' '}
+                    {t(
+                      'Packages your exact original image bytes inside an SVG container with proper viewBox and width/height dimensions. Best for web workflows, documents, and lightweight vector wrappers without altering pixels.',
+                    )}
                   </div>
                 ) : (
                   <div>
-                    ✨ <strong>Pixel Vector Shapes Mode:</strong> Converts pixel rows into native geometric SVG <code>&lt;rect&gt;</code>{' '}
-                    vector paths, grouping identical neighboring pixels and maintaining alpha transparency. Scalable to any size without
-                    blur—ideal for pixel art, sprites, logos, and retro graphics (bounded to 128×128 max for high performance).
+                    ✨ <strong>{t('Pixel vector shapes mode:')}</strong> {t('Converts pixel rows into native geometric SVG')}{' '}
+                    <code>&lt;rect&gt;</code>{' '}
+                    {t(
+                      'vector paths, grouping identical neighboring pixels and maintaining alpha transparency. Scalable to any size without blur; ideal for pixel art, sprites, logos, and retro graphics (bounded to 128×128 max for high performance).',
+                    )}
                   </div>
                 )}
               </div>
 
               {mode === 'pixel' && (
                 <Field
-                  label={`Vector Grid Resolution: ${pixelResolution}×${pixelResolution} px (Max 128×128)`}
-                  hint="Higher resolution captures finer pixel details; lower resolution creates chunky pixel art."
+                  label={t('Vector grid resolution: {width}×{height} px (max 128×128)', {
+                    width: pixelResolution,
+                    height: pixelResolution,
+                  })}
+                  hint={t('Higher resolution captures finer pixel details; lower resolution creates chunky pixel art.')}
                 >
                   <Slider value={pixelResolution} min={16} max={128} step={8} unit="px" onChange={setPixelResolution} />
                 </Field>
@@ -200,7 +208,9 @@ export default function ImageToSvgTool() {
             </div>
 
             {error && (
-              <div style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px' }}>{error}</div>
+              <div style={{ color: '#ef4444', background: 'rgba(239, 68, 68, 0.1)', padding: '0.75rem', borderRadius: '8px' }}>
+                {t(error)}
+              </div>
             )}
 
             {/* Preview Box */}
@@ -215,8 +225,12 @@ export default function ImageToSvgTool() {
               }}
             >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontWeight: 600 }}>SVG Preview</span>
-                {svgBlob && <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>Size: {formatBytes(svgBlob.size)}</span>}
+                <span style={{ fontWeight: 600 }}>{t('SVG preview')}</span>
+                {svgBlob && (
+                  <span style={{ fontSize: '0.85rem', opacity: 0.8 }}>
+                    {t('Size')}: {formatBytes(svgBlob.size)}
+                  </span>
+                )}
               </div>
 
               <div
@@ -244,20 +258,20 @@ export default function ImageToSvgTool() {
                     }}
                   />
                 ) : (
-                  <span>Rendering preview...</span>
+                  <span>{t('Rendering preview...')}</span>
                 )}
               </div>
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
-                  Start over
+                  {t('Start over')}
                 </Button>
                 <Button variant="secondary" onClick={handleCopy} disabled={!svgString}>
-                  {copied ? '✓ Copied SVG code!' : '📋 Copy SVG'}
+                  {copied ? `✓ ${t('Copied SVG code!')}` : `📋 ${t('Copy SVG')}`}
                 </Button>
                 <Button variant="primary" onClick={handleDownload} disabled={!svgBlob}>
-                  ⬇ Download SVG
+                  ⬇ {t('Download SVG')}
                 </Button>
               </div>
             </div>

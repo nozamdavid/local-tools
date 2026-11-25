@@ -7,31 +7,15 @@ import { BatchResults, type BatchResultItem } from '../../components/BatchResult
 import { Button, Field, Select } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { formatBytes } from '../../lib/format';
-import { detectFormat, type DetectedFormat, type FormatFamily } from './detect';
+import { useI18n } from '../../lib/i18n';
+import { detectFormat, translateDetectedFormatLabel, type DetectedFormat, type FormatFamily } from './detect';
 import { getTargetFormats, type TargetFormat } from './matrix';
 import { executeConversion } from './engines';
 import { OFFICE_FORMATS } from './office';
 import styles from './Tool.module.css';
 
-const FAMILY_ICONS: Record<FormatFamily, string> = {
-  image: '🖼️',
-  video: '🎬',
-  audio: '🎵',
-  document: '📄',
-  text: '📝',
-  unknown: '❓',
-};
-
-const FAMILY_LABELS: Record<FormatFamily, string> = {
-  image: 'Image Formats',
-  video: 'Video Formats',
-  audio: 'Audio Formats',
-  document: 'Document Formats',
-  text: 'Text & Data Formats',
-  unknown: 'Other',
-};
-
 export default function FileConverterTool() {
+  const { t } = useI18n();
   const meta = getToolMeta('file-converter');
 
   const [file, setFile] = useState<File | null>(null);
@@ -51,6 +35,54 @@ export default function FileConverterTool() {
   const [converting, setConverting] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [error, setError] = useState<string | null>(null);
+
+  const errorText = (message: string) => {
+    let match = message.match(/^Conversion from (.+) to (.+) is not supported\.$/);
+    if (match) return t('Conversion from {source} to {target} is not supported.', { source: match[1], target: match[2] });
+    match = message.match(/^Spreadsheet export exceeds the ([\d,]+)-row limit\.$/);
+    if (match) return t('Spreadsheet export exceeds the {count}-row limit.', { count: match[1] });
+    match = message.match(/^Spreadsheet export exceeds the ([\d,]+)-cell limit\.$/);
+    if (match) return t('Spreadsheet export exceeds the {count}-cell limit.', { count: match[1] });
+    match = message.match(/^(.+) exceeds the 32 MB XML limit\.$/);
+    if (match) return t('{label} exceeds the 32 MB XML limit.', { label: match[1] });
+    match = message.match(/^(.+) uses a DTD or entity declaration, which is not supported\.$/);
+    if (match) return t('{label} uses a DTD or entity declaration, which is not supported.', { label: match[1] });
+    match = message.match(/^Malformed XML in (.+): (.+)\.$/);
+    if (match) return t('Malformed XML in {label}: {message}.', { label: match[1], message: match[2] });
+    match = message.match(/^(.+) contains too many XML nodes\.$/);
+    if (match) return t('{label} contains too many XML nodes.', { label: match[1] });
+    match = message.match(/^(.+) must contain one XML document element\.$/);
+    if (match) return t('{label} must contain one XML document element.', { label: match[1] });
+    match = message.match(/^Spreadsheet repeat count must be between 1 and ([\d,]+)\.$/);
+    if (match) return t('Spreadsheet repeat count must be between 1 and {count}.', { count: match[1] });
+    match = message.match(/^Office package contains more than ([\d,]+) entries\.$/);
+    if (match) return t('Office package contains more than {count} entries.', { count: match[1] });
+    match = message.match(/^Office package entry (.+) exceeds the 32 MB uncompressed limit\.$/);
+    if (match) return t('Office package entry {path} exceeds the 32 MB uncompressed limit.', { path: match[1] });
+    match = message.match(/^Could not decompress office package entry (.+): (.+?)\.?$/);
+    if (match) return t('Could not decompress office package entry {path}: {message}.', { path: match[1], message: match[2] });
+    match = message.match(/^Could not read office package: (.+)\.$/);
+    if (match) return t('Could not read office package: {message}.', { message: match[1] });
+    match = message.match(/^Office package is missing (.+)\.$/);
+    if (match) return t('Office package is missing {path}.', { path: match[1] });
+    match = message.match(/^Corrupt office package entry (.+): checksum mismatch\.$/);
+    if (match) return t('Corrupt office package entry {path}: checksum mismatch.', { path: match[1] });
+    match = message.match(/^Office package entry (.+) is not valid UTF-8 XML\.$/);
+    if (match) return t('Office package entry {path} is not valid UTF-8 XML.', { path: match[1] });
+    match = message.match(/^Unsupported OpenDocument input format: (.+)\.$/);
+    if (match) return t('Unsupported OpenDocument input format: {format}.', { format: match[1] });
+    match = message.match(/^OpenDocument body does not contain (.+) content\.$/);
+    if (match) return t('OpenDocument body does not contain {family} content.', { family: match[1] });
+    match = message.match(/^OpenDocument (.+) cannot be exported to (.+)\.$/);
+    if (match) return t('OpenDocument {family} cannot be exported to {target}.', { family: match[1], target: match[2] });
+    match = message.match(/^EPUB cannot be exported to (.+)\.$/);
+    if (match) return t('EPUB cannot be exported to {target}.', { target: match[1] });
+    match = message.match(/^VSDX cannot be exported to (.+)\.$/);
+    if (match) return t('VSDX cannot be exported to {target}.', { target: match[1] });
+    match = message.match(/^Office conversion from (.+) to (.+) is not supported\.$/);
+    if (match) return t('Office conversion from {source} to {target} is not supported.', { source: match[1], target: match[2] });
+    return t(message);
+  };
   const [singleResult, setSingleResult] = useState<{ name: string; blob: Blob } | null>(null);
   const [batchResults, setBatchResults] = useState<BatchResultItem[] | null>(null);
 
@@ -59,6 +91,14 @@ export default function FileConverterTool() {
   const svgScaleId = useId();
   const bitrateId = useId();
   const hasAvailableTargets = targetFamilies ? Object.values(targetFamilies).some((targets) => targets.length > 0) : false;
+  const familyLabels: Record<FormatFamily, string> = {
+    image: t('Image Formats'),
+    video: t('Video Formats'),
+    audio: t('Audio Formats'),
+    document: t('Document Formats'),
+    text: t('Text & Data Formats'),
+    unknown: t('Other'),
+  };
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
@@ -148,64 +188,44 @@ export default function FileConverterTool() {
       {!file ? (
         <FileDrop
           accept="*"
-          label="Choose any file or drag it here"
-          hint="Detects media, PDF, DOCX/DOTX, XLSX, PPTX, EPUB, OpenDocument, and legacy Office formats. Conversion availability varies by document type; processing stays on-device."
+          label={t('Choose any file or drag it here')}
+          hint={t('Detect the file type and available conversions. Files stay on your device.')}
           onFiles={handleFiles}
         />
       ) : (
         <div className={styles.container}>
-          {error && <div className="error-banner">{error}</div>}
+          {error && <div className="error-banner">{errorText(error)}</div>}
 
           {/* 1. Results View */}
           {singleResult ? (
-            <div>
-              <div style={{ marginBottom: '1rem' }}>
-                <Button variant="secondary" onClick={handleReset}>
-                  Convert another file
-                </Button>
-              </div>
-              <ResultPanel
-                blob={singleResult.blob}
-                filename={singleResult.name}
-                kind={selectedTarget ? renderResultKind(selectedTarget) : 'text'}
-                originalSize={file.size}
-                onReset={handleReset}
-              />
-            </div>
+            <ResultPanel
+              blob={singleResult.blob}
+              filename={singleResult.name}
+              kind={selectedTarget ? renderResultKind(selectedTarget) : 'text'}
+              originalSize={file.size}
+              onReset={handleReset}
+            />
           ) : batchResults ? (
-            <div>
-              <div style={{ marginBottom: '1rem' }}>
-                <Button variant="secondary" onClick={handleReset}>
-                  Convert another file
-                </Button>
-              </div>
-              <BatchResults items={batchResults} onReset={handleReset} />
-            </div>
+            <BatchResults items={batchResults} onReset={handleReset} />
           ) : detecting ? (
-            <ProgressBar value={0.5} label="Detecting real file format from content signatures..." />
+            <ProgressBar value={0.5} label={t('Detecting real file format from content signatures...')} />
           ) : converting ? (
-            <ProgressBar value={progress} label={`Converting to ${selectedTarget?.label || 'target format'}...`} />
+            <ProgressBar value={progress} label={t('Converting to {format}...', { format: selectedTarget?.label || t('target format') })} />
           ) : detected ? (
             <div className={styles.container}>
               {/* 2. Detection Card */}
               <div className={styles.detectionCard}>
                 <div className={styles.detectionHeader}>
-                  <div className={styles.detectionIcon}>{FAMILY_ICONS[detected.family]}</div>
                   <div className={styles.detectionDetails}>
                     <div className={styles.detectedTitle}>
-                      <span>{detected.label}</span>
-                      <span className="badge badge-brand" style={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
-                        {detected.family}
-                      </span>
+                      <span>{translateDetectedFormatLabel(detected.label, t)}</span>
                     </div>
                     <div className={styles.detectedMeta}>
                       <span>
-                        Original file: <strong>{file.name}</strong>
+                        <strong>{file.name}</strong>
                       </span>
                       <span>·</span>
                       <span>{formatBytes(file.size)}</span>
-                      <span>·</span>
-                      <span>MIME: {detected.mime}</span>
                     </div>
                   </div>
                 </div>
@@ -215,8 +235,11 @@ export default function FileConverterTool() {
                   <div className={styles.mismatchBanner}>
                     <span className={styles.mismatchIcon}>⚠️</span>
                     <div>
-                      <strong>File extension mismatch:</strong> This file is named <code>.{detected.actualExtension}</code>, but its content
-                      is actually <strong>{detected.label}</strong>. Loconvert will convert using its true detected format.
+                      <strong>{t('File extension mismatch:')}</strong>{' '}
+                      {t(
+                        'This file is named .{extension}, but its content is actually {format}. Loconvert will convert using its true detected format.',
+                        { extension: detected.actualExtension, format: translateDetectedFormatLabel(detected.label, t) },
+                      )}
                     </div>
                   </div>
                 )}
@@ -226,13 +249,13 @@ export default function FileConverterTool() {
                     <div>
                       {OFFICE_FORMATS[detected.id]?.limitation && (
                         <>
-                          <strong>Conversion limitation:</strong> {OFFICE_FORMATS[detected.id].limitation}
+                          <strong>{t('Conversion limitation:')}</strong> {t(OFFICE_FORMATS[detected.id].limitation ?? '')}
                         </>
                       )}
                       {detected.detectionNote && (
                         <>
                           {OFFICE_FORMATS[detected.id]?.limitation && <br />}
-                          <strong>Detection note:</strong> {detected.detectionNote}
+                          <strong>{t('Detection note:')}</strong> {t(detected.detectionNote)}
                         </>
                       )}
                     </div>
@@ -243,82 +266,81 @@ export default function FileConverterTool() {
               {/* 3. Unknown/Unsupported Format Message */}
               {detected.family === 'unknown' || !targetFamilies ? (
                 <div className={styles.unsupportedCard}>
-                  <div className={styles.unsupportedTitle}>Unsupported file format</div>
+                  <div className={styles.unsupportedTitle}>{t('Unsupported file format')}</div>
                   <p className={styles.unsupportedText}>
-                    This file could not be recognized. Detected formats include:
-                    <br />• <strong>Images:</strong> PNG, JPG, WebP, GIF, BMP, TIFF, ICO, AVIF, HEIC, JXL, SVG
-                    <br />• <strong>Videos:</strong> MP4, WebM, MKV, AVI, MOV, FLV, MPEG-TS, 3GP, WMV, OGV
-                    <br />• <strong>Audio:</strong> MP3, WAV, M4A, FLAC, OGG, Opus, AIFF, WMA
-                    <br />• <strong>Documents:</strong> PDF, DOCX/DOTX, XLSX, PPTX, EPUB, OpenDocument (ODT/ODS/ODP and related formats),
-                    and legacy Office files; some are recognized for identification only
-                    <br />• <strong>Text &amp; Data:</strong> JSON, CSV, TSV, Plain Text
+                    {t('This file could not be recognized. Detected formats include:')}
+                    <br />• <strong>{t('Images:')}</strong> PNG, JPG, WebP, GIF, BMP, TIFF, ICO, AVIF, HEIC, JXL, SVG
+                    <br />• <strong>{t('Videos:')}</strong> MP4, WebM, MKV, AVI, MOV, FLV, MPEG-TS, 3GP, WMV, OGV
+                    <br />• <strong>{t('Audio:')}</strong> MP3, WAV, M4A, FLAC, OGG, Opus, AIFF, WMA
+                    <br />• <strong>{t('Documents:')}</strong> PDF, DOCX/DOTX, XLSX, PPTX, EPUB, OpenDocument (ODT/ODS/ODP and related
+                    formats),
+                    {t('and legacy Office files; some are recognized for identification only')}
+                    <br />• <strong>{t('Text & Data:')}</strong> JSON, CSV, TSV, Plain Text
                   </p>
                   <div>
                     <Button variant="secondary" onClick={handleReset}>
-                      Choose a different file
+                      {t('Choose a different file')}
                     </Button>
                   </div>
                 </div>
               ) : /* 4. Supported: Target Format Selector */
               !hasAvailableTargets && detected.family === 'document' ? (
                 <div className={styles.unsupportedCard}>
-                  <div className={styles.unsupportedTitle}>Conversion unavailable</div>
+                  <div className={styles.unsupportedTitle}>{t('Conversion unavailable')}</div>
                   <p className={styles.unsupportedText}>
-                    This document format is recognized, but it has no available conversion targets.
-                    {OFFICE_FORMATS[detected.id]?.limitation && ` ${OFFICE_FORMATS[detected.id].limitation}`}
+                    {t('This document format is recognized, but it has no available conversion targets.')}
+                    {OFFICE_FORMATS[detected.id]?.limitation && ` ${t(OFFICE_FORMATS[detected.id].limitation ?? '')}`}
                   </p>
                   <Button variant="secondary" onClick={handleReset}>
-                    Choose a different file
+                    {t('Choose a different file')}
                   </Button>
                 </div>
               ) : (
                 <div>
-                  <div className={styles.sectionTitle}>Convert to:</div>
-                  <div className={styles.targetGrid}>
-                    {(['image', 'video', 'audio', 'document', 'text'] as FormatFamily[]).map((fam) => {
-                      const targets = targetFamilies[fam];
-                      if (!targets || targets.length === 0) return null;
+                  <Field label={t('Output format')}>
+                    <select
+                      className="select"
+                      value={selectedTarget?.id ?? ''}
+                      onChange={(e) => {
+                        const target = Object.values(targetFamilies)
+                          .flat()
+                          .find((candidate) => candidate.id === e.target.value);
+                        setSelectedTarget(target || null);
+                      }}
+                    >
+                      <option value="" disabled>
+                        {t('Select a format')}
+                      </option>
+                      {(['image', 'video', 'audio', 'document', 'text'] as FormatFamily[]).map((family) => {
+                        const targets = targetFamilies[family];
+                        if (!targets || targets.length === 0) return null;
 
-                      return (
-                        <div key={fam} className={styles.familyGroup}>
-                          <div className={styles.familyTitle}>
-                            <span style={{ marginRight: '0.4rem' }}>{FAMILY_ICONS[fam]}</span>
-                            {FAMILY_LABELS[fam]}
-                          </div>
-                          <div className={styles.chipRow}>
-                            {targets.map((tgt) => {
-                              const isActive = selectedTarget?.id === tgt.id;
-                              return (
-                                <button
-                                  key={tgt.id}
-                                  type="button"
-                                  className={`${styles.targetChip} ${isActive ? styles.targetChipActive : ''}`}
-                                  onClick={() => setSelectedTarget(tgt)}
-                                >
-                                  <span className={styles.targetLabel}>{tgt.label}</span>
-                                  {tgt.description && <span className={styles.targetDesc}>{tgt.description}</span>}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                        return (
+                          <optgroup key={family} label={familyLabels[family]}>
+                            {targets.map((target) => (
+                              <option key={target.id} value={target.id}>
+                                {target.label}
+                              </option>
+                            ))}
+                          </optgroup>
+                        );
+                      })}
+                    </select>
+                  </Field>
 
                   {/* 5. Per-Target Options */}
                   {selectedTarget && (
                     <div className={styles.optionsCard}>
-                      <div className={styles.optionsTitle}>Conversion options for {selectedTarget.label}</div>
+                      <div className={styles.optionsTitle}>{t('Conversion options for {format}', { format: selectedTarget.label })}</div>
 
                       {/* Lossy image quality */}
                       {['jpg', 'webp', 'avif', 'jxl'].includes(selectedTarget.id) && (
                         <Field
-                          label={`Quality (${quality}%)`}
+                          label={t('Quality ({percent}%)', { percent: quality })}
                           hint={
                             selectedTarget.id === 'jxl'
-                              ? 'Controls JPEG XL compression quality (100 is lossless).'
-                              : 'Lower values produce smaller files.'
+                              ? t('Controls JPEG XL compression quality (100 is lossless).')
+                              : t('Lower values produce smaller files.')
                           }
                         >
                           <input
@@ -335,13 +357,13 @@ export default function FileConverterTool() {
 
                       {selectedTarget.id === 'jxl' && (
                         <p style={{ marginTop: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                          Encodes static SDR images. Animation and HDR gain maps are not preserved.
+                          {t('Encodes static SDR images. Animation and HDR gain maps are not preserved.')}
                         </p>
                       )}
 
                       {/* Flatten background for JPG / BMP */}
                       {['jpg', 'bmp'].includes(selectedTarget.id) && (
-                        <Field label="Background colour" hint="Used to flatten any transparent areas.">
+                        <Field label={t('Background colour')} hint={t('Used to flatten any transparent areas.')}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                             <input
                               type="color"
@@ -351,10 +373,10 @@ export default function FileConverterTool() {
                             />
                             <div style={{ display: 'flex', gap: '0.5rem' }}>
                               <Button variant={bgColor === '#ffffff' ? 'primary' : 'secondary'} onClick={() => setBgColor('#ffffff')}>
-                                White
+                                {t('White')}
                               </Button>
                               <Button variant={bgColor === '#000000' ? 'primary' : 'secondary'} onClick={() => setBgColor('#000000')}>
-                                Black
+                                {t('Black')}
                               </Button>
                             </div>
                           </div>
@@ -363,15 +385,15 @@ export default function FileConverterTool() {
 
                       {/* SVG scale option */}
                       {detected.id === 'svg' && (
-                        <Field label="Raster scale" hint="Scale vector graphics for high resolution.">
+                        <Field label={t('Raster scale')} hint={t('Scale vector graphics for high resolution.')}>
                           <Select
                             id={svgScaleId}
                             value={svgScale}
                             onChange={(e) => setSvgScale(e.target.value as '1x' | '2x' | '4x')}
                             options={[
-                              { value: '1x', label: '1× (Original size)' },
-                              { value: '2x', label: '2× (Crisp retina)' },
-                              { value: '4x', label: '4× (Ultra high-res)' },
+                              { value: '1x', label: t('1× (Original size)') },
+                              { value: '2x', label: t('2× (Crisp retina)') },
+                              { value: '4x', label: t('4× (Ultra high-res)') },
                             ]}
                           />
                         </Field>
@@ -379,15 +401,15 @@ export default function FileConverterTool() {
 
                       {/* PDF to Image DPI */}
                       {detected.id === 'pdf' && ['png', 'jpg'].includes(selectedTarget.id) && (
-                        <Field label="Rendering DPI" hint="Higher DPI results in sharper text and larger images.">
+                        <Field label={t('Rendering DPI')} hint={t('Higher DPI results in sharper text and larger images.')}>
                           <Select
                             id={dpiId}
                             value={String(dpi)}
                             onChange={(e) => setDpi(Number(e.target.value))}
                             options={[
-                              { value: '72', label: '72 DPI (Standard screen)' },
-                              { value: '150', label: '150 DPI (Balanced / Default)' },
-                              { value: '300', label: '300 DPI (High-res print quality)' },
+                              { value: '72', label: t('72 DPI (Standard screen)') },
+                              { value: '150', label: t('150 DPI (Balanced / Default)') },
+                              { value: '300', label: t('300 DPI (High-res print quality)') },
                             ]}
                           />
                         </Field>
@@ -395,16 +417,16 @@ export default function FileConverterTool() {
 
                       {/* Audio bitrate */}
                       {['mp3', 'm4a', 'ogg', 'opus'].includes(selectedTarget.id) && (
-                        <Field label="Audio bitrate" hint="Higher bitrate preserves finer audio quality.">
+                        <Field label={t('Audio bitrate')} hint={t('Higher bitrate preserves finer audio quality.')}>
                           <Select
                             id={bitrateId}
                             value={bitrate}
                             onChange={(e) => setBitrate(e.target.value)}
                             options={[
-                              { value: '96k', label: '96 kbps (Voice / compact)' },
-                              { value: '128k', label: '128 kbps (Standard)' },
-                              { value: '192k', label: '192 kbps (High quality)' },
-                              { value: '256k', label: '256 kbps (Very high quality)' },
+                              { value: '96k', label: t('96 kbps (Voice / compact)') },
+                              { value: '128k', label: t('128 kbps (Standard)') },
+                              { value: '192k', label: t('192 kbps (High quality)') },
+                              { value: '256k', label: t('256 kbps (Very high quality)') },
                             ]}
                           />
                         </Field>
@@ -413,10 +435,10 @@ export default function FileConverterTool() {
                       {/* Convert Action Button */}
                       <div className="action-buttons" style={{ marginTop: '2rem' }}>
                         <Button variant="secondary" onClick={handleReset}>
-                          Choose a different file
+                          {t('Choose a different file')}
                         </Button>
                         <Button variant="primary" onClick={handleConvert}>
-                          Convert to {selectedTarget.label}
+                          {t('Convert to {format}', { format: selectedTarget.label })}
                         </Button>
                       </div>
                     </div>
@@ -424,7 +446,11 @@ export default function FileConverterTool() {
                 </div>
               )}
             </div>
-          ) : null}
+          ) : (
+            <Button variant="secondary" onClick={handleReset}>
+              {t('Choose a different file')}
+            </Button>
+          )}
         </div>
       )}
     </ToolPage>

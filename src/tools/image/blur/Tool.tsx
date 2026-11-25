@@ -237,7 +237,7 @@ export default function BlurTool() {
           </div>
         );
       }}
-      renderControls={(options, setOptions) => {
+      renderControls={(options, setOptions, { t }) => {
         const removeRegion = (id: string) => {
           setOptions((prev) => ({
             ...prev,
@@ -247,7 +247,7 @@ export default function BlurTool() {
 
         return (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
-            <Field label="Blur mode">
+            <Field label={t('Blur mode')}>
               <Select
                 value={options.mode}
                 onChange={(e) =>
@@ -257,14 +257,14 @@ export default function BlurTool() {
                   }))
                 }
                 options={[
-                  { value: 'whole', label: 'Whole image blur' },
-                  { value: 'regions', label: 'Blur selected regions (censor / privacy)' },
+                  { value: 'whole', label: t('Whole image blur') },
+                  { value: 'regions', label: t('Blur selected regions (censor / privacy)') },
                 ]}
               />
             </Field>
 
             {options.mode === 'whole' ? (
-              <Field label={`Blur radius (${options.wholeBlur}px)`}>
+              <Field label={t('Blur radius ({radius}px)', { radius: options.wholeBlur })}>
                 <Slider
                   value={options.wholeBlur}
                   min={1}
@@ -277,7 +277,7 @@ export default function BlurTool() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                  <Field label="Region effect">
+                  <Field label={t('Region effect')}>
                     <Select
                       value={options.regionType}
                       onChange={(e) =>
@@ -287,15 +287,15 @@ export default function BlurTool() {
                         }))
                       }
                       options={[
-                        { value: 'blur', label: 'Gaussian Blur' },
-                        { value: 'pixelate', label: 'Pixelate / Mosaic' },
-                        { value: 'solid', label: 'Solid Redaction (Opaque Box)' },
+                        { value: 'blur', label: t('Gaussian Blur') },
+                        { value: 'pixelate', label: t('Pixelate / Mosaic') },
+                        { value: 'solid', label: t('Solid Redaction (Opaque Box)') },
                       ]}
                     />
                   </Field>
 
                   {options.regionType === 'solid' ? (
-                    <Field label="Redaction color">
+                    <Field label={t('Redaction color')}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                         <input
                           type="color"
@@ -325,16 +325,16 @@ export default function BlurTool() {
                             }))
                           }
                           options={[
-                            { value: '#000000', label: 'Black (#000000)' },
-                            { value: '#ffffff', label: 'White (#ffffff)' },
-                            { value: '#ef4444', label: 'Red (#ef4444)' },
-                            { value: options.solidColor, label: `Custom (${options.solidColor})` },
+                            { value: '#000000', label: t('Black (#000000)') },
+                            { value: '#ffffff', label: t('White (#ffffff)') },
+                            { value: '#ef4444', label: t('Red (#ef4444)') },
+                            { value: options.solidColor, label: t('Custom ({color})', { color: options.solidColor }) },
                           ]}
                         />
                       </div>
                     </Field>
                   ) : (
-                    <Field label={`Effect strength (${options.regionAmount})`}>
+                    <Field label={t('Effect strength ({amount})', { amount: options.regionAmount })}>
                       <Slider
                         value={options.regionAmount}
                         min={4}
@@ -356,18 +356,19 @@ export default function BlurTool() {
                     lineHeight: '1.45',
                   }}
                 >
-                  💡 <strong>How to censor regions:</strong> Click and drag on the image above to draw rectangles over areas you want to
-                  censor.
+                  💡 <strong>{t('How to censor regions:')}</strong>{' '}
+                  {t('Click and drag on the image above to draw rectangles over areas you want to censor.')}
                   <div style={{ marginTop: '0.4rem' }}>
-                    🔒 <strong>Solid mode for sensitive data:</strong> Standard blur or pixelation can sometimes be partially reconstructed
-                    or unblurred by computer vision tools. Solid redaction permanently burns 100% opaque color rectangles into the fresh
-                    exported image pixels, ensuring sensitive data (passwords, credit cards, PII) cannot be recovered.
+                    🔒 <strong>{t('Solid mode for sensitive data:')}</strong>{' '}
+                    {t(
+                      'Standard blur or pixelation can sometimes be partially reconstructed or unblurred by computer vision tools. Solid redaction permanently burns 100% opaque color rectangles into the exported image, so sensitive data (passwords, credit cards, personal information) cannot be recovered.',
+                    )}
                   </div>
                 </div>
 
                 {options.regions.length > 0 && (
                   <div>
-                    <label className="field-label">Active regions ({options.regions.length})</label>
+                    <label className="field-label">{t('Active regions ({count})', { count: options.regions.length })}</label>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                       {options.regions.map((reg, idx) => (
                         <div
@@ -382,7 +383,8 @@ export default function BlurTool() {
                           }}
                         >
                           <span style={{ fontSize: '0.9rem' }}>
-                            Region #{idx + 1} &mdash; <strong>{reg.type}</strong>{' '}
+                            {t('Region #{number}', { number: idx + 1 })} &mdash;{' '}
+                            <strong>{t(reg.type === 'blur' ? 'Blur' : reg.type === 'pixelate' ? 'Pixelate' : 'Solid')}</strong>{' '}
                             {reg.type === 'solid' ? `(${reg.color || options.solidColor})` : `(${reg.amount}px)`}
                           </span>
                           <Button
@@ -390,7 +392,7 @@ export default function BlurTool() {
                             style={{ padding: '0.2rem 0.6rem', fontSize: '0.8rem' }}
                             onClick={() => removeRegion(reg.id)}
                           >
-                            Remove
+                            {t('Remove')}
                           </Button>
                         </div>
                       ))}

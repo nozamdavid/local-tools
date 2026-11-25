@@ -5,6 +5,7 @@ import { formatBytes } from '../../../lib/format';
 import type { UseJobReturn } from '../../../lib/useJob';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import styles from './ConvertPanel.module.css';
+import { useI18n } from '../../../lib/i18n';
 
 export interface ConvertPanelProps {
   /** Chips describing the loaded source, such as its file name. */
@@ -44,10 +45,11 @@ export function ConvertPanel({
   children,
   preview,
 }: ConvertPanelProps) {
+  const { t } = useI18n();
   return (
     <div>
-      {loadError && <div className="error-banner">{loadError}</div>}
-      {job.error && <div className="error-banner">{job.error}</div>}
+      {loadError && <div className="error-banner">{t(loadError)}</div>}
+      {job.error && <div className="error-banner">{t(job.error)}</div>}
 
       {job.result ? (
         <PdfPreview blob={job.result} filename={outName} originalSize={sourceSize} pageCount={pageCount} onReset={onReset} />
@@ -79,13 +81,14 @@ export function ConvertPanel({
 }
 
 export function FileChips({ file }: { file: File }) {
+  const { t } = useI18n();
   return (
     <>
       <span className="meta-chip">
-        File: <strong>{file.name}</strong>
+        {t('File:')} <strong>{file.name}</strong>
       </span>
       <span className="meta-chip">
-        Size: <strong>{formatBytes(file.size)}</strong>
+        {t('Size:')} <strong>{formatBytes(file.size)}</strong>
       </span>
     </>
   );
