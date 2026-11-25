@@ -7,6 +7,7 @@ import type { LocalSceneAsset } from '../viewer/gltf';
 import { Alert } from '../../../components/Controls';
 import { useI18n } from '../../../lib/i18n';
 import type { MeshModel } from './types';
+import { ViewerShortcuts } from './ViewerShortcuts';
 import styles from './MeshViewer.module.css';
 
 interface MeshCanvasProps {
@@ -33,6 +34,8 @@ const viewDirections = {
   top: new THREE.Vector3(0, -0.00001, 1),
   bottom: new THREE.Vector3(0, -0.00001, -1),
 };
+const viewShortcuts = ['isometric', 'front', 'back', 'left', 'right', 'top', 'bottom'] as const;
+const nextEnvironment: Record<Environment, Environment> = { studio: 'daylight', daylight: 'warm', warm: 'studio' };
 const environments = {
   studio: { key: 0xffffff, fill: 0x94a3b8, ambient: 0.65, reflection: 0.7, rotation: 0 },
   daylight: { key: 0xe1edff, fill: 0xb2cbfa, ambient: 0.85, reflection: 1, rotation: Math.PI / 2 },
@@ -319,6 +322,9 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
   const intensityId = useId();
   const directionId = useId();
   const hostRef = useRef<HTMLDivElement>(null);
+  const intensityRef = useRef<HTMLInputElement>(null);
+  const firstPositionRef = useRef<HTMLInputElement>(null);
+  const shortcutButtonRef = useRef<HTMLButtonElement>(null);
   const viewportRef = useRef<ReturnType<typeof createViewport>>(undefined);
   const [status, setStatus] = useState<ViewportStatus>('loading');
   const [drag, setDrag] = useState<DragMode>('orbit');
@@ -329,6 +335,7 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
   const [direction, setDirection] = useState(304);
   const [grid, setGrid] = useState(true);
   const [showAxes, setShowAxes] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
 
   const positions = model?.positions;
   const indices = model?.indices;
@@ -390,10 +397,24 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
     viewport.requestRender();
   }
 
+  function selectView(nextView: keyof typeof viewDirections) {
+    setView(nextView);
+    viewportRef.current?.fit(viewDirections[nextView]);
+  }
+
+  function focusSetting(input: HTMLInputElement | null) {
+    const details = input?.closest('details');
+    if (!input || !details) return;
+    details.open = true;
+    input.focus();
+  }
+
   function handleViewportKey(event: KeyboardEvent<HTMLDivElement>) {
     const viewport = viewportRef.current;
-    if (status !== 'ready' || !viewport || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (status !== 'ready' || !viewport || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+    if (event.nativeEvent.isComposing || event.keyCode === 229) return;
     const { controls } = viewport;
+    if (event.target !== event.currentTarget && event.target !== controls.domElement) return;
 
     if (event.key === '+' || event.key === '-' || event.key === '=') {
       event.preventDefault();
@@ -403,23 +424,89 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
 
     const x = Number(event.key === 'ArrowLeft') - Number(event.key === 'ArrowRight');
     const y = Number(event.key === 'ArrowUp') - Number(event.key === 'ArrowDown');
-    if (x === 0 && y === 0) return;
-    event.preventDefault();
-    setView('');
-    if (drag === 'pan') {
-      controls.pan(x * 18, -y * 18);
-    } else {
-      if (x) controls.rotateLeft(x * 0.1);
-      if (y) controls.rotateUp(y * 0.1);
+    if (x || y) {
+      event.preventDefault();
+      setView('');
+      if (drag === 'pan' || event.shiftKey) {
+        controls.pan(x * 18, -y * 18);
+      } else if (x) {
+        controls.rotateLeft(x * 0.1);
+      } else {
+        controls.rotateUp(y * 0.1);
+      }
+      viewport.requestRender();
+      return;
     }
-    viewport.requestRender();
+
+    if (event.repeat) return;
+
+    if (/^[0-6]$/.test(event.key)) {
+      event.preventDefault();
+      selectView(viewShortcuts[Number(event.key)]);
+      return;
+    }
+
+    if (event.shiftKey && event.key !== '?') return;
+
+    switch (event.key.toLowerCase()) {
+      case 'o':
+        setDrag('orbit');
+        break;
+      case 'p':
+        setDrag('pan');
+        break;
+      case 'f':
+        viewport.fit();
+        break;
+      case 's':
+        setMode('solid');
+        break;
+      case 'w':
+        setMode('wireframe');
+        break;
+      case 'n':
+        setMode('normals');
+        break;
+      case 'e':
+        setEnvironment((current) => nextEnvironment[current]);
+        break;
+      case 'g':
+        setGrid((visible) => !visible);
+        break;
+      case 'x':
+        setShowAxes((visible) => !visible);
+        break;
+      case 'l':
+        focusSetting(intensityRef.current);
+        break;
+      case 't':
+        focusSetting(firstPositionRef.current);
+        break;
+      case '?':
+        if (!shortcutsOpen) shortcutButtonRef.current?.focus();
+        setShortcutsOpen((open) => !open);
+        break;
+      case 'escape':
+        if (!shortcutsOpen) return;
+        setShortcutsOpen(false);
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
   }
 
   const ready = status === 'ready';
   const triangles = sceneAsset?.triangles ?? (indices?.length ?? 0) / 3;
   const vertices = sceneAsset?.vertices ?? (positions?.length ?? 0) / 3;
   const fitButton = (
-    <button type="button" className={styles.toolbarBtn} onClick={() => viewportRef.current?.fit()} title={t('Fit model to view')}>
+    <button
+      type="button"
+      className={styles.toolbarBtn}
+      onClick={() => viewportRef.current?.fit()}
+      aria-keyshortcuts={advanced ? 'F' : undefined}
+      title={`${t('Fit model to view')}${advanced ? ' (F)' : ''}`}
+    >
       <Maximize2 size={14} aria-hidden="true" />
       {t('Fit')}
     </button>
@@ -430,11 +517,25 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
       {ready && advanced && (
         <div className={styles.advancedToolbar} role="group" aria-label={t('3D Viewport Controls')}>
           <div className={styles.buttonGroup} role="group" aria-label={t('Camera drag mode')}>
-            <button type="button" className={styles.toolbarBtn} aria-pressed={drag === 'orbit'} onClick={() => setDrag('orbit')}>
+            <button
+              type="button"
+              className={styles.toolbarBtn}
+              aria-pressed={drag === 'orbit'}
+              aria-keyshortcuts="O"
+              title={`${t('Orbit')} (O)`}
+              onClick={() => setDrag('orbit')}
+            >
               <Orbit size={15} aria-hidden="true" />
               {t('Orbit')}
             </button>
-            <button type="button" className={styles.toolbarBtn} aria-pressed={drag === 'pan'} onClick={() => setDrag('pan')}>
+            <button
+              type="button"
+              className={styles.toolbarBtn}
+              aria-pressed={drag === 'pan'}
+              aria-keyshortcuts="P"
+              title={`${t('Pan')} (P)`}
+              onClick={() => setDrag('pan')}
+            >
               <Hand size={15} aria-hidden="true" />
               {t('Pan')}
             </button>
@@ -445,23 +546,29 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
               className={styles.toolbarBtn}
               onClick={() => zoom(false)}
               aria-label={t('Zoom out')}
-              title={t('Zoom out')}
+              aria-keyshortcuts="-"
+              title={`${t('Zoom out')} (-)`}
             >
               <Minus size={15} aria-hidden="true" />
             </button>
-            <button type="button" className={styles.toolbarBtn} onClick={() => zoom(true)} aria-label={t('Zoom in')} title={t('Zoom in')}>
+            <button
+              type="button"
+              className={styles.toolbarBtn}
+              onClick={() => zoom(true)}
+              aria-label={t('Zoom in')}
+              aria-keyshortcuts="Plus ="
+              title={`${t('Zoom in')} (+ / =)`}
+            >
               <Plus size={15} aria-hidden="true" />
             </button>
             {fitButton}
           </div>
           <select
             aria-label={t('Camera view')}
+            aria-keyshortcuts="0 1 2 3 4 5 6"
+            title={`${t('Camera view')} (0–6)`}
             value={view}
-            onChange={(event) => {
-              const nextView = event.target.value as keyof typeof viewDirections;
-              setView(nextView);
-              viewportRef.current?.fit(viewDirections[nextView]);
-            }}
+            onChange={(event) => selectView(event.target.value as keyof typeof viewDirections)}
           >
             <option value="" disabled>
               {t('Camera view')}
@@ -484,7 +591,14 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
           tabIndex={advanced && ready ? 0 : undefined}
           role={advanced ? 'group' : undefined}
           aria-label={advanced ? t('3D viewport. Use arrow keys to orbit or pan and plus or minus to zoom.') : undefined}
-          onKeyDown={advanced ? handleViewportKey : undefined}
+          onKeyDown={advanced && ready ? handleViewportKey : undefined}
+          onPointerDown={
+            advanced && ready
+              ? (event) => {
+                  if (event.button === 0) event.currentTarget.focus({ preventScroll: true });
+                }
+              : undefined
+          }
         />
         {status !== 'ready' && (
           <div className={styles.viewportNotice} role="status">
@@ -541,13 +655,29 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
       </div>
 
       {ready && advanced && (
+        <ViewerShortcuts
+          open={shortcutsOpen}
+          onOpenChange={setShortcutsOpen}
+          buttonRef={shortcutButtonRef}
+          onReturnToViewport={() => hostRef.current?.focus()}
+        />
+      )}
+
+      {ready && advanced && (
         <div className={styles.settings}>
           <details>
-            <summary>{t('View settings')}</summary>
+            <summary aria-keyshortcuts="L" title={`${t('View settings')} (L)`}>
+              {t('View settings')}
+            </summary>
             <div className={styles.settingsFields}>
               <label className={styles.field}>
                 {t('Render mode')}
-                <select value={mode} onChange={(event) => setMode(event.target.value as RenderMode)}>
+                <select
+                  value={mode}
+                  onChange={(event) => setMode(event.target.value as RenderMode)}
+                  aria-keyshortcuts="S W N"
+                  title={`${t('Render mode')} (S / W / N)`}
+                >
                   <option value="solid">{t('Solid')}</option>
                   <option value="wireframe">{t('Wireframe')}</option>
                   <option value="normals">{t('Normals')}</option>
@@ -555,7 +685,12 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
               </label>
               <label className={styles.field}>
                 {t('Environment')}
-                <select value={environment} onChange={(event) => setEnvironment(event.target.value as Environment)}>
+                <select
+                  value={environment}
+                  onChange={(event) => setEnvironment(event.target.value as Environment)}
+                  aria-keyshortcuts="E"
+                  title={`${t('Environment')} (E)`}
+                >
                   <option value="studio">{t('Studio')}</option>
                   <option value="daylight">{t('Daylight')}</option>
                   <option value="warm">{t('Warm')}</option>
@@ -566,6 +701,7 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
                   <label htmlFor={intensityId}>{t('Light intensity')}</label> <output>{intensity}%</output>
                 </span>
                 <input
+                  ref={intensityRef}
                   id={intensityId}
                   type="range"
                   min={0}
@@ -590,18 +726,32 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
               </div>
               <div className={styles.guideToggles}>
                 <label>
-                  <input type="checkbox" checked={grid} onChange={(event) => setGrid(event.target.checked)} />
+                  <input
+                    type="checkbox"
+                    checked={grid}
+                    onChange={(event) => setGrid(event.target.checked)}
+                    aria-keyshortcuts="G"
+                    title={`${t('Grid')} (G)`}
+                  />
                   {t('Grid')}
                 </label>
                 <label>
-                  <input type="checkbox" checked={showAxes} onChange={(event) => setShowAxes(event.target.checked)} />
+                  <input
+                    type="checkbox"
+                    checked={showAxes}
+                    onChange={(event) => setShowAxes(event.target.checked)}
+                    aria-keyshortcuts="X"
+                    title={`${t('Axes')} (X)`}
+                  />
                   {t('Axes')}
                 </label>
               </div>
             </div>
           </details>
           <details>
-            <summary>{t('Preview pose')}</summary>
+            <summary aria-keyshortcuts="T" title={`${t('Preview pose')} (T)`}>
+              {t('Preview pose')}
+            </summary>
             <div className={styles.settingsFields}>
               {(['position', 'rotation'] as const).map((kind) => (
                 <fieldset className={styles.poseFields} key={kind}>
@@ -610,6 +760,7 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
                     <label className={styles.field} key={axis}>
                       {axis}
                       <input
+                        ref={kind === 'position' && index === 0 ? firstPositionRef : undefined}
                         type="number"
                         step="any"
                         value={pose[kind][index]}

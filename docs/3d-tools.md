@@ -175,3 +175,4 @@ To prevent browser tab crashes, out-of-memory errors, and denial-of-service cond
 - **Design Tokens:** The 3D family uses dedicated theme tokens `--media-3d` and `--media-3d-soft` defined in `src/design/tokens.css`.
 - **Navigation & Icons:** Represented by the Lucide `Box` icon in navigation menus, the home page browse grid, and tool cards.
 - **Responsive Viewport:** `MeshViewer.tsx` integrates an automatic `ResizeObserver` that dynamically updates aspect ratio and camera projection matrix to fit any screen resolution without distortion.
+- **3D Viewer Keyboard Controls:** In `/3d/viewer`, click the model or use `Tab` to focus the viewport. Press `?` to open the full shortcut reference. Use `F` to fit the model, `O` for orbit, or `P` for pan.
