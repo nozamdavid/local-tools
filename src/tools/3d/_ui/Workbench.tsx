@@ -5,6 +5,7 @@ import { downloadBlob } from '../../../lib/download';
 import { formatBytes } from '../../../lib/format';
 import { ALL_MESH_FORMATS, detectFormatFromFilename, type MeshFormat, type MeshModel } from './types';
 import { importModel, exportModel, cancelMeshJobs, MESH_ACCEPT } from '../_mesh/client';
+import type { MeshImportIntent } from '../_mesh/types';
 import { Download, RotateCcw } from 'lucide-react';
 import { useI18n } from '../../../lib/i18n';
 import styles from './Workbench.module.css';
@@ -240,9 +241,10 @@ export function buildExportFilename(baseName: string, suffix = '', format: strin
 
 export interface Use3DWorkbenchOptions {
   multiple?: boolean;
+  importIntent?: MeshImportIntent;
 }
 
-export function use3DWorkbench({ multiple = false }: Use3DWorkbenchOptions = {}) {
+export function use3DWorkbench({ multiple = false, importIntent }: Use3DWorkbenchOptions = {}) {
   const { t } = useI18n();
   const [file, setFile] = useState<File | null>(null);
   const [files, setFiles] = useState<File[]>([]);
@@ -290,7 +292,7 @@ export function use3DWorkbench({ multiple = false }: Use3DWorkbenchOptions = {})
           // Multi-file loading: import each file before committing
           const loadedPairs: { file: File; model: MeshModel }[] = [];
           for (const f of incoming) {
-            const m = await importModel(f);
+            const m = await importModel(f, importIntent);
             if (currentJob !== jobIdRef.current) return;
             loadedPairs.push({ file: f, model: m });
           }
@@ -311,7 +313,7 @@ export function use3DWorkbench({ multiple = false }: Use3DWorkbenchOptions = {})
           const initialFormat = detectFormatFromFilename(selected.name);
           setExportFormat(initialFormat);
 
-          const m = await importModel(selected);
+          const m = await importModel(selected, importIntent);
           if (currentJob !== jobIdRef.current) return;
 
           setFile(selected);
@@ -328,7 +330,7 @@ export function use3DWorkbench({ multiple = false }: Use3DWorkbenchOptions = {})
         }
       }
     },
-    [currentModel, multiple, t],
+    [currentModel, importIntent, multiple, t],
   );
 
   // Remove a file in multi-mode

@@ -1,5 +1,5 @@
-import type { MeshFormat, MeshModel, MeshOperation, MeshStats } from './types';
-import { validateFileSize, validateMeshModel } from './validation';
+import type { MeshFormat, MeshImportIntent, MeshModel, MeshOperation, MeshStats } from './types';
+import { DEFAULT_MESH_GEOMETRY_LIMITS, VIEWER_3MF_GEOMETRY_LIMITS, validateFileSize, validateMeshModel } from './validation';
 import { analyzeMesh, mergeMeshModels, splitComponents } from './topology';
 import { flipNormals, transformMesh } from './transforms';
 import { simplifyMesh } from './simplify';
@@ -9,7 +9,7 @@ import { exportPLY, parsePLY } from './formats/ply';
 import { export3MF, parse3MF } from './formats/threemf';
 
 export type WorkerRequest =
-  | { id: number; type: 'import'; buffer: ArrayBuffer; filename: string; extension: string }
+  | { id: number; type: 'import'; buffer: ArrayBuffer; filename: string; extension: string; intent?: MeshImportIntent }
   | { id: number; type: 'inspect'; model: MeshModel }
   | { id: number; type: 'process'; model: MeshModel; operation: MeshOperation }
   | { id: number; type: 'split'; model: MeshModel }
@@ -32,6 +32,7 @@ async function handleWorkerRequest(req: WorkerRequest): Promise<void> {
         let model: MeshModel;
         const baseName = filename.replace(/\.[^/.]+$/, '');
         const ext = extension.toLowerCase();
+        const limits = ext === '3mf' && req.intent === 'viewer' ? VIEWER_3MF_GEOMETRY_LIMITS : DEFAULT_MESH_GEOMETRY_LIMITS;
 
         switch (ext) {
           case 'stl':
@@ -46,13 +47,13 @@ async function handleWorkerRequest(req: WorkerRequest): Promise<void> {
             model = parsePLY(buffer, baseName);
             break;
           case '3mf':
-            model = await parse3MF(buffer, baseName);
+            model = await parse3MF(buffer, baseName, limits);
             break;
           default:
             throw new Error(`Unsupported 3D mesh format: .${ext}`);
         }
 
-        validateMeshModel(model);
+        validateMeshModel(model, limits);
 
         const response: WorkerResponse = { id, ok: true, result: model };
         // Transfer newly allocated arrays to client

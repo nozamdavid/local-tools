@@ -1,4 +1,4 @@
-import type { MeshFormat, MeshModel, MeshOperation, MeshStats } from './types';
+import type { MeshFormat, MeshImportIntent, MeshModel, MeshOperation, MeshStats } from './types';
 import { MESH_ACCEPT, MESH_CAPABILITIES } from './types';
 import { MAX_FILE_SIZE_BYTES, MAX_CAD_FILE_SIZE_BYTES } from './validation';
 import type { WorkerRequest, WorkerResponse } from './mesh.worker';
@@ -121,7 +121,7 @@ const CAD_MIME_TYPES = [
  * Expresses positions in millimeters (mm) with indexed geometry.
  * Automatically routes CAD formats to lazy CAD adapter and mesh formats to mesh worker.
  */
-export async function importModel(file: File): Promise<MeshModel> {
+export async function importModel(file: File, intent?: MeshImportIntent): Promise<MeshModel> {
   if (file.size === 0) {
     throw new Error(`File "${file.name}" is empty (0 bytes).`);
   }
@@ -194,6 +194,7 @@ export async function importModel(file: File): Promise<MeshModel> {
         buffer,
         filename: file.name,
         extension: effectiveExt,
+        intent,
       }),
       [buffer],
       jobGen,

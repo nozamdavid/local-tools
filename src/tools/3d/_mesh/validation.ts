@@ -7,6 +7,21 @@ export const MAX_VERTEX_COUNT = 3_000_000; // 3 million coordinates (1M vertices
 export const MAX_ZIP_UNCOMPRESSED_BYTES = 128 * 1024 * 1024; // 128 MB expanded ZIP
 export const MAX_ZIP_ENTRY_COUNT = 10_000;
 
+export interface MeshGeometryLimits {
+  readonly maxTriangles: number;
+  readonly maxVertices: number;
+}
+
+export const DEFAULT_MESH_GEOMETRY_LIMITS: MeshGeometryLimits = {
+  maxTriangles: MAX_TRIANGLE_COUNT,
+  maxVertices: MAX_VERTEX_COUNT / 3,
+};
+
+export const VIEWER_3MF_GEOMETRY_LIMITS: MeshGeometryLimits = {
+  maxTriangles: 4_000_000,
+  maxVertices: 4_000_000,
+};
+
 export function validateFileSize(sizeBytes: number, filename: string, maxBytes: number = MAX_FILE_SIZE_BYTES): void {
   if (sizeBytes > maxBytes) {
     const maxMb = (maxBytes / (1024 * 1024)).toFixed(0);
@@ -14,7 +29,7 @@ export function validateFileSize(sizeBytes: number, filename: string, maxBytes: 
   }
 }
 
-export function validateMeshModel(model: MeshModel): void {
+export function validateMeshModel(model: MeshModel, limits = DEFAULT_MESH_GEOMETRY_LIMITS): void {
   if (!model) {
     throw new Error('MeshModel cannot be null or undefined.');
   }
@@ -35,13 +50,13 @@ export function validateMeshModel(model: MeshModel): void {
   const vertexCount = positions.length / 3;
   const triangleCount = indices.length / 3;
 
-  if (triangleCount > MAX_TRIANGLE_COUNT) {
+  if (triangleCount > limits.maxTriangles) {
     throw new Error(
-      `Triangle count (${triangleCount.toLocaleString()}) exceeds maximum allowed limit of ${MAX_TRIANGLE_COUNT.toLocaleString()}.`,
+      `Triangle count (${triangleCount.toLocaleString()}) exceeds maximum allowed limit of ${limits.maxTriangles.toLocaleString()}.`,
     );
   }
 
-  if (positions.length > MAX_VERTEX_COUNT) {
+  if (vertexCount > limits.maxVertices) {
     throw new Error(`Vertex coordinate count (${positions.length.toLocaleString()}) exceeds maximum allowed limit.`);
   }
 

@@ -1,13 +1,13 @@
 import JSZip from 'jszip';
 import { XMLParser, XMLValidator } from 'fast-xml-parser';
+import { SaxesParser, type SaxesTagNS } from 'saxes';
 import { readZipEntry } from '../../../../lib/zip';
 import type { MeshModel } from '../types';
-import { MAX_TRIANGLE_COUNT, MAX_VERTEX_COUNT, MAX_ZIP_ENTRY_COUNT, MAX_ZIP_UNCOMPRESSED_BYTES } from '../validation';
+import { DEFAULT_MESH_GEOMETRY_LIMITS, MAX_ZIP_ENTRY_COUNT, MAX_ZIP_UNCOMPRESSED_BYTES } from '../validation';
 
 type Matrix3x4 = [number, number, number, number, number, number, number, number, number, number, number, number];
 
 const IDENTITY_MATRIX: Matrix3x4 = [1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0];
-const TRIANGLE_INDEX_ATTRIBUTES = ['@_v1', '@_v2', '@_v3'];
 const PRODUCTION_NAMESPACE = 'http://schemas.microsoft.com/3dmanufacturing/production/2015/06';
 
 function matrixDeterminant(M: Matrix3x4): number {
@@ -87,21 +87,6 @@ interface ModelPart {
   hasBuildTransforms: boolean;
 }
 
-function productionPath(node: Record<string, unknown>, ancestors: Record<string, unknown>[]): string | undefined {
-  let path: string | undefined;
-  for (const [key, value] of Object.entries(node)) {
-    const prefix = /^@_([^:]+):path$/.exec(key)?.[1];
-    if (!prefix) continue;
-
-    const declaration = `@_xmlns:${prefix}`;
-    const namespace = node[declaration] ?? ancestors.find((ancestor) => declaration in ancestor)?.[declaration];
-    if (namespace !== PRODUCTION_NAMESPACE) continue;
-    if (path !== undefined) throw new Error('Invalid 3MF: duplicate Production path attributes.');
-    path = String(value);
-  }
-  return path;
-}
-
 function resolveProductionPath(path: string): string {
   const invalidPath = () => new Error(`Invalid 3MF Production model path "${path}". Expected an absolute path inside the archive.`);
   if (!path.startsWith('/')) throw invalidPath();
@@ -118,11 +103,202 @@ function resolveProductionPath(path: string): string {
   return entryPath;
 }
 
+const MODEL_CHILDREN: Readonly<Record<string, readonly string[]>> = {
+  model: ['resources', 'build'],
+  resources: ['object'],
+  object: ['mesh', 'components'],
+  mesh: ['vertices', 'triangles'],
+  vertices: ['vertex'],
+  triangles: ['triangle'],
+  components: ['component'],
+  build: ['item'],
+};
+
+class MeshTriples<T extends Float32Array<ArrayBuffer> | Uint32Array<ArrayBuffer>> {
+  private values: T;
+  private length = 0;
+
+  constructor(private readonly ArrayType: new (length: number) => T) {
+    this.values = new ArrayType(0);
+  }
+
+  append(a: number, b: number, c: number): void {
+    if (this.length === this.values.length) {
+      const expanded = new this.ArrayType(Math.max(24, this.length * 2));
+      expanded.set(this.values);
+      this.values = expanded;
+    }
+    this.values[this.length++] = a;
+    this.values[this.length++] = b;
+    this.values[this.length++] = c;
+  }
+
+  finish(): T {
+    return this.values.subarray(0, this.length) as T;
+  }
+}
+
+function parseModelUnit(tag: SaxesTagNS): number {
+  const namespace = tag.uri.trim();
+  if (namespace && !namespace.includes('3dmanufacturing')) {
+    throw new Error(`Unsupported 3MF: unknown namespace "${namespace}". Expected 3MF Core namespace.`);
+  }
+
+  for (const attr of Object.values(tag.attributes)) {
+    if (attr.prefix === 'xmlns' || attr.local.toLowerCase() !== 'requiredextensions') continue;
+    for (const prefix of attr.value.trim().split(/\s+/)) {
+      if (prefix && tag.ns[prefix] !== PRODUCTION_NAMESPACE) {
+        throw new Error(`Unsupported 3MF: required extension "${prefix}" is not supported.`);
+      }
+    }
+  }
+
+  const unit = (tag.attributes.unit?.value.trim() || 'millimeter').toLowerCase();
+  switch (unit) {
+    case 'micron':
+      return 0.001;
+    case 'millimeter':
+      return 1;
+    case 'centimeter':
+      return 10;
+    case 'inch':
+      return 25.4;
+    case 'foot':
+      return 304.8;
+    case 'meter':
+      return 1000;
+    default:
+      throw new Error(`Unsupported or invalid 3MF unit: "${unit}".`);
+  }
+}
+
+function parseModelPart(bytes: Uint8Array, path: string, isRoot: boolean, warnings: Set<string>): ModelPart {
+  const part: ModelPart = { unitScale: 1, objects: new Map(), buildItems: [], hasBuildTransforms: false };
+  const elements: (string | undefined)[] = [];
+  let coreNamespace = '';
+  let objectId = '';
+  let object: RawObject;
+  let vertices: MeshTriples<Float32Array<ArrayBuffer>>;
+  let triangles: MeshTriples<Uint32Array<ArrayBuffer>>;
+
+  function parseReference(tag: SaxesTagNS, matrix?: string): ObjectReference {
+    const targetPath = Object.values(tag.attributes)
+      .find((attr) => attr.local === 'path' && attr.uri === PRODUCTION_NAMESPACE)
+      ?.value.trim();
+    if (targetPath !== undefined && !isRoot) {
+      throw new Error(`Invalid 3MF: Production path on a component in non-root model part "/${path}".`);
+    }
+
+    const transform = parse3MFMatrix(matrix);
+    // Normalize translations in the units of the part that declares the transform.
+    transform[9] *= part.unitScale;
+    transform[10] *= part.unitScale;
+    transform[11] *= part.unitScale;
+    return {
+      modelPath: targetPath === undefined ? path : resolveProductionPath(targetPath),
+      objectId: tag.attributes.objectid?.value.trim() ?? '',
+      transform,
+    };
+  }
+
+  function parseIndex(attribute?: string): number {
+    const value = attribute?.trim() ?? '';
+    const index = Number(value);
+    if (!/^\d+$/.test(value) || index > 0xffffffff) {
+      throw new Error(`Invalid 3MF vertex index "${value}" in object "${objectId}".`);
+    }
+    return index;
+  }
+
+  const malformedXml = (detail: string, cause?: Error) =>
+    new Error(`Invalid 3MF: malformed XML in 3D model document "/${path}" (${detail}).`, { cause });
+  const parser = new SaxesParser({ xmlns: true });
+  parser.on('error', (error) => {
+    throw malformedXml(error.message, error);
+  });
+  parser.on('doctype', () => {
+    throw malformedXml('DTDs are forbidden');
+  });
+
+  parser.on('opentag', (tag) => {
+    const parent = elements.at(-1);
+    const isModel = elements.length === 0;
+    if (isModel) {
+      if (tag.local !== 'model') throw new Error('Invalid 3MF: root <model> element missing.');
+      coreNamespace = tag.uri;
+    }
+    const element = isModel || (tag.uri === coreNamespace && parent && MODEL_CHILDREN[parent]?.includes(tag.local)) ? tag.local : undefined;
+    elements.push(element);
+
+    if (parent === 'resources' && ['colorgroup', 'base', 'm_colorgroup'].includes(tag.local)) {
+      warnings.add('3MF color groups, materials, and textures were ignored (geometry-only import).');
+    }
+
+    const attrs = tag.attributes;
+    switch (element) {
+      case 'model':
+        part.unitScale = parseModelUnit(tag);
+        break;
+      case 'object':
+        objectId = attrs.id?.value.trim() ?? '';
+        if (!objectId || part.objects.has(objectId)) {
+          throw new Error(`Invalid 3MF object ID "${objectId}". Object IDs must be present and unique.`);
+        }
+        object = {};
+        part.objects.set(objectId, object);
+        break;
+      case 'mesh':
+        if (object.mesh) throw malformedXml(`duplicate mesh in object "${objectId}"`);
+        vertices = new MeshTriples(Float32Array);
+        triangles = new MeshTriples(Uint32Array);
+        break;
+      case 'vertex':
+        vertices.append(Number(attrs.x?.value), Number(attrs.y?.value), Number(attrs.z?.value));
+        break;
+      case 'triangle':
+        triangles.append(parseIndex(attrs.v1?.value), parseIndex(attrs.v2?.value), parseIndex(attrs.v3?.value));
+        break;
+      case 'component':
+        (object.components ??= []).push(parseReference(tag, attrs.transform?.value.trim()));
+        break;
+      case 'item':
+        // Only the root model contributes build instructions.
+        if (isRoot) {
+          const matrix = attrs.transform?.value.trim();
+          part.buildItems.push(parseReference(tag, matrix));
+          part.hasBuildTransforms ||= Boolean(matrix);
+        }
+        break;
+    }
+  });
+
+  parser.on('closetag', () => {
+    if (elements.pop() !== 'mesh') return;
+    const positions = vertices.finish();
+    const indices = triangles.finish();
+    // Check indices after the full mesh has been read, before looking up any instances.
+    for (const index of indices) {
+      if (index >= positions.length / 3) {
+        throw new Error(`Invalid 3MF vertex index "${index}" in object "${objectId}".`);
+      }
+    }
+    object.mesh = { positions, indices };
+  });
+
+  const decoder = new TextDecoder();
+  const chunkBytes = 64 * 1024;
+  for (let offset = 0; offset < bytes.length; offset += chunkBytes) {
+    parser.write(decoder.decode(bytes.subarray(offset, offset + chunkBytes), { stream: true }));
+  }
+  parser.write(decoder.decode()).close();
+  return part;
+}
+
 /**
- * Parses a 3MF archive using fast-xml-parser and JSZip.
+ * Parses a 3MF archive without retaining an XML tree for model parts.
  * Runs completely in a Web Worker without DOMParser.
  */
-export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<MeshModel> {
+export async function parse3MF(buffer: ArrayBuffer, name = 'model', limits = DEFAULT_MESH_GEOMETRY_LIMITS): Promise<MeshModel> {
   let zip: JSZip;
   try {
     zip = await JSZip.loadAsync(buffer);
@@ -155,20 +331,20 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
   }
 
   let actualDecompressedBytes = 0;
-  async function safeReadText(entry: JSZip.JSZipObject): Promise<string> {
+  async function safeReadBytes(entry: JSZip.JSZipObject): Promise<Uint8Array> {
     const bytes = await readZipEntry(
       entry,
       MAX_ZIP_UNCOMPRESSED_BYTES - actualDecompressedBytes,
       '3MF archive exceeded maximum actual decompressed size during extraction.',
     );
     actualDecompressedBytes += bytes.byteLength;
-    return new TextDecoder().decode(bytes);
+    return bytes;
   }
 
   const xmlParser = new XMLParser({
     ignoreAttributes: false,
     attributeNamePrefix: '@_',
-    isArray: (name) => ['vertex', 'triangle', 'object', 'component', 'item', 'Relationship'].includes(name),
+    isArray: (name) => name === 'Relationship',
   });
 
   // 2. Inspect relationships in _rels/.rels
@@ -177,7 +353,7 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
   const relsEntry = zip.file('_rels/.rels');
 
   if (relsEntry) {
-    const relsXml = await safeReadText(relsEntry);
+    const relsXml = new TextDecoder().decode(await safeReadBytes(relsEntry));
     const relsValidation = XMLValidator.validate(relsXml);
     if (relsValidation !== true) {
       throw new Error(`Invalid 3MF: malformed XML in relationships document (${relsValidation.err.msg}).`);
@@ -243,155 +419,7 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
 
     const entry = zip.file(path);
     if (!entry) throw new Error(`Invalid 3MF: referenced model part "/${path}" was not found in the archive.`);
-    const modelXml = await safeReadText(entry);
-    const modelValidation = XMLValidator.validate(modelXml);
-    if (modelValidation !== true) {
-      throw new Error(`Invalid 3MF: malformed XML in 3D model document "/${path}" (${modelValidation.err.msg}).`);
-    }
-
-    const parsedModel = xmlParser.parse(modelXml);
-
-    const modelNode = parsedModel?.model;
-    if (!modelNode) {
-      throw new Error('Invalid 3MF: root <model> element missing.');
-    }
-
-    // Validate root namespace
-    if (modelNode['@_xmlns']) {
-      const ns = String(modelNode['@_xmlns']).trim();
-      if (!ns.includes('3dmanufacturing')) {
-        throw new Error(`Unsupported 3MF: unknown namespace "${ns}". Expected 3MF Core namespace.`);
-      }
-    }
-
-    // Check required extensions (case-insensitive and prefix-tolerant)
-    for (const [key, value] of Object.entries(modelNode)) {
-      if (key.startsWith('@_xmlns:') || !/^@_(?:[^:]+:)?requiredextensions$/i.test(key)) continue;
-      for (const prefix of String(value).trim().split(/\s+/)) {
-        if (prefix && modelNode[`@_xmlns:${prefix}`] !== PRODUCTION_NAMESPACE) {
-          throw new Error(`Unsupported 3MF: required extension "${prefix}" is not supported.`);
-        }
-      }
-    }
-
-    // Units conversion to millimeters (mm) - fail closed on unknown units
-    const unitAttr = modelNode['@_unit'];
-    const unit = (unitAttr ? String(unitAttr) : 'millimeter').toLowerCase();
-    let unitScale = 1.0;
-
-    switch (unit) {
-      case 'micron':
-        unitScale = 0.001;
-        break;
-      case 'millimeter':
-        unitScale = 1.0;
-        break;
-      case 'centimeter':
-        unitScale = 10.0;
-        break;
-      case 'inch':
-        unitScale = 25.4;
-        break;
-      case 'foot':
-        unitScale = 304.8;
-        break;
-      case 'meter':
-        unitScale = 1000.0;
-        break;
-      default:
-        throw new Error(`Unsupported or invalid 3MF unit: "${unit}".`);
-    }
-
-    function parseReference(node: Record<string, unknown>, ancestors: Record<string, unknown>[]): ObjectReference {
-      const targetPath = productionPath(node, ancestors);
-      if (targetPath !== undefined && path !== modelPath) {
-        throw new Error(`Invalid 3MF: Production path on a component in non-root model part "/${path}".`);
-      }
-
-      const transform = parse3MFMatrix(node['@_transform'] ? String(node['@_transform']) : undefined);
-      // Normalize translations in the units of the part that declares the transform.
-      transform[9] *= unitScale;
-      transform[10] *= unitScale;
-      transform[11] *= unitScale;
-      return {
-        modelPath: targetPath === undefined ? path : resolveProductionPath(targetPath),
-        objectId: String(node['@_objectid'] || ''),
-        transform,
-      };
-    }
-
-    // Parse resources: objects (<mesh> or <components>)
-    const resourcesNode = modelNode.resources;
-    const rawObjectsMap = new Map<string, RawObject>();
-
-    if (resourcesNode) {
-      if (resourcesNode.colorgroup || resourcesNode.base || resourcesNode.m_colorgroup) {
-        warnings.add('3MF color groups, materials, and textures were ignored (geometry-only import).');
-      }
-
-      const objectNodes: unknown[] = resourcesNode.object || [];
-      for (const objNode of objectNodes) {
-        const obj = objNode as Record<string, unknown>;
-        const objId = String(obj['@_id'] || '');
-        if (!objId || rawObjectsMap.has(objId)) {
-          throw new Error(`Invalid 3MF object ID "${objId}". Object IDs must be present and unique.`);
-        }
-
-        const rawObj: RawObject = {};
-
-        if (obj.mesh) {
-          const meshNode = obj.mesh as Record<string, unknown>;
-          const verticesNode = (meshNode.vertices as Record<string, unknown>)?.vertex || [];
-          const trianglesNode = (meshNode.triangles as Record<string, unknown>)?.triangle || [];
-
-          const vList = Array.isArray(verticesNode) ? verticesNode : [verticesNode];
-          const tList = Array.isArray(trianglesNode) ? trianglesNode : [trianglesNode];
-
-          const positions = new Float32Array(vList.length * 3);
-          for (let i = 0; i < vList.length; i++) {
-            const v = vList[i] as Record<string, unknown>;
-            positions[i * 3] = Number(v['@_x']);
-            positions[i * 3 + 1] = Number(v['@_y']);
-            positions[i * 3 + 2] = Number(v['@_z']);
-          }
-
-          const indices = new Uint32Array(tList.length * 3);
-          for (let t = 0; t < tList.length; t++) {
-            const tri = tList[t] as Record<string, unknown>;
-            for (const [corner, attribute] of TRIANGLE_INDEX_ATTRIBUTES.entries()) {
-              const value = String(tri[attribute] ?? '').trim();
-              const index = Number(value);
-              if (!/^\d+$/.test(value) || index >= vList.length) {
-                throw new Error(`Invalid 3MF vertex index "${value}" in object "${objId}".`);
-              }
-              indices[t * 3 + corner] = index;
-            }
-          }
-
-          rawObj.mesh = { positions, indices };
-        }
-
-        if (obj.components) {
-          const components = obj.components as Record<string, unknown>;
-          const compNodes = components.component || [];
-          const cList = Array.isArray(compNodes) ? compNodes : [compNodes];
-          const ancestors = [components, obj, resourcesNode, modelNode];
-          rawObj.components = cList.map((component) => parseReference(component as Record<string, unknown>, ancestors));
-        }
-
-        rawObjectsMap.set(objId, rawObj);
-      }
-    }
-
-    // The Production Extension gives build instructions only to the root model.
-    const buildNode = path === modelPath ? modelNode.build : undefined;
-    const itemNodes: Record<string, unknown>[] = buildNode?.item || [];
-    const part = {
-      unitScale,
-      objects: rawObjectsMap,
-      buildItems: itemNodes.map((item) => parseReference(item, [buildNode, modelNode])),
-      hasBuildTransforms: itemNodes.some((item) => Boolean(item['@_transform'])),
-    };
+    const part = parseModelPart(await safeReadBytes(entry), path, path === modelPath, warnings);
     modelParts.set(path, part);
     return part;
   }
@@ -424,12 +452,12 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model'): Promise<Mes
       expectedVertices += obj.mesh.positions.length / 3;
       expectedTriangles += obj.mesh.indices.length / 3;
 
-      if (expectedTriangles > MAX_TRIANGLE_COUNT) {
+      if (expectedTriangles > limits.maxTriangles) {
         throw new Error(
-          `3MF model exceeds maximum allowed triangles (${expectedTriangles.toLocaleString()} > ${MAX_TRIANGLE_COUNT.toLocaleString()}).`,
+          `3MF model exceeds maximum allowed triangles (${expectedTriangles.toLocaleString()} > ${limits.maxTriangles.toLocaleString()}).`,
         );
       }
-      if (expectedVertices * 3 > MAX_VERTEX_COUNT) {
+      if (expectedVertices > limits.maxVertices) {
         throw new Error('3MF model exceeds maximum allowed vertices.');
       }
       meshInstances.push({ mesh: obj.mesh, transform: combined, unitScale: part.unitScale });

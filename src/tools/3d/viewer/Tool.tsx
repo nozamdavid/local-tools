@@ -9,6 +9,7 @@ import { useI18n } from '../../../lib/i18n';
 import { classifyFile, extensionOf, isToolEligibleForBatch, mimeOf, VIEWER_ACCEPT } from '../../../lib/toolInputs';
 import { getToolMeta } from '../../registry';
 import { CAD_ACCEPT, getCadFormat } from '../_cad/client';
+import { DEFAULT_MESH_GEOMETRY_LIMITS } from '../_mesh/validation';
 import { ALL_MESH_FORMATS, MeshViewer, WorkbenchWarnings, translate3DMessage, use3DWorkbench, type MeshFormat } from '../_ui';
 import type { LocalSceneAsset } from './gltf';
 import styles from './Tool.module.css';
@@ -57,7 +58,9 @@ function getBoundingBoxSize(positions: Float32Array) {
 export default function ViewerTool() {
   const { t, locale } = useI18n();
   const meta = getToolMeta('three-viewer');
-  const { file, currentModel, loading, importError, processError, loadFiles, cancelProcessing, reset } = use3DWorkbench();
+  const { file, currentModel, loading, importError, processError, loadFiles, cancelProcessing, reset } = use3DWorkbench({
+    importIntent: 'viewer',
+  });
   const mounted = useRef(false);
   const folderInput = useRef<HTMLInputElement>(null);
   const sceneRequest = useRef<AbortController | null>(null);
@@ -179,6 +182,11 @@ export default function ViewerTool() {
   const size = scene?.asset.dimensions ?? meshSize;
   const source = scene?.file ?? file;
   const format = scene?.format ?? (file ? getSourceFormat(file) : undefined);
+  const exceedsEditingLimits =
+    format === '3mf' &&
+    currentModel &&
+    (currentModel.indices.length / 3 > DEFAULT_MESH_GEOMETRY_LIMITS.maxTriangles ||
+      currentModel.positions.length / 3 > DEFAULT_MESH_GEOMETRY_LIMITS.maxVertices);
   const assumedUnits = format === 'stl' || format === 'obj' || format === 'ply' || format === 'brep';
   const dimensions = new Intl.NumberFormat(locale, { maximumSignificantDigits: 6 });
   const error = viewerError ? t(viewerError.message, viewerError.params) : importError && translate3DMessage(importError, t);
@@ -246,7 +254,7 @@ export default function ViewerTool() {
             </dl>
 
             {!scene && <WorkbenchWarnings warnings={currentModel?.warnings} />}
-            {!scene && <ContinueWith results={[{ name: source.name, blob: source }]} />}
+            {!scene && !exceedsEditingLimits && <ContinueWith results={[{ name: source.name, blob: source }]} />}
           </>
         ) : loading || loadingScene ? (
           <div className={styles.importProgress}>

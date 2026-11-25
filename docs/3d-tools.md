@@ -37,7 +37,7 @@ The 3D family comprises seven dedicated routes registered under the `3d` media t
 | **STL** | `.stl` | Built-in parser (`parseSTL`) | Built-in exporter (`exportSTL`) | Binary and ASCII auto-detection; welding of unindexed vertices; binary export with per-triangle facet normals. |
 | **OBJ** | `.obj` | Built-in parser (`parseOBJ`) | Built-in exporter (`exportOBJ`) | Wavefront OBJ; handles positive/negative vertex indices and fan polygon triangulation; exports vertex positions (`v`) and faces (`f`). |
 | **PLY** | `.ply` | `PLYLoader` (Three.js) | Built-in exporter (`exportPLY`) | Binary and ASCII support; unindexed triangle soups automatically welded; exports standard ASCII vertex/face list. |
-| **3MF** | `.3mf` | Built-in parser (`parse3MF`) via `JSZip` + `fast-xml-parser` | Built-in writer (`export3MF`) via `JSZip` | Standard OPC ZIP package; parses XML geometry, build instances, and component transform hierarchies; exports compliant 3MF ZIP. |
+| **3MF** | `.3mf` | Built-in parser (`parse3MF`) using `JSZip`, `saxes`, and `fast-xml-parser` | Built-in writer (`export3MF`) via `JSZip` | Standard OPC ZIP package; parses XML geometry, build instances, and component transform hierarchies; exports compliant 3MF ZIP. |
 | **STEP** | `.step`, `.stp` | `occt-import-js` (OpenCASCADE WASM) | *None* (Import only) | Analytic B-Rep parsing and deflection-based tessellation into indexed triangular mesh. |
 | **IGES** | `.iges`, `.igs` | `occt-import-js` (OpenCASCADE WASM) | *None* (Import only) | Traditional CAD surface and solid import via OpenCASCADE `ReadIgesFile`. |
 | **BREP** | `.brep` | `occt-import-js` (OpenCASCADE WASM) | *None* (Import only) | Native OpenCASCADE Boundary Representation solid model import via `ReadBrepFile`. |
@@ -159,8 +159,8 @@ To prevent browser tab crashes, out-of-memory errors, and denial-of-service cond
 | :--- | :--- | :--- |
 | **Max Mesh File Size** | **100 MB** (`MAX_FILE_SIZE_BYTES`) | Checked before reading buffer into memory or posting to worker. |
 | **Max CAD File Size** | **25 MB** (`MAX_CAD_FILE_SIZE_BYTES`) | Validated prior to loading into OpenCASCADE WASM heap. |
-| **Max Triangle Count** | **1,000,000 triangles** (`MAX_TRIANGLE_COUNT`) | Enforced during parsing, tessellation, and transform pre-checks. |
-| **Max Vertex Coordinate Count** | **3,000,000 floats** (`MAX_VERTEX_COUNT`) | Corresponds to 1,000,000 vertices (X, Y, Z). |
+| **Max Triangle Count** | **1,000,000 triangles** (`MAX_TRIANGLE_COUNT`), **4,000,000 triangles** for 3MF viewing | The standard limit applies to 3MF editing and analysis. Triangle limits are enforced during parsing, tessellation, and transform pre-checks as applicable. |
+| **Max Vertex Count** | **1,000,000 vertices** (3,000,000 floats, `MAX_VERTEX_COUNT`), **4,000,000 vertices** for 3MF viewing (12,000,000 floats) | Each vertex has three coordinates (X, Y, Z). The standard limit applies to 3MF editing and analysis. File and archive checks also apply to 3MF viewing. |
 | **Max ZIP Uncompressed Size** | **128 MB** (`MAX_ZIP_UNCOMPRESSED_BYTES`) | Checked against declared headers and tracked during streaming extraction. |
 | **Max ZIP Entries & Instances** | **10,000 items** (`MAX_ZIP_ENTRY_COUNT`) | Prevents zip bomb recursion and excessive 3MF object instances. |
 | **Coordinate Sanity** | Finite numbers only | Coordinates are validated with `Number.isFinite`; non-finite numbers (NaN/Infinity) throw immediately. |

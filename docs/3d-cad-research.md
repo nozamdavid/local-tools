@@ -188,7 +188,7 @@ The most common, high-demand user workflow is **converting proprietary CAD (STEP
 | **STL (`.stl`)** | Built-in binary/ASCII parser (`parseSTL`) | Built-in binary exporter (`exportSTL`) | Binary is preferred (compact 50 bytes/tri). Welds coincident vertices on import. |
 | **OBJ (`.obj`)** | Built-in text parser (`parseOBJ`) | Built-in text exporter (`exportOBJ`) | Text-based, supports positive/negative indices, exports positions and faces only. |
 | **PLY (`.ply`)** | Three.js `PLYLoader` | Built-in ASCII exporter (`exportPLY`) | ASCII and binary import; welds unindexed meshes; exports positions and faces. |
-| **3MF (`.3mf`)** | Built-in parser (`parse3MF`) via `JSZip` + `fast-xml-parser` | Built-in writer (`export3MF`) via `JSZip` | 3MF is an OPC ZIP containing XML (`3D/3dmodel.model`). Imports core geometry and resolves Production extension part references within the archive. Rejects unknown required extensions. |
+| **3MF (`.3mf`)** | Built-in parser (`parse3MF`) using `JSZip`, `saxes`, and `fast-xml-parser` | Built-in writer (`export3MF`) via `JSZip` | 3MF is an OPC ZIP containing XML (`3D/3dmodel.model`). Imports core geometry and resolves Production extension part references within the archive. Rejects unknown required extensions. |
 | **STEP (`.step`)** | `occt-import-js` (via Web Worker) | *None* | Read is rock solid (~7.6 MB WASM). Write is omitted in production engine. |
 | **IGES (`.iges`)** | `occt-import-js.ReadIgesFile` | *None* | Read is fully supported via OpenCASCADE. |
 | **BREP (`.brep`)** | `occt-import-js.ReadBrepFile` | *None* | Native OpenCASCADE boundary representation text format; read supported. |

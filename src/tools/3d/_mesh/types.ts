@@ -6,6 +6,7 @@
  */
 
 export type MeshFormat = 'stl' | 'obj' | 'ply' | '3mf';
+export type MeshImportIntent = 'edit' | 'viewer';
 
 export interface MeshModel {
   name: string;
