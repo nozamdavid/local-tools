@@ -1,0 +1,15 @@
+.controls {
+  display: inline-flex;
+  flex: none;
+}
+
+.controls button[aria-pressed='true'] {
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.controls button[aria-pressed='true']:hover {
+  color: var(--accent-text);
+  background: var(--accent-soft-hover);
+}

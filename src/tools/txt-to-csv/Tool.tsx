@@ -5,6 +5,7 @@ import { Button, Field, Select } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { useI18n } from '../../lib/i18n';
 import { copyText } from '../../lib/clipboard';
+import { peekPendingFiles } from '../../lib/handoff';
 import { downloadBlob } from '../../lib/download';
 import { parseCsv, serializeCsv, detectDelimiter } from '../_tabular/csv';
 import styles from './Tool.module.css';
@@ -15,7 +16,7 @@ export default function TxtToCsvTool() {
   const title = meta.title !== 'txt-to-csv' ? meta.title : t('TXT to CSV Converter');
   const description = meta.description || t('Convert text, TSV, or log files into clean, standard CSV with quote-aware parsing.');
 
-  const [inputTab, setInputTab] = useState<'upload' | 'paste'>('paste');
+  const [inputTab, setInputTab] = useState<'upload' | 'paste'>(() => (peekPendingFiles(meta.path)?.length ? 'upload' : 'paste'));
   const [inputText, setInputText] = useState<string>('');
   const [sourceName, setSourceName] = useState<string>('converted.csv');
   const [delimiterMode, setDelimiterMode] = useState<string>('auto');

@@ -6,10 +6,10 @@ The in-app design reference is the `/design` route (`src/pages/DesignSystem.tsx`
 
 | File | Contents |
 | --- | --- |
-| `src/design/tokens.css` | Primitives (`--gray-*`, `--berry-*`), semantic colours, type, spacing, radius, elevation, motion, z-index |
+| `src/design/tokens.css` | Neutral and supporting hue primitives, signal colours, semantic colours, type, spacing, radius, elevation, motion, z-index |
 | `src/design/base.css` | Reset, document defaults, focus ring, `.sr-only`, `.skip-link` |
 | `src/design/components.css` | Global component classes: buttons, fields, slider, switch, segmented, badges, chips, alerts, file drop, progress, results, batch list, media tile, and zero-specificity defaults inside `.tool-content` |
-| `src/design/theme.ts` | `useTheme()` hook: follow the OS by default, with explicit light or dark preferences saved in `localStorage` |
+| `src/design/theme.ts` | `useTheme()` hook: charcoal on first visit, with Dark, Light, or System preferences saved in `localStorage` |
 | `src/design/media.ts` | `MEDIA_LIST` / `MEDIA_INFO`: label, title, description, path and icon for each media family |
 | `src/design/tool-icons.ts` | Canonical tool ID to Lucide icon mapping and `getToolIcon(meta)` lookup, with media-family fallback for unknown IDs |
 | `src/lib/i18n.ts` / `src/locales/` | Six-language interface messages, browser language selection, saved explicit choice, and live React subscriptions |
@@ -18,7 +18,7 @@ The in-app design reference is the `/design` route (`src/pages/DesignSystem.tsx`
 
 ## Principles
 
-1. **Quiet, flat surfaces.** Use neutral backgrounds, thin dividers, and restrained hover fills. Use semantic `--accent` for primary actions, focus, and selected states; keep media-family tints for category identity.
+1. **Flat workspace surfaces.** Use charcoal in dark mode and warm paper in light mode, with thin dividers and restrained hover fills. Use signal lime for shared primary buttons. Use semantic accent tokens for focus and selection, and media-family tints for category identity.
 2. **Keep the main task in view.** Keep the controls needed to complete the task and its primary action visible. Put secondary, contextual settings in native `<details className="tool-options">` with `.tool-options-body` when useful.
 3. **Keep common flows simple.** File selection carries one concise local-processing reminder. Shared upload, progress, result, and download components use compact layouts and clear actions.
 4. **Tokens, not values.** Components use semantic tokens so the same surfaces and controls work in light and dark themes.
@@ -34,16 +34,17 @@ The in-app design reference is the `/design` route (`src/pages/DesignSystem.tsx`
 
 ## Application shell
 
-- The homepage opens with the file selector, followed by media cards with larger category titles. Each card ends its category navigation with a `+N` link to all tools in that media family; the count reflects the current tool total and follows the selected locale's number formatting. The interface supports English, Spanish, Italian, German, Portuguese, and French. First visit follows the browser's preferred supported language; the shared header has a compact native language selector beside the sun/moon theme toggle. Explicit language choices are saved on the device, and the document language and number formatting follow the selection.
-- The shared shell has compact category navigation and search. Category navigation keeps media-family icons; tool catalogs use action icons selected by canonical registry ID.
+- The homepage pairs a large headline with a file drop panel. Opening files there suggests compatible tools. Below it, the ruled directory lists each media family, its category links, and a link to the full family index with a localized tool count.
+- The shared shell has compact category navigation, search, and appearance and language controls. The interface supports English, Spanish, Italian, German, Portuguese, and French. First visit follows the browser's preferred supported language. Explicit language choices are saved on the device, and the document language and number formatting follow the selection.
+- Media indexes group tools by category and use tool-specific icons selected by canonical registry ID. Category links jump to their corresponding sections, and filtering shows the matching tools.
 - Tool pages use breadcrumbs, a tool-specific heading icon, the task content, and a link back to their media index. They do not add a related-tools grid.
-- The footer stays minimal: a short note about browser technologies and the search shortcut.
+- The footer links home and offers a search button with its keyboard shortcut alongside a short note about browser technologies.
 - The shared file selector shows “Processed on this device. Nothing is uploaded.” beside the selection controls. Do not repeat this assurance as decorative copy throughout every surface.
 - The simplified presentation keeps the existing routes in `src/App.tsx`: `/`, `/file`, `/video`, `/image`, `/pdf`, `/3d`, `/design`, registry-defined tool paths, and legacy video slug redirects.
 
 ## Colour tokens
 
-Each semantic token holds both modes via `light-dark()`. The initial scheme follows the OS. The sun/moon toggle switches between light and dark, and that explicit choice is saved on the device and applied through `<html data-theme="light|dark">`. **Do not write `@media (prefers-color-scheme)` in tool CSS**: it ignores the user's saved choice.
+Theme-dependent colours resolve through `light-dark()`. Charcoal is the first-visit theme. The monitor button follows the OS, and the sun or moon button selects the opposite appearance. Each preference is saved on the device and its resolved theme is applied through `<html data-theme="light|dark">`. Use semantic tokens in tool CSS so it follows the user's appearance preference.
 
 | Token | Use |
 | --- | --- |
@@ -54,20 +55,21 @@ Each semantic token holds both modes via `light-dark()`. The initial scheme foll
 | `--surface-hover` / `--surface-active` | Hover and pressed fills |
 | `--border` / `--border-strong` / `--border-hover` | Lines: default, inputs and secondary buttons, hover |
 | `--text` / `--text-muted` / `--text-subtle` | Primary, secondary, placeholder/decorative text |
-| `--accent` / `--accent-hover` | Primary buttons, focus, active states (berry) |
+| `--signal` / `--signal-ink` | Signal-lime fill and dark ink for shared primary buttons |
+| `--accent` / `--accent-hover` | Theme-aware emphasis for focus and interactive states |
 | `--accent-soft` / `--accent-text` / `--accent-border` | Selected tint, text on tint, tinted outline |
 | `--on-accent` | Text on `--accent` |
 | `--focus-ring` | 3px focus halo (`box-shadow: 0 0 0 3px var(--focus-ring)`) |
 | `--input-bg` / `--input-border` | Form fields |
 | `--success`, `--warning`, `--danger`, `--info` + `-soft` + `-border` | Status text, tint and outline. `--danger-solid` for destructive buttons |
-| `--media-{file,video,image,pdf}` + `-soft` | Media family hues. Set `data-media="pdf"` on an element to get `--tone` / `--tone-soft` |
+| `--media-{file,video,image,pdf,3d}` + `-soft` | Media family hues. Set `data-media="pdf"` on an element to get `--tone` / `--tone-soft` |
 | `--checker-a` / `--checker-b` | Transparency checkerboard (`.checker`) |
 
 ## Scales
 
-- **Type:** Geist Variable for UI and Geist Mono Variable for numbers, sizes, hashes and code, both bundled locally via `@fontsource-variable`. Sizes go from `--text-2xs` (11px) to `--text-4xl` (36px), plus a fluid `--text-display`. Body text is `--text-base` (15px) and controls use `--text-md` (14px).
+- **Type:** Geist Variable for display, headings, body and controls. Geist Mono Variable for counts, shortcuts, metadata and code. Both are bundled locally via `@fontsource-variable`. The shared scale runs from `--text-2xs` (11px) to `--text-4xl` (36px), plus a fluid `--text-display`. Body text uses `--text-base` (15px), controls use `--text-md` (14px), and the home headline uses its own fluid display size.
 - **Spacing:** 4px grid, `--space-1` (4px) … `--space-20` (80px), plus half steps `-0-5`, `-1-5`, `-2-5`.
-- **Radius:** `xs 4 · sm 6 · md 8 · lg 12 · xl 16 · 2xl 22 · full`. Controls and previews use small-to-medium radii; tool catalog rows stay flat with dividers.
+- **Radius:** `xs 2 · sm 4 · md 6 · lg 8 · xl 10 · 2xl 12 · full`. Controls and previews use small-to-medium radii. Tool catalog rows use flat surfaces and dividers.
 - **Elevation:** `--shadow-xs … --shadow-lg`, `--shadow-overlay` for dialogs. Borders separate; shadows layer.
 - **Motion:** `--duration-fast/base/slow`, `--ease-out`. All durations drop to 0 with `prefers-reduced-motion`.
 

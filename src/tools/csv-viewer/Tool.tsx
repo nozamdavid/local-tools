@@ -5,6 +5,7 @@ import { Button, Field, Select } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { useI18n } from '../../lib/i18n';
 import { copyText } from '../../lib/clipboard';
+import { peekPendingFiles } from '../../lib/handoff';
 import { downloadBlob } from '../../lib/download';
 import { parseCsv, serializeCsv, detectDelimiter } from '../_tabular/csv';
 import styles from './Tool.module.css';
@@ -15,7 +16,7 @@ export default function CsvViewerTool() {
   const title = meta.title !== 'csv-viewer' ? meta.title : t('CSV Viewer');
   const description = meta.description || t('View, search, paginate, and inspect CSV/TSV tables safely in your browser.');
 
-  const [inputTab, setInputTab] = useState<'paste' | 'upload'>('paste');
+  const [inputTab, setInputTab] = useState<'paste' | 'upload'>(() => (peekPendingFiles(meta.path)?.length ? 'upload' : 'paste'));
   const [inputText, setInputText] = useState<string>('');
   const [sourceName, setSourceName] = useState<string>('table.csv');
   const [delimiterMode, setDelimiterMode] = useState<string>('auto');

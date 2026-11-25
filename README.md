@@ -80,7 +80,7 @@ Selected image, video, and PDF tools provide visual feedback before export. Wher
 
 - **Framework:** React 19, TypeScript, Vite
 - **Testing & tooling:** Vitest, ESLint, Prettier
-- **UI:** Quiet tool browsing with compact navigation, tool-specific Lucide icons, semantic accents, OS-aware light/dark appearance, and six interface languages; Geist fonts bundled locally
+- **UI:** Charcoal workspace with signal-lime actions, a file-first home, and a compact ruled tool directory. Light, dark, and system appearance, six interface languages, and locally bundled Geist fonts.
 - **Codecs & Runtimes:**
   - FFmpeg WASM (`@ffmpeg/ffmpeg`)
   - Mediabunny (`mediabunny`) with lazy local MP3 and AAC encoder extensions

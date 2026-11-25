@@ -1,41 +1,53 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 
-export type ThemePreference = 'system' | 'light' | 'dark';
+type Theme = 'light' | 'dark';
+export type ThemePreference = Theme | 'system';
 
 const STORAGE_KEY = 'loconvert-theme';
+const SYSTEM_THEME_QUERY = '(prefers-color-scheme: dark)';
 
 function readPreference(): ThemePreference {
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
-    return stored === 'light' || stored === 'dark' ? stored : 'system';
+    return stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'dark';
   } catch {
-    return 'system';
+    return 'dark';
   }
 }
 
-function applyPreference(preference: ThemePreference) {
-  const root = document.documentElement;
-  if (preference === 'system') delete root.dataset.theme;
-  else root.dataset.theme = preference;
+// Keep the document updates in sync with public/theme-init.js.
+function applyTheme(theme: Theme) {
+  document.documentElement.dataset.theme = theme;
+  document.querySelector<HTMLMetaElement>('meta[name="color-scheme"]')?.setAttribute('content', theme);
+  const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
+  const color = themeColor?.dataset[theme];
+  if (color) themeColor.content = color;
+
+  const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
+  if (favicon) {
+    const href = favicon.href.split('#')[0] + (theme === 'light' ? '#light' : '');
+    if (favicon.href !== href) favicon.href = href;
+  }
 }
 
-function readSystemTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined' || !window.matchMedia) return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+function readSystemTheme(): Theme {
+  if (typeof window === 'undefined' || !window.matchMedia) return 'dark';
+  return window.matchMedia(SYSTEM_THEME_QUERY).matches ? 'dark' : 'light';
 }
 
-/** Saved light/dark choices are persisted; the default follows the current OS preference. */
+/** Dark is the default. Explicit choices persist, including following the system. */
 export function useTheme() {
   const [preference, setPreferenceState] = useState<ThemePreference>(readPreference);
-  const [systemTheme, setSystemTheme] = useState<'light' | 'dark'>(readSystemTheme);
+  const [systemTheme, setSystemTheme] = useState(readSystemTheme);
+  const theme = preference === 'system' ? systemTheme : preference;
 
-  useEffect(() => {
-    applyPreference(preference);
-  }, [preference]);
+  useLayoutEffect(() => {
+    applyTheme(theme);
+  }, [theme]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
-    const query = window.matchMedia('(prefers-color-scheme: dark)');
+    const query = window.matchMedia(SYSTEM_THEME_QUERY);
     const update = () => setSystemTheme(query.matches ? 'dark' : 'light');
     update();
     if (typeof query.addEventListener === 'function') {
@@ -48,13 +60,12 @@ export function useTheme() {
 
   const setPreference = useCallback((next: ThemePreference) => {
     try {
-      if (next === 'system') localStorage.removeItem(STORAGE_KEY);
-      else localStorage.setItem(STORAGE_KEY, next);
+      localStorage.setItem(STORAGE_KEY, next);
     } catch {
       // Storage blocked: the choice still applies for this page view.
     }
     setPreferenceState(next);
   }, []);
 
-  return { preference, theme: preference === 'system' ? systemTheme : preference, setPreference };
+  return { preference, theme, setPreference };
 }

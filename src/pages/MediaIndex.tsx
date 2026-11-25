@@ -28,7 +28,7 @@ export function MediaIndex({ media }: { media: Media }) {
     <div className="media-index">
       <header className="page-hero" data-media={media}>
         <MediaTile media={media} size="lg">
-          <Icon />
+          <Icon aria-hidden="true" />
         </MediaTile>
         <div>
           <h1 className="page-title">{info.title}</h1>
@@ -68,29 +68,33 @@ export function MediaIndex({ media }: { media: Media }) {
               : t('{count} tools match your filter', { count: matches.size })
             : ''}
         </div>
+      </div>
+
+      <div className={matches ? 'index-directory' : 'index-directory index-directory-browse'}>
         {!matches && (
-          <nav className="category-chips" aria-label={t('Categories')}>
+          <nav className="index-categories" aria-label={t('Categories')}>
             {categories
               .filter((c) => c.media === media)
               .map(localizeCategory)
               .map((c) => (
-                <a key={c.id} href={`#${c.id}`} className="chip-link">
+                <a key={c.id} href={`#${c.id}`}>
                   {c.title}
                 </a>
               ))}
           </nav>
         )}
-      </div>
-
-      {matches && matches.size === 0 ? (
-        <div className="empty-state">
-          <Search aria-hidden="true" />
-          <div className="empty-state-title">{t('No {media} tools match “{query}”', { media: info.label.toLowerCase(), query })}</div>
-          <div>{t('Try a file format or an action, like “png” or “compress”.')}</div>
+        <div className="index-results">
+          {matches && matches.size === 0 ? (
+            <div className="empty-state">
+              <Search aria-hidden="true" />
+              <div className="empty-state-title">{t('No {media} tools match “{query}”', { media: info.label.toLowerCase(), query })}</div>
+              <div>{t('Try a file format or an action, like “png” or “compress”.')}</div>
+            </div>
+          ) : (
+            <CategorySections media={media} filter={matches ? (t) => matches.has(t.id) : undefined} />
+          )}
         </div>
-      ) : (
-        <CategorySections media={media} filter={matches ? (t) => matches.has(t.id) : undefined} />
-      )}
+      </div>
     </div>
   );
 }

@@ -1,16 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { ChevronRight, X } from 'lucide-react';
+import { ArrowUpRight, X } from 'lucide-react';
 import { FileDrop } from '../components/FileDrop';
 import { ToolGrid } from '../components/ToolGrid';
 import { Button } from '../components/Controls';
-import { categories, toolsByMedia, type ToolMeta } from '../tools/registry';
-import { MEDIA_LIST } from '../design/media';
+import { categories, localizeCategory, tools, toolsByMedia, type ToolMeta } from '../tools/registry';
+import { MEDIA_LIST, localizeMediaInfo } from '../design/media';
 import { clearPendingFiles, setPendingFiles, suggestToolsForFiles } from '../lib/handoff';
 import { formatBytes, formatNumber } from '../lib/format';
 import { useI18n } from '../lib/i18n';
-import { localizeCategory } from '../tools/registry';
-import { localizeMediaInfo } from '../design/media';
+import styles from './Home.module.css';
+
+function FileRoutes() {
+  return (
+    <svg viewBox="0 0 184 84" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" aria-hidden="true">
+      <g className={styles.traces}>
+        <path d="M61 42h17c8 0 8-28 18-28h26M61 42h85M61 42h17c8 0 8 28 18 28h26" />
+        <circle cx="77" cy="42" r="3" fill="currentColor" />
+      </g>
+      <path d="M12 17h27l13 13v35H12z" fill="var(--panel)" stroke="var(--panel-line)" />
+      <path d="M20 11h27l14 14v35H20z" fill="var(--surface)" />
+      <path d="M47 11v14h14M30 33v14h14" strokeWidth="2.7" />
+      <circle cx="42" cy="35" r="2.5" fill="currentColor" stroke="none" />
+      <g className={styles.outputs} strokeLinecap="round">
+        <rect x="125" y="6" width="23" height="16" rx="2" />
+        <path d="m127 19 5-6 4 4 4-5 6 7M150 42h3l3-6 4 13 4-17 3 10h5M131 64h-3v4l-3 2 3 2v4h3m10-12h3v4l3 2-3 2v4h-3" />
+      </g>
+    </svg>
+  );
+}
 
 function QuickDrop() {
   const { t } = useI18n();
@@ -33,14 +51,9 @@ function QuickDrop() {
 
   const first = files[0];
   return (
-    <div ref={wrapperRef}>
+    <div ref={wrapperRef} className={styles.intake}>
       {files.length === 0 ? (
-        <FileDrop
-          multiple
-          label={t('Drop a file to find the right tool')}
-          hint={t('Choose a suggested tool and your file opens there.')}
-          onFiles={setFiles}
-        />
+        <FileDrop multiple icon={<FileRoutes />} label={t('Drop files here')} onFiles={setFiles} />
       ) : (
         <QuickDropResult
           files={files}
@@ -94,40 +107,52 @@ function QuickDropResult({
 export function Home() {
   const { t } = useI18n();
   return (
-    <div className="home">
-      <section className="quick-drop" aria-label={t('Open a file')}>
-        <QuickDrop />
+    <div className={styles.home}>
+      <section className={styles.hero} aria-labelledby="home-title">
+        <div className={styles.intro}>
+          <h1 id="home-title" className={styles.title}>
+            {t('Your local')} <span>{t('file toolkit.')}</span>
+          </h1>
+          <p className={styles.description}>
+            {t('Convert, edit, and inspect files in your browser. Open a file to see which tools can work with it.')}
+          </p>
+        </div>
+        <section className={styles.drop} aria-label={t('Open a file')}>
+          <QuickDrop />
+        </section>
       </section>
 
-      <section className="home-browse" aria-labelledby="browse-title">
-        <h1 className="section-title" id="browse-title">
-          {t('Browse tools')}
-        </h1>
-        <div className="home-browse-list">
+      <section aria-labelledby="browse-title">
+        <header className={styles.catalogHeader}>
+          <h2 id="browse-title">{t('Browse tools')}</h2>
+          <span className={styles.count}>{t('{count} tools', { count: formatNumber(tools.length) })}</span>
+        </header>
+        <div className={styles.catalog}>
           {MEDIA_LIST.map((rawInfo) => {
             const info = localizeMediaInfo(rawInfo);
             const Icon = info.icon;
             const mediaCategories = categories.filter((category) => category.media === info.media).map(localizeCategory);
             const toolCount = toolsByMedia(info.media).length;
             return (
-              <section key={info.media} className="home-browse-group" data-media={info.media}>
-                <h2 className="home-browse-heading">
-                  <Link to={info.path}>
+              <section key={info.media} className={styles.row} data-media={info.media}>
+                <h3 className={styles.family}>
+                  <Link to={info.path} className={styles.familyLink}>
                     <Icon aria-hidden="true" />
-                    <span className="home-browse-title">{info.title}</span>
-                    <ChevronRight aria-hidden="true" />
+                    <span>{info.title}</span>
                   </Link>
-                </h2>
-                <nav className="home-browse-categories" aria-label={t('{media} categories', { media: info.label })}>
+                </h3>
+                <nav className={styles.categories} aria-label={t('{media} categories', { media: info.label })}>
                   {mediaCategories.map((category) => (
-                    <Link key={category.id} to={`${info.path}#${category.id}`} className="chip-link">
+                    <Link key={category.id} to={`${info.path}#${category.id}`}>
                       {category.title}
                     </Link>
                   ))}
-                  <Link to={info.path} className="chip-link" aria-label={t('All {media} tools', { media: info.label.toLowerCase() })}>
-                    +{formatNumber(toolCount)}
-                  </Link>
                 </nav>
+                <Link to={info.path} className={`${styles.count} ${styles.familyCount}`}>
+                  <span className={styles.srOnly}>{t('All {media} tools', { media: info.label.toLowerCase() })} · </span>
+                  {t('{count} tools', { count: formatNumber(toolCount) })}
+                  <ArrowUpRight aria-hidden="true" />
+                </Link>
               </section>
             );
           })}

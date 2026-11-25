@@ -36,7 +36,9 @@ const SURFACES = [
 ];
 
 const ACCENTS = [
-  ['--accent', 'Primary actions, focus'],
+  ['--signal', 'Signal-lime primary action fill'],
+  ['--signal-ink', 'Text on signal lime'],
+  ['--accent', 'Theme-aware focus and emphasis'],
   ['--accent-soft', 'Selected and hover tint'],
   ['--accent-text', 'Accent text on soft tint'],
   ['--success', 'Done, smaller, safe'],
@@ -98,7 +100,7 @@ export function DesignSystem() {
           <h1 className="page-title">Design system</h1>
           <p className="page-desc">
             The tokens and components every Loconvert page and tool is built from. Tokens live in <code>src/design/tokens.css</code>,
-            components in <code>src/components/Controls.tsx</code>. Toggle the theme in the header to check both modes.
+            components in <code>src/components/Controls.tsx</code>. Use the header appearance control to preview light and dark.
           </p>
         </div>
       </header>
@@ -114,7 +116,7 @@ export function DesignSystem() {
       <Section
         id="color"
         title="Color"
-        intro="Components use semantic tokens only. Each token carries its light and dark value via light-dark()."
+        intro="Dark mode uses charcoal surfaces and light mode uses warm paper surfaces. Theme-aware colors resolve through light-dark()."
       >
         <h3 className="ds-sub">Surfaces & text</h3>
         <div className="ds-swatches">

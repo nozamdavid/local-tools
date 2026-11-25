@@ -2,7 +2,7 @@
  * Loconvert design tokens
  *
  * Three layers:
- *   1. Primitives  (--gray-*, --berry-*, --hue-*)   raw palette, never used by components directly
+ *   1. Primitives  (--gray-*, --hue-*)   raw palette, never used by components directly
  *   2. Semantic    (--bg, --surface, --text, --accent, --danger, ...)   what components use
  *   3. Scales      (--space-*, --text-*, --radius-*, --shadow-*, --duration-*)
  *
@@ -16,37 +16,25 @@
 
   /* ---------- 1. Primitives ---------- */
 
-  /* Ink: a cool, slightly blue neutral */
+  /* Warm paper and neutral charcoal */
   --gray-0: #ffffff;
-  --gray-25: #fbfbfc;
-  --gray-50: #f5f6f8;
-  --gray-100: #eceef2;
-  --gray-150: #e2e5ea;
-  --gray-200: #d6dae1;
-  --gray-300: #bcc2cc;
-  --gray-400: #949cab;
-  --gray-450: #8790a0;
-  --gray-500: #677082;
-  --gray-550: #5b6475;
-  --gray-600: #4f5768;
-  --gray-700: #3a404d;
-  --gray-750: #2c313b;
-  --gray-800: #23272f;
-  --gray-850: #1b1e25;
-  --gray-900: #14161b;
-  --gray-950: #0c0d11;
-
-  /* Berry: the brand hue */
-  --berry-50: #fdf2fb;
-  --berry-100: #fbe3f6;
-  --berry-200: #f6c4ec;
-  --berry-300: #ee97dc;
-  --berry-400: #e05fc6;
-  --berry-500: #c936ae;
-  --berry-600: #ad2196;
-  --berry-700: #8e1a7b;
-  --berry-800: #731864;
-  --berry-900: #5d1752;
+  --gray-25: #fbfaf7;
+  --gray-50: #f3f1eb;
+  --gray-100: #ebe8df;
+  --gray-150: #ddd9cf;
+  --gray-200: #ccc8bd;
+  --gray-300: #aaa69b;
+  --gray-400: #b4b5aa;
+  --gray-450: #a2a499;
+  --gray-500: #6d6d62;
+  --gray-550: #626258;
+  --gray-600: #515149;
+  --gray-700: #555850;
+  --gray-750: #40433b;
+  --gray-800: #30322d;
+  --gray-850: #242621;
+  --gray-900: #1b1d19;
+  --gray-950: #141512;
 
   /* Supporting hues (media families + status) */
   --blue-500: #2f6fe4;
@@ -69,12 +57,12 @@
 
   /* Surfaces */
   --bg: light-dark(var(--gray-50), var(--gray-950));
-  --surface: light-dark(var(--gray-0), var(--gray-900));
-  --surface-sunken: light-dark(var(--gray-50), #101216);
-  --surface-raised: light-dark(var(--gray-0), var(--gray-850));
+  --surface: light-dark(var(--gray-25), var(--gray-900));
+  --surface-sunken: light-dark(var(--gray-50), var(--gray-950));
+  --surface-raised: light-dark(var(--gray-25), var(--gray-850));
   --surface-hover: light-dark(var(--gray-100), var(--gray-850));
   --surface-active: light-dark(var(--gray-150), var(--gray-800));
-  --overlay: light-dark(rgb(20 22 27 / 0.32), rgb(0 0 0 / 0.6));
+  --overlay: light-dark(rgb(20 21 18 / 0.42), rgb(0 0 0 / 0.68));
 
   /* Lines */
   --border: light-dark(var(--gray-150), var(--gray-800));
@@ -88,18 +76,20 @@
   --text-inverse: light-dark(var(--gray-0), var(--gray-900));
 
   /* Brand accent */
-  --accent: light-dark(var(--berry-600), var(--berry-500));
-  --accent-hover: light-dark(var(--berry-700), var(--berry-400));
-  --accent-soft: light-dark(var(--berry-50), rgb(201 54 174 / 0.14));
-  --accent-soft-hover: light-dark(var(--berry-100), rgb(201 54 174 / 0.22));
-  --accent-border: light-dark(var(--berry-200), rgb(201 54 174 / 0.4));
-  --accent-text: light-dark(var(--berry-700), var(--berry-300));
-  --on-accent: #ffffff;
-  --focus-ring: light-dark(rgb(173 33 150 / 0.4), rgb(224 95 198 / 0.55));
+  --signal: #c7fa46;
+  --signal-ink: #232b10;
+  --accent: light-dark(#52671a, var(--signal));
+  --accent-hover: light-dark(#415313, #dbff7c);
+  --accent-soft: light-dark(#e9eddb, #29311e);
+  --accent-soft-hover: light-dark(#e1e8ca, #343f24);
+  --accent-border: light-dark(#b4c48f, #516336);
+  --accent-text: light-dark(#465818, #d1ed92);
+  --on-accent: light-dark(var(--gray-0), var(--signal-ink));
+  --focus-ring: light-dark(rgb(82 103 26 / 0.25), rgb(199 250 70 / 0.32));
 
   /* Form fields */
-  --input-bg: light-dark(var(--gray-0), #101216);
-  --input-border: light-dark(var(--gray-200), var(--gray-750));
+  --input-bg: light-dark(var(--gray-0), var(--gray-950));
+  --input-border: light-dark(#89857b, #73776a);
   --input-placeholder: var(--text-subtle);
 
   /* Status */
@@ -126,7 +116,7 @@
   --media-image-soft: light-dark(#e8f7f0, rgb(18 161 114 / 0.16));
   --media-pdf: light-dark(var(--red-600), var(--red-300));
   --media-pdf-soft: light-dark(#fdeeee, rgb(229 56 59 / 0.16));
-  --media-3d: light-dark(var(--accent), var(--berry-400));
+  --media-3d: var(--accent-text);
   --media-3d-soft: var(--accent-soft);
 
   /* Checkerboard for transparent image previews */
@@ -183,12 +173,12 @@
   --space-20: 5rem;
 
   /* Radii */
-  --radius-xs: 4px;
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 12px;
-  --radius-xl: 16px;
-  --radius-2xl: 22px;
+  --radius-xs: 2px;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 10px;
+  --radius-2xl: 12px;
   --radius-full: 9999px;
 
   /* Elevation */

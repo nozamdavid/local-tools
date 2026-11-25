@@ -93,7 +93,7 @@ export function Layout() {
 
   useEffect(() => {
     if (!mobileOpen) return;
-    const desktop = window.matchMedia('(width > 860px)');
+    const desktop = window.matchMedia('(width > 960px)');
     function handleResize(event: MediaQueryListEvent) {
       if (event.matches) setMobileOpen(false);
     }
@@ -147,7 +147,7 @@ export function Layout() {
       <header className="site-header" ref={headerRef} onBlur={handleHeaderBlur}>
         <div className="container header-inner">
           <Link to="/" className="brand" aria-label={t('Loconvert home')}>
-            <LogoMark />
+            <LogoMark size={26} />
             <span className="brand-name">Loconvert</span>
           </Link>
 
@@ -168,7 +168,7 @@ export function Layout() {
           </nav>
 
           <div className="header-actions">
-            <button type="button" className="search-trigger" aria-label={t('Search all tools')} onClick={openSearch}>
+            <button type="button" className="search-trigger" aria-label={t('Search all tools')} aria-haspopup="dialog" onClick={openSearch}>
               <Search aria-hidden="true" />
               <span className="search-trigger-label">{t('Search tools')}</span>
               <span className="search-trigger-keys" aria-hidden="true">
@@ -176,8 +176,10 @@ export function Layout() {
                 <Kbd>K</Kbd>
               </span>
             </button>
-            <LanguageSwitcher />
-            <ThemeToggle />
+            <div className="header-preferences">
+              <LanguageSwitcher />
+              <ThemeToggle />
+            </div>
             <button
               ref={menuToggleRef}
               type="button"
@@ -211,10 +213,15 @@ export function Layout() {
 
       <footer className="site-footer">
         <div className="container footer-bottom">
-          <span>{t('Powered by WebAssembly, WebCodecs and WebGPU.')}</span>
-          <span>
-            <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd>+<Kbd>K</Kbd> {t('to search')}
-          </span>
+          <Link to="/" className="footer-brand" aria-label={t('Loconvert home')}>
+            <LogoMark size={18} />
+            <span>Loconvert</span>
+          </Link>
+          <span className="footer-note">{t('Powered by WebAssembly, WebCodecs and WebGPU.')}</span>
+          <button type="button" className="footer-search" aria-label={t('Search all tools')} aria-haspopup="dialog" onClick={openSearch}>
+            <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd>
+            <Kbd>K</Kbd> {t('to search')}
+          </button>
         </div>
       </footer>
 

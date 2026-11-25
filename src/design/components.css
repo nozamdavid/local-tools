@@ -57,12 +57,13 @@
 }
 
 .btn-primary {
-  background: var(--accent);
-  color: var(--on-accent);
+  background: var(--signal);
+  border-color: var(--accent);
+  color: var(--signal-ink);
 }
 
-.btn-primary:hover:not(:disabled) {
-  background: var(--accent-hover);
+.btn-primary:hover:not(:disabled, [aria-disabled='true']) {
+  background: color-mix(in srgb, var(--signal) 84%, white);
 }
 
 .btn-secondary {
@@ -173,7 +174,6 @@
   background-color: var(--input-bg);
   border: 1px solid var(--input-border);
   border-radius: var(--radius-md);
-  box-shadow: var(--shadow-xs);
   outline: none;
   transition:
     border-color var(--duration-fast) var(--ease-out),
@@ -183,7 +183,7 @@
 .input:hover,
 .textarea:hover,
 .select:hover {
-  border-color: var(--border-hover);
+  border-color: var(--text-subtle);
 }
 
 .input:focus,
@@ -376,11 +376,12 @@
 }
 
 .switch[aria-checked='true'] .switch-track {
-  background: var(--accent);
+  background: var(--signal);
   border-color: var(--accent);
 }
 
 .switch[aria-checked='true'] .switch-thumb {
+  background: var(--signal-ink);
   transform: translateX(14px);
 }
 
@@ -433,9 +434,8 @@
 }
 
 .segmented-option[aria-checked='true'] {
-  background: var(--surface);
-  color: var(--text);
-  box-shadow: var(--shadow-sm);
+  background: var(--accent-soft);
+  color: var(--accent-text);
 }
 
 .segmented-option:focus-visible {
@@ -516,6 +516,7 @@
   gap: var(--space-1);
   max-width: 100%;
   padding: var(--space-1) var(--space-2-5);
+  font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: var(--text-muted);
   background: var(--surface-sunken);
@@ -536,7 +537,7 @@
   min-width: 20px;
   height: 20px;
   padding: 0 var(--space-1);
-  font-family: var(--font-sans);
+  font-family: var(--font-mono);
   font-size: var(--text-2xs);
   font-weight: var(--weight-semibold);
   color: var(--text-muted);
@@ -627,7 +628,6 @@
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-xs);
 }
 
 .card-padded {
@@ -737,6 +737,53 @@
   --tone-soft: var(--media-3d-soft);
 }
 
+/* ================= Tool directory ================= */
+
+.tool-card .media-tile {
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+}
+
+.tool-card:is(:hover, :focus-visible) .tool-card-arrow {
+  color: var(--accent-text);
+}
+
+.category-head {
+  padding-block: var(--space-2);
+  border-block: 1px solid var(--border);
+}
+
+.category-count {
+  padding-inline: var(--space-1-5);
+  background: var(--surface-sunken);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ================= Command palette ================= */
+
+.palette .palette-search {
+  background: var(--surface-sunken);
+}
+
+.palette-item {
+  border: 1px solid transparent;
+}
+
+.palette .palette-item[aria-selected='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent-border);
+}
+
+.palette-item[aria-selected='true'] .palette-item-enter {
+  color: var(--accent-text);
+}
+
+.palette-item-media {
+  font-family: var(--font-mono);
+}
+
 /* ================= File drop ================= */
 
 .file-drop {
@@ -749,7 +796,7 @@
   text-align: center;
   cursor: pointer;
   background: var(--surface-sunken);
-  border: 1.5px dashed var(--border-hover);
+  border: 1px dashed var(--input-border);
   border-radius: var(--radius-md);
   transition:
     border-color var(--duration-base) var(--ease-out),
@@ -758,6 +805,7 @@
 
 .file-drop:hover {
   border-color: var(--accent);
+  background-color: var(--surface-hover);
 }
 
 .file-drop:has(:focus-visible) {
@@ -774,10 +822,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 38px;
+  height: 38px;
   margin-bottom: var(--space-2);
-  color: var(--accent);
+  color: var(--accent-text);
+  background: var(--accent-soft);
+  border: 1px solid var(--accent-border);
+  border-radius: var(--radius-sm);
 }
 
 .file-drop-icon svg {
@@ -807,6 +858,7 @@
 }
 
 .file-drop-paste {
+  overflow-wrap: anywhere;
   font-size: var(--text-xs);
   color: var(--text-subtle);
 }
@@ -916,10 +968,10 @@
 .progress-track {
   position: relative;
   width: 100%;
-  height: 6px;
+  height: 5px;
   overflow: hidden;
   background: var(--surface-active);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
 }
 
 .progress-fill {
@@ -1005,6 +1057,7 @@
 .preview-box-title {
   align-self: flex-start;
   margin-bottom: var(--space-3);
+  font-family: var(--font-mono);
   font-size: var(--text-2xs);
   font-weight: var(--weight-semibold);
   text-transform: uppercase;
@@ -1066,6 +1119,7 @@ img.preview-media {
 }
 
 .stat-value {
+  font-family: var(--font-mono);
   font-size: var(--text-lg);
   font-weight: var(--weight-semibold);
   font-variant-numeric: tabular-nums;

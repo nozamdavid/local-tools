@@ -1,6 +1,12 @@
 import type { Locale } from '../lib/i18n';
 
 const es: Record<string, string> = {
+  'Your local': 'Herramientas',
+  'file toolkit.': 'para tus archivos.',
+  'Convert, edit, and inspect files in your browser. Open a file to see which tools can work with it.':
+    'Convierte, edita e inspecciona archivos en tu navegador. Abre un archivo para ver las herramientas compatibles.',
+  'Drop files here': 'Suelta aquí tus archivos',
+  '{count} tools': '{count} herramientas',
   Language: 'Idioma',
   'Switch to {theme} theme': 'Cambiar al tema {theme}',
   light: 'claro',
@@ -97,6 +103,12 @@ const es: Record<string, string> = {
 };
 
 const it: Record<string, string> = {
+  'Your local': 'Strumenti',
+  'file toolkit.': 'per i tuoi file.',
+  'Convert, edit, and inspect files in your browser. Open a file to see which tools can work with it.':
+    'Converti, modifica e analizza i file nel browser. Apri un file per vedere quali strumenti sono compatibili.',
+  'Drop files here': 'Trascina qui i tuoi file',
+  '{count} tools': '{count} strumenti',
   Language: 'Lingua',
   'Switch to {theme} theme': 'Passa al tema {theme}',
   light: 'chiaro',
@@ -193,6 +205,12 @@ const it: Record<string, string> = {
 };
 
 const de: Record<string, string> = {
+  'Your local': 'Deine lokalen',
+  'file toolkit.': 'Dateiwerkzeuge.',
+  'Convert, edit, and inspect files in your browser. Open a file to see which tools can work with it.':
+    'Konvertiere, bearbeite und prüfe Dateien im Browser. Öffne eine Datei, um passende Werkzeuge zu sehen.',
+  'Drop files here': 'Dateien hier ablegen',
+  '{count} tools': '{count} Werkzeuge',
   Language: 'Sprache',
   'Switch to {theme} theme': 'Zum {theme} Design wechseln',
   light: 'hellen',
@@ -289,6 +307,12 @@ const de: Record<string, string> = {
 };
 
 const pt: Record<string, string> = {
+  'Your local': 'Ferramentas',
+  'file toolkit.': 'para os seus ficheiros.',
+  'Convert, edit, and inspect files in your browser. Open a file to see which tools can work with it.':
+    'Converta, edite e inspecione ficheiros no navegador. Abra um ficheiro para ver as ferramentas compatíveis.',
+  'Drop files here': 'Largue aqui os ficheiros',
+  '{count} tools': '{count} ferramentas',
   Language: 'Idioma',
   'Switch to {theme} theme': 'Mudar para o tema {theme}',
   light: 'claro',
@@ -385,6 +409,12 @@ const pt: Record<string, string> = {
 };
 
 const fr: Record<string, string> = {
+  'Your local': 'Des outils',
+  'file toolkit.': 'pour vos fichiers.',
+  'Convert, edit, and inspect files in your browser. Open a file to see which tools can work with it.':
+    'Convertissez, modifiez et inspectez vos fichiers dans le navigateur. Ouvrez un fichier pour voir les outils compatibles.',
+  'Drop files here': 'Déposez vos fichiers ici',
+  '{count} tools': '{count} outils',
   Language: 'Langue',
   'Switch to {theme} theme': 'Passer au thème {theme}',
   light: 'clair',

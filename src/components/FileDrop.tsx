@@ -11,6 +11,7 @@ export interface FileDropProps {
   multiple?: boolean;
   label?: string;
   hint?: string;
+  icon?: React.ReactNode;
   onFiles: (files: File[]) => void;
 }
 
@@ -21,6 +22,7 @@ export function FileDrop({
   multiple = false,
   label = multiple ? 'Drop files here' : 'Drop a file here',
   hint,
+  icon,
   onFiles,
 }: FileDropProps) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -128,7 +130,7 @@ export function FileDrop({
     >
       <input ref={fileInputRef} type="file" accept={accept} multiple={multiple} hidden tabIndex={-1} onChange={handleChange} />
       <span className="file-drop-icon" aria-hidden="true">
-        <Upload />
+        {icon ?? <Upload />}
       </span>
       <div className="file-drop-label" id={labelId}>
         {t(isDragOver ? 'Release to open' : label)}
