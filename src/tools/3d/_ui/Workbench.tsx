@@ -131,7 +131,7 @@ export function translate3DMessage(message: string, t: Translator): string {
       (match) => ({ count: match[1] }),
     ],
     [
-      /^3MF archive contains forbidden relative\/absolute path: "(.+)"$/,
+      /^3MF archive contains forbidden relative\/absolute path: "(.+)"$/s,
       '3MF archive contains a forbidden relative or absolute path: "{path}".',
       (match) => ({ path: match[1] }),
     ],
@@ -144,6 +144,26 @@ export function translate3DMessage(message: string, t: Translator): string {
       /^Invalid 3MF: malformed XML in (relationships|3D model) document \((.+)\)\.$/,
       'Invalid 3MF: malformed XML in the {document} document ({detail}).',
       (match) => ({ document: match[1], detail: match[2] }),
+    ],
+    [
+      /^Invalid 3MF: malformed XML in 3D model document "(.+)" \((.+)\)\.$/s,
+      'Invalid 3MF: malformed XML in 3D model document "{path}" ({detail}).',
+      (match) => ({ path: match[1], detail: match[2] }),
+    ],
+    [
+      /^Invalid 3MF Production model path "(.*)"\. Expected an absolute path inside the archive\.$/s,
+      'Invalid 3MF Production model path "{path}". Expected an absolute path inside the archive.',
+      (match) => ({ path: match[1] }),
+    ],
+    [
+      /^Invalid 3MF: referenced model part "(.+)" was not found in the archive\.$/s,
+      'Invalid 3MF: referenced model part "{path}" was not found in the archive.',
+      (match) => ({ path: match[1] }),
+    ],
+    [
+      /^Invalid 3MF: Production path on a component in non-root model part "(.+)"\.$/s,
+      'Invalid 3MF: Production path on a component in non-root model part "{path}".',
+      (match) => ({ path: match[1] }),
     ],
     [
       /^3MF archive declared root model at "(.+)" in _rels\/.rels, but the file was not found in the archive\.$/,

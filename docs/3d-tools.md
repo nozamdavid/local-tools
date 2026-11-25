@@ -53,8 +53,8 @@ The 3D family comprises seven dedicated routes registered under the `3d` media t
 3. **Geometry-Only Processing:**
    - All tools process and output geometric topology only (vertex coordinates and face indices).
    - Materials, textures, PBR maps, UV coordinates, animations, and vertex colors are ignored during import and are omitted from exported files.
-4. **3MF Security & Required Extensions Rejection:**
-   - 3MF archives declaring `@_requiredextensions` or `@_RequiredExtensions` (such as volumetric extensions, slice extensions, or custom vendor namespaces) are explicitly rejected with an informative error.
+4. **3MF Security & Extension Support:**
+   - 3MF import supports core geometry and Production extension part references within the archive. Unknown required extensions are rejected with an informative error.
    - External relationships (`TargetMode="External"` or URI scheme targets) are explicitly blocked to prevent SSRF and security risks.
 5. **Units Handling & Normalization:**
    - **Unitless formats (STL, OBJ, PLY):** Assumed to be in **millimeters (mm)** by default.
