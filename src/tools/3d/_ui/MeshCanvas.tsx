@@ -2,9 +2,9 @@ import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
-import { Box, Eye, Hand, Maximize2, Minus, Orbit, Plus } from 'lucide-react';
+import { Box, Eye, Hand, Maximize2, Orbit, ZoomIn, ZoomOut } from 'lucide-react';
 import type { LocalSceneAsset } from '../viewer/gltf';
-import { Alert } from '../../../components/Controls';
+import { Alert, Kbd } from '../../../components/Controls';
 import { useI18n } from '../../../lib/i18n';
 import type { MeshModel } from './types';
 import { ViewerShortcuts } from './ViewerShortcuts';
@@ -509,6 +509,11 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
     >
       <Maximize2 size={14} aria-hidden="true" />
       {t('Fit')}
+      {advanced && (
+        <span aria-hidden="true">
+          <Kbd>F</Kbd>
+        </span>
+      )}
     </button>
   );
 
@@ -527,6 +532,9 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
             >
               <Orbit size={15} aria-hidden="true" />
               {t('Orbit')}
+              <span aria-hidden="true">
+                <Kbd>O</Kbd>
+              </span>
             </button>
             <button
               type="button"
@@ -538,6 +546,9 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
             >
               <Hand size={15} aria-hidden="true" />
               {t('Pan')}
+              <span aria-hidden="true">
+                <Kbd>P</Kbd>
+              </span>
             </button>
           </div>
           <div className={styles.buttonGroup} role="group" aria-label={t('Zoom and fit')}>
@@ -549,7 +560,10 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
               aria-keyshortcuts="-"
               title={`${t('Zoom out')} (-)`}
             >
-              <Minus size={15} aria-hidden="true" />
+              <ZoomOut size={15} aria-hidden="true" />
+              <span aria-hidden="true">
+                <Kbd>−</Kbd>
+              </span>
             </button>
             <button
               type="button"
@@ -559,7 +573,10 @@ export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanva
               aria-keyshortcuts="Plus ="
               title={`${t('Zoom in')} (+ / =)`}
             >
-              <Plus size={15} aria-hidden="true" />
+              <ZoomIn size={15} aria-hidden="true" />
+              <span aria-hidden="true">
+                <Kbd>+</Kbd>
+              </span>
             </button>
             {fitButton}
           </div>
