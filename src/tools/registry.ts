@@ -971,6 +971,16 @@ export const TOOL_METAS: ToolMeta[] = [
   ]),
 
   // 3D: Inspect
+  three('viewer', '3D Viewer', 'View 3D meshes, CAD models, and GLB or glTF scenes in your browser', '🧊', '3d-inspect', [
+    'viewer',
+    'preview',
+    'mesh',
+    'cad',
+    'orbit',
+    'wireframe',
+    'glb',
+    'gltf',
+  ]),
   three(
     'inspect',
     '3D Mesh Inspector',

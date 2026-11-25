@@ -40,6 +40,7 @@ export default function NormalsTool() {
     loadFiles,
     cancelProcessing,
     reset,
+    lastExportedBlob,
     handleExport,
   } = use3DWorkbench({ multiple: false });
 
@@ -193,6 +194,7 @@ export default function NormalsTool() {
                   onFormatChange={setExportFormat}
                   onExport={() => handleExport(currentModel, exportFormat, isReversed ? '-flipped' : '')}
                   exporting={exporting}
+                  lastExportedBlob={lastExportedBlob}
                   disabled={processing}
                   label={t('Export Processed Mesh')}
                 />

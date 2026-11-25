@@ -70,4 +70,14 @@ describe('Continue with result workflows', () => {
     setPendingFiles(twoImages, '/image/compare');
     expect(takePendingFiles('/image/compare', 'image/*', true)?.accepted).toHaveLength(2);
   });
+
+  it('offers the 3D Viewer first for a single model result', () => {
+    const model = createFile('part.stl', 'model/stl');
+    const batch = [model, createFile('other.obj', 'model/obj')];
+
+    expect(getContinueWithTools('/3d/convert', [model])[0].path).toBe('/3d/viewer');
+    expect(getContinueWithTools('/3d/split', batch).map(({ id }) => id)).toEqual(['three-merge']);
+    expect(getContinueWithTools('/3d/viewer', [model])[0].path).toBe('/3d/convert');
+    expect(getContinueWithTools('/3d/viewer', [createFile('scene.glb', 'model/gltf-binary')])).toEqual([]);
+  });
 });

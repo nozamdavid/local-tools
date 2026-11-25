@@ -118,7 +118,15 @@ export function isToolEligible(toolId: string, file: File): boolean {
   return isToolEligibleForFile(meta, file);
 }
 
-const THREE_SINGLE_TOOLS = ['three-convert', 'three-simplify', 'three-inspect', 'three-transform', 'three-normals', 'three-split'];
+const THREE_SINGLE_TOOLS = [
+  'three-viewer',
+  'three-convert',
+  'three-simplify',
+  'three-inspect',
+  'three-transform',
+  'three-normals',
+  'three-split',
+];
 
 /** Primary format-specific tools to rank first for single files. */
 const PRIMARY_SINGLE_TOOLS: Record<string, string[]> = {
@@ -164,6 +172,8 @@ const PRIMARY_SINGLE_TOOLS: Record<string, string[]> = {
   step: THREE_SINGLE_TOOLS,
   iges: THREE_SINGLE_TOOLS,
   brep: THREE_SINGLE_TOOLS,
+  glb: ['three-viewer'],
+  gltf: ['three-viewer'],
 
   html: ['pdf-html-to-pdf'],
   mhtml: ['mhtml-to-html'],
@@ -200,6 +210,7 @@ export function suggestToolsForFiles(files: File[]): ToolMeta[] {
 
     // High priority batch operations per domain
     const batchPriority = [
+      'three-viewer',
       'pdf-merge',
       'pdf-compare',
       'img-compare',

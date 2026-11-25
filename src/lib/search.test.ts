@@ -28,6 +28,7 @@ describe('tool search', () => {
     expect(ids('Word to PDF')[0]).toBe('pdf-word-to-pdf');
     expect(ids('PDF to Word')[0]).toBe('pdf-pdf-to-word');
     expect(ids('PDF from Word')[0]).toBe('pdf-word-to-pdf');
+    expect(ids('3D Viewer')[0]).toBe('three-viewer');
   });
 
   it('keeps password removal and password protection distinct', () => {
@@ -47,6 +48,8 @@ describe('tool search', () => {
 
   it('supports useful prefixes and keeps short format tokens conservative', () => {
     expect(ids('subti')[0]).toBe('subtitles');
+    expect(ids('glb')[0]).toBe('three-viewer');
+    expect(ids('gltf')[0]).toBe('three-viewer');
     expect(ids('pff')).toEqual([]);
   });
 

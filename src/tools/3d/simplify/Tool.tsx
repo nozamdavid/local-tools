@@ -42,6 +42,7 @@ export default function SimplifyTool() {
     loadFiles,
     cancelProcessing,
     reset,
+    lastExportedBlob,
     handleExport,
   } = use3DWorkbench({ multiple: false });
 
@@ -310,6 +311,7 @@ export default function SimplifyTool() {
                   onFormatChange={setExportFormat}
                   onExport={() => handleExport(currentModel, exportFormat, '-simplified')}
                   exporting={exporting}
+                  lastExportedBlob={lastExportedBlob}
                   disabled={processing}
                   label={t('Export Simplified Mesh')}
                 />

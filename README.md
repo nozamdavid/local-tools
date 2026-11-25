@@ -10,6 +10,8 @@
 
 ## Features
 
+Loconvert includes 139 tools, including eight for 3D meshes and CAD files.
+
 - **🔒 Client-Side Privacy:** Your documents, photos, audio, videos, and 3D models are processed locally in your browser. Supported formats execute in client memory without uploading file data to external servers.
 - **Languages:** The interface supports English, Spanish, Italian, German, Portuguese, and French. It follows the browser's preferred supported language on first visit and remembers an explicit choice on the device.
 - **Tool search (⌘K / Ctrl+K):** Search locally by tool, format, or task phrase. It tolerates common one-character typos and searches English plus the current interface language, including accents (for example, “make PDF smaller” or “remove sound from video”).
@@ -33,6 +35,7 @@
   - **Local fallback:** Unsupported codecs and containers, GIF, AVI, audio formats outside WAV/MP3/M4A, complex filters, merge, loop, speed, and subtitle workflows continue through the bundled FFmpeg WASM engine. MP3 and AAC encoder extensions are bundled locally and loaded only when native encoding is unavailable; media files and codec requests are never sent to a CDN or remote service.
   - **Video Editing:** Trim, crop, loop, speed, resize, merge, volume boost, and subtitles. Simple volume gain uses Mediabunny sample processing; loudness normalization stays on FFmpeg.
 - **🧊 3D Mesh & CAD Suite:**
+  - **3D Viewer (`/3d/viewer`):** Open STL, OBJ, PLY, 3MF, STEP/STP, IGES/IGS, and BREP models or GLB and glTF scenes. Use PNG, JPEG, or static WebP textures, either embedded or in local files. Select any external `.bin` buffers and texture files together with the model, or use **Open scene folder** to preserve their relative paths, including texture subfolders. Export without Draco geometry compression, Basis/KTX2 textures, or AVIF textures. The viewer displays a static pose without animation playback. Orbit, pan, and zoom, adjust lighting and render settings, and check dimensions and geometry counts.
   - **3D Format Converter (`/3d/convert`):** Client-side conversion between STL, OBJ, PLY, and 3MF mesh formats, plus CAD import (STEP/STP, IGES/IGS, BREP) tessellated to meshes.
   - **Mesh Simplifier & Decimator (`/3d/simplify`):** Edge-collapse polygon reduction powered by `meshoptimizer` WASM with error tolerance bounds and border locking.
   - **Mesh Inspector & Topology Analyzer (`/3d/inspect`):** Dimensions, bounding box, surface area, signed volume (divergence theorem), watertightness, and non-manifold/boundary edge counts.

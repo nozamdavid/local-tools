@@ -35,6 +35,7 @@ export default function InspectTool() {
     loadFiles,
     cancelProcessing,
     reset,
+    lastExportedBlob,
     handleExport,
   } = use3DWorkbench({ multiple: false });
 
@@ -305,6 +306,7 @@ export default function InspectTool() {
                   onFormatChange={setExportFormat}
                   onExport={() => handleExport(currentModel, exportFormat)}
                   exporting={exporting}
+                  lastExportedBlob={lastExportedBlob}
                   label={t('Export Inspected Model')}
                 />
               </div>

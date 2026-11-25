@@ -1,5 +1,6 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import { Button, Select, Alert } from '../../../components/Controls';
+import { ContinueWith } from '../../../components/ContinueWith';
 import { downloadBlob } from '../../../lib/download';
 import { formatBytes } from '../../../lib/format';
 import { ALL_MESH_FORMATS, detectFormatFromFilename, type MeshFormat, type MeshModel } from './types';
@@ -11,6 +12,7 @@ import styles from './Workbench.module.css';
 export const ACCEPT_MESH_EXTENSIONS = MESH_ACCEPT || '.stl,.obj,.ply,.3mf';
 
 type Translator = (sourceEnglish: string, params?: Record<string, string | number>) => string;
+type ExportedMesh = { blob: Blob; filename: string };
 
 /** Translate shared 3D parser diagnostics while keeping file names and measurements intact. */
 export function translate3DMessage(message: string, t: Translator): string {
@@ -233,7 +235,7 @@ export function use3DWorkbench({ multiple = false }: Use3DWorkbenchOptions = {})
 
   const [processing, setProcessing] = useState<boolean>(false);
   const [processError, setProcessError] = useState<string | null>(null);
-  const [lastExportedBlob, setLastExportedBlob] = useState<{ blob: Blob; filename: string } | null>(null);
+  const [lastExportedBlob, setLastExportedBlob] = useState<ExportedMesh | null>(null);
   const [exporting, setExporting] = useState<boolean>(false);
 
   const [exportFormat, setExportFormat] = useState<MeshFormat>('stl');
@@ -477,6 +479,7 @@ export interface ExportCardProps {
   onFormatChange: (fmt: MeshFormat) => void;
   onExport: () => void;
   exporting: boolean;
+  lastExportedBlob: ExportedMesh | null;
   disabled?: boolean;
   label?: string;
 }
@@ -487,6 +490,7 @@ export function ExportCard({
   onFormatChange,
   onExport,
   exporting,
+  lastExportedBlob,
   disabled = false,
   label = 'Export 3D Model',
 }: ExportCardProps) {
@@ -511,6 +515,7 @@ export function ExportCard({
           {t('Download')}
         </Button>
       </div>
+      {lastExportedBlob && <ContinueWith results={[{ name: lastExportedBlob.filename, blob: lastExportedBlob.blob }]} />}
     </div>
   );
 }

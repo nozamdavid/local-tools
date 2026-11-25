@@ -34,6 +34,7 @@ export default function MergeTool() {
     removeMultiFile,
     cancelProcessing,
     reset,
+    lastExportedBlob,
     handleExport,
   } = use3DWorkbench({ multiple: true });
 
@@ -245,6 +246,7 @@ export default function MergeTool() {
                     onFormatChange={setExportFormat}
                     onExport={() => handleExport(mergedModel, exportFormat, '-merged')}
                     exporting={exporting}
+                    lastExportedBlob={lastExportedBlob}
                     disabled={processing}
                     label={t('Export Merged Mesh')}
                   />

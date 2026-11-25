@@ -34,6 +34,7 @@ describe('Tool Registry', () => {
       'img-svg-optimize': '/image/svg-optimize',
       'audio-trim': '/video/audio-trim',
       'pdf-metadata-cleaner': '/pdf/metadata-cleaner',
+      'three-viewer': '/3d/viewer',
     };
 
     for (const [id, path] of Object.entries(paths)) {

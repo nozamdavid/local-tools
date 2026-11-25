@@ -1,0 +1,90 @@
+.workspace {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.workspace > :global(.file-drop) > :global(.file-drop-icon) {
+  display: none;
+}
+
+.folderAction {
+  justify-self: center;
+}
+
+.scenePicker {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  justify-self: center;
+  width: min(100%, 28rem);
+}
+
+.scenePicker :global(.field) {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+}
+
+.modelHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+}
+
+.modelName {
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-base);
+  overflow-wrap: anywhere;
+}
+
+.viewport {
+  --mesh-viewport-height: clamp(360px, 62vh, 760px);
+}
+
+.diagnostics {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3) var(--space-6);
+  margin: 0;
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+  font-size: var(--text-sm);
+}
+
+.diagnostics dt {
+  margin-bottom: var(--space-1);
+  color: var(--text-muted);
+}
+
+.diagnostics dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  overflow-wrap: anywhere;
+}
+
+.diagnostics .unitNote {
+  color: var(--text-muted);
+  font-family: inherit;
+}
+
+.importProgress {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+}
+
+.importStatus {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+}

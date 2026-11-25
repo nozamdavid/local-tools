@@ -67,6 +67,7 @@ import {
   Rows2,
   Scaling,
   Scan,
+  ScanBox,
   ScanLine,
   ScanSearch,
   ScanText,
@@ -244,6 +245,7 @@ export const TOOL_ICONS: Record<string, LucideIcon> = {
   'three-normals': Axis3d,
   'three-split': Split,
   'three-merge': Combine,
+  'three-viewer': ScanBox,
   'three-inspect': ScanSearch,
 };
 

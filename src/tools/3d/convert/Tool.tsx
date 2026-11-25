@@ -1,4 +1,5 @@
 import { ToolPage } from '../../../components/ToolPage';
+import { ContinueWith } from '../../../components/ContinueWith';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Select, Alert, Field } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
@@ -141,6 +142,7 @@ export default function ConvertTool() {
                     >
                       {t('Download again')}
                     </Button>
+                    <ContinueWith results={[{ name: lastExportedBlob.filename, blob: lastExportedBlob.blob }]} />
                   </div>
                 )}
               </div>

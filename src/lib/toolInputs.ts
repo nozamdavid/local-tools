@@ -1,4 +1,15 @@
 import type { ToolMeta } from '../tools/registry';
+import { MESH_ACCEPT } from '../tools/3d/_mesh/types';
+
+const GLTF_COMPANION_EXTENSIONS = ['bin', 'png', 'jpg', 'jpeg', 'webp'];
+export const VIEWER_ACCEPT = [
+  MESH_ACCEPT,
+  '.glb',
+  '.gltf',
+  'model/gltf-binary',
+  'model/gltf+json',
+  ...GLTF_COMPANION_EXTENSIONS.map((ext) => `.${ext}`),
+].join(',');
 
 export const EXT_MIME: Record<string, string> = {
   // Images
@@ -106,6 +117,8 @@ export const EXT_MIME: Record<string, string> = {
   iges: 'model/iges',
   igs: 'model/iges',
   brep: 'model/x-brep',
+  glb: 'model/gltf-binary',
+  gltf: 'model/gltf+json',
 
   // Web, Data, Text
   html: 'text/html',
@@ -174,6 +187,8 @@ export type CanonicalFormat =
   | 'step'
   | 'iges'
   | 'brep'
+  | 'glb'
+  | 'gltf'
   | 'model-other'
   | 'html'
   | 'mhtml'
@@ -214,6 +229,7 @@ export interface FileClassification {
   isAudio: boolean;
   isSubtitle: boolean;
   is3d: boolean;
+  isGltf: boolean;
   isPdf: boolean;
   isDocx: boolean;
   isXlsx: boolean;
@@ -240,8 +256,16 @@ export function classifyFile(file: File): FileClassification {
 
   let format: CanonicalFormat = 'unknown';
 
-  // 1. Audio first to prevent audio/webm or audio/mp4 being caught by video
-  if (ext === 'weba' || mime === 'audio/webm' || (ext === 'webm' && mime.startsWith('audio/'))) {
+  // glTF JSON and binary containers have dedicated model formats.
+  if (ext === 'glb' || ext === 'gltf') {
+    format = ext;
+  } else if (mime === 'model/gltf-binary') {
+    format = 'glb';
+  } else if (mime === 'model/gltf+json') {
+    format = 'gltf';
+  }
+  // 1. Audio before video to disambiguate audio/webm and audio/mp4.
+  else if (ext === 'weba' || mime === 'audio/webm' || (ext === 'webm' && mime.startsWith('audio/'))) {
     format = 'webm-audio';
   } else if (ext === 'mp3' || mime === 'audio/mpeg' || mime === 'audio/mp3') {
     format = 'mp3';
@@ -424,7 +448,8 @@ export function classifyFile(file: File): FileClassification {
 
   const isAudio = ['mp3', 'wav', 'm4a', 'flac', 'ogg', 'opus', 'aiff', 'wma', 'webm-audio', 'audio-other'].includes(format);
 
-  const is3d = ['stl', 'obj', 'ply', '3mf', 'step', 'iges', 'brep'].includes(format);
+  const isGltf = format === 'glb' || format === 'gltf';
+  const is3d = isGltf || ['stl', 'obj', 'ply', '3mf', 'step', 'iges', 'brep'].includes(format);
 
   return {
     ext,
@@ -436,6 +461,7 @@ export function classifyFile(file: File): FileClassification {
     isAudio,
     isSubtitle: format === 'srt' || format === 'vtt',
     is3d,
+    isGltf,
     isPdf: format === 'pdf',
     isDocx: format === 'docx',
     isXlsx: format === 'xlsx',
@@ -624,9 +650,11 @@ export function isToolEligibleForFile(tool: ToolMeta, file: File): boolean {
   }
 
   // 3D Tools
+  if (tool.id === 'three-viewer') return c.is3d;
+
   if (tool.media === '3d') {
     if (tool.id === 'three-merge') return false; // multi-file only
-    return c.is3d;
+    return c.is3d && !c.isGltf;
   }
 
   // 6. File Tools (MHTML, GPX/KML, CSS, CSV, JSON, TXT)
@@ -666,9 +694,17 @@ export function isToolEligibleForBatch(tool: ToolMeta, files: File[]): boolean {
     return count >= 2 && classes.every((c) => c.isVideo);
   }
 
-  // 3D Mesh Merge (min 2 3D files)
+  // A scene can include loose buffers and textures.
+  if (tool.id === 'three-viewer') {
+    return (
+      classes.filter((c) => c.isGltf).length === 1 &&
+      classes.every((c) => c.isGltf || (!c.is3d && GLTF_COMPANION_EXTENSIONS.includes(c.ext)))
+    );
+  }
+
+  // 3D Mesh Merge (min 2 mesh or CAD files)
   if (tool.id === 'three-merge') {
-    return count >= 2 && classes.every((c) => c.is3d);
+    return count >= 2 && classes.every((c) => c.is3d && !c.isGltf);
   }
 
   // JSON <-> CSV (batches must share direction: either all JSON, or all CSV/TSV)

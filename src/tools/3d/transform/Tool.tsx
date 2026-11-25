@@ -53,6 +53,7 @@ export default function TransformTool() {
     loadFiles,
     cancelProcessing,
     reset,
+    lastExportedBlob,
     handleExport,
   } = use3DWorkbench({ multiple: false });
 
@@ -392,6 +393,7 @@ export default function TransformTool() {
                   onFormatChange={setExportFormat}
                   onExport={() => handleExport(currentModel, exportFormat, '-transformed')}
                   exporting={exporting}
+                  lastExportedBlob={lastExportedBlob}
                   disabled={processing}
                   label={t('Export Transformed Mesh')}
                 />

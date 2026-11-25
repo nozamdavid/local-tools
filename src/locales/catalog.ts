@@ -1646,6 +1646,14 @@ const translations: Record<string, [string, string, string, string, string]> = {
     'Combine vários modelos 3D num único ficheiro de malha',
     'Fusionnez plusieurs modèles 3D dans un seul fichier de maillage',
   ],
+  '3D Viewer': ['Visor 3D', 'Visualizzatore 3D', '3D-Viewer', 'Visualizador 3D', 'Visionneuse 3D'],
+  'View 3D meshes, CAD models, and GLB or glTF scenes in your browser': [
+    'Visualiza mallas 3D, modelos CAD y escenas GLB o glTF en tu navegador',
+    'Visualizza mesh 3D, modelli CAD e scene GLB o glTF nel browser',
+    '3D-Netze, CAD-Modelle und GLB- oder glTF-Szenen im Browser ansehen',
+    'Visualize malhas 3D, modelos CAD e cenas GLB ou glTF no seu navegador',
+    'Visualisez des maillages 3D, des modèles CAO et des scènes GLB ou glTF dans votre navigateur',
+  ],
   '3D Mesh Inspector': [
     'Inspector de mallas 3D',
     'Ispeziona mesh 3D',

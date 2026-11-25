@@ -1,358 +1,637 @@
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
-import type { MeshModel } from './types';
+import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { Box, Eye, Hand, Maximize2, Minus, Orbit, Plus } from 'lucide-react';
+import type { LocalSceneAsset } from '../viewer/gltf';
 import { Alert } from '../../../components/Controls';
-import { Box, Eye, Maximize2 } from 'lucide-react';
 import { useI18n } from '../../../lib/i18n';
-import { translate3DMessage } from './Workbench';
+import type { MeshModel } from './types';
 import styles from './MeshViewer.module.css';
 
-export interface MeshCanvasProps {
-  model: MeshModel;
-  className?: string;
+interface MeshCanvasProps {
+  model: MeshModel | null;
+  sceneAsset?: LocalSceneAsset | null;
+  className: string;
+  advanced: boolean;
 }
 
-function checkWebGL2(): boolean {
-  if (typeof window === 'undefined') return false;
+type ViewportStatus = 'loading' | 'ready' | 'unavailable' | 'lost' | 'error';
+type RenderMode = 'solid' | 'wireframe' | 'normals';
+type DragMode = 'orbit' | 'pan';
+type Environment = 'studio' | 'daylight' | 'warm';
+type Pose = { position: [string, string, string]; rotation: [string, string, string] };
+
+const defaultPose: Pose = { position: ['0', '0', '0'], rotation: ['0', '0', '0'] };
+const axes = ['X', 'Y', 'Z'] as const;
+const viewDirections = {
+  isometric: new THREE.Vector3(0.7, -0.7, 0.55),
+  front: new THREE.Vector3(0, -1, 0),
+  back: new THREE.Vector3(0, 1, 0),
+  left: new THREE.Vector3(-1, 0, 0),
+  right: new THREE.Vector3(1, 0, 0),
+  top: new THREE.Vector3(0, -0.00001, 1),
+  bottom: new THREE.Vector3(0, -0.00001, -1),
+};
+const environments = {
+  studio: { key: 0xffffff, fill: 0x94a3b8, ambient: 0.65, reflection: 0.7, rotation: 0 },
+  daylight: { key: 0xe1edff, fill: 0xb2cbfa, ambient: 0.85, reflection: 1, rotation: Math.PI / 2 },
+  warm: { key: 0xffcb8d, fill: 0xb4a2d0, ambient: 0.4, reflection: 0.45, rotation: Math.PI },
+};
+
+function createViewport(host: HTMLDivElement, advanced: boolean, setStatus: (status: ViewportStatus) => void) {
+  let renderer: THREE.WebGLRenderer;
   try {
-    const canvas = document.createElement('canvas');
-    return !!(window.WebGL2RenderingContext && canvas.getContext('webgl2'));
+    renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   } catch {
-    return false;
+    setStatus('unavailable');
+    return;
   }
-}
 
-export function MeshCanvas({ model, className }: MeshCanvasProps) {
-  const { t } = useI18n();
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const canvas = renderer.domElement;
+  host.append(canvas);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  if (advanced) renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
-  const [hasWebGL] = useState<boolean>(() => checkWebGL2());
-  const [wireframe, setWireframe] = useState<boolean>(false);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45);
+  camera.up.set(0, 0, 1);
+  camera.position.copy(viewDirections.isometric);
+  const controls = new OrbitControls(camera, canvas);
+  if (advanced) controls.cursorStyle = 'grab';
 
-  // References for three.js instances so buttons can interact
-  const fitCameraRef = useRef<(() => void) | null>(null);
-  const materialRef = useRef<THREE.MeshStandardMaterial | null>(null);
-  const sceneRef = useRef<THREE.Scene | null>(null);
-  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
-  const controlsRef = useRef<OrbitControls | null>(null);
-  const currentMeshRef = useRef<THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial> | null>(null);
-  const currentGridRef = useRef<THREE.GridHelper | null>(null);
-  const wireframeRef = useRef<boolean>(wireframe);
-  wireframeRef.current = wireframe;
+  const pivot = new THREE.Group();
+  const source = new THREE.Group();
+  pivot.add(source);
 
-  // Toggle wireframe on active material
-  const toggleWireframe = useCallback(() => {
-    setWireframe((prev) => {
-      const next = !prev;
-      if (materialRef.current) {
-        materialRef.current.wireframe = next;
-      }
-      return next;
-    });
-  }, []);
+  const grid = new THREE.GridHelper(2.2, 20, advanced ? 0x646c71 : 0x6366f1, advanced ? 0x41494e : 0x475569);
+  grid.rotation.x = Math.PI / 2;
+  const axisHelper = new THREE.AxesHelper(1);
+  const guides = new THREE.Group();
+  guides.add(grid, axisHelper);
 
-  const triggerFit = useCallback(() => {
-    if (fitCameraRef.current) {
-      fitCameraRef.current();
-    }
-  }, []);
+  const ambient = new THREE.AmbientLight(0xffffff);
+  const key = new THREE.DirectionalLight(0xffffff);
+  const fill = new THREE.DirectionalLight(0x94a3b8, 0.5);
+  fill.position.set(-10, 15, -10);
+  const rim = new THREE.DirectionalLight(0xffffff, 0.35);
+  rim.position.set(0, -15, 10);
+  scene.add(pivot, guides, ambient, key, fill, rim);
 
-  // 1. Initialize Three.js viewport (renderer, scene, camera, controls, lights) once
-  useEffect(() => {
-    if (!hasWebGL) {
-      setLoading(false);
-      return;
-    }
+  const solid = new THREE.MeshStandardMaterial({
+    color: advanced ? 0x9eabc3 : 0x6366f1,
+    roughness: 0.35,
+    metalness: 0.15,
+    side: THREE.DoubleSide,
+  });
+  const wireframe = advanced ? new THREE.MeshBasicMaterial({ color: 0xc4d0e2, side: THREE.DoubleSide }) : solid.clone();
+  wireframe.wireframe = true;
+  const normals = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide });
+  const flatNormals = new THREE.MeshNormalMaterial({ side: THREE.DoubleSide, flatShading: true });
+  const originalMaterials = new Map<THREE.Mesh, THREE.Material | THREE.Material[]>();
+  const sourceCenter = new THREE.Vector3();
+  let ownedGeometry: THREE.BufferGeometry | undefined;
+  let renderMode: RenderMode = 'solid';
 
-    const container = canvasRef.current;
-    if (!container) return;
+  let frame = 0;
+  let paused = false;
+  let failed = false;
+  let environmentMap: THREE.WebGLRenderTarget | undefined;
 
-    let animId = 0;
-    let renderer: THREE.WebGLRenderer | null = null;
-    let controls: OrbitControls | null = null;
-    let resizeObserver: ResizeObserver | null = null;
-
-    try {
-      const width = container.clientWidth || 600;
-      const height = container.clientHeight || 440;
-
-      const scene = new THREE.Scene();
-      sceneRef.current = scene;
-
-      // Z-up coordinate system matching engine
-      const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 2000);
-      camera.up.set(0, 0, 1);
-      camera.position.set(100, -150, 100);
-      cameraRef.current = camera;
-
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-      renderer.setSize(width, height, false);
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-      container.replaceChildren(renderer.domElement);
-
-      controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = true;
-      controls.dampingFactor = 0.08;
-      controls.enableZoom = true;
-      controls.enablePan = true;
-      controls.enableRotate = true;
-      controlsRef.current = controls;
-
-      // Procedural local lighting in Z-up
-      const ambientLight = new THREE.AmbientLight(0xffffff, 0.65);
-      scene.add(ambientLight);
-
-      const keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
-      keyLight.position.set(10, -15, 20).normalize();
-      scene.add(keyLight);
-
-      const fillLight = new THREE.DirectionalLight(0x94a3b8, 0.5);
-      fillLight.position.set(-10, 15, -10).normalize();
-      scene.add(fillLight);
-
-      const rimLight = new THREE.DirectionalLight(0xffffff, 0.35);
-      rimLight.position.set(0, -15, 10).normalize();
-      scene.add(rimLight);
-
-      // Handle container resize
-      resizeObserver = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          const { width: w, height: h } = entry.contentRect;
-          if (w > 0 && h > 0 && renderer && camera) {
-            camera.aspect = w / h;
-            camera.updateProjectionMatrix();
-            renderer.setSize(w, h, false);
+  function requestRender() {
+    if (frame || paused || failed) return;
+    frame = requestAnimationFrame(() => {
+      frame = 0;
+      try {
+        if (advanced && !environmentMap) {
+          const room = new RoomEnvironment();
+          const pmrem = new THREE.PMREMGenerator(renderer);
+          try {
+            environmentMap = pmrem.fromScene(room);
+            scene.environment = environmentMap.texture;
+          } finally {
+            pmrem.dispose();
+            room.dispose();
           }
         }
+        renderer.render(scene, camera);
+      } catch (error) {
+        if (renderer.getContext().isContextLost()) return;
+        failed = true;
+        controls.enabled = false;
+        console.warn('3D Viewer render error:', error);
+        setStatus('error');
+      }
+    });
+  }
+
+  function resize() {
+    const width = host.clientWidth || 600;
+    const height = host.clientHeight || 440;
+    camera.aspect = width / height;
+    camera.updateProjectionMatrix();
+    renderer.setSize(width, height, false);
+    requestRender();
+  }
+
+  function contextLost(event: Event) {
+    event.preventDefault();
+    paused = true;
+    controls.enabled = false;
+    cancelAnimationFrame(frame);
+    frame = 0;
+    setStatus('lost');
+  }
+
+  function contextRestored() {
+    environmentMap?.dispose();
+    environmentMap = undefined;
+    scene.environment = null;
+    paused = false;
+    failed = false;
+    controls.enabled = true;
+    setStatus('ready');
+    requestRender();
+  }
+
+  // OrbitControls' change threshold uses absolute world units. Draw input
+  // updates even when camera motion is smaller than that threshold.
+  function drawPointerMove(event: PointerEvent) {
+    if (event.buttons || event.pointerType === 'touch') requestRender();
+  }
+
+  const observer = new ResizeObserver(resize);
+  observer.observe(host);
+  canvas.addEventListener('webglcontextlost', contextLost);
+  canvas.addEventListener('webglcontextrestored', contextRestored);
+  canvas.addEventListener('pointermove', drawPointerMove);
+  canvas.addEventListener('wheel', requestRender, { passive: true });
+  controls.addEventListener('change', requestRender);
+  resize();
+
+  function fit(direction = camera.position.clone().sub(controls.target)) {
+    const box = new THREE.Box3().setFromObject(pivot);
+    if (box.isEmpty()) return;
+    const { center, radius: boundsRadius } = box.getBoundingSphere(new THREE.Sphere());
+    const radius = boundsRadius || 1;
+    const vertical = THREE.MathUtils.degToRad(camera.fov / 2);
+    const horizontal = Math.atan(Math.tan(vertical) * camera.aspect);
+    const distance = (1.2 * radius) / Math.sin(Math.min(horizontal, vertical));
+
+    camera.near = radius / 500;
+    camera.far = Math.max(radius * 300, distance * 3);
+    controls.minDistance = radius / 50;
+    controls.maxDistance = camera.far / 2;
+    controls.target.copy(center);
+    camera.position.copy(center).addScaledVector(direction.clone().normalize(), distance);
+    camera.updateProjectionMatrix();
+    controls.update();
+    requestRender();
+  }
+
+  function applyRenderMode() {
+    for (const [mesh, original] of originalMaterials) {
+      const override =
+        renderMode === 'wireframe'
+          ? wireframe
+          : renderMode === 'normals'
+            ? mesh.geometry.hasAttribute('normal')
+              ? normals
+              : flatNormals
+            : null;
+      mesh.material = override && Array.isArray(original) ? original.map(() => override) : (override ?? original);
+    }
+    requestRender();
+  }
+
+  function clearContent() {
+    for (const [mesh, material] of originalMaterials) mesh.material = material;
+    originalMaterials.clear();
+    source.clear();
+    ownedGeometry?.dispose();
+    ownedGeometry = undefined;
+  }
+
+  return {
+    controls,
+    fit,
+    requestRender,
+    setContent(positions: MeshModel['positions'] | undefined, indices: MeshModel['indices'] | undefined, root: THREE.Group | undefined) {
+      clearContent();
+      if (failed && !paused) {
+        failed = false;
+        controls.enabled = true;
+        setStatus('ready');
+      }
+      pivot.position.set(0, 0, 0);
+      pivot.rotation.set(0, 0, 0);
+      source.position.set(0, 0, 0);
+      source.rotation.x = root ? Math.PI / 2 : 0;
+      if (root) {
+        source.add(root);
+      } else if (positions?.length && indices?.length) {
+        ownedGeometry = new THREE.BufferGeometry();
+        ownedGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+        ownedGeometry.setIndex(new THREE.BufferAttribute(indices, 1));
+        ownedGeometry.computeVertexNormals();
+        source.add(new THREE.Mesh(ownedGeometry, solid));
+      }
+
+      source.traverse((object) => {
+        const mesh = object as THREE.Mesh;
+        if (mesh.isMesh) originalMaterials.set(mesh, mesh.material);
       });
-      resizeObserver.observe(container);
 
-      // Render animation loop
-      const animate = () => {
-        animId = requestAnimationFrame(animate);
-        controls?.update();
-        if (renderer && scene && camera) {
-          renderer.render(scene, camera);
-        }
-      };
-      animate();
-
-      setLoading(false);
-    } catch (err: unknown) {
-      console.warn('3D Viewer initialization error:', err);
-      setLoadError(err instanceof Error ? err.message : String(err));
-      setLoading(false);
-    }
-
-    return () => {
-      cancelAnimationFrame(animId);
-      resizeObserver?.disconnect();
-      fitCameraRef.current = null;
-      materialRef.current = null;
-      controlsRef.current = null;
-      sceneRef.current = null;
-      cameraRef.current = null;
-
-      if (controls) {
-        controls.dispose();
-      }
-
-      if (currentMeshRef.current) {
-        currentMeshRef.current.geometry.dispose();
-        currentMeshRef.current.material.dispose();
-        currentMeshRef.current = null;
-      }
-
-      if (currentGridRef.current) {
-        const grid = currentGridRef.current;
-        grid.geometry.dispose();
-        if (Array.isArray(grid.material)) {
-          grid.material.forEach((m) => m.dispose());
-        } else {
-          grid.material.dispose();
-        }
-        currentGridRef.current = null;
-      }
-
-      if (renderer) {
-        renderer.dispose();
-        try {
-          renderer.forceContextLoss?.();
-        } catch {
-          // ignore
-        }
-        if (renderer.domElement?.parentElement) {
-          renderer.domElement.parentElement.removeChild(renderer.domElement);
-        }
-      }
-    };
-  }, [hasWebGL]);
-
-  // 2. Synchronize model geometry with the scene
-  useEffect(() => {
-    const scene = sceneRef.current;
-    const camera = cameraRef.current;
-    const controls = controlsRef.current;
-    if (!scene || !camera || !controls) return;
-
-    // Dispose existing mesh
-    if (currentMeshRef.current) {
-      scene.remove(currentMeshRef.current);
-      currentMeshRef.current.geometry.dispose();
-      currentMeshRef.current.material.dispose();
-      currentMeshRef.current = null;
-      materialRef.current = null;
-    }
-
-    // Dispose existing grid
-    if (currentGridRef.current) {
-      scene.remove(currentGridRef.current);
-      const grid = currentGridRef.current;
-      grid.geometry.dispose();
-      if (Array.isArray(grid.material)) {
-        grid.material.forEach((m) => m.dispose());
+      // Measuring the source subtree does not update its parent transform.
+      pivot.updateWorldMatrix(true, false);
+      const bounds = new THREE.Box3().setFromObject(source);
+      guides.visible = !bounds.isEmpty();
+      if (guides.visible) {
+        bounds.getCenter(sourceCenter);
+        source.position.copy(sourceCenter).negate();
+        pivot.position.copy(sourceCenter);
+        const { x, y, z } = bounds.getSize(new THREE.Vector3());
+        const size = Math.max(x, y, z) || 1;
+        guides.position.set(sourceCenter.x, sourceCenter.y, bounds.min.z);
+        grid.scale.setScalar(advanced ? size : Math.max(size, 10));
+        axisHelper.scale.setScalar(size * 0.6);
+        fit(viewDirections.isometric);
       } else {
-        grid.material.dispose();
+        sourceCenter.set(0, 0, 0);
       }
-      currentGridRef.current = null;
-    }
+      applyRenderMode();
+    },
+    setPose(pose: Pose) {
+      const [x, y, z] = pose.position.map(Number);
+      pivot.position.copy(sourceCenter).add(new THREE.Vector3(x, y, z));
+      const [rx, ry, rz] = pose.rotation.map((value) => THREE.MathUtils.degToRad(Number(value) % 360));
+      pivot.rotation.set(rx, ry, rz);
+      requestRender();
+    },
+    setAppearance(mode: RenderMode, environment: Environment, intensity: number, direction: number, showGrid: boolean, showAxes: boolean) {
+      if (renderMode !== mode) {
+        renderMode = mode;
+        applyRenderMode();
+      }
 
-    if (!model || model.positions.length === 0 || model.indices.length === 0) {
-      fitCameraRef.current = null;
+      const lighting = environments[environment];
+      const angle = THREE.MathUtils.degToRad(direction);
+      ambient.intensity = lighting.ambient * intensity;
+      key.color.setHex(lighting.key);
+      key.intensity = 0.85 * intensity;
+      key.position.set(Math.cos(angle), Math.sin(angle), 1.1);
+      fill.color.setHex(lighting.fill);
+      fill.intensity = 0.5 * intensity;
+      rim.intensity = 0.35 * intensity;
+      scene.environmentIntensity = lighting.reflection * intensity;
+      scene.environmentRotation.set(Math.PI / 2, 0, lighting.rotation, 'ZXY');
+      grid.visible = showGrid;
+      axisHelper.visible = showAxes;
+      requestRender();
+    },
+    dispose() {
+      paused = true;
+      cancelAnimationFrame(frame);
+      observer.disconnect();
+      canvas.removeEventListener('webglcontextlost', contextLost);
+      canvas.removeEventListener('webglcontextrestored', contextRestored);
+      canvas.removeEventListener('pointermove', drawPointerMove);
+      canvas.removeEventListener('wheel', requestRender);
+      controls.removeEventListener('change', requestRender);
+      controls.dispose();
+      clearContent();
+      grid.dispose();
+      axisHelper.dispose();
+      solid.dispose();
+      wireframe.dispose();
+      normals.dispose();
+      flatNormals.dispose();
+      environmentMap?.dispose();
+      renderer.dispose();
+      renderer.forceContextLoss();
+      canvas.remove();
+    },
+  };
+}
+
+export function MeshCanvas({ model, sceneAsset, className, advanced }: MeshCanvasProps) {
+  const { t, locale } = useI18n();
+  const intensityId = useId();
+  const directionId = useId();
+  const hostRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<ReturnType<typeof createViewport>>(undefined);
+  const [status, setStatus] = useState<ViewportStatus>('loading');
+  const [drag, setDrag] = useState<DragMode>('orbit');
+  const [view, setView] = useState<keyof typeof viewDirections | ''>('');
+  const [mode, setMode] = useState<RenderMode>('solid');
+  const [environment, setEnvironment] = useState<Environment>('studio');
+  const [intensity, setIntensity] = useState(100);
+  const [direction, setDirection] = useState(304);
+  const [grid, setGrid] = useState(true);
+  const [showAxes, setShowAxes] = useState(false);
+
+  const positions = model?.positions;
+  const indices = model?.indices;
+  const root = sceneAsset?.root;
+  const [poseState, setPoseState] = useState({ positions, indices, root, pose: defaultPose });
+  const pose = poseState.positions === positions && poseState.indices === indices && poseState.root === root ? poseState.pose : defaultPose;
+
+  useEffect(() => {
+    const host = hostRef.current;
+    if (!host) return;
+    const viewport = createViewport(host, advanced, setStatus);
+    viewportRef.current = viewport;
+    if (viewport) setStatus('ready');
+    return () => {
+      viewportRef.current = undefined;
+      viewport?.dispose();
+    };
+  }, [advanced]);
+
+  useEffect(() => {
+    viewportRef.current?.setContent(positions, indices, root);
+    setView('isometric');
+  }, [positions, indices, root, advanced]);
+
+  useEffect(() => {
+    viewportRef.current?.setPose(pose);
+  }, [pose, positions, indices, root, advanced]);
+
+  useEffect(() => {
+    viewportRef.current?.setAppearance(mode, environment, intensity / 100, direction, grid, advanced && showAxes);
+  }, [mode, environment, intensity, direction, grid, advanced, showAxes]);
+
+  useEffect(() => {
+    const controls = viewportRef.current?.controls;
+    if (!controls) return;
+    controls.mouseButtons.LEFT = drag === 'pan' ? THREE.MOUSE.PAN : THREE.MOUSE.ROTATE;
+    controls.touches.ONE = drag === 'pan' ? THREE.TOUCH.PAN : THREE.TOUCH.ROTATE;
+  }, [drag, advanced]);
+
+  useEffect(() => {
+    const controls = viewportRef.current?.controls;
+    if (!controls || !advanced) return;
+    const clearView = () => setView('');
+    controls.addEventListener('start', clearView);
+    return () => controls.removeEventListener('start', clearView);
+  }, [advanced]);
+
+  function changePose(kind: keyof Pose, axis: number, value: string) {
+    const values: Pose[typeof kind] = [...pose[kind]];
+    values[axis] = value;
+    setPoseState({ positions, indices, root, pose: { ...pose, [kind]: values } });
+  }
+
+  function zoom(inward: boolean) {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    if (inward) viewport.controls.dollyIn(0.8);
+    else viewport.controls.dollyOut(0.8);
+    viewport.requestRender();
+  }
+
+  function handleViewportKey(event: KeyboardEvent<HTMLDivElement>) {
+    const viewport = viewportRef.current;
+    if (status !== 'ready' || !viewport || event.altKey || event.ctrlKey || event.metaKey) return;
+    const { controls } = viewport;
+
+    if (event.key === '+' || event.key === '-' || event.key === '=') {
+      event.preventDefault();
+      zoom(event.key !== '-');
       return;
     }
 
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute('position', new THREE.BufferAttribute(model.positions, 3));
-    geometry.setIndex(new THREE.BufferAttribute(model.indices, 1));
-    geometry.computeVertexNormals();
-    geometry.computeBoundingBox();
-    geometry.computeBoundingSphere();
-
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x6366f1, // indigo accent
-      roughness: 0.35,
-      metalness: 0.15,
-      side: THREE.DoubleSide,
-      wireframe: wireframeRef.current,
-    });
-    materialRef.current = material;
-
-    const mesh = new THREE.Mesh(geometry, material);
-    scene.add(mesh);
-    currentMeshRef.current = mesh;
-
-    // Grid floor at bottom of bounding box (XY plane with Z-up)
-    const box = new THREE.Box3().setFromObject(mesh);
-    const size = box.getSize(new THREE.Vector3());
-    const maxDim = Math.max(size.x, size.y, size.z, 10);
-    const grid = new THREE.GridHelper(maxDim * 2.2, 20, 0x6366f1, 0x475569);
-    grid.rotation.x = Math.PI / 2; // Lie in XY plane
-    const center = box.getCenter(new THREE.Vector3());
-    grid.position.set(center.x, center.y, box.min.z);
-    scene.add(grid);
-    currentGridRef.current = grid;
-
-    // Fit function in Z-up
-    const fitToModel = () => {
-      const currentBox = new THREE.Box3().setFromObject(mesh);
-      if (currentBox.isEmpty()) return;
-
-      const sphere = new THREE.Sphere();
-      currentBox.getBoundingSphere(sphere);
-      const radius = Math.max(sphere.radius, 0.1);
-      const fov = (camera.fov * Math.PI) / 180;
-      let distance = radius / Math.sin(fov / 2);
-      distance *= 1.35; // Comfortable framing padding
-
-      camera.near = Math.max(radius / 100, 0.01);
-      camera.far = Math.max(radius * 100, 1000);
-      camera.updateProjectionMatrix();
-
-      // Z-up: X is right, Y is back/front, Z is up
-      camera.position.set(sphere.center.x + distance * 0.7, sphere.center.y - distance * 0.7, sphere.center.z + distance * 0.55);
-      controls.target.copy(sphere.center);
-      controls.update();
-    };
-
-    fitCameraRef.current = fitToModel;
-    fitToModel();
-  }, [model]);
-
-  // Synchronize wireframe state changes without rebuilding scene or resetting camera
-  useEffect(() => {
-    if (materialRef.current) {
-      materialRef.current.wireframe = wireframe;
+    const x = Number(event.key === 'ArrowLeft') - Number(event.key === 'ArrowRight');
+    const y = Number(event.key === 'ArrowUp') - Number(event.key === 'ArrowDown');
+    if (x === 0 && y === 0) return;
+    event.preventDefault();
+    setView('');
+    if (drag === 'pan') {
+      controls.pan(x * 18, -y * 18);
+    } else {
+      if (x) controls.rotateLeft(x * 0.1);
+      if (y) controls.rotateUp(y * 0.1);
     }
-  }, [wireframe]);
+    viewport.requestRender();
+  }
 
-  const vertCount = model ? model.positions.length / 3 : 0;
-  const triCount = model ? model.indices.length / 3 : 0;
+  const ready = status === 'ready';
+  const triangles = sceneAsset?.triangles ?? (indices?.length ?? 0) / 3;
+  const vertices = sceneAsset?.vertices ?? (positions?.length ?? 0) / 3;
+  const fitButton = (
+    <button type="button" className={styles.toolbarBtn} onClick={() => viewportRef.current?.fit()} title={t('Fit model to view')}>
+      <Maximize2 size={14} aria-hidden="true" />
+      {t('Fit')}
+    </button>
+  );
 
   return (
-    <div className={`${styles.viewerContainer} ${className || ''}`} ref={containerRef}>
-      {!hasWebGL ? (
-        <div className={styles.fallbackNotice}>
-          <Alert tone="warning" title={t('WebGL 2 Unavailable')}>
-            {t(
-              'Hardware-accelerated 3D rendering (WebGL 2.0) is not available in your browser or device. You can still inspect, process, and convert models using the controls below.',
-            )}
-          </Alert>
+    <div className={className}>
+      {ready && advanced && (
+        <div className={styles.advancedToolbar} role="group" aria-label={t('3D Viewport Controls')}>
+          <div className={styles.buttonGroup} role="group" aria-label={t('Camera drag mode')}>
+            <button type="button" className={styles.toolbarBtn} aria-pressed={drag === 'orbit'} onClick={() => setDrag('orbit')}>
+              <Orbit size={15} aria-hidden="true" />
+              {t('Orbit')}
+            </button>
+            <button type="button" className={styles.toolbarBtn} aria-pressed={drag === 'pan'} onClick={() => setDrag('pan')}>
+              <Hand size={15} aria-hidden="true" />
+              {t('Pan')}
+            </button>
+          </div>
+          <div className={styles.buttonGroup} role="group" aria-label={t('Zoom and fit')}>
+            <button
+              type="button"
+              className={styles.toolbarBtn}
+              onClick={() => zoom(false)}
+              aria-label={t('Zoom out')}
+              title={t('Zoom out')}
+            >
+              <Minus size={15} aria-hidden="true" />
+            </button>
+            <button type="button" className={styles.toolbarBtn} onClick={() => zoom(true)} aria-label={t('Zoom in')} title={t('Zoom in')}>
+              <Plus size={15} aria-hidden="true" />
+            </button>
+            {fitButton}
+          </div>
+          <select
+            aria-label={t('Camera view')}
+            value={view}
+            onChange={(event) => {
+              const nextView = event.target.value as keyof typeof viewDirections;
+              setView(nextView);
+              viewportRef.current?.fit(viewDirections[nextView]);
+            }}
+          >
+            <option value="" disabled>
+              {t('Camera view')}
+            </option>
+            <option value="isometric">{t('Isometric')}</option>
+            <option value="front">{t('Front')}</option>
+            <option value="back">{t('Back')}</option>
+            <option value="left">{t('Left')}</option>
+            <option value="right">{t('Right')}</option>
+            <option value="top">{t('Top')}</option>
+            <option value="bottom">{t('Bottom')}</option>
+          </select>
         </div>
-      ) : loadError ? (
-        <div className={styles.fallbackNotice}>
-          <Alert tone="danger" title={t('Viewer Error')}>
-            {translate3DMessage(loadError, t)}
-          </Alert>
-        </div>
-      ) : (
-        <>
-          <div className={styles.canvasWrapper}>
-            <div className={styles.canvasHost} ref={canvasRef} />
-            {loading && (
+      )}
+
+      <div className={styles.canvasWrapper} data-environment={advanced ? environment : undefined}>
+        <div
+          className={styles.canvasHost}
+          ref={hostRef}
+          tabIndex={advanced && ready ? 0 : undefined}
+          role={advanced ? 'group' : undefined}
+          aria-label={advanced ? t('3D viewport. Use arrow keys to orbit or pan and plus or minus to zoom.') : undefined}
+          onKeyDown={advanced ? handleViewportKey : undefined}
+        />
+        {status !== 'ready' && (
+          <div className={styles.viewportNotice} role="status">
+            {status === 'loading' ? (
               <div className={styles.loadingSpinner}>
                 <span className="spinner" aria-hidden="true" />
                 <span>{t('Initializing 3D Viewport...')}</span>
               </div>
+            ) : status === 'unavailable' ? (
+              <Alert tone="warning" title={t('WebGL 2 Unavailable')}>
+                {advanced
+                  ? t('Your browser or device does not support WebGL 2. You can still check the model details below.')
+                  : t(
+                      'Hardware-accelerated 3D rendering (WebGL 2.0) is not available in your browser or device. You can still inspect, process, and convert models using the controls below.',
+                    )}
+              </Alert>
+            ) : status === 'lost' ? (
+              <Alert tone="warning" title={t('WebGL Context Lost')}>
+                {t('The viewport will resume when WebGL is restored. Reload the page if it stays unavailable.')}
+              </Alert>
+            ) : (
+              <Alert tone="danger" title={t('Viewer Error')}>
+                {t('The 3D viewport could not render this model.')}
+              </Alert>
             )}
           </div>
+        )}
+        {ready && !advanced && (
+          <div className={styles.toolbar} role="group" aria-label={t('3D Viewport Controls')}>
+            <button
+              type="button"
+              className={styles.toolbarBtn}
+              onClick={() => setMode(mode === 'wireframe' ? 'solid' : 'wireframe')}
+              title={t('Toggle wireframe mode')}
+              aria-pressed={mode === 'wireframe'}
+            >
+              <Eye size={14} aria-hidden="true" />
+              {t('Wireframe')}
+            </button>
+            {fitButton}
+          </div>
+        )}
+        {ready && (
+          <div className={styles.overlayStats}>
+            <Box size={13} aria-hidden="true" />
+            <span>
+              <strong>{triangles.toLocaleString(locale)}</strong> {t('triangles')}
+            </span>
+            <span>
+              <strong>{vertices.toLocaleString(locale)}</strong> {t('vertices')}
+            </span>
+          </div>
+        )}
+      </div>
 
-          {!loading && (
-            <>
-              <div className={styles.toolbar} role="toolbar" aria-label={t('3D Viewport Controls')}>
+      {ready && advanced && (
+        <div className={styles.settings}>
+          <details>
+            <summary>{t('View settings')}</summary>
+            <div className={styles.settingsFields}>
+              <label className={styles.field}>
+                {t('Render mode')}
+                <select value={mode} onChange={(event) => setMode(event.target.value as RenderMode)}>
+                  <option value="solid">{t('Solid')}</option>
+                  <option value="wireframe">{t('Wireframe')}</option>
+                  <option value="normals">{t('Normals')}</option>
+                </select>
+              </label>
+              <label className={styles.field}>
+                {t('Environment')}
+                <select value={environment} onChange={(event) => setEnvironment(event.target.value as Environment)}>
+                  <option value="studio">{t('Studio')}</option>
+                  <option value="daylight">{t('Daylight')}</option>
+                  <option value="warm">{t('Warm')}</option>
+                </select>
+              </label>
+              <div className={styles.field}>
+                <span>
+                  <label htmlFor={intensityId}>{t('Light intensity')}</label> <output>{intensity}%</output>
+                </span>
+                <input
+                  id={intensityId}
+                  type="range"
+                  min={0}
+                  max={200}
+                  step={5}
+                  value={intensity}
+                  onChange={(event) => setIntensity(event.target.valueAsNumber)}
+                />
+              </div>
+              <div className={styles.field}>
+                <span>
+                  <label htmlFor={directionId}>{t('Light direction')}</label> <output>{direction}°</output>
+                </span>
+                <input
+                  id={directionId}
+                  type="range"
+                  min={0}
+                  max={360}
+                  value={direction}
+                  onChange={(event) => setDirection(event.target.valueAsNumber)}
+                />
+              </div>
+              <div className={styles.guideToggles}>
+                <label>
+                  <input type="checkbox" checked={grid} onChange={(event) => setGrid(event.target.checked)} />
+                  {t('Grid')}
+                </label>
+                <label>
+                  <input type="checkbox" checked={showAxes} onChange={(event) => setShowAxes(event.target.checked)} />
+                  {t('Axes')}
+                </label>
+              </div>
+            </div>
+          </details>
+          <details>
+            <summary>{t('Preview pose')}</summary>
+            <div className={styles.settingsFields}>
+              {(['position', 'rotation'] as const).map((kind) => (
+                <fieldset className={styles.poseFields} key={kind}>
+                  <legend>{kind === 'position' ? t('Position offset') : t('Rotation (degrees)')}</legend>
+                  {axes.map((axis, index) => (
+                    <label className={styles.field} key={axis}>
+                      {axis}
+                      <input
+                        type="number"
+                        step="any"
+                        value={pose[kind][index]}
+                        onChange={(event) => changePose(kind, index, event.target.value)}
+                      />
+                    </label>
+                  ))}
+                </fieldset>
+              ))}
+              <div className={styles.poseActions}>
                 <button
                   type="button"
-                  className={`${styles.toolbarBtn} ${wireframe ? styles.toolbarBtnActive : ''}`}
-                  onClick={toggleWireframe}
-                  title={t('Toggle wireframe mode')}
-                  aria-pressed={wireframe}
+                  className={styles.toolbarBtn}
+                  onClick={() => setPoseState({ positions, indices, root, pose: defaultPose })}
                 >
-                  <Eye size={14} aria-hidden="true" />
-                  <span>{t('Wireframe')}</span>
+                  {t('Reset pose')}
                 </button>
-                <button type="button" className={styles.toolbarBtn} onClick={triggerFit} title={t('Fit model to view')}>
-                  <Maximize2 size={14} aria-hidden="true" />
-                  <span>{t('Fit')}</span>
-                </button>
+                <p>{t('Pose uses Z-up viewport coordinates. Diagnostics use source coordinates.')}</p>
               </div>
-
-              <div className={styles.overlayStats}>
-                <span>
-                  <Box size={13} style={{ display: 'inline', verticalAlign: '-1px', marginRight: 4 }} aria-hidden="true" />
-                  <strong>{triCount.toLocaleString()}</strong> {t('triangles')}
-                </span>
-                <span>•</span>
-                <span>
-                  <strong>{vertCount.toLocaleString()}</strong> {t('vertices')}
-                </span>
-              </div>
-            </>
-          )}
-        </>
+            </div>
+          </details>
+        </div>
       )}
     </div>
   );

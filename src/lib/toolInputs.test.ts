@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { classifyFile, isToolEligibleForBatch, isToolEligibleForFile } from './toolInputs';
-import { fileKind, matchesAccept, suggestToolsForFiles } from './handoff';
+import { classifyFile, isToolEligibleForBatch, isToolEligibleForFile, VIEWER_ACCEPT } from './toolInputs';
+import { fileKind, matchesAccept, setPendingFiles, suggestToolsForFiles, takePendingFiles } from './handoff';
+import { MESH_ACCEPT } from '../tools/3d/_mesh/types';
 import { getToolMeta } from '../tools/registry';
 
 function createFile(name: string, type = ''): File {
@@ -149,5 +150,65 @@ describe('toolInputs and handoff classification', () => {
     expect(isToolEligibleForBatch(compare, [first, second, third])).toBe(false);
     expect(isToolEligibleForBatch(compare, [first, createFile('archive.zip', 'application/zip')])).toBe(false);
     expect(suggestToolsForFiles([first, second]).map((tool) => tool.id)[0]).toBe('img-compare');
+  });
+
+  it('hands a single mesh or CAD drop to the 3D Viewer and keeps model batches on the merger', () => {
+    const mesh = createFile('part.obj', 'text/plain');
+    const cad = createFile('assembly.stp', 'application/octet-stream');
+
+    for (const file of [mesh, cad]) {
+      const [first] = suggestToolsForFiles([file]);
+      setPendingFiles([file], first.path);
+      const handoff = takePendingFiles(first.path, MESH_ACCEPT);
+
+      expect(first.id).toBe('three-viewer');
+      expect(first.path).toBe('/3d/viewer');
+      expect(handoff).toEqual({ accepted: [file], rejected: [] });
+    }
+
+    expect(suggestToolsForFiles([mesh, cad]).map(({ id }) => id)).toEqual(['three-merge', 'batch-rename']);
+    expect(isToolEligibleForFile(getToolMeta('three-viewer'), createFile('model.fbx', 'model/fbx'))).toBe(false);
+  });
+
+  it('offers only the 3D Viewer and file inspector for GLB and glTF scenes', () => {
+    for (const file of [
+      createFile('scene.glb'),
+      createFile('scene.gltf', 'application/json'),
+      createFile('scene', 'model/gltf-binary'),
+      createFile('scene', 'model/gltf+json'),
+    ]) {
+      expect(fileKind(file)).toBe('3d');
+      expect(matchesAccept(file, VIEWER_ACCEPT)).toBe(true);
+      expect(matchesAccept(file, MESH_ACCEPT)).toBe(false);
+      expect(suggestToolsForFiles([file]).map(({ id }) => id)).toEqual(['three-viewer', 'file-inspector']);
+    }
+  });
+
+  it('hands off a scene and its companion files together', () => {
+    const buffer = createFile('geometry.bin');
+    const texture = createFile('albedo.png');
+    const avif = createFile('albedo.avif', 'image/avif');
+    const cad = createFile('part.step');
+
+    expect(matchesAccept(avif, VIEWER_ACCEPT)).toBe(false);
+
+    for (const scene of [createFile('scene.gltf'), createFile('scene.glb')]) {
+      const files = [buffer, scene, texture];
+      const suggestions = suggestToolsForFiles(files);
+      expect(suggestions.map(({ id }) => id)).toEqual(['three-viewer', 'batch-rename']);
+
+      setPendingFiles(files, suggestions[0].path);
+      expect(takePendingFiles('/3d/viewer', VIEWER_ACCEPT, true)).toEqual({ accepted: files, rejected: [] });
+
+      for (const batch of [
+        [scene, cad],
+        [scene, createFile('other.glb')],
+        [scene, createFile('notes.txt')],
+        [scene, avif],
+        [buffer, texture],
+      ]) {
+        expect(suggestToolsForFiles(batch).map(({ id }) => id)).toEqual(['batch-rename']);
+      }
+    }
   });
 });

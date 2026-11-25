@@ -20,12 +20,10 @@
 }
 
 .canvasHost,
-.canvasHost canvas,
-.canvasWrapper canvas {
-  width: 100% !important;
-  height: 100% !important;
+.canvasHost canvas {
+  width: 100%;
+  height: 100%;
   display: block;
-  outline: none;
 }
 
 .toolbar {
@@ -66,20 +64,32 @@
   color: var(--text);
 }
 
-.toolbarBtnActive {
+.toolbarBtn[aria-pressed='true'] {
   background: var(--accent-soft);
   color: var(--accent-text);
   border-color: var(--accent-border);
+}
+
+.toolbarBtn:focus-visible,
+.advancedViewer :is(select, input, summary):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.canvasHost:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -3px;
 }
 
 .overlayStats {
   position: absolute;
   bottom: var(--space-3);
   left: var(--space-3);
-  z-index: 5;
+  max-width: calc(100% - 2 * var(--space-3));
   display: flex;
   align-items: center;
-  gap: var(--space-3);
+  flex-wrap: wrap;
+  gap: 0 var(--space-2);
   background: var(--surface-raised);
   padding: var(--space-1) var(--space-3);
   border-radius: var(--radius-md);
@@ -92,13 +102,22 @@
 
 .overlayStats strong {
   color: var(--text);
+  font-family: var(--font-mono);
   font-weight: var(--weight-semibold);
 }
 
-.fallbackNotice {
+.viewportNotice {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
   padding: var(--space-6);
-  max-width: 480px;
   text-align: center;
+  background: var(--surface-sunken);
+}
+
+.viewportNotice > * {
+  max-width: 30rem;
 }
 
 .loadingSpinner {
@@ -108,4 +127,167 @@
   gap: var(--space-3);
   color: var(--text-muted);
   font-size: var(--text-sm);
+}
+
+.advancedViewer {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  height: auto;
+  min-height: min(360px, var(--mesh-viewport-height, 58svh));
+  overflow: visible;
+  color: var(--text);
+}
+
+.advancedViewer > .loadingSpinner {
+  align-self: center;
+}
+
+.advancedViewer .canvasWrapper {
+  height: var(--mesh-viewport-height, clamp(320px, 58svh, 672px));
+  background: radial-gradient(ellipse at 50% 30%, #353a40, #1a1d21 80%);
+  isolation: isolate;
+}
+
+.advancedViewer .canvasWrapper[data-environment='daylight'] {
+  background: radial-gradient(ellipse at 50% 25%, #4b5969, #20272f 82%);
+}
+
+.advancedViewer .canvasWrapper[data-environment='warm'] {
+  background: radial-gradient(ellipse at 50% 28%, #504139, #241e1d 82%);
+}
+
+.advancedToolbar,
+.settings {
+  background: var(--surface-raised);
+  font-size: var(--text-xs);
+}
+
+.advancedToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+.buttonGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+}
+
+.advancedViewer :is(.toolbarBtn, select, input[type='number']) {
+  min-height: 34px;
+  height: auto;
+}
+
+.advancedToolbar > select {
+  margin-inline-start: auto;
+  max-width: 100%;
+}
+
+.advancedViewer :is(select, input[type='number']) {
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--input-bg);
+  padding: var(--space-1) var(--space-2);
+  font: inherit;
+}
+
+.settings {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 23rem), 1fr));
+  align-items: start;
+  gap: 0 var(--space-4);
+  padding: 0 var(--space-3);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+}
+
+.settings summary {
+  width: fit-content;
+  min-height: 36px;
+  padding-block: var(--space-2);
+  color: var(--text);
+  cursor: pointer;
+  font-weight: var(--weight-semibold);
+}
+
+.settings summary:hover {
+  color: var(--accent-text);
+}
+
+.settingsFields {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--space-3) var(--space-4);
+  padding-block: var(--space-1) var(--space-3);
+}
+
+.field {
+  display: grid;
+  min-width: 0;
+  gap: var(--space-1);
+}
+
+.field input {
+  min-width: 0;
+  inline-size: 100%;
+}
+
+.field output {
+  color: var(--text-muted);
+  margin-inline-start: var(--space-1);
+  font-family: var(--font-mono);
+}
+
+.advancedViewer input:is([type='range'], [type='checkbox']) {
+  accent-color: var(--accent);
+}
+
+.guideToggles,
+.guideToggles label,
+.poseActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.guideToggles label {
+  min-height: 34px;
+  cursor: pointer;
+}
+
+.poseFields {
+  flex: 1 1 10rem;
+  min-width: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-2);
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.poseFields legend {
+  margin-bottom: var(--space-1);
+  padding: 0;
+  font-weight: var(--weight-medium);
+}
+
+.poseActions p {
+  margin: 0;
+  color: var(--text-muted);
+}
+
+@media (pointer: coarse) {
+  .advancedViewer :is(.toolbarBtn, select, summary, input[type='number'], .guideToggles label) {
+    min-height: 44px;
+  }
 }

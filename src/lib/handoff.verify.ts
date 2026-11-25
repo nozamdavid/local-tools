@@ -633,8 +633,8 @@ export function runHandoffVerification(): VerificationSummary {
     assert(csvRows.length === 2 && csvRows[0].length === 2 && csvRows[0][0] === 'city', 'CSV correctly parses 2 columns');
   });
 
-  // 30. 3D & CAD single models: suggest six single tools, exclude three-merge
-  runTest('3D and CAD single models: suggest six single tools, exclude three-merge', () => {
+  // 30. 3D & CAD single models: prioritize the viewer among seven single tools
+  runTest('3D and CAD single models: suggest seven single tools with the viewer first, exclude three-merge', () => {
     const singleFormats = [
       { name: 'part.stl', type: 'model/stl' },
       { name: 'model.obj', type: 'model/obj' },
@@ -647,7 +647,15 @@ export function runHandoffVerification(): VerificationSummary {
       { name: 'solid.brep', type: 'model/x-brep' },
     ];
 
-    const expectedSix = ['three-convert', 'three-simplify', 'three-inspect', 'three-transform', 'three-normals', 'three-split'];
+    const expected = [
+      'three-viewer',
+      'three-convert',
+      'three-simplify',
+      'three-inspect',
+      'three-transform',
+      'three-normals',
+      'three-split',
+    ];
 
     for (const item of singleFormats) {
       const file = new File(['dummy content'], item.name, { type: item.type });
@@ -655,8 +663,8 @@ export function runHandoffVerification(): VerificationSummary {
 
       assert(hasNoDuplicates(ids), `${item.name} suggestions contain duplicates: ${ids.join(', ')}`);
 
-      for (const expectedTool of expectedSix) {
-        assert(ids.includes(expectedTool), `${item.name} must include ${expectedTool}`);
+      for (const [index, expectedTool] of expected.entries()) {
+        assert(ids[index] === expectedTool, `${item.name} must rank ${expectedTool} at position ${index + 1}`);
       }
 
       assert(!ids.includes('three-merge'), `${item.name} must NOT include three-merge for single file`);
@@ -725,6 +733,7 @@ export function runHandoffVerification(): VerificationSummary {
     const ids = suggestToolsForFiles([binFile]).map((t) => t.id);
 
     const threeTools = [
+      'three-viewer',
       'three-convert',
       'three-simplify',
       'three-inspect',
