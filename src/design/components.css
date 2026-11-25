@@ -748,11 +748,6 @@
   color: var(--accent-text);
 }
 
-.category-head {
-  padding-block: var(--space-2);
-  border-block: 1px solid var(--border);
-}
-
 .category-count {
   padding-inline: var(--space-1-5);
   background: var(--surface-sunken);

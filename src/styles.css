@@ -666,6 +666,10 @@
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 245px), 1fr));
 }
 
+.index-results .tool-card {
+  border-bottom: 0;
+}
+
 .index-results .tool-card-title {
   overflow-wrap: anywhere;
 }
@@ -679,9 +683,13 @@
   margin-bottom: 0;
 }
 
+.category-section + .category-section {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-5);
+}
+
 .category-head {
   padding: 0 var(--space-1) var(--space-2);
-  border-bottom: 1px solid var(--border-strong);
 }
 
 .category-title {
