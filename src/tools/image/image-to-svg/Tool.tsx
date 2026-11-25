@@ -4,6 +4,7 @@ import { FileDrop } from '../../../components/FileDrop';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
+import { copyText } from '../../../lib/clipboard';
 import { decodeImage, IMAGE_ACCEPT } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
 import { formatBytes } from '../../../lib/format';
@@ -100,10 +101,11 @@ export default function ImageToSvgTool() {
   const handleCopy = async () => {
     if (!svgString) return;
     try {
-      await navigator.clipboard.writeText(svgString);
+      await copyText(svgString);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
+      setCopied(false);
       setError('Could not copy to clipboard.');
     }
   };

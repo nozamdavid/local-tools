@@ -8,6 +8,7 @@ import { decodeImage, imageToCanvas, canvasToBlob, encodeIco } from '../../../li
 import { zipFiles } from '../../../lib/zip';
 import { downloadBlob } from '../../../lib/download';
 import { useI18n } from '../../../lib/i18n';
+import { copyText } from '../../../lib/clipboard';
 import styles from './Tool.module.css';
 
 interface GeneratedFile {
@@ -215,10 +216,15 @@ export default function FaviconGeneratorTool() {
     setFile(inFiles[0]);
   };
 
-  const copyHtml = () => {
-    navigator.clipboard.writeText(HTML_SNIPPET);
-    setCopiedSnippet(true);
-    setTimeout(() => setCopiedSnippet(false), 1500);
+  const copyHtml = async () => {
+    try {
+      await copyText(HTML_SNIPPET);
+      setCopiedSnippet(true);
+      setTimeout(() => setCopiedSnippet(false), 1500);
+    } catch {
+      setCopiedSnippet(false);
+      alert(t('Could not copy to clipboard.'));
+    }
   };
 
   return (

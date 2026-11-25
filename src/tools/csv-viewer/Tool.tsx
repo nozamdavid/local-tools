@@ -4,6 +4,7 @@ import { FileDrop } from '../../components/FileDrop';
 import { Button, Field, Select } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { useI18n } from '../../lib/i18n';
+import { copyText } from '../../lib/clipboard';
 import { downloadBlob } from '../../lib/download';
 import { parseCsv, serializeCsv, detectDelimiter } from '../_tabular/csv';
 import styles from './Tool.module.css';
@@ -93,11 +94,12 @@ export default function CsvViewerTool() {
     if (visibleRows.length === 0 && headers.length === 0) return;
     const rows = [headers, ...visibleRows.map((row) => Array.from({ length: headers.length }, (_, i) => row[i] ?? ''))];
     try {
-      await navigator.clipboard.writeText(serializeCsv(rows, '\t'));
+      await copyText(serializeCsv(rows, '\t'));
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy', err);
+    } catch {
+      setCopied(false);
+      alert(t('Could not copy to clipboard.'));
     }
   };
 

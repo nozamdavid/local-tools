@@ -1,0 +1,19 @@
+services:
+  web:
+    image: httpd:2.4-alpine@sha256:32bd0639bcc4917ef1fd9363a1d9dd2dd9c498565118b062a10d51e43a5c3a24
+    user: '65534:65534'
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    tmpfs:
+      - /tmp:size=16m
+    mem_limit: 128m
+    cpus: 1
+    restart: unless-stopped
+    ports:
+      - '${LOCONVERT_BIND:-192.168.0.199}:${LOCONVERT_PORT:-3052}:8080'
+    volumes:
+      - ${LOCONVERT_PROJECT_DIR:-/mnt/appdata/apps/arcane/projects/loconvert}/httpd.conf:/usr/local/apache2/conf/httpd.conf:ro
+      - ${LOCONVERT_PROJECT_DIR:-/mnt/appdata/apps/arcane/projects/loconvert}/site:/srv/loconvert:ro

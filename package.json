@@ -25,6 +25,7 @@
     "@mediabunny/aac-encoder": "^1.63.0",
     "@mediabunny/mp3-encoder": "^1.63.0",
     "@neslinesli93/qpdf-wasm": "^0.3.0",
+    "@noble/hashes": "^2.4.0",
     "diff": "^9.0.0",
     "docx": "^9.13.0",
     "docx-preview": "^0.4.1",

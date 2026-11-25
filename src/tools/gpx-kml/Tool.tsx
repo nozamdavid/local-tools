@@ -7,6 +7,7 @@ import { downloadBlob } from '../../lib/download';
 import { peekPendingFiles } from '../../lib/handoff';
 import { classifyFile } from '../../lib/toolInputs';
 import { useI18n } from '../../lib/i18n';
+import { copyText } from '../../lib/clipboard';
 import { gpxToGeoData, kmlToGeoData, geoDataToGpx, geoDataToKml, getGeoSummary } from './gpxKml';
 import styles from './Tool.module.css';
 
@@ -111,11 +112,12 @@ export default function GpxKmlTool() {
   const handleCopy = async () => {
     if (!conversion.outputText) return;
     try {
-      await navigator.clipboard.writeText(conversion.outputText);
+      await copyText(conversion.outputText);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy', err);
+    } catch {
+      setCopied(false);
+      alert(t('Could not copy to clipboard.'));
     }
   };
 

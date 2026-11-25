@@ -4,6 +4,7 @@ import { FileDrop } from '../../components/FileDrop';
 import { Button, Field, Select } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { useI18n } from '../../lib/i18n';
+import { copyText } from '../../lib/clipboard';
 import { downloadBlob } from '../../lib/download';
 import { parseCsv, serializeCsv, detectDelimiter } from '../_tabular/csv';
 import styles from './Tool.module.css';
@@ -91,11 +92,12 @@ export default function TxtToCsvTool() {
   const handleCopy = async () => {
     if (!outputCsv) return;
     try {
-      await navigator.clipboard.writeText(outputCsv);
+      await copyText(outputCsv);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch (err) {
-      console.error('Failed to copy text', err);
+    } catch {
+      setCopied(false);
+      alert(t('Could not copy to clipboard.'));
     }
   };
 

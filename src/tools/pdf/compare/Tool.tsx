@@ -14,6 +14,7 @@ import { usePdfText } from '../_ai/usePdfText';
 import { createSyntheticComparePdfs } from '../_ai/synthetic';
 import styles from './Tool.module.css';
 import { useI18n } from '../../../lib/i18n';
+import { copyText } from '../../../lib/clipboard';
 
 type CompareTab = 'visual' | 'text' | 'export';
 
@@ -146,11 +147,12 @@ export default function CompareTool() {
   const handleCopyReport = async () => {
     if (!exportReport) return;
     try {
-      await navigator.clipboard.writeText(exportReport);
+      await copyText(exportReport);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Fallback
+      setCopied(false);
+      alert(t('Could not copy to clipboard.'));
     }
   };
 

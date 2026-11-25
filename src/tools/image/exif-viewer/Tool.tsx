@@ -5,6 +5,7 @@ import { FileDrop } from '../../../components/FileDrop';
 import { Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
+import { copyText } from '../../../lib/clipboard';
 import { downloadBlob } from '../../../lib/download';
 import { formatBytes } from '../../../lib/format';
 import styles from './Tool.module.css';
@@ -266,11 +267,16 @@ export default function ExifViewerTool() {
     setError(null);
   };
 
-  const copyJson = () => {
+  const copyJson = async () => {
     if (!rawExif) return;
-    navigator.clipboard.writeText(JSON.stringify(rawExif, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await copyText(JSON.stringify(rawExif, null, 2));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      setCopied(false);
+      alert(t('Could not copy to clipboard.'));
+    }
   };
 
   const downloadJson = () => {

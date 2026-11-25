@@ -1,7 +1,7 @@
 /**
  * Cryptographic hashing utilities for MD5, SHA-1, SHA-256, SHA-384, and SHA-512.
  * MD5 is implemented in pure TypeScript according to RFC 1321 (streaming-capable).
- * SHA variants use the standard Web Crypto API (crypto.subtle), available in all modern browsers and Node.
+ * SHA variants prefer Web Crypto and fall back to incremental JavaScript hashing on plain HTTP.
  */
 
 export interface FileDigests {
@@ -178,28 +178,44 @@ export function bufToHex(buffer: ArrayBuffer): string {
   return hex;
 }
 
+async function loadShaFallback() {
+  const [{ sha1 }, { sha256, sha384, sha512 }, { bytesToHex }] = await Promise.all([
+    import('@noble/hashes/legacy.js'),
+    import('@noble/hashes/sha2.js'),
+    import('@noble/hashes/utils.js'),
+  ]);
+
+  return { 'SHA-1': sha1, 'SHA-256': sha256, 'SHA-384': sha384, 'SHA-512': sha512, bytesToHex };
+}
+
+async function shaDigest(algorithm: 'SHA-1' | 'SHA-256' | 'SHA-384' | 'SHA-512', data: Uint8Array): Promise<string> {
+  const subtle = globalThis.crypto?.subtle;
+  if (subtle) {
+    return bufToHex(await subtle.digest(algorithm, data as unknown as BufferSource));
+  }
+
+  const fallback = await loadShaFallback();
+  return fallback.bytesToHex(fallback[algorithm](data));
+}
+
 /** Compute SHA-1 digest (hex). */
-export async function sha1(data: Uint8Array): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest('SHA-1', data as unknown as BufferSource);
-  return bufToHex(digest);
+export function sha1(data: Uint8Array): Promise<string> {
+  return shaDigest('SHA-1', data);
 }
 
 /** Compute SHA-256 digest (hex). */
-export async function sha256(data: Uint8Array): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest('SHA-256', data as unknown as BufferSource);
-  return bufToHex(digest);
+export function sha256(data: Uint8Array): Promise<string> {
+  return shaDigest('SHA-256', data);
 }
 
 /** Compute SHA-384 digest (hex). */
-export async function sha384(data: Uint8Array): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest('SHA-384', data as unknown as BufferSource);
-  return bufToHex(digest);
+export function sha384(data: Uint8Array): Promise<string> {
+  return shaDigest('SHA-384', data);
 }
 
 /** Compute SHA-512 digest (hex). */
-export async function sha512(data: Uint8Array): Promise<string> {
-  const digest = await globalThis.crypto.subtle.digest('SHA-512', data as unknown as BufferSource);
-  return bufToHex(digest);
+export function sha512(data: Uint8Array): Promise<string> {
+  return shaDigest('SHA-512', data);
 }
 
 /** Computes all 5 digests for a Uint8Array. */
@@ -221,6 +237,45 @@ export async function computeAllDigests(data: Uint8Array): Promise<FileDigests> 
   };
 }
 
+async function computeFileDigestsFallback(file: Blob, onProgress?: (ratio: number) => void, signal?: AbortSignal): Promise<FileDigests> {
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  const fallback = await loadShaFallback();
+  const md5State = new MD5();
+  const sha1State = fallback['SHA-1'].create();
+  const sha256State = fallback['SHA-256'].create();
+  const sha384State = fallback['SHA-384'].create();
+  const sha512State = fallback['SHA-512'].create();
+  const chunkSize = 1024 * 1024;
+
+  for (let offset = 0; offset < file.size; offset += chunkSize) {
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    const end = Math.min(offset + chunkSize, file.size);
+    const chunk = new Uint8Array(await file.slice(offset, end).arrayBuffer());
+    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+    md5State.update(chunk);
+    sha1State.update(chunk);
+    sha256State.update(chunk);
+    sha384State.update(chunk);
+    sha512State.update(chunk);
+
+    if (end < file.size) {
+      onProgress?.(end / file.size);
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  }
+
+  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
+  const digests = {
+    md5: md5State.digestHex(),
+    sha1: fallback.bytesToHex(sha1State.digest()),
+    sha256: fallback.bytesToHex(sha256State.digest()),
+    sha384: fallback.bytesToHex(sha384State.digest()),
+    sha512: fallback.bytesToHex(sha512State.digest()),
+  };
+  onProgress?.(1);
+  return digests;
+}
+
 /**
  * Computes all 5 digests for a Blob or File.
  * Streams in chunks with yield to allow UI responsiveness, progress reporting, and cancellation.
@@ -230,6 +285,10 @@ export async function computeFileDigests(
   onProgress?: (ratio: number) => void,
   signal?: AbortSignal,
 ): Promise<FileDigests> {
+  if (!globalThis.crypto?.subtle) {
+    return computeFileDigestsFallback(file, onProgress, signal);
+  }
+
   const size = file.size;
   const chunkSize = 2 * 1024 * 1024; // 2MB chunks
 

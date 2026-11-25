@@ -5,6 +5,7 @@ import { ProgressBar } from '../../../components/ProgressBar';
 import { Field, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
+import { copyText } from '../../../lib/clipboard';
 import { formatBytes } from '../../../lib/format';
 import { downloadBlob } from '../../../lib/download';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
@@ -115,10 +116,11 @@ export default function TranslateTool() {
   const handleCopy = async () => {
     if (!translation) return;
     try {
-      await navigator.clipboard.writeText(translation);
+      await copyText(translation);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
+      setCopied(false);
       setError('Unable to copy automatically. Please select the text and copy manually.');
     }
   };

@@ -5,6 +5,7 @@ import { Button } from '../../components/Controls';
 import { ProgressBar } from '../../components/ProgressBar';
 import { getToolMeta } from '../registry';
 import { useI18n } from '../../lib/i18n';
+import { copyText } from '../../lib/clipboard';
 import { downloadBlob } from '../../lib/download';
 import { formatBytes } from '../../lib/format';
 import { computeFileDigests, type FileDigests } from '../_file-utility/hash';
@@ -201,9 +202,14 @@ export default function FileInspectorTool() {
   };
 
   const handleCopyDigest = async (key: string, val: string) => {
-    await navigator.clipboard.writeText(val);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 2000);
+    try {
+      await copyText(val);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch {
+      setCopiedKey(null);
+      alert(t('Could not copy to clipboard.'));
+    }
   };
 
   // Expected digest match checking

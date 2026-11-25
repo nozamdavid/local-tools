@@ -3,6 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { Button, Slider } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
+import { copyText } from '../../../lib/clipboard';
 import {
   type RGBA,
   formatHex,
@@ -192,10 +193,15 @@ export default function HexRgbConverterTool() {
     }
   };
 
-  const copyValue = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 1500);
+  const copyValue = async (text: string, key: string) => {
+    try {
+      await copyText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 1500);
+    } catch {
+      setCopiedKey(null);
+      alert(t('Could not copy to clipboard.'));
+    }
   };
 
   return (

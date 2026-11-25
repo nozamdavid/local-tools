@@ -10,6 +10,7 @@ import { formatBytes, formatDuration, replaceExt } from '../../lib/format';
 import { downloadBlob } from '../../lib/download';
 import { parseFFmpegLog, type ParsedVideoInfo } from './parse';
 import { useI18n } from '../../lib/i18n';
+import { copyText } from '../../lib/clipboard';
 import styles from './Tool.module.css';
 
 interface FullReport {
@@ -229,9 +230,14 @@ export default function VideoInfoTool() {
       }
     });
 
-    await navigator.clipboard.writeText(lines.join('\n'));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    try {
+      await copyText(lines.join('\n'));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
+      alert(t('Could not copy to clipboard.'));
+    }
   };
 
   const handleDownloadJSON = () => {

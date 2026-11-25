@@ -118,9 +118,9 @@ npm run lint
 npm run format:check
 ```
 
-Pushes and pull requests to `main` run the release checks on the private GitHub origin. A Tangled workflow is also available for a mirror. [GitHub workflow](.github/workflows/check.yml) · [Tangled workflow](.tangled/workflows/check.yml)
+Pushes and pull requests to `main` trigger the release checks on private GitHub. The release review records local results and the current hosted check status. [GitHub workflow](.github/workflows/check.yml) · [Release review](docs/release-review.md)
 
-Deploy the static `dist/` files with the supplied Caddy configuration. The deployment guide covers HTTPS, direct tool URLs, caching, atomic releases and rollback. [Deployment guide](docs/deployment.md) · [Release review](docs/release-review.md)
+Arcane serves the production build on the LAN from a single container. Camera access requires a secure browser context. The deployment guide includes a localhost forwarding command for this case. [Open Loconvert](http://192.168.0.199:3052) · [Deployment guide](docs/deployment.md)
 
 ---
 

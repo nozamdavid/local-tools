@@ -18,8 +18,9 @@ Status values:
 | [ADR-005](#adr-005-lazy-load-heavy-engines-and-use-workers) | Accepted | Load heavy engines on demand and run blocking WASM work in workers |
 | [ADR-006](#adr-006-ship-a-static-client-only-build) | Accepted | Produce a static Vite SPA with no application server runtime |
 | [ADR-007](#adr-007-serve-the-production-build-as-static-files) | Accepted | Serve `dist/` from a static host with SPA fallback; no long-running preview in production |
-| [ADR-008](#adr-008-use-tangled-ci) | Accepted | Run install, checks, tests and the production build in Tangled CI |
+| [ADR-008](#adr-008-use-tangled-ci) | Superseded | Run install, checks, tests and the production build in Tangled CI |
 | [ADR-009](#adr-009-set-production-cache-headers) | Accepted | Cache hashed assets immutably and revalidate stable files and HTML |
+| [ADR-010](#adr-010-use-github-actions-for-the-private-origin) | Accepted | Use GitHub Actions as the sole CI provider for the private repository |
 
 ## ADR-001: Keep user files in the browser
 
@@ -135,7 +136,7 @@ Tools may import shared modules. Shared modules must not import a tool folder, a
 - Deployments can be copied as a static directory; server secrets and server-side data stores are not part of the architecture.
 - `vite preview` is a local verification server, not the production architecture.
 - Browser support, memory limits and first-load size are product constraints.
-- Hosting is static (ADR-007). ADR-008 describes the hosted checks, and ADR-009 specifies the production cache headers.
+- Hosting is static (ADR-007). ADR-009 specifies the production cache headers, and ADR-010 describes the hosted checks.
 
 ## ADR-007: Serve the production build as static files
 
@@ -146,7 +147,7 @@ Tools may import shared modules. Shared modules must not import a tool folder, a
 
 **Decision.** Production Loconvert is served as static files from `dist/` by a static host. The host must support an SPA fallback that serves `index.html` for client-side routes. A long-running Vite dev or preview server is not part of the production runtime.
 
-The exact host and its deployment configuration remain an implementation choice for the deployment task. Candidates include Tailscale Serve, nginx, Tangled Sites or a managed static host. Selection must account for tailnet or public access, SPA fallback, HTTPS, cache-header control, memory and cost, and rollback behavior.
+**Production deployment, 2026-11-25.** One Arcane container serves the static build directly over HTTP on port 3052. A request to `/video/trim` returned the release HTML. Missing JavaScript, font and WASM URLs returned HTTP 404. [LAN site](http://192.168.0.199:3052) · [Deployment guide](deployment.md)
 
 **Consequences.**
 
@@ -155,11 +156,10 @@ The exact host and its deployment configuration remain an implementation choice 
 - Publishing a release means replacing the contents of the served `dist/` directory; keep the previous artifact for rollback.
 - Static hosts must implement the cache behavior in ADR-009.
 - A CDN can be placed in front of the static build later. That evaluation is tracked in the backlog and must preserve the browser-only privacy boundary and the CSP allow-list.
-- The [deployment guide](deployment.md) covers Caddy, staging, switching and rollback. The operator supplies the production hostname.
 
 ## ADR-008: Use Tangled CI
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-010](#adr-010-use-github-actions-for-the-private-origin)
 - **Date:** 2026-10-21
 
 **Context.** `package.json` exposes the checks needed for a build gate: `lint`, `format:check`, `test` and `build` (which runs `tsc -b` before Vite). The repository currently has a GitHub origin and no hosted CI. Tangled CI, built on spindle pipelines, is the chosen provider.
@@ -182,18 +182,25 @@ A Tangled remote or mirror must receive the same commits as the GitHub origin; T
 - A failing check blocks a release; the pipeline configuration and mirror setup are tracked in the CI build task.
 - Pull-request checks can be added with the same workflow once the Tangled remote is active.
 
-**Origin checks, 2026-11-25.** The private GitHub origin runs the same install, lint, formatting, unit test and production build checks on pushes and pull requests to `main`. The workflow has read-only repository permissions. The Tangled workflow is ready for a separately authorized mirror. A passing GitHub run validates the origin commit. Tangled runner compatibility requires a run on Tangled. [GitHub workflow](../.github/workflows/check.yml) · [Tangled workflow](../.tangled/workflows/check.yml)
-
 ## ADR-009: Set production cache headers
 
 - **Status:** Accepted
 - **Date:** Proposed 2026-10-21, accepted 2026-11-25
 
-**Context.** Vite emits content-hashed files under `assets/`. Static hosting is now accepted (ADR-007), but the exact host is still open. The preview server sends `Cache-Control: no-cache` for everything, so repeat visits still make conditional requests. [The performance audit](performance-verification.md) recommends immutable caching for hashed assets and no-cache for the HTML entry point.
+**Context.** Vite emits content-hashed files under `assets/`. The preview server sends `Cache-Control: no-cache` for everything, so repeat visits still make conditional requests. The performance audit recommends immutable caching for hashed assets and no-cache for the HTML entry point. [Performance audit](performance-verification.md)
 
 **Decision.** Content-hashed build assets use `Cache-Control: public, max-age=31536000, immutable`. HTML, the SPA fallback and stable URLs such as `/theme-init.js` and `/assets/icon.svg` use `Cache-Control: no-cache`. Missing files return 404 and `no-store`.
 
-**Consequences.** Open tabs can still fetch the lazy chunks for their original release after a switch or rollback. The hosting configuration keeps those hashed assets available across releases. Verify the headers through the production hostname, including any proxy in front of the static host. [Caddy configuration](../deploy/Caddyfile) · [Deployment guide](deployment.md)
+**Consequences.** Keep hashed assets available across releases so open tabs can still fetch the lazy chunks for their original release after a switch or rollback. Verify the headers at the Arcane HTTP endpoint. [Deployment guide](deployment.md)
+
+## ADR-010: Use GitHub Actions for the private origin
+
+- **Status:** Accepted
+- **Date:** 2026-11-25
+
+**Decision.** Keep the repository on private GitHub and use GitHub Actions as the sole CI provider. The workflow targets pushes and pull requests to `main`, grants read-only repository access, and uses Node 24 to install locked dependencies, lint, check formatting, run unit tests and build the static site. [GitHub workflow](../.github/workflows/check.yml)
+
+**Verification.** GitHub account billing blocked run 45695857625 for commit `5640701` before any workflow steps ran. The repository has no existing runners. The release review records passing local checks. Hosted verification is pending. [Release review](release-review.md)
 
 ## When to record a decision
 

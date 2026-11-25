@@ -4,6 +4,7 @@ import { FileDrop } from '../../../components/FileDrop';
 import { Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
+import { copyText } from '../../../lib/clipboard';
 import { decodeImage } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
 import { type PaletteColor, extractPalette, generatePaletteStripBlob } from '../_color/palette';
@@ -73,10 +74,15 @@ export default function ColorPaletteTool() {
     setError(null);
   };
 
-  const copyToClipboard = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 1500);
+  const copyToClipboard = async (text: string, key: string) => {
+    try {
+      await copyText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 1500);
+    } catch {
+      setCopiedKey(null);
+      alert(t('Could not copy to clipboard.'));
+    }
   };
 
   const getCssVariables = () => {

@@ -20,6 +20,7 @@ import {
 } from '../_whisper';
 import styles from './Tool.module.css';
 import { useI18n } from '../../lib/i18n';
+import { copyText } from '../../lib/clipboard';
 
 export default function VideoToTextTool() {
   const { t } = useI18n();
@@ -150,11 +151,12 @@ export default function VideoToTextTool() {
   const handleCopy = async () => {
     if (!transcript) return;
     try {
-      await navigator.clipboard.writeText(transcript);
+      await copyText(transcript);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      // Clipboard fallback
+      setCopied(false);
+      alert(t('Could not copy to clipboard.'));
     }
   };
 

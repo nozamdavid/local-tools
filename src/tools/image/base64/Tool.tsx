@@ -4,6 +4,7 @@ import { FileDrop } from '../../../components/FileDrop';
 import { Button, Field } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
+import { copyText } from '../../../lib/clipboard';
 import { formatBytes } from '../../../lib/format';
 import { downloadBlob } from '../../../lib/download';
 import { loadImage } from '../../../lib/image';
@@ -89,10 +90,15 @@ export default function Base64Tool() {
     setEncodeError(null);
   };
 
-  const copySnippet = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(key);
-    setTimeout(() => setCopiedKey(null), 1500);
+  const copySnippet = async (text: string, key: string) => {
+    try {
+      await copyText(text);
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 1500);
+    } catch {
+      setCopiedKey(null);
+      alert(t('Could not copy to clipboard.'));
+    }
   };
 
   const downloadTextFile = (content: string, extSuffix: string) => {

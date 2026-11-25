@@ -6,6 +6,7 @@ import { Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { formatBytes } from '../../../lib/format';
 import { useI18n } from '../../../lib/i18n';
+import { copyText } from '../../../lib/clipboard';
 import { downloadBlob } from '../../../lib/download';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { usePdfSource } from '../_thumbs/usePdfSource';
@@ -61,10 +62,11 @@ export default function PdfToMarkdownTool() {
   const handleCopy = async () => {
     if (markdown === null) return;
     try {
-      await navigator.clipboard.writeText(markdown);
+      await copyText(markdown);
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     } catch {
+      setCopied(false);
       setError('Copying is blocked by the browser. Select the text and copy it manually.');
     }
   };
