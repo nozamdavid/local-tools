@@ -151,7 +151,7 @@ export default function SummarizeTool() {
     label: `${m.name} (${m.sizeEstimate})${m.recommended ? ` - ${t('Recommended')}` : ''}`,
   }));
 
-  const lengthOptions = [
+  const lengthOptions: { value: typeof summaryLength; label: string }[] = [
     { value: 'concise', label: t('Concise (~1-2 paragraphs)') },
     { value: 'standard', label: t('Standard overview') },
     { value: 'detailed', label: t('Detailed summary') },
@@ -249,7 +249,10 @@ export default function SummarizeTool() {
                   <Select
                     id={lengthSelectId}
                     value={summaryLength}
-                    onChange={(e) => setSummaryLength(e.target.value as any)}
+                    onChange={(e) => {
+                      const option = lengthOptions.find(({ value }) => value === e.currentTarget.value);
+                      if (option) setSummaryLength(option.value);
+                    }}
                     options={lengthOptions}
                   />
                 </Field>

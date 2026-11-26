@@ -76,7 +76,7 @@ export async function runVerification(): Promise<VerifyResults> {
     const pdfjsDoc = await loadPdfDocument(new Blob([savedBytes as BlobPart], { type: 'application/pdf' }));
     const p1 = await pdfjsDoc.getPage(1);
     const tc = await p1.getTextContent();
-    const extractedStrings = tc.items.map((i: any) => i.str || '');
+    const extractedStrings = tc.items.map((item) => ('str' in item ? item.str : ''));
     if (!extractedStrings.some((s) => s.includes('Alice Walker'))) {
       throw new Error(`Flattened PDF page does not contain text value "Alice Walker", got: ${JSON.stringify(extractedStrings)}`);
     }
@@ -142,7 +142,7 @@ export async function runVerification(): Promise<VerifyResults> {
     const pdfjsDoc = await loadPdfDocument(new Blob([annotatedBytes as BlobPart], { type: 'application/pdf' }));
     const p1 = await pdfjsDoc.getPage(1);
     const tc = await p1.getTextContent();
-    const extractedStrings = tc.items.map((i: any) => i.str || '');
+    const extractedStrings = tc.items.map((item) => ('str' in item ? item.str : ''));
 
     const hasOriginal = extractedStrings.some((s) => s.includes('Original Confidential Page 1 Content That Must Be Retained'));
     if (!hasOriginal) {
@@ -193,7 +193,7 @@ export async function runVerification(): Promise<VerifyResults> {
     const pdfjsDoc = await loadPdfDocument(new Blob([sensitiveBytes as BlobPart], { type: 'application/pdf' }));
     const origPage = await pdfjsDoc.getPage(1);
     const origTc = await origPage.getTextContent();
-    const origStrings = origTc.items.map((i: any) => i.str || '');
+    const origStrings = origTc.items.map((item) => ('str' in item ? item.str : ''));
 
     // Pre-condition check: sensitive text, attachment, and /EmbeddedFile must exist in source
     if (!origStrings.some((s) => s.includes('SUPER_SECRET_SSN_987-65-4321'))) {
@@ -246,7 +246,7 @@ export async function runVerification(): Promise<VerifyResults> {
     const p1 = await redactedPdfjsDoc.getPage(1);
     const textContent = await p1.getTextContent();
     const extractedChars = textContent.items
-      .map((item: any) => item.str || '')
+      .map((item) => ('str' in item ? item.str : ''))
       .join('')
       .trim();
 

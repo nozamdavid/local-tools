@@ -40,7 +40,7 @@ export default function PdfMetadataCleanerTool() {
     return () => {
       active = false;
     };
-  }, [file]);
+  }, [file, t]);
 
   const reset = () => {
     setFile(null);

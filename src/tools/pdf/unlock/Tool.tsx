@@ -44,7 +44,7 @@ export default function UnlockPdfTool() {
     return () => {
       active = false;
     };
-  }, [file]);
+  }, [file, t]);
 
   const reset = () => {
     setFile(null);

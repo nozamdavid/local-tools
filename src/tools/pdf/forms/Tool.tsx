@@ -19,6 +19,7 @@ export default function FormsTool() {
   const { t } = useI18n();
   const meta = getToolMeta('pdf-forms');
   const source = usePdfSource();
+  const { doc, file, loadForEditing } = source;
   const job = useJob();
   const navigate = useNavigate();
 
@@ -31,10 +32,9 @@ export default function FormsTool() {
   useEffect(() => {
     let active = true;
 
-    if (source.doc && source.file) {
+    if (doc && file) {
       setLoadingFields(true);
-      source
-        .loadForEditing()
+      loadForEditing()
         .then((pdfDoc) => {
           if (!active) return;
           const extracted = extractFormFields(pdfDoc);
@@ -60,7 +60,7 @@ export default function FormsTool() {
     return () => {
       active = false;
     };
-  }, [source.doc, source.file, source.loadForEditing]);
+  }, [doc, file, loadForEditing]);
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
@@ -118,7 +118,6 @@ export default function FormsTool() {
     });
   };
 
-  const file = source.file;
   const outName = file ? `${file.name.replace(/\.pdf$/i, '')}-filled.pdf` : 'filled.pdf';
   const total = source.pages.length;
 

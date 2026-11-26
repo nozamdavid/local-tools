@@ -24,6 +24,7 @@ export default function PageNumbersTool() {
   const { t } = useI18n();
   const meta = getToolMeta('pdf-page-numbers');
   const source = usePdfSource();
+  const { doc, file, loadForEditing } = source;
   const job = useJob();
 
   const [position, setPosition] = useState<Position>('bottom-center');
@@ -67,17 +68,16 @@ export default function PageNumbersTool() {
   const targetPageKey = targetPages.join(',');
 
   const loadForPreview = useCallback(() => {
-    const file = source.file;
-    if (!file) return source.loadForEditing();
+    if (!file) return loadForEditing();
     if (previewPdf.current?.file === file) return previewPdf.current.promise;
 
-    const entry = { file, promise: source.loadForEditing() };
+    const entry = { file, promise: loadForEditing() };
     previewPdf.current = entry;
     void entry.promise.catch(() => {
       if (previewPdf.current === entry) previewPdf.current = null;
     });
     return entry.promise;
-  }, [source.file, source.loadForEditing]);
+  }, [file, loadForEditing]);
 
   useEffect(() => {
     if (!targetPageKey) return;
@@ -89,17 +89,16 @@ export default function PageNumbersTool() {
 
   useEffect(() => {
     const generation = ++previewGeneration.current;
-    const isStale = () => generation !== previewGeneration.current;
     setPreviewUrl(null);
     setPreviewError(false);
-    if (!source.doc || rangeError || job.status === 'running' || job.status === 'done' || previewPage < 1 || previewPage > total) {
+    if (!doc || rangeError || job.status === 'running' || job.status === 'done' || previewPage < 1 || previewPage > total) {
       if (job.status === 'done') setPreviewUrl(null);
       setPreviewLoading(false);
       return;
     }
 
-    let cancelled = false;
     const controller = new AbortController();
+    const isStale = () => controller.signal.aborted || generation !== previewGeneration.current;
     setPreviewLoading(true);
     const timeout = window.setTimeout(async () => {
       try {
@@ -107,7 +106,7 @@ export default function PageNumbersTool() {
         const targetIndex = previewTargets.indexOf(previewPage);
         let url: string;
         if (targetIndex < 0) {
-          url = await renderPdfThumbnail(source.doc!, previewPage, STAMP_PREVIEW_MAX_DIMENSION, controller.signal);
+          url = await renderPdfThumbnail(doc, previewPage, STAMP_PREVIEW_MAX_DIMENSION, controller.signal);
         } else {
           const settings: PageNumberSettings = { position, format, fontSize, margin, color };
           url = await renderEditedPdfPage(
@@ -121,22 +120,20 @@ export default function PageNumbersTool() {
             controller.signal,
           );
         }
-        if (!cancelled && !isStale()) setPreviewUrl(url);
+        if (!isStale()) setPreviewUrl(url);
       } catch {
-        if (!cancelled && !isStale()) setPreviewError(true);
+        if (!isStale()) setPreviewError(true);
       } finally {
-        if (!cancelled && !isStale()) setPreviewLoading(false);
+        if (!isStale()) setPreviewLoading(false);
       }
     }, 250);
 
     return () => {
-      cancelled = true;
       controller.abort();
-      if (previewGeneration.current === generation) previewGeneration.current++;
       window.clearTimeout(timeout);
     };
   }, [
-    source.doc,
+    doc,
     loadForPreview,
     job.status,
     previewPage,
@@ -205,7 +202,6 @@ export default function PageNumbersTool() {
     });
   };
 
-  const file = source.file;
   const outName = file ? `${file.name.replace(/\.pdf$/i, '')}-numbered.pdf` : 'numbered.pdf';
 
   return (

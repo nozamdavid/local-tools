@@ -1,13 +1,22 @@
-import { pipeline, env, type ProgressInfo } from '@huggingface/transformers';
+import { pipeline, env, type AllTasks, type ProgressInfo } from '@huggingface/transformers';
 import type { AiWorkerInMessage, AiWorkerOutMessage } from './types';
 
 // Configure transformers environment for browser execution
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-const pipelineCache = new Map<string, any>();
+type AiTask = 'summarization' | 'translation';
 
-async function getPipeline(task: 'summarization' | 'translation', modelId: string, onProgress: (info: ProgressInfo) => void): Promise<any> {
+const pipelineCache: { [Task in AiTask]: Map<string, AllTasks[Task]> } = {
+  summarization: new Map(),
+  translation: new Map(),
+};
+
+async function getPipeline<Task extends AiTask>(
+  task: Task,
+  modelId: string,
+  onProgress: (info: ProgressInfo) => void,
+): Promise<AllTasks[Task]> {
   let isWebGpu = false;
   if (typeof navigator !== 'undefined' && 'gpu' in navigator && Boolean(navigator.gpu)) {
     try {
@@ -22,11 +31,11 @@ async function getPipeline(task: 'summarization' | 'translation', modelId: strin
 
   const primaryDevice = isWebGpu ? 'webgpu' : 'wasm';
   const primaryDtype = isWebGpu ? 'fp32' : 'q8';
-  const cacheKey = `${task}:${modelId}:${primaryDevice}:${primaryDtype}`;
+  const cache = pipelineCache[task];
+  const cacheKey = `${modelId}:${primaryDevice}:${primaryDtype}`;
 
-  if (pipelineCache.has(cacheKey)) {
-    return pipelineCache.get(cacheKey);
-  }
+  const cached = cache.get(cacheKey);
+  if (cached) return cached;
 
   try {
     const pipe = await pipeline(task, modelId, {
@@ -34,21 +43,20 @@ async function getPipeline(task: 'summarization' | 'translation', modelId: strin
       dtype: primaryDtype,
       progress_callback: onProgress,
     });
-    pipelineCache.set(cacheKey, pipe);
+    cache.set(cacheKey, pipe);
     return pipe;
   } catch (primaryErr) {
     if (primaryDevice === 'webgpu') {
       console.warn(`WebGPU ${task} initialization failed, falling back to WASM (q8):`, primaryErr);
-      const fallbackKey = `${task}:${modelId}:wasm:q8`;
-      if (pipelineCache.has(fallbackKey)) {
-        return pipelineCache.get(fallbackKey);
-      }
+      const fallbackKey = `${modelId}:wasm:q8`;
+      const cachedFallback = cache.get(fallbackKey);
+      if (cachedFallback) return cachedFallback;
       const pipe = await pipeline(task, modelId, {
         device: 'wasm',
         dtype: 'q8',
         progress_callback: onProgress,
       });
-      pipelineCache.set(fallbackKey, pipe);
+      cache.set(fallbackKey, pipe);
       return pipe;
     }
     throw primaryErr;

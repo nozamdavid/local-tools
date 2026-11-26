@@ -8,7 +8,16 @@ export interface VerifyTestResult {
   name: string;
   success: boolean;
   details: string;
-  data?: any;
+  data?:
+    | { chunkCount: number; chunks: string[] }
+    | {
+        modelId: string;
+        downloadBytes: number;
+        totalBytes: number;
+        durationMs: number;
+        input: string;
+        output: string;
+      };
 }
 
 export interface AiVerifyReport {

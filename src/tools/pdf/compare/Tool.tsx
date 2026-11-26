@@ -31,6 +31,8 @@ export default function CompareTool() {
   const meta = getToolMeta('pdf-compare');
   const sourceA = usePdfSource(220);
   const sourceB = usePdfSource(220);
+  const { open: openA } = sourceA;
+  const { open: openB } = sourceB;
 
   const [activeTab, setActiveTab] = useState<CompareTab>('visual');
   const [selectedPageIndex, setSelectedPageIndex] = useState<number>(0);
@@ -47,13 +49,13 @@ export default function CompareTool() {
     const handed = takePendingFiles(meta.path || '/pdf/compare', 'application/pdf,.pdf', true);
     if (handed && handed.accepted.length > 0) {
       if (handed.accepted[0]) {
-        sourceA.open(handed.accepted[0]);
+        openA(handed.accepted[0]);
       }
       if (handed.accepted[1]) {
-        sourceB.open(handed.accepted[1]);
+        openB(handed.accepted[1]);
       }
     }
-  }, []);
+  }, [meta.path, openA, openB]);
 
   const handleReset = () => {
     sourceA.reset();

@@ -25,6 +25,7 @@ export default function WatermarkTool() {
   const { t } = useI18n();
   const meta = getToolMeta('pdf-watermark');
   const source = usePdfSource();
+  const { doc, file, loadForEditing } = source;
   const job = useJob();
 
   const [type, setType] = useState<WatermarkType>('text');
@@ -60,21 +61,21 @@ export default function WatermarkTool() {
   const { pages: targetPages, error: rangeError } = getTargetPagesResult(scope, total, { rangeStr, selectedPages: selected });
 
   const targetPageKey = targetPages.join(',');
+  const { x, y } = position;
   const targetSet = new Set(targetPages);
   const canStamp = type === 'text' ? Boolean(text.trim()) : imageFile !== null;
 
   const loadForPreview = useCallback(() => {
-    const file = source.file;
-    if (!file) return source.loadForEditing();
+    if (!file) return loadForEditing();
     if (previewPdf.current?.file === file) return previewPdf.current.promise;
 
-    const entry = { file, promise: source.loadForEditing() };
+    const entry = { file, promise: loadForEditing() };
     previewPdf.current = entry;
     void entry.promise.catch(() => {
       if (previewPdf.current === entry) previewPdf.current = null;
     });
     return entry.promise;
-  }, [source.file, source.loadForEditing]);
+  }, [file, loadForEditing]);
 
   useEffect(() => {
     if (!targetPageKey) return;
@@ -86,17 +87,16 @@ export default function WatermarkTool() {
 
   useEffect(() => {
     const generation = ++previewGeneration.current;
-    const isStale = () => generation !== previewGeneration.current;
     setPreviewUrl(null);
     setPreviewError(false);
-    if (!source.doc || rangeError || job.status === 'running' || job.status === 'done' || previewPage < 1 || previewPage > total) {
+    if (!doc || rangeError || job.status === 'running' || job.status === 'done' || previewPage < 1 || previewPage > total) {
       if (job.status === 'done') setPreviewUrl(null);
       setPreviewLoading(false);
       return;
     }
 
-    let cancelled = false;
     const controller = new AbortController();
+    const isStale = () => controller.signal.aborted || generation !== previewGeneration.current;
     setPreviewLoading(true);
     const timeout = window.setTimeout(async () => {
       try {
@@ -104,8 +104,9 @@ export default function WatermarkTool() {
         const pageIsTarget = previewTargets.has(previewPage);
         let url: string;
         if (!pageIsTarget || !canStamp) {
-          url = await renderPdfThumbnail(source.doc!, previewPage, STAMP_PREVIEW_MAX_DIMENSION, controller.signal);
+          url = await renderPdfThumbnail(doc, previewPage, STAMP_PREVIEW_MAX_DIMENSION, controller.signal);
         } else {
+          const position = { x, y };
           const settings: WatermarkSettings =
             type === 'text'
               ? { type, text, fontSize, color: textColor, opacity, rotation, position }
@@ -121,22 +122,20 @@ export default function WatermarkTool() {
             controller.signal,
           );
         }
-        if (!cancelled && !isStale()) setPreviewUrl(url);
+        if (!isStale()) setPreviewUrl(url);
       } catch {
-        if (!cancelled && !isStale()) setPreviewError(true);
+        if (!isStale()) setPreviewError(true);
       } finally {
-        if (!cancelled && !isStale()) setPreviewLoading(false);
+        if (!isStale()) setPreviewLoading(false);
       }
     }, 250);
 
     return () => {
-      cancelled = true;
       controller.abort();
-      if (previewGeneration.current === generation) previewGeneration.current++;
       window.clearTimeout(timeout);
     };
   }, [
-    source.doc,
+    doc,
     loadForPreview,
     job.status,
     previewPage,
@@ -152,8 +151,8 @@ export default function WatermarkTool() {
     imageScale,
     opacity,
     rotation,
-    position.x,
-    position.y,
+    x,
+    y,
   ]);
 
   const handleFiles = async (files: File[]) => {
@@ -268,7 +267,6 @@ export default function WatermarkTool() {
     });
   };
 
-  const file = source.file;
   const outName = file ? `${file.name.replace(/\.pdf$/i, '')}-watermarked.pdf` : 'watermarked.pdf';
 
   return (
