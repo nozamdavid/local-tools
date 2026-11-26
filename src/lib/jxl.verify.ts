@@ -125,7 +125,7 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
       128, // Yellow semi-transparent (alpha = 128)
     ];
     const data = new Uint8ClampedArray(originalPixels);
-    const imgData = { data, width, height } as unknown as ImageData;
+    const imgData = new ImageData(data, width, height);
 
     const encodedBuffer = await encode(imgData, { lossless: true, quality: 100 });
     assert(encodedBuffer.byteLength > 0, 'Encoded JXL buffer must be non-empty');
@@ -158,7 +158,7 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
       data[i + 2] = (i * 47) % 256;
       data[i + 3] = 255;
     }
-    const imgData = { data, width, height } as unknown as ImageData;
+    const imgData = new ImageData(data, width, height);
 
     const encodedBuffer = await encode(imgData, { lossless: false, quality: 75 });
     assert(encodedBuffer.byteLength > 0, 'Lossy encoded buffer must be non-empty');
@@ -171,7 +171,7 @@ export async function runAllTests(): Promise<{ passed: boolean; results: TestRes
   // 5. Container format decoding
   await runTest('Decode 12-byte container signature JXL format', async () => {
     const data = new Uint8ClampedArray([10, 20, 30, 255]);
-    const rawCodestream = new Uint8Array(await encode({ data, width: 1, height: 1 } as any, { lossless: true }));
+    const rawCodestream = new Uint8Array(await encode(new ImageData(data, 1, 1), { lossless: true }));
 
     // Synthesize 12-byte container header + ftyp box + jxlc box wrapping the raw codestream
     const sigBox = [0x00, 0x00, 0x00, 0x0c, 0x4a, 0x58, 0x4c, 0x20, 0x0d, 0x0a, 0x87, 0x0a];

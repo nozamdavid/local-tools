@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useId } from 'react';
+import { useCallback, useEffect, useRef, useState, useId } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
@@ -277,64 +277,67 @@ export default function CollageTool() {
     setActiveCellIndex(cellIdx);
   };
 
-  const renderCollageCanvas = (targetW: number, targetH: number): HTMLCanvasElement => {
-    const canvas = document.createElement('canvas');
-    canvas.width = targetW;
-    canvas.height = targetH;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) throw new Error('Canvas 2D unavailable');
-    ctx.imageSmoothingQuality = 'high';
+  const renderCollageCanvas = useCallback(
+    (targetW: number, targetH: number): HTMLCanvasElement => {
+      const canvas = document.createElement('canvas');
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas 2D unavailable');
+      ctx.imageSmoothingQuality = 'high';
 
-    // 1. Fill background
-    ctx.fillStyle = bgColor;
-    ctx.fillRect(0, 0, targetW, targetH);
+      // 1. Fill background
+      ctx.fillStyle = bgColor;
+      ctx.fillRect(0, 0, targetW, targetH);
 
-    // Scaling ratio compared to preview (preview is roughly 600px)
-    const scaleRatio = targetW / 600;
-    const effSpacing = Math.round(spacing * scaleRatio);
-    const effRadius = Math.round(radius * scaleRatio);
+      // Scaling ratio compared to preview (preview is roughly 600px)
+      const scaleRatio = targetW / 600;
+      const effSpacing = Math.round(spacing * scaleRatio);
+      const effRadius = Math.round(radius * scaleRatio);
 
-    // 2. Draw each cell
-    currentTemplate.cells.forEach((cellDef, idx) => {
-      const rect = getCellPxRect(cellDef, targetW, targetH, effSpacing);
-      const state = cellStates[idx];
-      const photo = photos.find((p) => p.id === state?.photoId);
+      // 2. Draw each cell
+      currentTemplate.cells.forEach((cellDef, idx) => {
+        const rect = getCellPxRect(cellDef, targetW, targetH, effSpacing);
+        const state = cellStates[idx];
+        const photo = photos.find((p) => p.id === state?.photoId);
 
-      ctx.save();
-      ctx.beginPath();
-      if (effRadius > 0 && typeof ctx.roundRect === 'function') {
-        ctx.roundRect(rect.x, rect.y, rect.w, rect.h, effRadius);
-      } else {
-        ctx.rect(rect.x, rect.y, rect.w, rect.h);
-      }
-      ctx.closePath();
-      ctx.clip();
+        ctx.save();
+        ctx.beginPath();
+        if (effRadius > 0 && typeof ctx.roundRect === 'function') {
+          ctx.roundRect(rect.x, rect.y, rect.w, rect.h, effRadius);
+        } else {
+          ctx.rect(rect.x, rect.y, rect.w, rect.h);
+        }
+        ctx.closePath();
+        ctx.clip();
 
-      if (photo) {
-        // Draw photo with cover & pan/zoom
-        const imgW = photo.img.naturalWidth || photo.img.width || 1;
-        const imgH = photo.img.naturalHeight || photo.img.height || 1;
-        const baseScale = Math.max(rect.w / imgW, rect.h / imgH);
-        const finalScale = baseScale * (state?.zoom || 1.0);
-        const drawW = imgW * finalScale;
-        const drawH = imgH * finalScale;
+        if (photo) {
+          // Draw photo with cover & pan/zoom
+          const imgW = photo.img.naturalWidth || photo.img.width || 1;
+          const imgH = photo.img.naturalHeight || photo.img.height || 1;
+          const baseScale = Math.max(rect.w / imgW, rect.h / imgH);
+          const finalScale = baseScale * (state?.zoom || 1.0);
+          const drawW = imgW * finalScale;
+          const drawH = imgH * finalScale;
 
-        const panScale = scaleRatio;
-        const drawX = rect.x + (rect.w - drawW) / 2 + (state?.panX || 0) * panScale;
-        const drawY = rect.y + (rect.h - drawH) / 2 + (state?.panY || 0) * panScale;
+          const panScale = scaleRatio;
+          const drawX = rect.x + (rect.w - drawW) / 2 + (state?.panX || 0) * panScale;
+          const drawY = rect.y + (rect.h - drawH) / 2 + (state?.panY || 0) * panScale;
 
-        ctx.drawImage(photo.img, drawX, drawY, drawW, drawH);
-      } else {
-        // Placeholder fill for empty cell
-        ctx.fillStyle = '#2d3139';
-        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
-      }
+          ctx.drawImage(photo.img, drawX, drawY, drawW, drawH);
+        } else {
+          // Placeholder fill for empty cell
+          ctx.fillStyle = '#2d3139';
+          ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+        }
 
-      ctx.restore();
-    });
+        ctx.restore();
+      });
 
-    return canvas;
-  };
+      return canvas;
+    },
+    [bgColor, spacing, radius, currentTemplate, cellStates, photos],
+  );
 
   // Update preview canvas
   useEffect(() => {
@@ -356,7 +359,7 @@ export default function CollageTool() {
     const rendered = renderCollageCanvas(previewW, previewH);
     ctx.clearRect(0, 0, previewW, previewH);
     ctx.drawImage(rendered, 0, 0);
-  }, [photos, currentTemplate, aspect, spacing, radius, bgColor, cellStates]);
+  }, [photos.length, aspect, renderCollageCanvas]);
 
   const handlePointerDown = (cellIdx: number, e: React.PointerEvent<HTMLDivElement>) => {
     setActiveCellIndex(cellIdx);

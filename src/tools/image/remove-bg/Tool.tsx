@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback, useId } from 'react';
+import { useState, useRef, useEffect, useEffectEvent, useCallback, useId } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { CopyImageButton } from '../../../components/CopyImageButton';
@@ -61,15 +61,14 @@ export default function RemoveBgTool() {
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const compareCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  // Cleanup segment client on unmount
+  const disposeSource = useEffectEvent(() => {
+    sourceRequest.current++;
+    segmentClientRef.current?.terminate();
+    segmentClientRef.current = null;
+  });
+
   useEffect(() => {
-    return () => {
-      sourceRequest.current++;
-      if (segmentClientRef.current) {
-        segmentClientRef.current.terminate();
-        segmentClientRef.current = null;
-      }
-    };
+    return () => disposeSource();
   }, []);
 
   // Handle file selection

@@ -84,7 +84,7 @@ export default function BarcodeGeneratorTool() {
         font: 'monospace',
         textMargin: 4,
       });
-    } catch (err: any) {
+    } catch (err) {
       console.warn('JsBarcode rendering error:', err);
     }
   }, [validation, format, barWidth, height, showText, fontSize, margin, lineColor, bgColor, transparentBg]);

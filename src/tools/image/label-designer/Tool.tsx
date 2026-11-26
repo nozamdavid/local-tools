@@ -7,7 +7,14 @@ import { downloadBlob } from '../../../lib/download';
 import { CopyImageButton } from '../../../components/CopyImageButton';
 import { canvasToBlob } from '../../../lib/image';
 import { useI18n } from '../../../lib/i18n';
-import { type LabelElement, type ImageElement, LABEL_PRESETS, renderLabelToCanvas } from '../_generate/label';
+import {
+  type LabelElement,
+  type ImageElement,
+  type BarcodeElement,
+  type QrElement,
+  LABEL_PRESETS,
+  renderLabelToCanvas,
+} from '../_generate/label';
 import styles from './Tool.module.css';
 
 const DEFAULT_ELEMENTS: LabelElement[] = [
@@ -630,11 +637,12 @@ export default function LabelDesignerTool() {
                         <Field label={t('Barcode format')}>
                           <Select
                             value={selectedElement.format}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const format = e.currentTarget.value as BarcodeElement['format'];
                               setElements((prev) =>
-                                prev.map((el) => (el.id === selectedElement.id ? { ...el, format: e.target.value as any } : el)),
-                              )
-                            }
+                                prev.map((el) => (el.id === selectedElement.id && el.type === 'barcode' ? { ...el, format } : el)),
+                              );
+                            }}
                             options={[
                               { value: 'CODE128', label: t('Code 128') },
                               { value: 'EAN13', label: t('EAN-13') },
@@ -685,11 +693,12 @@ export default function LabelDesignerTool() {
                         <Field label={t('Error correction')}>
                           <Select
                             value={selectedElement.ecLevel}
-                            onChange={(e) =>
+                            onChange={(e) => {
+                              const ecLevel = e.currentTarget.value as QrElement['ecLevel'];
                               setElements((prev) =>
-                                prev.map((el) => (el.id === selectedElement.id ? { ...el, ecLevel: e.target.value as any } : el)),
-                              )
-                            }
+                                prev.map((el) => (el.id === selectedElement.id && el.type === 'qr' ? { ...el, ecLevel } : el)),
+                              );
+                            }}
                             options={[
                               { value: 'L', label: t('Low (7%)') },
                               { value: 'M', label: t('Medium (15%)') },

@@ -18,7 +18,7 @@ export interface JxlWorkerEncodeRequest {
   type: 'encode';
   width: number;
   height: number;
-  data: Uint8ClampedArray;
+  data: Uint8ClampedArray<ArrayBuffer>;
   options?: {
     quality?: number;
     lossless?: boolean;
@@ -37,6 +37,11 @@ export type JxlWorkerResponse =
   | { id: number; ok: true; type: 'encode'; data: ArrayBuffer }
   | { id: number; ok: true; type: 'ping' }
   | { id: number; ok: false; error: string };
+
+declare const self: {
+  onmessage: (event: MessageEvent<JxlWorkerRequest>) => void;
+  postMessage(response: JxlWorkerResponse, transfer?: Transferable[]): void;
+};
 
 let decodeReadyPromise: Promise<void> | null = null;
 let encodeReadyPromise: Promise<void> | null = null;
@@ -112,6 +117,7 @@ function validateJxlSignature(bytes: Uint8Array): void {
 self.onmessage = async (event: MessageEvent<JxlWorkerRequest>) => {
   const req = event.data;
   if (!req || typeof req.id !== 'number') return;
+  const { type } = req;
 
   try {
     if (req.type === 'ping') {
@@ -147,8 +153,11 @@ self.onmessage = async (event: MessageEvent<JxlWorkerRequest>) => {
         throw new Error(`Decoded image dimensions (${result.width}x${result.height}) exceed the maximum supported size (40 megapixels).`);
       }
 
-      // Transfer decoded pixel buffer
-      const pixelBuffer = result.data.buffer as ArrayBuffer;
+      const { data } = result;
+      const pixelBuffer =
+        data.buffer instanceof ArrayBuffer && data.byteOffset === 0 && data.byteLength === data.buffer.byteLength
+          ? data.buffer
+          : data.slice().buffer;
       const res: JxlWorkerResponse = {
         id: req.id,
         ok: true,
@@ -157,7 +166,7 @@ self.onmessage = async (event: MessageEvent<JxlWorkerRequest>) => {
         height: result.height,
         data: pixelBuffer,
       };
-      (self.postMessage as any)(res, [pixelBuffer]);
+      self.postMessage(res, [pixelBuffer]);
       return;
     }
 
@@ -183,7 +192,7 @@ self.onmessage = async (event: MessageEvent<JxlWorkerRequest>) => {
 
       let encodedBuffer: ArrayBuffer;
       try {
-        const imgData = { data, width, height } as unknown as ImageData;
+        const imgData = new ImageData(data, width, height);
         if (isLossless) {
           encodedBuffer = await encode(imgData, { lossless: true, quality: 100 });
         } else {
@@ -199,11 +208,11 @@ self.onmessage = async (event: MessageEvent<JxlWorkerRequest>) => {
         type: 'encode',
         data: encodedBuffer,
       };
-      (self.postMessage as any)(res, [encodedBuffer]);
+      self.postMessage(res, [encodedBuffer]);
       return;
     }
 
-    throw new Error(`Unsupported request type: ${(req as any).type}`);
+    throw new Error(`Unsupported request type: ${type}`);
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Unexpected JPEG XL error';
     const res: JxlWorkerResponse = { id: req.id, ok: false, error: errorMsg };

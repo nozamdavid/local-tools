@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { Button, Slider } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
@@ -41,20 +41,22 @@ const PRESETS = [
   { name: 'Black', hex: '#000000' },
 ];
 
+const INITIAL_COLOR: RGBA = { r: 59, g: 130, b: 246, a: 1 };
+
 export default function HexRgbConverterTool() {
   const { t } = useI18n();
   const meta = getToolMeta('img-hex-rgb-converter');
 
-  const [rgba, setRgba] = useState<RGBA>({ r: 59, g: 130, b: 246, a: 1 });
+  const [rgba, setRgba] = useState<RGBA>(INITIAL_COLOR);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   // Editable input text state
-  const [hexInput, setHexInput] = useState<string>('#3b82f6');
-  const [rgbInput, setRgbInput] = useState<string>('rgb(59, 130, 246)');
-  const [hslInput, setHslInput] = useState<string>('hsl(217, 91%, 60%)');
-  const [hsvInput, setHsvInput] = useState<string>('hsv(217, 76%, 96%)');
-  const [cmykInput, setCmykInput] = useState<string>('cmyk(76%, 47%, 0%, 4%)');
-  const [namedInput, setNamedInput] = useState<string>('');
+  const [hexInput, setHexInput] = useState(() => formatHex(INITIAL_COLOR));
+  const [rgbInput, setRgbInput] = useState(() => formatRgb(INITIAL_COLOR));
+  const [hslInput, setHslInput] = useState(() => formatHsl(rgbToHsl(INITIAL_COLOR)));
+  const [hsvInput, setHsvInput] = useState(() => formatHsv(rgbToHsv(INITIAL_COLOR)));
+  const [cmykInput, setCmykInput] = useState(() => formatCmyk(rgbToCmyk(INITIAL_COLOR)));
+  const [namedInput, setNamedInput] = useState(() => findMatchingNamedColor(INITIAL_COLOR) || '');
 
   // Synchronize input fields when rgba changes from picker/presets
   const syncInputsFromRgba = (color: RGBA) => {
@@ -71,10 +73,6 @@ export default function HexRgbConverterTool() {
     const matched = findMatchingNamedColor(color);
     setNamedInput(matched || '');
   };
-
-  useEffect(() => {
-    syncInputsFromRgba(rgba);
-  }, []);
 
   const handleNativePicker = (e: React.ChangeEvent<HTMLInputElement>) => {
     const parsed = parseHex(e.target.value);

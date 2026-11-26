@@ -61,9 +61,9 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
       'Semi-transparent pixels must include fill-opacity',
     );
     assert(!pixelSvg.includes('x="1" y="1"'), 'pixel-svg-alpha-omitted', 'Fully transparent pixels must not produce rects');
-  } catch (err: any) {
+  } catch (err) {
     if (!results.find((r) => r.name === 'embedded-svg-valid' && !r.passed)) {
-      results.push({ name: 'svg-verification-fatal', passed: false, message: err.message });
+      results.push({ name: 'svg-verification-fatal', passed: false, message: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -188,9 +188,9 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
       caughtError = true;
     }
     assert(caughtError, 'ico-malformed-bounds-check', 'Malformed ICO with out-of-bounds offset must throw error');
-  } catch (err: any) {
+  } catch (err) {
     if (!results.find((r) => r.name === 'ico-frame-count' && !r.passed)) {
-      results.push({ name: 'ico-verification-fatal', passed: false, message: err.message });
+      results.push({ name: 'ico-verification-fatal', passed: false, message: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -236,9 +236,9 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
       cropToInk: true,
     });
     assert(emptyResult.isEmpty, 'sig-empty-detected', 'All-white paper image must be flagged as isEmpty without crashing');
-  } catch (err: any) {
+  } catch (err) {
     if (!results.find((r) => r.name === 'sig-white-paper-transparent' && !r.passed)) {
-      results.push({ name: 'signature-verification-fatal', passed: false, message: err.message });
+      results.push({ name: 'signature-verification-fatal', passed: false, message: err instanceof Error ? err.message : String(err) });
     }
   }
 
@@ -304,9 +304,9 @@ export function runAllVerifications(): { allPassed: boolean; results: VerifyTest
       'redaction-outside-untouched',
       'Pixels outside redacted region must remain unchanged',
     );
-  } catch (err: any) {
+  } catch (err) {
     if (!results.find((r) => r.name === 'redaction-opaque-black' && !r.passed)) {
-      results.push({ name: 'redaction-verification-fatal', passed: false, message: err.message });
+      results.push({ name: 'redaction-verification-fatal', passed: false, message: err instanceof Error ? err.message : String(err) });
     }
   }
 

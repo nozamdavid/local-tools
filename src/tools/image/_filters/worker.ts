@@ -2,20 +2,36 @@
 
 import { boxBlur } from './boxBlur';
 
-export interface WorkerMessageRequest {
+export interface SharpenOptions {
+  amount: number;
+  radius: number;
+  threshold: number;
+}
+
+export interface SketchOptions {
+  style: 'pencil' | 'color-sketch' | 'cartoon' | 'sepia' | 'oil';
+  intensity: number;
+}
+
+export type ImageFilter = { type: 'sharpen'; options: SharpenOptions } | { type: 'sketch'; options: SketchOptions };
+
+export type WorkerMessageRequest = ImageFilter & {
   id: number;
-  type: 'sharpen' | 'sketch';
   width: number;
   height: number;
-  data: Uint8ClampedArray;
-  options: any;
-}
+  data: Uint8ClampedArray<ArrayBuffer>;
+};
 
 export interface WorkerMessageResponse {
   id: number;
   data: Uint8ClampedArray;
   error?: string;
 }
+
+declare const self: {
+  onmessage: (event: MessageEvent<WorkerMessageRequest>) => void;
+  postMessage(response: WorkerMessageResponse, transfer?: Transferable[]): void;
+};
 
 // 3-pass fast Gaussian blur approximation
 function fastGaussianBlur(src: Uint8ClampedArray, w: number, h: number, radius: number): Uint8ClampedArray {
@@ -30,12 +46,7 @@ function fastGaussianBlur(src: Uint8ClampedArray, w: number, h: number, radius: 
   return bufA;
 }
 
-function processSharpen(
-  data: Uint8ClampedArray,
-  w: number,
-  h: number,
-  opts: { amount: number; radius: number; threshold: number },
-): Uint8ClampedArray {
+function processSharpen(data: Uint8ClampedArray, w: number, h: number, opts: SharpenOptions): Uint8ClampedArray<ArrayBuffer> {
   const { amount = 1.0, radius = 2.0, threshold = 0 } = opts;
   const blurred = fastGaussianBlur(data, w, h, radius);
   const out = new Uint8ClampedArray(data.length);
@@ -58,7 +69,7 @@ function processSharpen(
   return out;
 }
 
-function processSketch(data: Uint8ClampedArray, w: number, h: number, opts: { style: string; intensity: number }): Uint8ClampedArray {
+function processSketch(data: Uint8ClampedArray, w: number, h: number, opts: SketchOptions): Uint8ClampedArray<ArrayBuffer> {
   const { style = 'pencil', intensity = 80 } = opts;
   const factor = intensity / 100;
   const len = data.length;
@@ -265,7 +276,7 @@ function processSketch(data: Uint8ClampedArray, w: number, h: number, opts: { st
 self.onmessage = (e: MessageEvent<WorkerMessageRequest>) => {
   const { id, type, width, height, data, options } = e.data;
   try {
-    let result: Uint8ClampedArray;
+    let result: Uint8ClampedArray<ArrayBuffer>;
     if (type === 'sharpen') {
       result = processSharpen(data, width, height, options);
     } else if (type === 'sketch') {
@@ -274,8 +285,8 @@ self.onmessage = (e: MessageEvent<WorkerMessageRequest>) => {
       result = data;
     }
     const response: WorkerMessageResponse = { id, data: result };
-    (self as unknown as Worker).postMessage(response, [result.buffer]);
-  } catch (err: any) {
-    (self as unknown as Worker).postMessage({ id, data, error: err?.message || String(err) });
+    self.postMessage(response, [result.buffer]);
+  } catch (err) {
+    self.postMessage({ id, data, error: (err instanceof Error && err.message) || String(err) });
   }
 };

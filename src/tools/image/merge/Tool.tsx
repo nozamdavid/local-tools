@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useId } from 'react';
+import { useCallback, useEffect, useRef, useState, useId } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
@@ -89,7 +89,7 @@ export default function MergeTool() {
     });
   };
 
-  const buildCanvas = (): HTMLCanvasElement => {
+  const buildCanvas = useCallback((): HTMLCanvasElement => {
     if (items.length === 0) throw new Error('No images to merge');
 
     const canvas = document.createElement('canvas');
@@ -229,7 +229,7 @@ export default function MergeTool() {
     }
 
     return canvas;
-  };
+  }, [items, direction, gridCols, alignment, matchSize, gap, isTransparent, bgColor, format]);
 
   // Update preview canvas
   useEffect(() => {
@@ -247,7 +247,7 @@ export default function MergeTool() {
     } catch {
       // Ignore preview errors during edits
     }
-  }, [items, direction, gridCols, alignment, matchSize, gap, isTransparent, bgColor, format]);
+  }, [items.length, buildCanvas]);
 
   const handleExport = async () => {
     if (items.length < 2) return;

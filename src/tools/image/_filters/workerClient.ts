@@ -1,4 +1,4 @@
-import type { WorkerMessageRequest, WorkerMessageResponse } from './worker';
+import type { ImageFilter, WorkerMessageRequest, WorkerMessageResponse } from './worker';
 
 class FilterWorkerClient {
   private worker: Worker | null = null;
@@ -40,28 +40,15 @@ class FilterWorkerClient {
     return this.worker;
   }
 
-  public process(
-    type: 'sharpen' | 'sketch',
-    width: number,
-    height: number,
-    data: Uint8ClampedArray,
-    options: any,
-  ): Promise<Uint8ClampedArray> {
+  public process(image: ImageData, filter: ImageFilter): Promise<Uint8ClampedArray> {
     return new Promise((resolve, reject) => {
       const id = ++this.reqId;
       const worker = this.getWorker();
       this.pending.set(id, { resolve, reject });
 
       // Copy buffer if we need to keep caller's copy intact
-      const copy = new Uint8ClampedArray(data);
-      const msg: WorkerMessageRequest = {
-        id,
-        type,
-        width,
-        height,
-        data: copy,
-        options,
-      };
+      const copy = new Uint8ClampedArray(image.data);
+      const msg: WorkerMessageRequest = { ...filter, id, width: image.width, height: image.height, data: copy };
       try {
         worker.postMessage(msg, [copy.buffer]);
       } catch (error) {

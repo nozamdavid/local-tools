@@ -49,7 +49,7 @@ export default function ImageToSvgTool() {
         setDataUri(uri);
         const img = await decodeImage(selected);
         setSourceImg(img);
-      } catch (err: any) {
+      } catch (err) {
         setError(err instanceof Error ? err.message : 'Failed to decode image');
       }
     };
@@ -94,7 +94,7 @@ export default function ImageToSvgTool() {
       setSvgString(resultSvg);
       const blob = new Blob([resultSvg], { type: 'image/svg+xml' });
       setSvgBlob(blob);
-    } catch (err: any) {
+    } catch (err) {
       setError(err instanceof Error ? err.message : 'Error generating SVG');
     }
   }, [sourceImg, dataUri, mode, pixelResolution]);

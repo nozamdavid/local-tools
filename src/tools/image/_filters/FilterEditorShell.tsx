@@ -109,8 +109,8 @@ export function FilterEditorShell<T>({
       setQuality(92);
       setOptions(defaultOptions);
       setFile(selected);
-    } catch (err: any) {
-      if (request === sourceRequest.current) setLoadError(err?.message || 'Failed to decode image');
+    } catch (err) {
+      if (request === sourceRequest.current) setLoadError((err instanceof Error && err.message) || 'Failed to decode image');
     }
   };
 
@@ -192,8 +192,10 @@ export function FilterEditorShell<T>({
       downloadBlob(blob, exportFilename);
       setResultBlob(blob);
       setResultFilename(exportFilename);
-    } catch (err: any) {
-      if (request === sourceRequest.current) alert(t('Export failed: {error}', { error: err?.message || String(err) }));
+    } catch (err) {
+      if (request === sourceRequest.current) {
+        alert(t('Export failed: {error}', { error: (err instanceof Error && err.message) || String(err) }));
+      }
     }
   };
 

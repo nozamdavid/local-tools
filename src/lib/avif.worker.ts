@@ -15,7 +15,7 @@ export interface AvifWorkerEncodeRequest {
   type: 'encode';
   width: number;
   height: number;
-  data: Uint8ClampedArray;
+  data: Uint8ClampedArray<ArrayBuffer>;
   options?: AvifEncodeOptions;
 }
 
@@ -30,6 +30,11 @@ export type AvifWorkerResponse =
   | { id: number; ok: true; type: 'encode'; data: ArrayBuffer }
   | { id: number; ok: true; type: 'ping' }
   | { id: number; ok: false; error: string };
+
+declare const self: {
+  onmessage: (event: MessageEvent<AvifWorkerRequest>) => void;
+  postMessage(response: AvifWorkerResponse, transfer?: Transferable[]): void;
+};
 
 let encodeReadyPromise: Promise<void> | null = null;
 
@@ -80,7 +85,10 @@ self.onmessage = async (event: MessageEvent<AvifWorkerRequest>) => {
       const speed = options?.speed !== undefined ? Math.max(0, Math.min(10, Math.round(options.speed))) : 6;
 
       const clampedData = data instanceof Uint8ClampedArray ? data : new Uint8ClampedArray(data);
-      const imgData = { data: clampedData, width, height } as unknown as ImageData;
+      // The AVIF encoder reads the entire backing buffer, including bytes outside a view.
+      const pixels =
+        clampedData.byteOffset === 0 && clampedData.byteLength === clampedData.buffer.byteLength ? clampedData : clampedData.slice();
+      const imgData = new ImageData(pixels, width, height);
 
       const encodedBuffer = await encode(imgData, {
         quality,
@@ -88,7 +96,7 @@ self.onmessage = async (event: MessageEvent<AvifWorkerRequest>) => {
         speed,
       });
 
-      (self.postMessage as any)({ id: req.id, ok: true, type: 'encode', data: encodedBuffer }, [encodedBuffer]);
+      self.postMessage({ id: req.id, ok: true, type: 'encode', data: encodedBuffer }, [encodedBuffer]);
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       self.postMessage({ id: req.id, ok: false, error: errorMsg });

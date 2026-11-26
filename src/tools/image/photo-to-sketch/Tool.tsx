@@ -1,11 +1,7 @@
 import { FilterEditorShell } from '../_filters/FilterEditorShell';
 import { Field, Select, Slider } from '../../../components/Controls';
 import { filterWorkerClient } from '../_filters/workerClient';
-
-interface SketchOptions {
-  style: 'pencil' | 'color-sketch' | 'cartoon' | 'sepia' | 'oil';
-  intensity: number;
-}
+import type { SketchOptions } from '../_filters/worker';
 
 const DEFAULT_OPTIONS: SketchOptions = {
   style: 'pencil',
@@ -22,7 +18,7 @@ async function renderSketch(source: HTMLCanvasElement, options: SketchOptions): 
   ctx.drawImage(source, 0, 0);
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-  const outData = await filterWorkerClient.process('sketch', canvas.width, canvas.height, imgData.data, options);
+  const outData = await filterWorkerClient.process(imgData, { type: 'sketch', options });
 
   const outImgData = ctx.createImageData(canvas.width, canvas.height);
   outImgData.data.set(outData);

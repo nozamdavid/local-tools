@@ -1,13 +1,8 @@
 import { FilterEditorShell } from '../_filters/FilterEditorShell';
 import { Slider } from '../../../components/Controls';
 import { filterWorkerClient } from '../_filters/workerClient';
+import type { SharpenOptions } from '../_filters/worker';
 import styles from '../_filters/FilterEditorShell.module.css';
-
-interface SharpenOptions {
-  amount: number;
-  radius: number;
-  threshold: number;
-}
 
 const DEFAULT_OPTIONS: SharpenOptions = {
   amount: 1.2,
@@ -25,7 +20,7 @@ async function renderSharpen(source: HTMLCanvasElement, options: SharpenOptions)
   ctx.drawImage(source, 0, 0);
   const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
 
-  const outData = await filterWorkerClient.process('sharpen', canvas.width, canvas.height, imgData.data, options);
+  const outData = await filterWorkerClient.process(imgData, { type: 'sharpen', options });
 
   const outImgData = ctx.createImageData(canvas.width, canvas.height);
   outImgData.data.set(outData);

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useEffectEvent } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { getToolMeta } from '../../registry';
 import { FileDrop } from '../../../components/FileDrop';
@@ -221,8 +221,7 @@ export default function Tool() {
     return [];
   };
 
-  // Sync layers when settings change on the loaded single image
-  useEffect(() => {
+  const applyWatermarkSettings = useEffectEvent(() => {
     if (doc.baseImage && doc.width > 0 && doc.height > 0) {
       const newLayers = buildLayers(doc.width, doc.height);
       pushDoc({
@@ -230,6 +229,11 @@ export default function Tool() {
         layers: newLayers,
       });
     }
+  });
+
+  // Apply settings to the current document without pushing history on undo, redo, or canvas edits.
+  useEffect(() => {
+    applyWatermarkSettings();
   }, [wmType, wmText, wmColor, wmOpacity, wmSizePercent, wmRotation, activeGridPos, marginPercent, isTiled, tileSpacing, logoImg]);
 
   const handleFileDrop = async (dropped: File[]) => {
