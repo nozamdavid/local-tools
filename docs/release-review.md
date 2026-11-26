@@ -12,7 +12,7 @@ In the initial review, a clean installation passed `npm ci`, ESLint, Prettier, a
 - The video and universal converters copy transparent video streams when exporting to WebM or MKV. Downloaded files matched all 38,400 source alpha pixels in Chromium, Firefox and WebKit. Firefox also exported a transparent VP9 video with audio. Formats that cannot preserve the full alpha channel stop with an explanation before download.
 - PowerPoint to PDF now waits for charts to render before capturing a slide. Chromium exported a two-slide fixture with identical bars and 37,000 colored plot pixels on each page. A separate deck retained its bar, line and pie charts.
 - The PDF summary result now reminds readers to check generated details against the original document. Translation and transcription keep their existing workflows.
-- The private GitHub repository uses GitHub Actions as its sole CI provider. GitHub account billing blocked run 45695857625 for commit `5640701` before any steps ran, and the repository has no existing runners. The passing checks above were local. [GitHub workflow](../.github/workflows/check.yml)
+- GitHub account billing blocked GitHub Actions run 45695857625 for commit `5640701` before any steps ran. The repository had no runners at the time. The passing checks above were local.
 - The live Arcane container served the release HTML at `/video/trim`, revalidated stable files, cached hashed JavaScript immutably and returned HTTP 404 for missing JavaScript, fonts and WASM. A two-release container test also verified that old chunks remained available after switching releases. [LAN site](http://192.168.0.199:3052) · [Deployment guide](deployment.md)
 - The LAN check covered all 167 routes and inspected downloaded CSV, PNG, PDF, WebM, MKV, WAV and STL files. Chromium used the local FFmpeg fallback over HTTP. The LAN changes add incremental file hashing and text copying when native browser APIs are unavailable. The updated build is `index-DWVpU_cP.js`. All 184 tests passed, and `npm audit` reported zero known vulnerabilities.
 
@@ -49,6 +49,6 @@ The updated lint dependency tree also resolves the minimatch advisory. After a c
 
 ## Publishing
 
-1. Once GitHub Actions can run, verify the hosted check for the exact commit being published.
+1. Run the local release checks for the exact commit being published. [Local validation commands](../README.md#development)
 2. Stage the static build and switch the Arcane project to it. Keep the previous release for rollback. [Deployment guide](deployment.md)
 3. At the production address, verify that direct tool URLs load the app, missing JavaScript, fonts and WASM return HTTP 404, and cache headers match the production policy. Check that old chunks remain available through a release switch and rollback. [Cache policy](architecture-decisions.md#adr-009-set-production-cache-headers)

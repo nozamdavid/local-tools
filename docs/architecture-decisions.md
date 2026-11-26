@@ -20,7 +20,8 @@ Status values:
 | [ADR-007](#adr-007-serve-the-production-build-as-static-files) | Accepted | Serve `dist/` from a static host with SPA fallback; no long-running preview in production |
 | [ADR-008](#adr-008-use-tangled-ci) | Superseded | Run install, checks, tests and the production build in Tangled CI |
 | [ADR-009](#adr-009-set-production-cache-headers) | Accepted | Cache hashed assets immutably and revalidate stable files and HTML |
-| [ADR-010](#adr-010-use-github-actions-for-the-private-origin) | Accepted | Use GitHub Actions as the sole CI provider for the private repository |
+| [ADR-010](#adr-010-use-github-actions-for-the-private-origin) | Superseded | Use GitHub Actions for the private repository |
+| [ADR-011](#adr-011-validate-releases-locally) | Accepted | Run release checks locally |
 
 ## ADR-001: Keep user files in the browser
 
@@ -195,12 +196,19 @@ A Tangled remote or mirror must receive the same commits as the GitHub origin; T
 
 ## ADR-010: Use GitHub Actions for the private origin
 
-- **Status:** Accepted
+- **Status:** Superseded by [ADR-011](#adr-011-validate-releases-locally)
 - **Date:** 2026-11-25
 
-**Decision.** Keep the repository on private GitHub and use GitHub Actions as the sole CI provider. The workflow targets pushes and pull requests to `main`, grants read-only repository access, and uses Node 24 to install locked dependencies, lint, check formatting, run unit tests and build the static site. [GitHub workflow](../.github/workflows/check.yml)
+**Decision.** The repository stayed on private GitHub and adopted GitHub Actions as its sole CI provider. The workflow targeted pushes and pull requests to `main`, granted read-only repository access, and used Node 24 to install locked dependencies, lint, check formatting, run unit tests and build the static site.
 
-**Verification.** GitHub account billing blocked run 45695857625 for commit `5640701` before any workflow steps ran. The repository has no existing runners. The release review records passing local checks. Hosted verification is pending. [Release review](release-review.md)
+**Verification.** GitHub account billing blocked run 45695857625 for commit `5640701` before any workflow steps ran. The repository had no runners at the time. The release review records passing local checks. [Release review](release-review.md)
+
+## ADR-011: Validate releases locally
+
+- **Status:** Accepted
+- **Date:** 2026-11-26
+
+**Decision.** The repository removed its sole GitHub Actions workflow. Before publishing, run the local release checks for the commit being published. [Local validation commands](../README.md#development)
 
 ## When to record a decision
 
