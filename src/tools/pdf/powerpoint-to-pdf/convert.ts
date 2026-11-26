@@ -1,6 +1,7 @@
 import { PDFDocument } from 'pdf-lib';
 import { addFittedPage, createStage, pageGeometry, pxToPt, rasterize, sanitizeRenderedDom, type PageSetup } from '../_render/render';
 import { prepareOfficeBuffer } from '../../_office/prepareOffice';
+import { applyChartText, prepareChartText, type ChartText } from './chartText';
 
 const SLIDE_WIDTH_PX = 960;
 
@@ -27,7 +28,7 @@ export async function checkPptx(file: File): Promise<string | null> {
 }
 
 /** Strips dangling content-type overrides and neutralizes external relationships. */
-export function preparePptxBuffer(input: Blob | ArrayBuffer): Promise<ArrayBuffer> {
+export function preparePptxBuffer(input: Blob | ArrayBuffer, chartText?: Map<string, ChartText>): Promise<ArrayBuffer> {
   return prepareOfficeBuffer(input, PPTX_PREPARATION_ERROR, async (zip) => {
     const ctFile = zip.file('[Content_Types].xml');
     if (ctFile) {
@@ -40,20 +41,9 @@ export function preparePptxBuffer(input: Blob | ArrayBuffer): Promise<ArrayBuffe
         return match;
       });
       zip.file('[Content_Types].xml', ctXml);
+      if (chartText) await prepareChartText(zip, ctXml, chartText);
     }
   });
-}
-
-type PreviewNode = {
-  nodes?: PreviewNode[];
-  options?: { series?: unknown[]; animation?: boolean };
-};
-
-function disableChartAnimation(nodes: PreviewNode[]): void {
-  for (const node of nodes) {
-    if (node.options?.series) node.options.animation = false;
-    if (node.nodes) disableChartAnimation(node.nodes);
-  }
 }
 
 export async function powerpointToPdf(
@@ -64,7 +54,8 @@ export async function powerpointToPdf(
   const problem = await checkPptx(file);
   if (problem) throw new Error(problem);
 
-  const cleanBuffer = await preparePptxBuffer(file);
+  const chartText = new Map<string, ChartText>();
+  const cleanBuffer = await preparePptxBuffer(file, chartText);
   const { init } = await import('pptx-preview');
   const { stage, dispose } = createStage(SLIDE_WIDTH_PX);
   let previewer: ReturnType<typeof init> | undefined;
@@ -72,7 +63,7 @@ export async function powerpointToPdf(
   try {
     previewer = init(stage, { width: SLIDE_WIDTH_PX, mode: 'list' });
     const pptx = await previewer.load(cleanBuffer);
-    disableChartAnimation([...pptx.slides, ...pptx.slideLayouts, ...pptx.slideMaster]);
+    applyChartText([...pptx.slides, ...pptx.slideLayouts, ...pptx.slideMaster], chartText);
     for (let i = 0; i < pptx.slides.length; i++) {
       previewer.htmlRender.renderSlide(i);
     }
