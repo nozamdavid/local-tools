@@ -1,10 +1,9 @@
-import { useState } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Alert, Badge } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
-import { MeshViewer, use3DWorkbench, ExportCard, ACCEPT_MESH_EXTENSIONS, translate3DMessage, type MeshModel } from '../_ui';
+import { MeshViewer, use3DWorkbench, ExportCard, ACCEPT_MESH_EXTENSIONS, translate3DMessage } from '../_ui';
 import { mergeModels } from '../_mesh/client';
 import { Combine, Trash2, XCircle, ShieldAlert, Plus, RotateCcw } from 'lucide-react';
 import styles from '../_ui/Workbench.module.css';
@@ -18,7 +17,7 @@ export default function MergeTool() {
   const {
     files,
     multiModels,
-    currentModel,
+    currentModel: mergedModel,
     setCurrentModel,
     loading,
     importError,
@@ -38,24 +37,23 @@ export default function MergeTool() {
     handleExport,
   } = use3DWorkbench({ multiple: true });
 
-  const [mergedModel, setMergedModel] = useState<MeshModel | null>(null);
+  const busy = loading || processing || exporting;
 
   const totalInputTriangles = multiModels.reduce((acc, m) => acc + m.indices.length / 3, 0);
   const totalInputVertices = multiModels.reduce((acc, m) => acc + m.positions.length / 3, 0);
 
   const handleMerge = async () => {
-    if (multiModels.length < 2) return;
+    if (multiModels.length < 2 || busy) return;
 
     const currentJob = ++jobIdRef.current;
     setProcessing(true);
     setProcessError(null);
 
     try {
-      const merged = await mergeModels(multiModels);
+      const model = await mergeModels(multiModels);
 
       if (currentJob !== jobIdRef.current) return;
-      setMergedModel(merged);
-      setCurrentModel(merged);
+      setCurrentModel(model);
     } catch (err: unknown) {
       if (currentJob === jobIdRef.current) {
         setProcessError(err instanceof Error ? err.message : String(err));
@@ -65,11 +63,6 @@ export default function MergeTool() {
         setProcessing(false);
       }
     }
-  };
-
-  const handleReset = () => {
-    setMergedModel(null);
-    reset();
   };
 
   return (
@@ -115,7 +108,7 @@ export default function MergeTool() {
                   })}
                 </span>
               </div>
-              <Button variant="secondary" size="sm" icon={<RotateCcw size={14} />} onClick={handleReset}>
+              <Button variant="secondary" size="sm" icon={<RotateCcw size={14} />} onClick={reset}>
                 {t('Start over')}
               </Button>
             </div>
@@ -125,10 +118,15 @@ export default function MergeTool() {
                 {translate3DMessage(processError, t)}
               </Alert>
             )}
+            {importError && (
+              <Alert tone="danger" title={t('Could not open model')}>
+                {translate3DMessage(importError, t)}
+              </Alert>
+            )}
 
             <div className={styles.modelGrid}>
               <div className={styles.viewerCol}>
-                <MeshViewer model={currentModel} />
+                <MeshViewer model={mergedModel ?? multiModels[0]} />
                 {mergedModel && (
                   <div style={{ fontSize: 'var(--text-xs)', color: 'var(--text-muted)', textAlign: 'center' }}>
                     {t('Viewing unified merged mesh ({count} triangles)', { count: mergedModel.indices.length / 3 })}
@@ -183,7 +181,7 @@ export default function MergeTool() {
                             icon={<Trash2 size={14} color="var(--danger)" />}
                             onClick={() => removeMultiFile(idx)}
                             title={t('Remove model')}
-                            disabled={processing}
+                            disabled={busy}
                           />
                         </div>
                       );
@@ -195,6 +193,7 @@ export default function MergeTool() {
                       <input
                         type="file"
                         accept={ACCEPT_MESH_EXTENSIONS}
+                        disabled={busy}
                         multiple
                         hidden
                         onChange={(e) => {
@@ -208,6 +207,7 @@ export default function MergeTool() {
                         variant="secondary"
                         size="md"
                         icon={<Plus size={15} />}
+                        disabled={busy}
                         onClick={(e) => {
                           const input = e.currentTarget.parentElement?.querySelector('input') as HTMLInputElement;
                           input?.click();
@@ -223,7 +223,7 @@ export default function MergeTool() {
                       size="md"
                       icon={<Combine size={15} />}
                       loading={processing}
-                      disabled={multiModels.length < 2 || processing}
+                      disabled={multiModels.length < 2 || busy}
                       onClick={handleMerge}
                       style={{ flex: 1 }}
                     >
@@ -247,7 +247,7 @@ export default function MergeTool() {
                     onExport={() => handleExport(mergedModel, exportFormat, '-merged')}
                     exporting={exporting}
                     lastExportedBlob={lastExportedBlob}
-                    disabled={processing}
+                    disabled={busy}
                     label={t('Export Merged Mesh')}
                   />
                 )}

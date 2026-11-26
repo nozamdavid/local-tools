@@ -1,13 +1,6 @@
-/**
- * Geometry contract matching sibling _mesh/types.ts MeshModel.
- * Output is always triangulated and normalized to millimeters.
- */
-export interface MeshModel {
-  name: string;
-  positions: Float32Array;
-  indices: Uint32Array;
-  warnings: string[];
-}
+import type { MeshModel } from '../_mesh/types';
+
+export type { MeshModel };
 
 export type CadQuality = 'coarse' | 'standard' | 'fine';
 

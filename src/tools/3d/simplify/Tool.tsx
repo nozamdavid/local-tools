@@ -67,7 +67,7 @@ export default function SimplifyTool() {
 
   // Run simplification always against originalModel to prevent accumulating decimation
   const handleSimplify = async () => {
-    if (!originalModel) return;
+    if (!originalModel || processing || exporting) return;
 
     const currentJob = ++jobIdRef.current;
     setProcessing(true);
@@ -139,7 +139,13 @@ export default function SimplifyTool() {
               onReset={reset}
               action={
                 isSimplified ? (
-                  <Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={handleResetToOriginal}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={<RotateCcw size={14} />}
+                    disabled={processing || exporting}
+                    onClick={handleResetToOriginal}
+                  >
                     {t('Restore original')}
                   </Button>
                 ) : undefined
@@ -243,7 +249,7 @@ export default function SimplifyTool() {
                         size="lg"
                         icon={<Scissors size={16} />}
                         loading={processing}
-                        disabled={processing}
+                        disabled={processing || exporting}
                         onClick={handleSimplify}
                         style={{ flex: 1 }}
                       >

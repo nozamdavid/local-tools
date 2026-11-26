@@ -125,22 +125,10 @@ export function transformMesh(
   // If transformation reflected geometry (negative volume determinant),
   // invert triangle winding to preserve outward face orientation.
   const isReflected = sx * sy * sz < 0;
-  const newIndices = new Uint32Array(indices.length);
-
-  if (isReflected) {
-    for (let t = 0; t < indices.length; t += 3) {
-      newIndices[t] = indices[t];
-      newIndices[t + 1] = indices[t + 2]; // swap v1 and v2
-      newIndices[t + 2] = indices[t + 1];
-    }
-  } else {
-    newIndices.set(indices);
-  }
-
   return {
     name: model.name,
     positions: newPositions,
-    indices: newIndices,
+    indices: copyWinding(indices, isReflected),
     warnings: [...model.warnings],
   };
 }
@@ -151,28 +139,21 @@ export function transformMesh(
 export function flipNormals(model: MeshModel, flip: boolean): MeshModel {
   validateMeshModel(model);
 
-  if (!flip) {
-    return {
-      name: model.name,
-      positions: new Float32Array(model.positions),
-      indices: new Uint32Array(model.indices),
-      warnings: [...model.warnings],
-    };
-  }
-
-  const { indices } = model;
-  const flippedIndices = new Uint32Array(indices.length);
-
-  for (let t = 0; t < indices.length; t += 3) {
-    flippedIndices[t] = indices[t];
-    flippedIndices[t + 1] = indices[t + 2]; // swap v1 and v2
-    flippedIndices[t + 2] = indices[t + 1];
-  }
-
   return {
     name: model.name,
     positions: new Float32Array(model.positions),
-    indices: flippedIndices,
+    indices: copyWinding(model.indices, flip),
     warnings: [...model.warnings],
   };
+}
+
+function copyWinding(indices: Uint32Array, flip: boolean): Uint32Array {
+  const result = new Uint32Array(indices);
+  if (flip) {
+    for (let t = 0; t < indices.length; t += 3) {
+      result[t + 1] = indices[t + 2];
+      result[t + 2] = indices[t + 1];
+    }
+  }
+  return result;
 }

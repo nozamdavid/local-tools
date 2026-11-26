@@ -51,9 +51,10 @@ export default function SplitTool() {
   const [selectedCompIdx, setSelectedCompIdx] = useState<number>(0);
   const [exportingZip, setExportingZip] = useState<boolean>(false);
   const [downloadingIdx, setDownloadingIdx] = useState<number | null>(null);
+  const busy = processing || exportingZip || downloadingIdx !== null;
 
   const handleSplit = async () => {
-    if (!originalModel) return;
+    if (!originalModel || busy) return;
 
     const currentJob = ++jobIdRef.current;
     setProcessing(true);
@@ -88,24 +89,31 @@ export default function SplitTool() {
 
   const handleDownloadSingleComponent = async (index: number) => {
     const comp = components[index];
-    if (!comp) return;
+    if (!comp || busy) return;
 
+    const currentJob = ++jobIdRef.current;
     setDownloadingIdx(index);
+    setProcessError(null);
     try {
       const blob = await exportModel(comp, exportFormat);
+      if (currentJob !== jobIdRef.current) return;
       const baseName = originalModel?.name || file?.name || 'model';
       const cleanBase = stripMeshExtension(baseName);
       const outName = `${cleanBase}-part-${index + 1}.${exportFormat}`;
       downloadBlob(blob, outName);
     } catch (err: unknown) {
-      setProcessError(err instanceof Error ? err.message : String(err));
+      if (currentJob === jobIdRef.current) {
+        setProcessError(err instanceof Error ? err.message : String(err));
+      }
     } finally {
-      setDownloadingIdx(null);
+      if (currentJob === jobIdRef.current) {
+        setDownloadingIdx(null);
+      }
     }
   };
 
   const handleDownloadAllZip = async () => {
-    if (components.length === 0) return;
+    if (components.length === 0 || busy) return;
 
     const currentJob = ++jobIdRef.current;
     setExportingZip(true);
@@ -177,6 +185,8 @@ export default function SplitTool() {
               model={currentModel}
               onReset={() => {
                 setComponents([]);
+                setExportingZip(false);
+                setDownloadingIdx(null);
                 reset();
               }}
             />
@@ -218,7 +228,7 @@ export default function SplitTool() {
                       size="lg"
                       icon={<Split size={16} />}
                       loading={processing}
-                      disabled={processing}
+                      disabled={busy}
                       onClick={handleSplit}
                       style={{ flex: 1 }}
                     >
@@ -253,7 +263,7 @@ export default function SplitTool() {
                         size="md"
                         icon={<Archive size={15} />}
                         loading={exportingZip}
-                        disabled={exportingZip}
+                        disabled={busy}
                         onClick={handleDownloadAllZip}
                         aria-label={t('Download All ({count} parts) as ZIP', { count: components.length })}
                         style={{ width: '100%' }}
@@ -309,7 +319,7 @@ export default function SplitTool() {
                                 size="sm"
                                 icon={<Download size={13} />}
                                 loading={downloadingIdx === idx}
-                                disabled={downloadingIdx !== null}
+                                disabled={busy}
                                 onClick={() => handleDownloadSingleComponent(idx)}
                                 aria-label={t('Download {file}', {
                                   file: t('Part {number}', { number: idx + 1 }) + `.${exportFormat}`,

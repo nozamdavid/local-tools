@@ -67,6 +67,12 @@ describe('loadLocalScene', () => {
     }
   });
 
+  it('rejects a required extension when Three would only render the fallback geometry', async () => {
+    const extensions = ['VENDOR_geometry_transform'];
+    const file = glb({ ...document(), extensionsUsed: extensions, extensionsRequired: extensions });
+    await expect(loadLocalScene(file, [])).rejects.toThrow('requires an unsupported extension');
+  });
+
   it('resolves a nested companion path and reads a packed accessor at a component-aligned offset', async () => {
     const uri = '../buffers/mesh%20data.bin';
     const file = relativeFile(new File([JSON.stringify(document(uri, 4))], 'model.gltf'), 'pack/scene/model.gltf');
@@ -162,13 +168,21 @@ describe('loadLocalScene', () => {
         { bufferView: 1, byteOffset: 0, componentType: 5126, count: 2, type: 'VEC3', min: [0, 0, 0], max: [5, 0, 0] },
       ],
       meshes: [...base.meshes, { primitives: [{ attributes: { POSITION: 0 }, mode: 0 }] }],
-      nodes: [{ mesh: 0, extensions: { EXT_mesh_gpu_instancing: { attributes: { TRANSLATION: 1 } } } }, { mesh: 1 }],
+      nodes: [
+        { children: [2], scale: [2, 2, 1] },
+        { mesh: 1 },
+        {
+          mesh: 0,
+          translation: [1, 0, 0],
+          extensions: { EXT_mesh_gpu_instancing: { attributes: { TRANSLATION: 1 } } },
+        },
+      ],
       scenes: [{ nodes: [0, 1] }],
       extensionsUsed: ['EXT_mesh_gpu_instancing'],
     };
     const asset = await loadLocalScene(glb(doc, bin), []);
     try {
-      expect(asset).toMatchObject({ vertices: 9, triangles: 2, meshes: 2, dimensions: [7, 3, 0] });
+      expect(asset).toMatchObject({ vertices: 9, triangles: 2, meshes: 2, dimensions: [16, 6, 0] });
     } finally {
       asset.dispose();
     }

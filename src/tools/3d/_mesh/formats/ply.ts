@@ -1,6 +1,5 @@
 import { PLYLoader } from 'three/examples/jsm/loaders/PLYLoader.js';
 import type { MeshModel } from '../types';
-import { weldExactVertices } from '../topology';
 
 /**
  * Parses binary or ASCII PLY into an indexed MeshModel.
@@ -10,12 +9,15 @@ export function parsePLY(buffer: ArrayBuffer, name = 'model'): MeshModel {
 
   const loader = new PLYLoader();
   let geom;
-  let hasExpandedFaces = false;
+  let ignoredAttributes = false;
   try {
     geom = loader.parse(buffer);
-    if (!geom.getIndex() && (geom.getAttribute('color') || geom.getAttribute('uv'))) {
-      // Face colors and texcoords can make PLYLoader discard its index.
-      // Disable those expansion triggers to check whether it actually parsed faces.
+    const hasColors = Boolean(geom.getAttribute('color'));
+    const hasUVs = Boolean(geom.getAttribute('uv'));
+    ignoredAttributes = hasColors || hasUVs || Boolean(geom.getAttribute('normal'));
+    if (!geom.getIndex()?.count && (hasColors || hasUVs)) {
+      // Face attributes can make PLYLoader expand the geometry. Read the original
+      // indices without those attributes so coincident vertices stay distinct.
       loader.setPropertyNameMapping({
         red: 'ignored_red',
         diffuse_red: 'ignored_diffuse_red',
@@ -23,46 +25,33 @@ export function parsePLY(buffer: ArrayBuffer, name = 'model'): MeshModel {
         diffuse_r: 'ignored_diffuse_r',
         texcoord: 'ignored_texcoord',
       });
-      hasExpandedFaces = Boolean(loader.parse(buffer).getIndex()?.count);
+      geom.dispose();
+      geom = loader.parse(buffer);
     }
   } catch (err) {
     throw new Error(`Failed to parse PLY file: ${err instanceof Error ? err.message : String(err)}`, { cause: err });
   }
 
-  const posAttr = geom.getAttribute('position');
-  if (!posAttr || posAttr.count === 0) {
-    throw new Error('Corrupt PLY file: no vertex positions found.');
-  }
+  try {
+    const posAttr = geom.getAttribute('position');
+    if (!posAttr?.count || posAttr.itemSize !== 3) {
+      throw new Error('Corrupt PLY file: no vertex positions found.');
+    }
+    const indexAttr = geom.getIndex();
+    if (!indexAttr?.count) {
+      throw new Error('PLY contains no supported faces. Point clouds are not supported.');
+    }
+    if (ignoredAttributes) warnings.push('Vertex colors and custom attributes were ignored (geometry-only import).');
 
-  const indexAttr = geom.getIndex();
-  if (!indexAttr?.count && !hasExpandedFaces) {
-    throw new Error('PLY contains no supported faces. Point clouds are not supported.');
-  }
-  const rawPositions = new Float32Array(posAttr.array);
-
-  if (geom.getAttribute('color') || geom.getAttribute('normal')) {
-    warnings.push('Vertex colors and custom attributes were ignored (geometry-only import).');
-  }
-
-  if (indexAttr) {
-    const indices = new Uint32Array(indexAttr.array);
     return {
       name,
-      positions: rawPositions,
-      indices,
+      positions: new Float32Array(posAttr.array),
+      indices: new Uint32Array(indexAttr.array),
       warnings,
     };
+  } finally {
+    geom.dispose();
   }
-
-  // PLYLoader expanded the faces into non-indexed triangles.
-  const { positions, indices } = weldExactVertices(rawPositions);
-
-  return {
-    name,
-    positions,
-    indices,
-    warnings,
-  };
 }
 
 /**

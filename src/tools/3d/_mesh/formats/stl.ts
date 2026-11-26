@@ -12,22 +12,22 @@ export function parseSTL(buffer: ArrayBuffer, name = 'model'): MeshModel {
   const warnings: string[] = ['STL files are unitless; coordinates assumed to be in millimeters (mm).'];
 
   // Try binary detection first
-  let isBinary = false;
+  const decoder = new TextDecoder();
   if (buffer.byteLength >= 84) {
     const view = new DataView(buffer);
     const triangleCount = view.getUint32(80, true);
     const expectedBinarySize = 84 + triangleCount * 50;
-    if (buffer.byteLength === expectedBinarySize) {
-      isBinary = true;
+    const header = decoder.decode(new Uint8Array(buffer, 0, 80));
+    if (
+      buffer.byteLength === expectedBinarySize ||
+      (triangleCount > 0 && buffer.byteLength > expectedBinarySize && !/^\s*solid\b/i.test(header))
+    ) {
+      return parseBinarySTL(buffer, name, warnings);
     }
   }
 
-  if (isBinary) {
-    return parseBinarySTL(buffer, name, warnings);
-  }
-
   // Fallback to ASCII
-  const text = new TextDecoder().decode(buffer);
+  const text = decoder.decode(buffer);
   if (/^\s*solid/i.test(text) || text.includes('facet') || text.includes('vertex')) {
     try {
       return parseAsciiSTL(text, name, warnings);
@@ -51,6 +51,7 @@ function parseBinarySTL(buffer: ArrayBuffer, name: string, warnings: string[]): 
   const view = new DataView(buffer);
   const triangleCount = view.getUint32(80, true);
   const expectedSize = 84 + triangleCount * 50;
+  if (triangleCount === 0) throw new Error('Corrupt binary STL: no triangles found.');
 
   if (buffer.byteLength < expectedSize) {
     throw new Error(
@@ -89,14 +90,14 @@ function parseBinarySTL(buffer: ArrayBuffer, name: string, warnings: string[]): 
 }
 
 function parseAsciiSTL(text: string, name: string, warnings: string[]): MeshModel {
-  const vertexPattern =
-    /vertex\s+([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s+([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)\s+([+-]?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?)/gi;
-
+  const number = /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i;
   const rawCoords: number[] = [];
-  let match: RegExpExecArray | null;
-
-  while ((match = vertexPattern.exec(text)) !== null) {
-    rawCoords.push(parseFloat(match[1]), parseFloat(match[2]), parseFloat(match[3]));
+  for (const line of text.matchAll(/^[^\S\r\n]*vertex\b([^\r\n]*)/gim)) {
+    const coordinates = line[1].trim().split(/\s+/);
+    if (coordinates.length !== 3 || !coordinates.every((value) => number.test(value))) {
+      throw new Error('Corrupt ASCII STL: invalid or incomplete triangle definitions.');
+    }
+    rawCoords.push(...coordinates.map(Number));
   }
 
   if (rawCoords.length === 0 || rawCoords.length % 9 !== 0) {

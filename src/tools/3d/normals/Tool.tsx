@@ -47,7 +47,7 @@ export default function NormalsTool() {
   const isReversed = !!(originalModel && currentModel && currentModel !== originalModel);
 
   const handleReverseWinding = async () => {
-    if (!originalModel) return;
+    if (!originalModel || processing || exporting) return;
 
     const currentJob = ++jobIdRef.current;
     setProcessing(true);
@@ -116,7 +116,13 @@ export default function NormalsTool() {
               onReset={reset}
               action={
                 isReversed ? (
-                  <Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={handleResetToOriginal}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={<RotateCcw size={14} />}
+                    disabled={processing || exporting}
+                    onClick={handleResetToOriginal}
+                  >
                     {t('Restore original')}
                   </Button>
                 ) : undefined
@@ -172,7 +178,7 @@ export default function NormalsTool() {
                         size="lg"
                         icon={<ArrowLeftRight size={16} />}
                         loading={processing}
-                        disabled={processing}
+                        disabled={processing || exporting}
                         onClick={handleReverseWinding}
                         style={{ flex: 1 }}
                       >

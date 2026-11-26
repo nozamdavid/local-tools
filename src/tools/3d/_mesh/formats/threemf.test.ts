@@ -88,6 +88,11 @@ function repeatedAssembly(copiesPerAxis: number, facesPerTetrahedron = 4): Promi
 }
 
 describe('parse3MF model XML', () => {
+  it('rejects an empty build with unreferenced mesh resources', async () => {
+    const root = model(triangle(0)).replace('</model>', '<build /></model>');
+    await expect(parse3MF(await archive(root))).rejects.toThrow('no valid mesh geometry');
+  });
+
   it('reads core-prefixed geometry and ignores foreign vertices and triangles', async () => {
     const root = `<c:model xmlns:c="${coreNamespace}" xmlns:ext="urn:mesh-extension">
       <c:resources>
@@ -158,27 +163,27 @@ describe('parse3MF geometry limits', () => {
 });
 
 describe('parse3MF production extension', () => {
-  it('loads components from their own model parts and composes transforms', async () => {
+  it('composes mirrored components and build transforms across model parts with different units', async () => {
     const root = model(
       `${triangle(100)}
       <object id="2" type="model">
         <components>
-          <component objectid="1" p:path="/${firstPart}" transform="1 0 0 0 1 0 0 0 1 3 0 0" />
+          <component objectid="1" p:path="/${firstPart}" transform="-1 0 0 0 1 0 0 0 1 3 0 0" />
           <component objectid="1" p:path="/${secondPart}" />
         </components>
       </object>`,
       '<item objectid="2" transform="2 0 0 0 2 0 0 0 2 0 4 0" />',
-      `xmlns:p="${productionNamespace}" requiredextensions="p"`,
+      `unit="centimeter" xmlns:p="${productionNamespace}" requiredextensions="p"`,
     );
     const buffer = await archive(root, {
-      [firstPart]: model(triangle(0)),
+      [firstPart]: model(triangle(0), '', 'unit="centimeter"'),
       [secondPart]: model(triangle(10)),
     });
 
     const mesh = await parse3MF(buffer);
 
-    expect(Array.from(mesh.positions)).toEqual([6, 4, 0, 8, 4, 0, 6, 6, 0, 20, 4, 0, 22, 4, 0, 20, 6, 0]);
-    expect(Array.from(mesh.indices)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(Array.from(mesh.positions)).toEqual([60, 40, 0, 40, 40, 0, 60, 60, 0, 20, 40, 0, 22, 40, 0, 20, 42, 0]);
+    expect(Array.from(mesh.indices)).toEqual([0, 2, 1, 3, 4, 5]);
   });
 
   it.each(['p', 'prod'])('resolves build item paths using the production namespace prefix %s', async (prefix) => {

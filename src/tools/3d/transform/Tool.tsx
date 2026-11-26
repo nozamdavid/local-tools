@@ -95,7 +95,7 @@ export default function TransformTool() {
   };
 
   const handleApplyTransform = async () => {
-    if (!originalModel) return;
+    if (!originalModel || processing || exporting) return;
 
     const currentJob = ++jobIdRef.current;
     setProcessing(true);
@@ -181,7 +181,13 @@ export default function TransformTool() {
               onReset={reset}
               action={
                 isTransformed ? (
-                  <Button variant="ghost" size="sm" icon={<RotateCcw size={14} />} onClick={handleResetToOriginal}>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    icon={<RotateCcw size={14} />}
+                    disabled={processing || exporting}
+                    onClick={handleResetToOriginal}
+                  >
                     {t('Restore original')}
                   </Button>
                 ) : undefined
@@ -372,7 +378,7 @@ export default function TransformTool() {
                       variant="primary"
                       size="lg"
                       loading={processing}
-                      disabled={processing}
+                      disabled={processing || exporting}
                       onClick={handleApplyTransform}
                       style={{ flex: 1 }}
                     >

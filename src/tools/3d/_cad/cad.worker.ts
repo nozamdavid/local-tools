@@ -4,9 +4,9 @@ import occtimportjs, { type OcctImportParams, type OcctModule } from 'occt-impor
 import wasmUrl from 'occt-import-js/dist/occt-import-js.wasm?url';
 import type { CadQuality, CadWorkerConvertJob, CadWorkerRequest, CadWorkerResponse, MeshModel } from './types';
 import { weldIndexedVertices } from '../_mesh/topology';
+import { DEFAULT_MESH_GEOMETRY_LIMITS } from '../_mesh/validation';
 
-const MAX_VERTICES = 1_000_000;
-const MAX_TRIANGLES = 1_000_000;
+const { maxVertices, maxTriangles } = DEFAULT_MESH_GEOMETRY_LIMITS;
 
 let occtModulePromise: Promise<OcctModule> | null = null;
 
@@ -40,7 +40,7 @@ async function getOcct(): Promise<OcctModule> {
 
 /**
  * Maps CAD quality settings to OCCT deflection parameters.
- * Output linearUnit is always enforced to 'millimeter'.
+ * STEP and IGES request millimeter output. BREP has no unit metadata.
  */
 function getQualityParams(quality: CadQuality): OcctImportParams {
   switch (quality) {
@@ -126,24 +126,20 @@ async function processCadJob(job: CadWorkerConvertJob): Promise<MeshModel> {
   }
 
   const totalTriangles = totalIndices / 3;
-  if (!Number.isInteger(totalTriangles)) {
-    throw new Error(`Corrupted index buffer: total indices (${totalIndices}) not divisible by 3.`);
-  }
-
-  if (totalVertices > MAX_VERTICES) {
+  if (totalVertices > maxVertices) {
     throw new Error(
-      `CAD model exceeds vertex limit: tessellated to ${totalVertices.toLocaleString()} vertices (limit is ${MAX_VERTICES.toLocaleString()}). Try selecting 'coarse' quality.`,
+      `CAD model exceeds vertex limit: tessellated to ${totalVertices.toLocaleString()} vertices (limit is ${maxVertices.toLocaleString()}). Try selecting 'coarse' quality.`,
     );
   }
 
-  if (totalTriangles > MAX_TRIANGLES) {
+  if (totalTriangles > maxTriangles) {
     throw new Error(
-      `CAD model exceeds triangle limit: tessellated to ${totalTriangles.toLocaleString()} triangles (limit is ${MAX_TRIANGLES.toLocaleString()}). Try selecting 'coarse' quality.`,
+      `CAD model exceeds triangle limit: tessellated to ${totalTriangles.toLocaleString()} triangles (limit is ${maxTriangles.toLocaleString()}). Try selecting 'coarse' quality.`,
     );
   }
 
-  const rawPositions = new Float32Array(totalVertices * 3);
-  const rawIndices = new Uint32Array(totalIndices);
+  const positions = new Float32Array(totalVertices * 3);
+  const indices = new Uint32Array(totalIndices);
 
   let vertexOffset = 0;
   let indexOffset = 0;
@@ -158,45 +154,38 @@ async function processCadJob(job: CadWorkerConvertJob): Promise<MeshModel> {
       continue;
     }
 
-    const currentMeshVertexCount = pos.length / 3;
+    const partPositions = new Float32Array(pos);
+    const currentMeshVertexCount = partPositions.length / 3;
 
     // Validate finite coordinates
     for (let i = 0; i < pos.length; i++) {
-      const val = pos[i];
+      const val = partPositions[i];
       if (!Number.isFinite(val)) {
         throw new Error(`Invalid non-finite coordinate (${val}) encountered in CAD mesh.`);
       }
-      rawPositions[vertexOffset * 3 + i] = val;
     }
 
-    // Validate bounded indices and copy with global vertex offset
-    for (let i = 0; i < idx.length; i++) {
-      const localIdx = idx[i];
+    for (const localIdx of idx) {
       if (!Number.isInteger(localIdx) || localIdx < 0 || localIdx >= currentMeshVertexCount) {
         throw new Error(`Invalid index ${localIdx} for mesh face with ${currentMeshVertexCount} vertices.`);
       }
-      const globalIdx = vertexOffset + localIdx;
-      if (globalIdx > 0xffffffff) {
-        throw new Error('32-bit index overflow encountered while merging CAD assembly parts.');
-      }
-      rawIndices[indexOffset + i] = globalIdx;
     }
 
-    vertexOffset += currentMeshVertexCount;
-    indexOffset += idx.length;
+    // Stitch face seams within each tessellated part and preserve separate
+    // assembly instances even when their vertices coincide.
+    const welded = weldIndexedVertices(partPositions, new Uint32Array(idx));
+    positions.set(welded.positions, vertexOffset * 3);
+    for (const localIdx of welded.indices) indices[indexOffset++] = vertexOffset + localIdx;
+    vertexOffset += welded.positions.length / 3;
   }
-
-  // 2. Apply canonical index welding at normalization:
-  // OpenCASCADE produces discrete face meshes that duplicate vertices along shared face edges.
-  // Index welding stitches shared face boundary edges into a manifold solid topology
-  // without altering or losing any geometric coordinates.
-  const { positions, indices } = weldIndexedVertices(rawPositions, rawIndices);
 
   const baseName = fileName.replace(/\.[^/.]+$/, '') || 'CAD_Model';
   const warnings: string[] = [
     'Tessellation loses exact CAD curves and parametric surfaces; geometry has been converted to faceted planar triangles.',
-    'Exporting geometry-only mesh in millimeters (CAD materials, textures, and appearances are omitted).',
-    `Quality preset "${quality}" applied (linear deflection: ${params.linearDeflection}, angular deflection: ${params.angularDeflection} rad) with units normalized to millimeters.`,
+    format === 'brep'
+      ? 'BREP files are unitless; coordinates assumed to be in millimeters (mm). CAD materials, textures, and appearances are omitted.'
+      : 'Exporting geometry-only mesh in millimeters (CAD materials, textures, and appearances are omitted).',
+    `Quality preset "${quality}" applied (linear deflection: ${params.linearDeflection}, angular deflection: ${params.angularDeflection} rad)${format === 'brep' ? '.' : ' with units normalized to millimeters.'}`,
   ];
 
   if (result.meshes.length > 1) {
@@ -205,7 +194,7 @@ async function processCadJob(job: CadWorkerConvertJob): Promise<MeshModel> {
 
   return {
     name: baseName,
-    positions,
+    positions: vertexOffset === totalVertices ? positions : positions.slice(0, vertexOffset * 3),
     indices,
     warnings,
   };

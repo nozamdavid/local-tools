@@ -84,6 +84,7 @@ interface ModelPart {
   unitScale: number;
   objects: Map<string, RawObject>;
   buildItems: ObjectReference[];
+  hasBuild: boolean;
   hasBuildTransforms: boolean;
 }
 
@@ -173,7 +174,7 @@ function parseModelUnit(tag: SaxesTagNS): number {
 }
 
 function parseModelPart(bytes: Uint8Array, path: string, isRoot: boolean, warnings: Set<string>): ModelPart {
-  const part: ModelPart = { unitScale: 1, objects: new Map(), buildItems: [], hasBuildTransforms: false };
+  const part: ModelPart = { unitScale: 1, objects: new Map(), buildItems: [], hasBuild: false, hasBuildTransforms: false };
   const elements: (string | undefined)[] = [];
   let coreNamespace = '';
   let objectId = '';
@@ -260,6 +261,9 @@ function parseModelPart(bytes: Uint8Array, path: string, isRoot: boolean, warnin
         break;
       case 'component':
         (object.components ??= []).push(parseReference(tag, attrs.transform?.value.trim()));
+        break;
+      case 'build':
+        part.hasBuild = true;
         break;
       case 'item':
         // Only the root model contributes build instructions.
@@ -473,12 +477,12 @@ export async function parse3MF(buffer: ArrayBuffer, name = 'model', limits = DEF
     }
   }
 
-  if (root.buildItems.length > 0) {
+  if (root.hasBuild) {
     for (const item of root.buildItems) {
       await collectMeshes(item);
     }
   } else {
-    // If no <build> items are specified, instantiate all root mesh objects directly.
+    // Recover geometry from legacy files that omit the build element entirely.
     for (const [objectId, obj] of root.objects) {
       if (obj.mesh) {
         await collectMeshes({ modelPath, objectId, transform: IDENTITY_MATRIX });

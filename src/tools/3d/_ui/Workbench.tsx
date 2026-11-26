@@ -245,11 +245,10 @@ export interface Use3DWorkbenchOptions {
 }
 
 export function use3DWorkbench({ multiple = false, importIntent }: Use3DWorkbenchOptions = {}) {
-  const { t } = useI18n();
   const [file, setFile] = useState<File | null>(null);
   const [files, setFiles] = useState<File[]>([]);
   const [originalModel, setOriginalModel] = useState<MeshModel | null>(null);
-  const [currentModel, setCurrentModel] = useState<MeshModel | null>(null);
+  const [currentModel, updateCurrentModel] = useState<MeshModel | null>(null);
   const [multiModels, setMultiModels] = useState<MeshModel[]>([]);
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -257,12 +256,17 @@ export function use3DWorkbench({ multiple = false, importIntent }: Use3DWorkbenc
 
   const [processing, setProcessing] = useState<boolean>(false);
   const [processError, setProcessError] = useState<string | null>(null);
-  const [lastExportedBlob, setLastExportedBlob] = useState<ExportedMesh | null>(null);
+  const [lastExport, setLastExport] = useState<(ExportedMesh & { model: MeshModel; format: MeshFormat }) | null>(null);
   const [exporting, setExporting] = useState<boolean>(false);
 
   const [exportFormat, setExportFormat] = useState<MeshFormat>('stl');
 
   const jobIdRef = useRef<number>(0);
+
+  const setCurrentModel = useCallback((model: MeshModel | null) => {
+    updateCurrentModel(model);
+    setLastExport(null);
+  }, []);
 
   // Unmount cleanup: terminate background worker and cancel jobs on navigation
   useEffect(() => {
@@ -284,7 +288,7 @@ export function use3DWorkbench({ multiple = false, importIntent }: Use3DWorkbenc
       const currentJob = ++jobIdRef.current;
       setImportError(null);
       setProcessError(null);
-      setLastExportedBlob(null);
+      setLastExport(null);
       setLoading(true);
 
       try {
@@ -300,13 +304,8 @@ export function use3DWorkbench({ multiple = false, importIntent }: Use3DWorkbenc
           if (currentJob !== jobIdRef.current) return;
           // Atomic commit of loaded pairs prevents files/multiModels misalignment on failure
           setFiles((prev) => [...prev, ...loadedPairs.map((p) => p.file)]);
-          setMultiModels((prev) => {
-            const merged = [...prev, ...loadedPairs.map((p) => p.model)];
-            if (!currentModel && merged.length > 0) {
-              setCurrentModel(merged[0]);
-            }
-            return merged;
-          });
+          setMultiModels((prev) => [...prev, ...loadedPairs.map((p) => p.model)]);
+          setCurrentModel(null);
         } else {
           // Single file loading: import model before committing file and model
           const selected = incoming[0];
@@ -330,23 +329,18 @@ export function use3DWorkbench({ multiple = false, importIntent }: Use3DWorkbenc
         }
       }
     },
-    [currentModel, importIntent, multiple, t],
+    [importIntent, multiple, setCurrentModel],
   );
 
   // Remove a file in multi-mode
-  const removeMultiFile = useCallback((index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index));
-    setMultiModels((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      setCurrentModel((curr) => {
-        if (curr === prev[index]) {
-          return next.length > 0 ? next[0] : null;
-        }
-        return curr;
-      });
-      return next;
-    });
-  }, []);
+  const removeMultiFile = useCallback(
+    (index: number) => {
+      setFiles((prev) => prev.filter((_, i) => i !== index));
+      setMultiModels((prev) => prev.filter((_, i) => i !== index));
+      setCurrentModel(null);
+    },
+    [setCurrentModel],
+  );
 
   // Cancel running job
   const cancelProcessing = useCallback(() => {
@@ -360,7 +354,7 @@ export function use3DWorkbench({ multiple = false, importIntent }: Use3DWorkbenc
     setProcessing(false);
     setExporting(false);
     setProcessError('Processing cancelled by user.');
-  }, [t]);
+  }, []);
 
   // Reset entire workbench
   const reset = useCallback(() => {
@@ -379,15 +373,14 @@ export function use3DWorkbench({ multiple = false, importIntent }: Use3DWorkbenc
     setImportError(null);
     setProcessing(false);
     setProcessError(null);
-    setLastExportedBlob(null);
     setExporting(false);
-  }, []);
+  }, [setCurrentModel]);
 
   // Export and trigger browser download
   const handleExport = useCallback(
     async (modelToExport?: MeshModel | null, formatOverride?: MeshFormat, customSuffix = '') => {
       const targetModel = modelToExport || currentModel;
-      if (!targetModel) return;
+      if (!targetModel || loading || processing || exporting) return;
 
       const fmt = formatOverride || exportFormat;
       const currentJob = ++jobIdRef.current;
@@ -401,7 +394,7 @@ export function use3DWorkbench({ multiple = false, importIntent }: Use3DWorkbenc
         const rawName = targetModel.name || file?.name || 'model';
         const outName = buildExportFilename(rawName, customSuffix, fmt);
 
-        setLastExportedBlob({ blob, filename: outName });
+        setLastExport({ blob, filename: outName, model: targetModel, format: fmt });
         downloadBlob(blob, outName);
       } catch (err: unknown) {
         if (currentJob === jobIdRef.current) {
@@ -413,7 +406,7 @@ export function use3DWorkbench({ multiple = false, importIntent }: Use3DWorkbenc
         }
       }
     },
-    [currentModel, exportFormat, file, t],
+    [currentModel, exportFormat, exporting, file, loading, processing],
   );
 
   return {
@@ -423,14 +416,13 @@ export function use3DWorkbench({ multiple = false, importIntent }: Use3DWorkbenc
     currentModel,
     setCurrentModel,
     multiModels,
-    setMultiModels,
     loading,
     importError,
     processing,
     setProcessing,
     processError,
     setProcessError,
-    lastExportedBlob,
+    lastExportedBlob: lastExport?.model === currentModel && lastExport.format === exportFormat ? lastExport : null,
     exporting,
     exportFormat,
     setExportFormat,

@@ -49,6 +49,7 @@ export default function InspectTool() {
     if (!currentModel) {
       setStats(null);
       setAnalysisError(null);
+      setAnalyzing(false);
       return;
     }
 
@@ -72,6 +73,9 @@ export default function InspectTool() {
           setAnalyzing(false);
         }
       });
+    return () => {
+      inspectJobRef.current++;
+    };
   }, [currentModel]);
 
   const formatCoord = (n: number) => n.toFixed(2);

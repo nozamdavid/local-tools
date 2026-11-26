@@ -1,44 +1,35 @@
 import type { MeshModel, MeshStats } from './types';
 import { validateMeshModel } from './validation';
 
+function vertexConnections(vertexCount: number) {
+  const parent = new Int32Array(vertexCount);
+  for (let i = 0; i < vertexCount; i++) parent[i] = i;
+
+  function find(index: number): number {
+    while (index !== parent[index]) {
+      parent[index] = parent[parent[index]];
+      index = parent[index];
+    }
+    return index;
+  }
+
+  return {
+    find,
+    union(a: number, b: number) {
+      const rootA = find(a);
+      const rootB = find(b);
+      if (rootA !== rootB) parent[rootA] = rootB;
+    },
+  };
+}
+
 /**
  * Welds coincident vertices within a tolerance (default 1e-5 mm = 10 nm)
  * to convert triangle soups (like unindexed STLs) into manifold-ready indexed geometry.
  */
 export function weldExactVertices(unindexedPositions: Float32Array, tolerance = 1e-5): { positions: Float32Array; indices: Uint32Array } {
-  const factor = 1 / Math.max(tolerance, 1e-9);
-  const vertexCount = unindexedPositions.length / 3;
-  const indices = new Uint32Array(vertexCount);
-  const weldedPos: number[] = [];
-  const map = new Map<string, number>();
-  let nextIndex = 0;
-
-  for (let i = 0; i < unindexedPositions.length; i += 3) {
-    let x = unindexedPositions[i];
-    let y = unindexedPositions[i + 1];
-    let z = unindexedPositions[i + 2];
-    if (x === 0) x = 0;
-    if (y === 0) y = 0;
-    if (z === 0) z = 0;
-
-    const kx = Math.round(x * factor);
-    const ky = Math.round(y * factor);
-    const kz = Math.round(z * factor);
-    const key = `${kx}_${ky}_${kz}`;
-
-    let idx = map.get(key);
-    if (idx === undefined) {
-      idx = nextIndex++;
-      map.set(key, idx);
-      weldedPos.push(x, y, z);
-    }
-    indices[i / 3] = idx;
-  }
-
-  return {
-    positions: new Float32Array(weldedPos),
-    indices,
-  };
+  const { positions, remap } = weldPositions(unindexedPositions, tolerance);
+  return { positions, indices: remap };
 }
 
 /**
@@ -51,9 +42,14 @@ export function weldIndexedVertices(
   indices: Uint32Array,
   tolerance = 1e-5,
 ): { positions: Float32Array; indices: Uint32Array } {
+  const { positions: welded, remap } = weldPositions(positions, tolerance);
+  return { positions: welded, indices: indices.map((index) => remap[index]) };
+}
+
+function weldPositions(positions: Float32Array, tolerance: number) {
   const factor = 1 / Math.max(tolerance, 1e-9);
   const vertexCount = positions.length / 3;
-  const vertexRemap = new Uint32Array(vertexCount);
+  const remap = new Uint32Array(vertexCount);
   const weldedPos: number[] = [];
   const map = new Map<string, number>();
   let nextIndex = 0;
@@ -77,17 +73,12 @@ export function weldIndexedVertices(
       map.set(key, idx);
       weldedPos.push(x, y, z);
     }
-    vertexRemap[i] = idx;
-  }
-
-  const newIndices = new Uint32Array(indices.length);
-  for (let i = 0; i < indices.length; i++) {
-    newIndices[i] = vertexRemap[indices[i]];
+    remap[i] = idx;
   }
 
   return {
     positions: new Float32Array(weldedPos),
-    indices: newIndices,
+    remap,
   };
 }
 
@@ -139,28 +130,7 @@ export function analyzeMesh(model: MeshModel): MeshStats {
   const edgeCountMap = new Map<bigint, number>();
   const directedEdgeMap = new Map<bigint, { forward: number; backward: number }>();
 
-  // Disjoint Set Union (DSU) for connected components
-  const parent = new Int32Array(vertexCount);
-  for (let i = 0; i < vertexCount; i++) parent[i] = i;
-
-  function find(i: number): number {
-    let root = i;
-    while (root !== parent[root]) root = parent[root];
-    let curr = i;
-    while (curr !== root) {
-      const nxt = parent[curr];
-      parent[curr] = root;
-      curr = nxt;
-    }
-    return root;
-  }
-
-  function union(i: number, j: number): void {
-    const ri = find(i);
-    const rj = find(j);
-    if (ri !== rj) parent[ri] = rj;
-  }
-
+  const { find, union } = vertexConnections(vertexCount);
   const referencedVertices = new Uint8Array(vertexCount);
 
   for (let t = 0; t < indices.length; t += 3) {
@@ -299,27 +269,7 @@ export function splitComponents(model: MeshModel): MeshModel[] {
   const { positions, indices } = model;
   const vertexCount = positions.length / 3;
 
-  const parent = new Int32Array(vertexCount);
-  for (let i = 0; i < vertexCount; i++) parent[i] = i;
-
-  function find(i: number): number {
-    let root = i;
-    while (root !== parent[root]) root = parent[root];
-    let curr = i;
-    while (curr !== root) {
-      const nxt = parent[curr];
-      parent[curr] = root;
-      curr = nxt;
-    }
-    return root;
-  }
-
-  function union(i: number, j: number): void {
-    const ri = find(i);
-    const rj = find(j);
-    if (ri !== rj) parent[ri] = rj;
-  }
-
+  const { find, union } = vertexConnections(vertexCount);
   for (let t = 0; t < indices.length; t += 3) {
     union(indices[t], indices[t + 1]);
     union(indices[t + 1], indices[t + 2]);
@@ -350,9 +300,10 @@ export function splitComponents(model: MeshModel): MeshModel[] {
 
   const results: MeshModel[] = [];
   let partIndex = 1;
+  // Each input vertex belongs to exactly one component.
+  const oldToNew = new Int32Array(vertexCount).fill(-1);
 
   for (const triList of componentTriangles.values()) {
-    const oldToNew = new Int32Array(vertexCount).fill(-1);
     const newPositions: number[] = [];
     const newIndices = new Uint32Array(triList.length);
     let nextIdx = 0;

@@ -1,9 +1,59 @@
+import { ShapeUtils, Vector2 } from 'three';
 import type { MeshModel } from '../types';
+
+function triangulateFace(face: number[], positions: number[], indices: number[]): void {
+  if (face.length === 3) {
+    indices.push(face[0], face[1], face[2]);
+    return;
+  }
+
+  // Project onto the plane perpendicular to the dominant polygon normal.
+  const origin = face[0] * 3;
+  const normal = [0, 0, 0];
+  for (let i = 1; i < face.length - 1; i++) {
+    const a = face[i] * 3;
+    const b = face[i + 1] * 3;
+    for (let axis = 0; axis < 3; axis++) {
+      const u = (axis + 1) % 3;
+      const v = (axis + 2) % 3;
+      normal[axis] +=
+        (positions[a + u] - positions[origin + u]) * (positions[b + v] - positions[origin + v]) -
+        (positions[a + v] - positions[origin + v]) * (positions[b + u] - positions[origin + u]);
+    }
+  }
+  const abs = normal.map(Math.abs);
+  const axis = abs.indexOf(Math.max(...abs));
+  const u = (axis + 1) % 3;
+  const v = (axis + 2) % 3;
+  const contour = face.map(
+    (index) => new Vector2(positions[index * 3 + u] - positions[origin + u], positions[index * 3 + v] - positions[origin + v]),
+  );
+  const clockwise = ShapeUtils.isClockWise(contour);
+  const triangles = ShapeUtils.triangulateShape(contour, []);
+  if (triangles.length < face.length - 2) {
+    // A folded face can have distinct 3D corners that coincide in this projection.
+    const nonplanar = face.some((index) => {
+      const dx = positions[index * 3] - positions[origin];
+      const dy = positions[index * 3 + 1] - positions[origin + 1];
+      const dz = positions[index * 3 + 2] - positions[origin + 2];
+      const distance = dx * normal[0] + dy * normal[1] + dz * normal[2];
+      return Math.abs(distance) > 1e-10 * abs[axis] * Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz));
+    });
+    if (nonplanar) {
+      for (let i = 1; i < face.length - 1; i++) indices.push(face[0], face[i], face[i + 1]);
+      return;
+    }
+  }
+  if (!triangles.length) throw new Error('Corrupt OBJ file: could not triangulate face.');
+  for (const [a, b, c] of triangles) {
+    indices.push(face[a], face[clockwise ? c : b], face[clockwise ? b : c]);
+  }
+}
 
 /**
  * Parses Wavefront OBJ into an indexed MeshModel (geometry only).
  * Ignores mtl / texture references without network requests.
- * Handles negative indices and polygon fan triangulation.
+ * Handles negative indices and triangulates planar polygons.
  */
 export function parseOBJ(text: string, name = 'model'): MeshModel {
   const warnings: string[] = ['OBJ files are unitless; coordinates assumed to be in millimeters (mm).'];
@@ -12,7 +62,7 @@ export function parseOBJ(text: string, name = 'model'): MeshModel {
   let hasUVs = false;
 
   const rawPositions: number[] = [];
-  const rawIndices: number[] = [];
+  const faces: number[][] = [];
 
   const lines = text.split(/\r\n|\r|\n/);
 
@@ -32,9 +82,16 @@ export function parseOBJ(text: string, name = 'model'): MeshModel {
     }
 
     if (keyword === 'v') {
-      if (parts.length >= 3) {
-        rawPositions.push(parseFloat(parts[0]), parseFloat(parts[1]), parseFloat(parts[2]));
+      const coords = parts.slice(0, 3);
+      const values = coords.map(Number);
+      if (
+        coords.length !== 3 ||
+        !coords.every((value) => /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(value)) ||
+        !values.every((value) => Number.isFinite(Math.fround(value)))
+      ) {
+        throw new Error('Corrupt OBJ file: invalid vertex coordinates.');
       }
+      rawPositions.push(...values);
       continue;
     }
 
@@ -65,10 +122,7 @@ export function parseOBJ(text: string, name = 'model'): MeshModel {
         }
       }
 
-      // Fan triangulation for convex polygons / quads
-      for (let t = 1; t < faceIndices.length - 1; t++) {
-        rawIndices.push(faceIndices[0], faceIndices[t], faceIndices[t + 1]);
-      }
+      faces.push(faceIndices);
     }
   }
 
@@ -76,17 +130,19 @@ export function parseOBJ(text: string, name = 'model'): MeshModel {
     warnings.push('Materials, textures, and UV coordinates were ignored (geometry-only import).');
   }
 
-  if (rawPositions.length === 0 || rawIndices.length === 0) {
+  if (rawPositions.length === 0 || faces.length === 0) {
     throw new Error('Corrupt or empty OBJ file: no vertices or faces found.');
   }
 
-  // Validate indices are within bounds
   const vertexCount = rawPositions.length / 3;
-  for (let i = 0; i < rawIndices.length; i++) {
-    const idx = rawIndices[i];
-    if (idx < 0 || idx >= vertexCount) {
-      throw new Error(`Corrupt OBJ file: face index ${idx} is out of bounds (vertex count: ${vertexCount}).`);
+  const rawIndices: number[] = [];
+  for (const face of faces) {
+    for (const idx of face) {
+      if (idx < 0 || idx >= vertexCount) {
+        throw new Error(`Corrupt OBJ file: face index ${idx} is out of bounds (vertex count: ${vertexCount}).`);
+      }
     }
+    triangulateFace(face, rawPositions, rawIndices);
   }
 
   return {

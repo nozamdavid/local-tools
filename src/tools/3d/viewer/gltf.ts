@@ -704,7 +704,14 @@ export async function loadLocalScene(file: File, companions: File[], signal?: Ab
       rememberObject(object);
     };
 
-    return { name: 'LocalSceneResources' };
+    return {
+      name: 'LocalSceneResources',
+      async beforeRoot() {
+        for (const extension of doc.extensionsRequired ?? []) {
+          requireValid(Object.hasOwn(parser.extensions, extension), 'The glTF file requires an unsupported extension.');
+        }
+      },
+    };
   }
 
   let rejectAbort: (reason: unknown) => void;
