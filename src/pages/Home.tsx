@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowUpRight, File as FileIcon, Film, Image, X } from 'lucide-react';
+import { ArrowUpRight, AudioLines, File as FileIcon, FileText, Film, Image, X } from 'lucide-react';
 import { FileDrop } from '../components/FileDrop';
 import { ToolGrid } from '../components/ToolGrid';
 import { Button } from '../components/Controls';
@@ -9,7 +9,7 @@ import { MEDIA_LIST, localizeMediaInfo } from '../design/media';
 import { clearPendingFiles, extensionOf, setPendingFiles, suggestToolsForFiles } from '../lib/handoff';
 import { formatBytes, formatNumber } from '../lib/format';
 import { useI18n } from '../lib/i18n';
-import { useObjectUrl } from '../lib/useObjectUrl';
+import { mimeOf } from '../lib/toolInputs';
 import {
   clearRecentFiles,
   isRecentEditorPath,
@@ -20,6 +20,7 @@ import {
   subscribeToRecentFiles,
   type RecentFilesEntry,
 } from '../lib/recentFiles';
+import { recentVideoThumbnail } from './recentVideoThumbnail';
 import styles from './Home.module.css';
 
 const recentTools = new Map(tools.map((tool) => [tool.path, tool]));
@@ -125,12 +126,41 @@ function QuickDropResult({
   );
 }
 
-function RecentThumbnail({ blob }: { blob: Blob }) {
-  const url = useObjectUrl(blob.size <= 8 * 1024 * 1024 && thumbnailTypes.has(blob.type) ? blob : null);
+function RecentThumbnail({ blob, mime, additionalFiles }: { blob: Blob; mime: string; additionalFiles: number }) {
+  const isVideo = mime.startsWith('video/');
+  const isImage = blob.size <= 8 * 1024 * 1024 && thumbnailTypes.has(mime);
+  const [url, setUrl] = useState<string>();
+  const getSource = useEffectEvent(() => (blob.type === mime ? blob : blob.slice(0, blob.size, mime)));
+
+  // The parent keys this component by the stored source metadata, so a fresh
+  // IndexedDB Blob for the same source does not discard a loaded thumbnail.
+  useEffect(() => {
+    if (isImage) {
+      const source = URL.createObjectURL(getSource());
+      setUrl(source);
+      return () => URL.revokeObjectURL(source);
+    }
+    if (isVideo) {
+      const controller = new AbortController();
+      void recentVideoThumbnail(getSource(), controller.signal).then(
+        (frame) => {
+          if (!controller.signal.aborted) setUrl(frame);
+        },
+        () => {},
+      );
+      return () => controller.abort();
+    }
+  }, [isImage, isVideo]);
+
+  let Icon = FileIcon;
+  if (isVideo) Icon = Film;
+  else if (mime.startsWith('image/')) Icon = Image;
+  else if (mime.startsWith('audio/')) Icon = AudioLines;
+  else if (mime === 'application/pdf' || mime.startsWith('text/')) Icon = FileText;
 
   return (
-    <span className={styles.recentThumbnail} aria-hidden="true">
-      <FileIcon />
+    <span className={styles.recentThumbnail} data-video={isVideo || undefined} aria-hidden="true">
+      <Icon />
       {url && (
         <img
           key={url}
@@ -143,6 +173,7 @@ function RecentThumbnail({ blob }: { blob: Blob }) {
           }}
         />
       )}
+      {additionalFiles > 0 && <span className={styles.recentThumbnailCount}>+{formatNumber(additionalFiles)}</span>}
     </span>
   );
 }
@@ -205,6 +236,7 @@ function RecentFiles() {
           const visibleNames = additionalVideos.length ? [first.name, additionalVideos[0]] : [first.name];
           const remaining = entry.files.length + additionalVideos.length - visibleNames.length;
           const name = filenames.format(visibleNames) + (remaining ? ` ${t('and {count} more', { count: formatNumber(remaining) })}` : '');
+          const mime = mimeOf({ name: first.name, type: first.blob.type });
           const type = extensionOf(first.name).toUpperCase() || first.blob.type || t('File');
           const tool = recentTools.get(entry.toolPath);
           const detailsId = `recent-file-details-${index}`;
@@ -222,7 +254,12 @@ function RecentFiles() {
                   void navigate(entry.toolPath);
                 }}
               >
-                <RecentThumbnail blob={first.blob} />
+                <RecentThumbnail
+                  key={JSON.stringify([entry.openedAt, first.name, first.lastModified, first.blob.type, first.blob.size])}
+                  blob={first.blob}
+                  mime={mime}
+                  additionalFiles={entry.files.length + additionalVideos.length - 1}
+                />
                 <span className={styles.recentDetails}>
                   <span className={styles.recentName} title={name}>
                     {name}

@@ -4,6 +4,7 @@ import {
   ArrowLeft,
   ArrowRight,
   AudioLines,
+  Brackets,
   Crop,
   Download,
   Film,
@@ -72,7 +73,7 @@ const initial: Draft = {
   format: 'mp4',
 };
 const tools = [
-  { id: 'cut', label: 'Cut', Icon: Scissors },
+  { id: 'trim', label: 'Trim', Icon: Brackets },
   { id: 'crop', label: 'Crop', Icon: Crop },
   { id: 'transform', label: 'Transform', Icon: RotateCw },
   { id: 'speed', label: 'Speed', Icon: Gauge },
@@ -199,7 +200,7 @@ export default function VideoEditor() {
   const [history, setHistory] = useState<History>({ past: [], present: initial, future: [] });
   const latestHistory = useRef(history);
   const [selectedIndex, setSelectedIndex] = useState(0);
-  const [pane, setPane] = useState<Pane>('cut');
+  const [pane, setPane] = useState<Pane>('trim');
   const [rotationPreview, setRotationPreview] = useState<{ draft: Draft; angle: number } | null>(null);
   const [notice, setNotice] = useState<{ text: string; error: boolean; params?: { file: string } } | null>(null);
   const [job, setJob] = useState<Job | null>(null);
@@ -215,6 +216,7 @@ export default function VideoEditor() {
   const exportRequest = useRef<AbortController | null>(null);
   const videosInput = useRef<HTMLInputElement>(null);
   const soundtrackInput = useRef<HTMLInputElement>(null);
+  const playheadInput = useRef<HTMLInputElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const { edit, soundtrack, soundtrackDuration, format, additionalSources } = history.present;
   const liveEdit = useMemo(
@@ -304,7 +306,7 @@ export default function VideoEditor() {
       publishHistory({ past: additional.length ? [baseline] : [], present: draft, future: [] });
       preview.seek(0, draft.edit, undefined, []);
       setSelectedIndex(0);
-      setPane('cut');
+      setPane('trim');
       setSource({ ...anchor, sample });
       if (additional.length) {
         persistence.startProject(anchor.file);
@@ -414,7 +416,7 @@ export default function VideoEditor() {
     }
     const current = latestHistory.current.present;
     const timeline = buildTimeline(current.edit);
-    setPane('cut');
+    setPane('trim');
     apply(withAddedVideos(current, imported), timeline.duration, timeline.clips.length);
   };
 
@@ -471,7 +473,7 @@ export default function VideoEditor() {
     apply({ ...history.present, edit: updated, trimBounds: nextBounds }, buildTimeline(updated).clips[index + 1].at, index + 1);
   }
 
-  function cut() {
+  function removeClip() {
     if (!selected || clips.length < 2) return;
     const sourceIndex = selected.sourceIndex ?? 0;
     let segments = edit.segments.filter((_, index) => index !== selectedIndex);
@@ -549,8 +551,9 @@ export default function VideoEditor() {
   const handleShortcut = useEffectEvent((event: KeyboardEvent) => {
     if (!ready || leaving || event.defaultPrevented || event.isComposing || event.altKey) return;
     const target = event.target as HTMLElement | null;
-    if (target?.closest('input, select, textarea, [contenteditable], dialog')) return;
     const key = event.key.toLowerCase();
+    const splitFromPlayhead = target === playheadInput.current && key === 's' && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+    if (!splitFromPlayhead && target?.closest('input, select, textarea, [contenteditable], dialog')) return;
     if ((event.metaKey || event.ctrlKey) && key === 'z') changeHistory(event.shiftKey ? 'redo' : 'undo');
     else if ((event.metaKey || event.ctrlKey) && key === 'y') changeHistory('redo');
     else if (event.metaKey || event.ctrlKey) return;
@@ -812,6 +815,10 @@ export default function VideoEditor() {
         <>
           <div className={styles.body}>
             <aside className={styles.rail} aria-label={t('Video editing tools')}>
+              <button type="button" className={styles.railButton} title={t('Split at playhead')} disabled={!canSplit} onClick={split}>
+                <Scissors size={18} aria-hidden="true" />
+                <span>{t('Cut')}</span>
+              </button>
               {tools.map(({ id, label, Icon }) => (
                 <button
                   key={id}
@@ -914,6 +921,7 @@ export default function VideoEditor() {
                   variant="ghost"
                   size="sm"
                   aria-label={t('Split at playhead')}
+                  aria-keyshortcuts="S"
                   title={t('Split at playhead')}
                   disabled={!canSplit}
                   icon={<Scissors />}
@@ -928,7 +936,7 @@ export default function VideoEditor() {
                   title={t('Remove selected clip')}
                   disabled={clips.length < 2}
                   icon={<Trash2 />}
-                  onClick={cut}
+                  onClick={removeClip}
                 >
                   {t('Remove')}
                 </Button>
@@ -958,6 +966,7 @@ export default function VideoEditor() {
                       </span>
                     ))}
                     <input
+                      ref={playheadInput}
                       type="range"
                       className={styles.scrubber}
                       min={0}
@@ -992,9 +1001,17 @@ export default function VideoEditor() {
                           aria-label={showSourceNames ? `${label} (${clipNumber})` : clipNumber}
                           title={showSourceNames ? `${label}\n${range}` : range}
                           onPointerDown={(event) => clipDrag.start(event, index)}
-                          onClick={() => {
-                            setSelectedIndex(index);
-                            preview.seek(clip.at, edit, index);
+                          onClick={(event) => {
+                            if (event.detail === 0) {
+                              setSelectedIndex(index);
+                              preview.seek(clip.at, edit, index);
+                              return;
+                            }
+                            const { left, width } = event.currentTarget.getBoundingClientRect();
+                            const offset = ((event.clientX - left) / width) * clip.length;
+                            // Keep clicks at the far edge on this clip.
+                            const inside = Math.max(0, Math.min(clip.length - 1e-6, offset));
+                            scrubTo(clip.at + inside);
                           }}
                         >
                           <SourceClipThumbnails
@@ -1074,9 +1091,9 @@ export default function VideoEditor() {
             <section className={styles.inspector} aria-label={t(tools.find((tool) => tool.id === pane)!.label)}>
               <div className={styles.inspectorHeading}>
                 <h2>{t(tools.find((tool) => tool.id === pane)!.label)}</h2>
-                {clips.length > 1 && pane !== 'cut' && <span>{t('Entire timeline')}</span>}
+                {clips.length > 1 && pane !== 'trim' && <span>{t('Entire timeline')}</span>}
               </div>
-              {pane === 'cut' && selected && (
+              {pane === 'trim' && selected && (
                 <fieldset className={styles.inspectorGroup}>
                   <legend
                     className={showSourceNames ? styles.clipSourceName : undefined}

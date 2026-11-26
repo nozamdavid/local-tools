@@ -165,7 +165,11 @@
   overflow-wrap: normal;
 }
 
-.railButton:hover {
+.railButton:disabled {
+  opacity: 0.5;
+}
+
+.railButton:enabled:hover {
   background: var(--surface-hover);
   color: var(--text);
 }

@@ -206,7 +206,7 @@
 .recentThumbnail {
   position: relative;
   display: grid;
-  width: 2.5rem;
+  width: 3.375rem;
   height: 2.5rem;
   place-items: center;
   overflow: hidden;
@@ -231,9 +231,26 @@
   visibility: hidden;
 }
 
+.recentThumbnail[data-video] img {
+  object-fit: contain;
+}
+
 .recentThumbnail img[data-loaded='true'] {
   visibility: visible;
   background: var(--panel);
+}
+
+.recentThumbnailCount {
+  position: absolute;
+  inset-inline-end: 0.125rem;
+  inset-block-end: 0.125rem;
+  padding: 0.0625rem 0.1875rem;
+  border: 1px solid var(--panel-line);
+  border-radius: var(--radius-sm);
+  background: var(--panel);
+  color: var(--text);
+  font: var(--weight-semibold) 0.6875rem / 1 var(--font-mono);
+  direction: ltr;
 }
 
 .recentDetails {

@@ -210,7 +210,7 @@ export function extensionOf(name: string): string {
   return dot >= 0 ? name.slice(dot + 1).toLowerCase() : '';
 }
 
-export function mimeOf(file: File): string {
+export function mimeOf(file: Pick<File, 'name' | 'type'>): string {
   const ext = extensionOf(file.name);
   const raw = (file.type || '').trim().toLowerCase();
   if (raw === '' || raw === 'application/octet-stream') {

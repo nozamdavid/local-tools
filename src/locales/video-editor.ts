@@ -30,7 +30,7 @@ const rows: Record<string, [string, string, string, string, string]> = {
   Timeline: ['Línea de tiempo', 'Timeline', 'Zeitleiste', 'Linha do tempo', 'Timeline'],
   'Timeline playhead': ['Cursor de reproducción', 'Testina di riproduzione', 'Abspielposition', 'Cursor de reprodução', 'Tête de lecture'],
   'Clip {number}': ['Clip {number}', 'Clip {number}', 'Clip {number}', 'Clipe {number}', 'Séquence {number}'],
-  Cut: ['Cortar', 'Taglia', 'Schneiden', 'Cortar', 'Couper'],
+  Cut: ['Cortar', 'Dividi', 'Schneiden', 'Dividir', 'Couper'],
   Split: ['Dividir', 'Dividi', 'Teilen', 'Dividir', 'Scinder'],
   'Split at playhead': [
     'Dividir en el cursor',
