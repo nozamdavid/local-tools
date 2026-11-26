@@ -69,14 +69,22 @@ export function FileDrop({
 
   // Pick up a handoff without recording the selection again.
   useEffect(() => {
-    const handed = takePendingFiles(pathname, accept, multiple);
-    if (!handed) return;
-    if (handed.rejected.length > 0)
-      setNotice({
-        source: "{files} can't be opened by this tool. Choose supported files to continue.",
-        params: { files: handed.rejected.map((f) => f.name).join(', ') },
-      });
-    else if (handed.accepted.length > 0) onFilesRef.current(handed.accepted);
+    let active = true;
+    // Strict Mode may clean up this mount before the destination can finish decoding.
+    queueMicrotask(() => {
+      if (!active) return;
+      const handed = takePendingFiles(pathname, accept, multiple);
+      if (!handed) return;
+      if (handed.rejected.length > 0)
+        setNotice({
+          source: "{files} can't be opened by this tool. Choose supported files to continue.",
+          params: { files: handed.rejected.map((f) => f.name).join(', ') },
+        });
+      else if (handed.accepted.length > 0) onFilesRef.current(handed.accepted);
+    });
+    return () => {
+      active = false;
+    };
   }, [pathname, accept, multiple]);
 
   // Paste files (e.g. a screenshot) while the drop zone is on screen.

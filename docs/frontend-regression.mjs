@@ -25,6 +25,13 @@ try {
   const pdf = await PDFDocument.create();
   pdf.addPage();
   const pdfBytes = [...(await pdf.save())];
+  await page.locator('main input[type=file]').setInputFiles(
+    ['one.pdf', 'two.pdf'].map((name) => ({ name, mimeType: 'application/pdf', buffer: Buffer.from(pdfBytes) })),
+  );
+  await page.locator('.quick-drop-result a[href="/pdf/merge"]').click();
+  await page.getByRole('button', { name: 'Merge 2 PDFs' }).click();
+  await page.getByRole('button', { name: 'Download', exact: true }).waitFor();
+
   await page.goto(new URL('/pdf/compare', origin).href);
   const base = page.getByRole('group', { name: 'Drop Document A (Base PDF)' });
   const comparison = page.getByRole('group', { name: 'Drop Document B (New PDF)' });
