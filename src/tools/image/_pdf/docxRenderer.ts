@@ -67,7 +67,7 @@ export async function renderDocxToImages(
       canvas.width = 0;
       canvas.height = 0;
 
-      if (!blob) {
+      if (!blob?.size || blob.type !== options.format) {
         throw new Error(translate('Failed to rasterize DOCX page {page}', { page: idx + 1 }));
       }
 
