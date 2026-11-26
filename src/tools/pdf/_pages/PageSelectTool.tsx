@@ -11,7 +11,7 @@ import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { PageSelector } from './PageSelector';
 import { PageToolNav } from './PageToolNav';
 import { usePdfPages } from './usePdfPages';
-import { baseName, copyPagesToPdf, pdfToBlob } from './pdfPages';
+import { baseName, copyPagesToPdf, expandRange, parseRanges, pdfToBlob } from './pdfPages';
 import { useI18n } from '../../../lib/i18n';
 
 export interface PageSelectToolProps {
@@ -25,7 +25,7 @@ export function PageSelectTool({ toolId, mode }: PageSelectToolProps) {
   const { t } = useI18n();
   const meta = getToolMeta(toolId);
   const [file, setFile] = useState<File | null>(null);
-  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const [rangeText, setRangeText] = useState('');
   const [outName, setOutName] = useState('');
   const [outPages, setOutPages] = useState(0);
 
@@ -34,22 +34,30 @@ export function PageSelectTool({ toolId, mode }: PageSelectToolProps) {
 
   const reset = () => {
     setFile(null);
-    setSelected(new Set());
+    setRangeText('');
     job.reset();
   };
 
-  const pagesToWrite = (): number[] => {
-    const all = Array.from({ length: pdf.pageCount }, (_, i) => i + 1);
-    return mode === 'remove' ? all.filter((p) => !selected.has(p)) : all.filter((p) => selected.has(p));
-  };
+  const selected = new Set<number>();
+  let rangeError: string | null = null;
+  if (pdf.doc && rangeText.trim()) {
+    try {
+      for (const range of parseRanges(rangeText, pdf.pageCount)) {
+        for (const page of expandRange(range)) selected.add(page);
+      }
+    } catch (error) {
+      rangeError = error instanceof Error ? error.message : 'Invalid range.';
+    }
+  }
 
   const keepCount = mode === 'remove' ? pdf.pageCount - selected.size : selected.size;
   const emptyResult = pdf.doc !== null && keepCount === 0;
 
   const run = () => {
     const doc = pdf.doc;
-    if (!doc || !file) return;
-    const pages = pagesToWrite();
+    if (!doc || !file || rangeError || selected.size === 0) return;
+    const all = Array.from({ length: pdf.pageCount }, (_, i) => i + 1);
+    const pages = all.filter((page) => (mode === 'extract' ? selected.has(page) : !selected.has(page)));
     if (pages.length === 0) return;
 
     job.run(async (setProgress) => {
@@ -120,11 +128,12 @@ export function PageSelectTool({ toolId, mode }: PageSelectToolProps) {
               </p>
 
               <PageSelector
-                key={file.name + file.size}
                 pageCount={pdf.pageCount}
                 thumbs={pdf.thumbs}
                 selected={selected}
-                onChange={setSelected}
+                rangeText={rangeText}
+                rangeError={rangeError}
+                onChange={setRangeText}
                 tone={mode === 'remove' ? 'delete' : 'keep'}
                 rangeLabel={mode === 'remove' ? 'Pages to remove' : 'Pages to extract'}
               />
@@ -137,7 +146,7 @@ export function PageSelectTool({ toolId, mode }: PageSelectToolProps) {
                 <ProgressBar value={job.progress} label={t('Building the new PDF…')} />
               ) : (
                 <div className="action-buttons" style={{ marginTop: '1.5rem' }}>
-                  <Button variant="primary" onClick={run} disabled={selected.size === 0 || emptyResult}>
+                  <Button variant="primary" onClick={run} disabled={Boolean(rangeError) || selected.size === 0 || emptyResult}>
                     {t('Save PDF')}
                   </Button>
                 </div>

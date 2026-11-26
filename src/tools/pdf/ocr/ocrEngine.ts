@@ -45,7 +45,7 @@ const SIMD_PROBE = new Uint8Array([
 const absolute = (url: string) => new URL(url, window.location.href).href;
 
 export interface OcrWorker {
-  recognizePage: (image: Blob, onProgress: (ratio: number) => void) => Promise<OcrPageResult>;
+  recognizePage: (image: Blob, onProgress: (ratio: number) => void, signal: AbortSignal) => Promise<OcrPageResult>;
   terminate: () => Promise<void>;
 }
 
@@ -71,9 +71,17 @@ export async function createOcrWorker(language: string, onStatus: (status: strin
   });
 
   return {
-    async recognizePage(image, progress) {
+    async recognizePage(image, progress, signal) {
+      signal.throwIfAborted();
       onProgress = progress;
-      const result = await worker.recognize(image, {}, { text: true, blocks: true });
+      let abort: () => void;
+      const cancelled = new Promise<never>((_, reject) => {
+        abort = () => reject(signal.reason);
+        signal.addEventListener('abort', abort, { once: true });
+      });
+      const result = await Promise.race([worker.recognize(image, {}, { text: true, blocks: true }), cancelled]).finally(() => {
+        signal.removeEventListener('abort', abort);
+      });
       const lines: Line[] = [];
       for (const block of result.data.blocks ?? []) {
         for (const paragraph of block.paragraphs) lines.push(...paragraph.lines);
@@ -92,7 +100,8 @@ export interface RenderedPage {
 }
 
 /** Renders one pdf.js page to a PNG at the requested DPI, capped so the canvas stays manageable. */
-export async function renderPageForOcr(doc: PDFDocumentProxy, pageNumber: number, dpi: number): Promise<RenderedPage> {
+export async function renderPageForOcr(doc: PDFDocumentProxy, pageNumber: number, dpi: number, signal: AbortSignal): Promise<RenderedPage> {
+  signal.throwIfAborted();
   const page = await doc.getPage(pageNumber);
   const base = page.getViewport({ scale: 1 });
   const scale = Math.min(dpi / 72, MAX_SIDE_PX / Math.max(base.width, base.height));
@@ -101,19 +110,27 @@ export async function renderPageForOcr(doc: PDFDocumentProxy, pageNumber: number
   const canvas = document.createElement('canvas');
   canvas.width = Math.max(1, Math.floor(viewport.width));
   canvas.height = Math.max(1, Math.floor(viewport.height));
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('Canvas 2D unavailable');
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  try {
+    signal.throwIfAborted();
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Canvas 2D unavailable');
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  await page.render({ canvasContext: ctx, viewport, canvas }).promise;
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-  canvas.width = 0;
-  canvas.height = 0;
-  page.cleanup();
-  if (!blob) throw new Error(translate('Failed to render page {page}.', { page: pageNumber }));
+    const task = page.render({ canvasContext: ctx, viewport, canvas });
+    const cancelRender = () => task.cancel();
+    signal.addEventListener('abort', cancelRender, { once: true });
+    await task.promise.finally(() => signal.removeEventListener('abort', cancelRender));
+    signal.throwIfAborted();
 
-  return { blob, viewport };
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error(translate('Failed to render page {page}.', { page: pageNumber }));
+    return { blob, viewport };
+  } finally {
+    canvas.width = 0;
+    canvas.height = 0;
+    page.cleanup();
+  }
 }
 
 export async function pageHasText(doc: PDFDocumentProxy, pageNumber: number): Promise<string | null> {

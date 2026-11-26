@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { StandardFonts } from 'pdf-lib';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
@@ -32,25 +32,32 @@ export default function OcrTool() {
   const [pageStates, setPageStates] = useState<PageState[]>([]);
   const [status, setStatus] = useState('');
   const [text, setText] = useState('');
-  const cancelled = useRef(false);
+  const recognition = useRef<AbortController | null>(null);
+
+  useEffect(() => () => recognition.current?.abort(), []);
 
   const total = source.pages.length;
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
+    recognition.current?.abort();
     job.reset();
     setPageStates([]);
     setText('');
     await source.open(files[0]);
   };
 
-  const handleReset = () => {
-    cancelled.current = true;
-    source.reset();
+  const cancelRecognition = () => {
+    recognition.current?.abort();
     job.reset();
     setPageStates([]);
     setText('');
     setStatus('');
+  };
+
+  const handleReset = () => {
+    cancelRecognition();
+    source.reset();
   };
 
   const setPageState = (index: number, state: PageState) => setPageStates((prev) => prev.map((s, i) => (i === index ? state : s)));
@@ -59,7 +66,10 @@ export default function OcrTool() {
     const doc = source.doc;
     if (!doc) return;
 
-    cancelled.current = false;
+    recognition.current?.abort();
+    const request = new AbortController();
+    recognition.current = request;
+    const { signal } = request;
     setPageStates(Array.from({ length: total }, () => 'pending'));
     setText('');
     setStatus(t('Loading OCR engine…'));
@@ -68,16 +78,18 @@ export default function OcrTool() {
       let worker: OcrWorker | null = null;
       try {
         const pdf = await source.loadForEditing();
+        signal.throwIfAborted();
         const font = await pdf.embedFont(StandardFonts.Helvetica);
         const texts: string[] = [];
         let recognized = 0;
 
         for (let p = 0; p < total; p++) {
-          if (cancelled.current) throw new Error(t('Cancelled.'));
+          signal.throwIfAborted();
           setPageState(p, 'working');
           setStatus(t('Page {current} of {total}', { current: p + 1, total }));
 
           const existing = skipText ? await pageHasText(doc, p + 1) : null;
+          signal.throwIfAborted();
           if (existing !== null) {
             texts.push(existing);
             setPageState(p, 'skipped');
@@ -86,14 +98,22 @@ export default function OcrTool() {
           }
 
           worker ??= await createOcrWorker(language, (s) => {
-            if (s) setStatus(s.toLowerCase().includes('recogniz') ? t('Recognizing text…') : t('Preparing OCR engine…'));
+            if (s && !signal.aborted) setStatus(s.toLowerCase().includes('recogniz') ? t('Recognizing text…') : t('Preparing OCR engine…'));
           });
 
-          const rendered = await renderPageForOcr(doc, p + 1, dpi);
-          const result = await worker.recognizePage(rendered.blob, (ratio) => {
-            setProgress((p + ratio) / total);
-            setStatus(t('Page {current} of {total}: recognizing {percent}%', { current: p + 1, total, percent: Math.round(ratio * 100) }));
-          });
+          const rendered = await renderPageForOcr(doc, p + 1, dpi, signal);
+          const result = await worker.recognizePage(
+            rendered.blob,
+            (ratio) => {
+              if (signal.aborted) return;
+              setProgress((p + ratio) / total);
+              setStatus(
+                t('Page {current} of {total}: recognizing {percent}%', { current: p + 1, total, percent: Math.round(ratio * 100) }),
+              );
+            },
+            signal,
+          );
+          signal.throwIfAborted();
 
           addTextLayer(pdf, p, font, rendered, result.lines);
           texts.push(result.text.trim());
@@ -110,6 +130,7 @@ export default function OcrTool() {
         const bytes = await pdf.save();
         return new Blob([bytes as BlobPart], { type: 'application/pdf' });
       } finally {
+        if (recognition.current === request) recognition.current = null;
         await worker?.terminate();
       }
     });
@@ -238,12 +259,7 @@ export default function OcrTool() {
                     <div>
                       <ProgressBar value={job.progress} label={status || t('Running OCR…')} />
                       <div className="action-buttons" style={{ marginTop: '1rem' }}>
-                        <Button
-                          variant="secondary"
-                          onClick={() => {
-                            cancelled.current = true;
-                          }}
-                        >
+                        <Button variant="secondary" onClick={cancelRecognition}>
                           {t('Cancel')}
                         </Button>
                       </div>

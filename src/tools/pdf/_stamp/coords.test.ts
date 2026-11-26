@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { degrees, PDFDocument, StandardFonts } from 'pdf-lib';
-import { createPageNumberDrawer, createWatermarkDrawer } from './annotations';
+import { createPageNumberDrawer, createWatermarkDrawer, drawSignature } from './annotations';
 import { getVisiblePageDims, mapVisibleToPdf } from './coords';
 
 function addVisiblePage(doc: PDFDocument, rotation: number) {
@@ -57,6 +57,18 @@ describe('PDF stamp preview and export placement', () => {
         rotate: degrees(90),
       }),
     );
+  });
+
+  it('draws the signature inside the visible area of a rotated, offset page', async () => {
+    const doc = await PDFDocument.create();
+    const page = addVisiblePage(doc, 90);
+    const png = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+j/l8AAAAASUVORK5CYII=';
+    const image = await doc.embedPng(png);
+    const drawImage = vi.spyOn(page, 'drawImage');
+
+    drawSignature(page, image, { xPercent: 25, yPercent: 20, widthPercent: 10 });
+
+    expect(drawImage).toHaveBeenCalledWith(image, { x: 370, y: 250, width: 60, height: 60, rotate: degrees(90) });
   });
 
   it('uses the same watermark position and rotation for preview and export', async () => {

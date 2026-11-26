@@ -1,7 +1,24 @@
 import { degrees, PDFDocument, StandardFonts } from 'pdf-lib';
-import type { PDFPage } from 'pdf-lib';
+import type { PDFImage, PDFPage } from 'pdf-lib';
 import { translate } from '../../../lib/i18n';
 import { calcRotatedCenterVisualOrigin, getVisiblePageDims, hexToRgb, mapVisibleToPdf } from './coords';
+
+export function drawSignature(
+  page: PDFPage,
+  image: PDFImage,
+  { xPercent, yPercent, widthPercent }: { xPercent: number; yPercent: number; widthPercent: number },
+): void {
+  const dims = getVisiblePageDims(page);
+  const width = dims.visualWidth * (widthPercent / 100);
+  const placement = mapVisibleToPdf({ x: dims.visualWidth * (xPercent / 100), y: dims.visualHeight * (yPercent / 100) }, dims);
+  page.drawImage(image, {
+    x: placement.x,
+    y: placement.y,
+    width,
+    height: width * (image.height / image.width),
+    rotate: degrees(placement.rotateDegrees),
+  });
+}
 
 export interface WatermarkPosition {
   x: number;

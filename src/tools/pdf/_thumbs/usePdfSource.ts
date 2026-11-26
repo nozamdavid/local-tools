@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PDFDocument, EncryptedPDFError } from 'pdf-lib';
+import type { PDFDocument } from 'pdf-lib';
 import type { PDFDocumentLoadingTask, PDFDocumentProxy } from 'pdfjs-dist';
 import { loadPdfjs } from '../../../lib/pdf';
 import { renderPdfThumbnail } from '../../image/_pdf/pdfRenderer';
-import { decryptPdf } from './decrypt';
+import { openPdf } from '../_pages/pdfPages';
 
 /** Visual page size in points (pdf.js viewport at scale 1: rotation and CropBox applied). */
 export interface PageInfo {
@@ -161,19 +161,7 @@ export function usePdfSource(thumbSize = 200): PdfSource {
 
   const loadForEditing = useCallback(async () => {
     if (!file) throw new Error('No PDF is open.');
-    const password = passwordRef.current;
-    const bytes = new Uint8Array(await file.arrayBuffer());
-
-    try {
-      return await PDFDocument.load(bytes, { updateMetadata: false });
-    } catch (err) {
-      // pdf-lib is compiled to ES5, so `instanceof` can miss its Error subclasses; match the message too.
-      const encrypted = err instanceof EncryptedPDFError || (err instanceof Error && /is encrypted/i.test(err.message));
-      if (!encrypted) throw err;
-    }
-
-    const decrypted = await decryptPdf(bytes, password);
-    return PDFDocument.load(decrypted, { updateMetadata: false });
+    return (await openPdf(file, passwordRef.current)).doc;
   }, [file]);
 
   return { file, doc, pages, thumbs, loading, error, password, open, reset, loadForEditing };

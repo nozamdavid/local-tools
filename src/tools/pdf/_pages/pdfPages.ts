@@ -1,4 +1,16 @@
-import { PDFArray, PDFDict, PDFName, PDFObjectCopier, PDFPage, PDFPageLeaf, PDFRef, type PDFDocument, type PDFObject } from 'pdf-lib';
+import {
+  PDFArray,
+  PDFDict,
+  PDFHexString,
+  PDFName,
+  PDFObjectCopier,
+  PDFPage,
+  PDFPageLeaf,
+  PDFRef,
+  PDFString,
+  type PDFDocument,
+  type PDFObject,
+} from 'pdf-lib';
 import { decryptPdf, QpdfError } from '../_qpdf/qpdf';
 import { translate } from '../../../lib/i18n';
 
@@ -99,21 +111,100 @@ export function cleanDanglingLinks(doc: PDFDocument, keptIndices: number[]): () 
   return () => restore.forEach((restorePage) => restorePage());
 }
 
+/** Copies form field roots for the selected widgets, omitting their discarded siblings. */
+function copySelectedFormFields(
+  src: PDFDocument,
+  pages: PDFPage[],
+  target: PDFDocument,
+  copier: PDFObjectCopier,
+  restore: Array<() => void>,
+): void {
+  const sourceForm = src.catalog.getAcroForm();
+  const fields = sourceForm?.Fields();
+  if (!sourceForm || !fields) return;
+
+  const kept = new Set<PDFDict>();
+  const parentKey = PDFName.of('Parent');
+  const subtypeKey = PDFName.of('Subtype');
+  for (const page of pages) {
+    for (const ref of page.node.Annots()?.asArray() ?? []) {
+      let node = src.context.lookup(ref);
+      if (!(node instanceof PDFDict) || node.get(subtypeKey) !== PDFName.of('Widget')) continue;
+      while (node instanceof PDFDict && !kept.has(node)) {
+        kept.add(node);
+        node = node.lookup(parentKey);
+      }
+    }
+  }
+
+  const isKept = (ref: PDFObject) => {
+    const node = src.context.lookup(ref);
+    return node instanceof PDFDict && kept.has(node);
+  };
+  const roots = fields.asArray().filter(isKept);
+  if (roots.length === 0) return;
+
+  const kidsKey = PDFName.of('Kids');
+  for (const node of kept) {
+    const original = node.get(kidsKey);
+    const kids = src.context.lookup(original);
+    if (!original || !(kids instanceof PDFArray)) continue;
+    const children = kids.asArray().filter(isKept);
+    if (children.length === kids.size()) continue;
+    node.set(kidsKey, src.context.obj(children));
+    restore.push(() => node.set(kidsKey, original));
+  }
+
+  const outputForm = target.catalog.getOrCreateAcroForm();
+  const outputFields = outputForm.normalizedEntries().Fields;
+  const nameKey = PDFName.of('T');
+  const getRootName = (root: PDFObject) => {
+    const field = target.context.lookup(root);
+    const name = field instanceof PDFDict ? field.lookup(nameKey) : undefined;
+    return name instanceof PDFString || name instanceof PDFHexString ? name.decodeText() : undefined;
+  };
+  const copiedRoots = roots.map((root) => copier.copy(root));
+  const usedNames = new Set(outputFields.asArray().map(getRootName));
+  const incomingNames = new Set(copiedRoots.map(getRootName));
+  for (const root of copiedRoots) {
+    let name = getRootName(root);
+    if (name && usedNames.has(name)) {
+      const originalName = name;
+      let suffix = 2;
+      // Leave other incoming roots free to keep their original names.
+      do {
+        name = `${originalName}_${suffix++}`;
+      } while (usedNames.has(name) || incomingNames.has(name));
+      target.context.lookup(root, PDFDict).set(nameKey, PDFHexString.fromText(name));
+    }
+    usedNames.add(name);
+    outputFields.push(root);
+  }
+  for (const name of ['DA', 'DR', 'Q', 'NeedAppearances']) {
+    const key = PDFName.of(name);
+    const value = sourceForm.dict.get(key);
+    if (value && !outputForm.dict.has(key)) outputForm.dict.set(key, copier.copy(value));
+  }
+}
+
 /** Copies selected pages while keeping their references consistent inside the new document. */
 export async function copySelectedPages(src: PDFDocument, indices: number[], target: PDFDocument): Promise<PDFPage[]> {
   await src.flush();
   const selected = new Set(indices);
   const omitted = src.getPages().filter((_, index) => !selected.has(index));
   const restoreLinks = cleanDanglingLinks(src, indices);
+  const restoreFields: Array<() => void> = [];
 
   try {
     // References can also reach omitted pages through shared form fields and annotations.
     // Keep those page objects out of the copier's lookup until the synchronous copy finishes.
     for (const page of omitted) src.context.delete(page.ref);
     const copier = PDFObjectCopier.for(src.context, target.context);
+    const pages = indices.map((index) => src.getPage(index));
+    copySelectedFormFields(src, pages, target, copier, restoreFields);
     const copiedRefs = new Set<PDFRef>();
-    return indices.map((index) => {
-      const ref = copier.copy(src.getPage(index).ref);
+    return pages.map((page) => {
+      const ref = copier.copy(page.ref);
       const node = target.context.lookup(ref);
       if (!(node instanceof PDFPageLeaf)) throw new Error('Could not copy the selected PDF page.');
       if (copiedRefs.has(ref)) {
@@ -125,6 +216,7 @@ export async function copySelectedPages(src: PDFDocument, indices: number[], tar
     });
   } finally {
     for (const page of omitted) src.context.assign(page.ref, page.node);
+    for (const restore of restoreFields) restore();
     restoreLinks();
   }
 }
@@ -157,18 +249,17 @@ export function baseName(name: string): string {
  */
 export function parseRanges(text: string, pageCount: number): [number, number][] {
   const tokens = text
+    .replace(/[ \t]*([-\u2013])[ \t]*/g, '$1')
     .split(/[,;\s]+/)
-    .map((t) => t.trim())
     .filter(Boolean);
   if (tokens.length === 0) throw new Error(translate('Enter at least one page or range, for example 1-3, 5, 7-9.'));
 
   return tokens.map((token) => {
-    const m = /^(\d+)(?:\s*[-\u2013]\s*(\d*))?$/.exec(token);
+    const m = /^(\d+)(?:[-\u2013](\d*))?$/.exec(token);
     if (!m) throw new Error(translate('"{token}" is not a valid page or range.', { token }));
 
     const from = Number(m[1]);
-    const hasDash = token.includes('-') || token.includes('\u2013');
-    const to = !hasDash ? from : m[2] ? Number(m[2]) : pageCount;
+    const to = m[2] === undefined ? from : m[2] === '' ? pageCount : Number(m[2]);
 
     if (from < 1 || to < 1 || from > pageCount || to > pageCount) {
       throw new Error(translate('"{token}" is outside the document (1-{pageCount}).', { token, pageCount }));

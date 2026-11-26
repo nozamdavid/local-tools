@@ -1,6 +1,6 @@
 import { PDFDocument } from 'pdf-lib';
 import { addFittedPage, createStage, pageGeometry, pxToPt, rasterize, sanitizeRenderedDom, type PageSetup } from '../_render/render';
-import { neutralizeOfficeRels } from '../../../lib/inertMarkup';
+import { prepareOfficeBuffer } from '../../_office/prepareOffice';
 
 const SLIDE_WIDTH_PX = 960;
 
@@ -27,11 +27,8 @@ export async function checkPptx(file: File): Promise<string | null> {
 }
 
 /** Strips dangling content-type overrides and neutralizes external relationships. */
-export async function preparePptxBuffer(input: Blob | ArrayBuffer): Promise<ArrayBuffer> {
-  try {
-    const buffer = input instanceof ArrayBuffer ? input : await input.arrayBuffer();
-    const JSZip = (await import('jszip')).default;
-    const zip = await JSZip.loadAsync(buffer);
+export function preparePptxBuffer(input: Blob | ArrayBuffer): Promise<ArrayBuffer> {
+  return prepareOfficeBuffer(input, PPTX_PREPARATION_ERROR, async (zip) => {
     const ctFile = zip.file('[Content_Types].xml');
     if (ctFile) {
       let ctXml = await ctFile.async('text');
@@ -44,16 +41,7 @@ export async function preparePptxBuffer(input: Blob | ArrayBuffer): Promise<Arra
       });
       zip.file('[Content_Types].xml', ctXml);
     }
-    for (const [filename, file] of Object.entries(zip.files)) {
-      if (filename.endsWith('.rels')) {
-        const relsXml = await file.async('text');
-        zip.file(filename, neutralizeOfficeRels(relsXml));
-      }
-    }
-    return await zip.generateAsync({ type: 'arraybuffer' });
-  } catch (cause) {
-    throw new Error(PPTX_PREPARATION_ERROR, { cause });
-  }
+  });
 }
 
 type PreviewNode = {
@@ -79,9 +67,10 @@ export async function powerpointToPdf(
   const cleanBuffer = await preparePptxBuffer(file);
   const { init } = await import('pptx-preview');
   const { stage, dispose } = createStage(SLIDE_WIDTH_PX);
+  let previewer: ReturnType<typeof init> | undefined;
 
   try {
-    const previewer = init(stage, { width: SLIDE_WIDTH_PX, mode: 'list' });
+    previewer = init(stage, { width: SLIDE_WIDTH_PX, mode: 'list' });
     const pptx = await previewer.load(cleanBuffer);
     disableChartAnimation([...pptx.slides, ...pptx.slideLayouts, ...pptx.slideMaster]);
     for (let i = 0; i < pptx.slides.length; i++) {
@@ -119,7 +108,6 @@ export async function powerpointToPdf(
       onProgress(0.2 + (0.75 * (i + 1)) / slides.length);
     }
 
-    previewer.destroy();
     const bytes = await pdf.save();
     onProgress(1);
     return {
@@ -127,6 +115,10 @@ export async function powerpointToPdf(
       pages: slides.length,
     };
   } finally {
-    dispose();
+    try {
+      previewer?.destroy();
+    } finally {
+      dispose();
+    }
   }
 }

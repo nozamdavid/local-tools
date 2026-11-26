@@ -1,5 +1,5 @@
 import { degrees, PDFDocument, StandardFonts } from 'pdf-lib';
-import { getVisualPageDims, hexToRgb, mapVisualToPdf } from '../_stamp/coords';
+import { getVisiblePageDims, hexToRgb, mapVisibleToPdf } from '../_stamp/coords';
 import type { Annotation } from './types';
 
 /** Converts a base64 / data URL string to Uint8Array bytes */
@@ -35,32 +35,14 @@ export async function applyAnnotations(doc: PDFDocument, annotations: Annotation
   for (const [pageNum, pageAnns] of byPage.entries()) {
     if (pageNum < 1 || pageNum > pages.length) continue;
     const page = pages[pageNum - 1];
-    // PDF.js previews the CropBox intersected with the MediaBox. Keep exports
-    // in that same visible coordinate space, including nonzero box origins.
-    const media = page.getMediaBox();
-    const crop = page.getCropBox();
-    const left = Math.max(media.x, crop.x);
-    const bottom = Math.max(media.y, crop.y);
-    const right = Math.min(media.x + media.width, crop.x + crop.width);
-    const top = Math.min(media.y + media.height, crop.y + crop.height);
-    const box = right > left && top > bottom ? { x: left, y: bottom, width: right - left, height: top - bottom } : media;
-    const dims = getVisualPageDims(page);
-    dims.pdfWidth = box.width;
-    dims.pdfHeight = box.height;
-    const sideways = dims.rotation === 90 || dims.rotation === 270;
-    dims.visualWidth = sideways ? box.height : box.width;
-    dims.visualHeight = sideways ? box.width : box.height;
-    const place = (x: number, y: number) => {
-      const point = mapVisualToPdf({ x, y, angle: 0 }, dims);
-      return { ...point, x: point.x + box.x, y: point.y + box.y };
-    };
+    const dims = getVisiblePageDims(page);
 
     for (const ann of pageAnns) {
       const xv = dims.visualWidth * (ann.xPercent / 100);
       const yv = dims.visualHeight * (ann.yPercent / 100);
       const wv = dims.visualWidth * (ann.widthPercent / 100);
       const hv = dims.visualHeight * (ann.heightPercent / 100);
-      const placement = place(xv, yv);
+      const placement = mapVisibleToPdf({ x: xv, y: yv }, dims);
 
       if (ann.type === 'rect') {
         const fillColor = ann.fillColor ? hexToRgb(ann.fillColor) : undefined;
@@ -88,7 +70,7 @@ export async function applyAnnotations(doc: PDFDocument, annotations: Annotation
         }
         // Baseline adjustment: In visual coordinates, placement.y is the bottom of the box.
         // We offset by roughly 20% of font size to keep the text inside the bounds.
-        const baseline = place(xv, yv + ann.fontSize * 0.15);
+        const baseline = mapVisibleToPdf({ x: xv, y: yv + ann.fontSize * 0.15 }, dims);
         page.drawText(ann.text, {
           x: baseline.x,
           y: baseline.y,

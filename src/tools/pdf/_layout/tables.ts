@@ -222,8 +222,6 @@ export interface ParsedNumber {
   format: string;
 }
 
-const CURRENCY = /^[($€£¥]*\s*-?\s*[$€£¥]?\s*/;
-
 /** Parses "1,234.50", "(12)", "-3.5%", "1.234,56" and plain integers. Returns null for anything else. */
 export function parseNumber(raw: string): ParsedNumber | null {
   let text = raw.trim();
@@ -237,10 +235,13 @@ export function parseNumber(raw: string): ParsedNumber | null {
   const percent = text.endsWith('%');
   if (percent) text = text.slice(0, -1).trim();
 
-  const sign = /^[-−–]/.test(text);
-  text = text.replace(CURRENCY, '').replace(/^[-−–+]\s*/, '');
-  text = text.replace(/\s*[$€£¥]$/, '');
-  if (sign) negative = !negative;
+  const amount = /^(?:([-−–+])\s*([$€£¥])?|([$€£¥])\s*([-−–+])?)?\s*([\d.,]+)\s*([$€£¥])?$/.exec(text);
+  if (!amount) return null;
+  const [, leadingSign, currencyAfterSign, leadingCurrency, signAfterCurrency, digits, trailingCurrency] = amount;
+  const sign = leadingSign ?? signAfterCurrency;
+  if ((negative && sign) || (trailingCurrency && (currencyAfterSign || leadingCurrency))) return null;
+  negative ||= sign !== undefined && sign !== '+';
+  text = digits;
 
   let normalized: string;
   let thousands = false;

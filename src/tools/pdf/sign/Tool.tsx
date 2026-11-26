@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { degrees } from 'pdf-lib';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { ProgressBar } from '../../../components/ProgressBar';
@@ -11,7 +10,7 @@ import { useI18n } from '../../../lib/i18n';
 import { PasswordDialog } from '../../image/_pdf/PasswordDialog';
 import { PdfPreview } from '../../image/_pdf/PdfPreview';
 import { usePdfSource } from '../_thumbs/usePdfSource';
-import { getVisualPageDims, mapVisualToPdf } from '../_stamp/coords';
+import { drawSignature } from '../_stamp/annotations';
 import styles from './Tool.module.css';
 
 type SignInputMode = 'draw' | 'type' | 'upload';
@@ -287,26 +286,7 @@ export default function SignTool() {
       for (let pNum = 1; pNum <= totalDocPages; pNum++) {
         if (!targetPageSet.has(pNum)) continue;
 
-        const page = pages[pNum - 1];
-        const dims = getVisualPageDims(page);
-
-        // Visual width and height
-        const wv = dims.visualWidth * (widthPercent / 100);
-        const hv = wv * (embeddedSig.height / embeddedSig.width);
-
-        // Visual origin (bottom-left)
-        const xv = dims.visualWidth * (xPercent / 100);
-        const yv = dims.visualHeight * (yPercent / 100);
-
-        const placement = mapVisualToPdf({ x: xv, y: yv, angle: 0 }, dims);
-
-        page.drawImage(embeddedSig, {
-          x: placement.x,
-          y: placement.y,
-          width: wv,
-          height: hv,
-          rotate: degrees(placement.rotateDegrees),
-        });
+        drawSignature(pages[pNum - 1], embeddedSig, { xPercent, yPercent, widthPercent });
       }
 
       setProgress(0.85);

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { ProgressBar } from '../../../components/ProgressBar';
@@ -20,7 +20,8 @@ interface Entry {
   thumb?: string;
   error?: string;
   password?: string;
-  isEncrypted?: boolean;
+  passwordReason?: 1 | 2;
+  passwordPrompt?: number;
 }
 
 let nextId = 1;
@@ -31,63 +32,63 @@ export default function MergePdfTool() {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
   const [mergedPages, setMergedPages] = useState(0);
-  const [pendingPassword, setPendingPassword] = useState<{
-    entryId: number;
-    reason: number;
-  } | null>(null);
-
+  const inspections = useRef(new Map<number, AbortController>());
+  const nextPrompt = useRef(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const job = useJob();
+  const pendingPassword = entries
+    .filter((entry) => entry.passwordPrompt !== undefined)
+    .sort((a, b) => a.passwordPrompt! - b.passwordPrompt!)[0];
+
+  useEffect(() => {
+    const active = inspections.current;
+    return () => {
+      for (const request of active.values()) request.abort();
+      active.clear();
+    };
+  }, []);
 
   const patch = (id: number, change: Partial<Entry>) => setEntries((prev) => prev.map((e) => (e.id === id ? { ...e, ...change } : e)));
 
-  const inspect = async (entry: Entry, password?: string): Promise<boolean> => {
+  const inspect = async (entry: Entry, password?: string) => {
+    inspections.current.get(entry.id)?.abort();
+    const request = new AbortController();
+    inspections.current.set(entry.id, request);
+    const { signal } = request;
     try {
-      const { pageCount } = await openPdf(entry.file, password);
-      patch(entry.id, { pageCount, password, error: undefined, isEncrypted: !!password });
+      const { pageCount, bytes } = await openPdf(entry.file, password);
+      if (signal.aborted) return;
+      patch(entry.id, { pageCount, password, error: undefined, passwordReason: undefined, passwordPrompt: undefined });
       try {
-        const doc = await loadPdfDocument(entry.file, {
-          onPassword: (verify) => {
-            if (password) verify(password);
-          },
-        });
-        const thumb = await renderPdfThumbnail(doc, 1, 120);
-        void doc.loadingTask.destroy();
-        patch(entry.id, { thumb });
+        const doc = await loadPdfDocument(new Blob([bytes as BlobPart], { type: 'application/pdf' }), { signal });
+        try {
+          const thumb = await renderPdfThumbnail(doc, 1, 120, signal);
+          if (!signal.aborted) patch(entry.id, { thumb });
+        } finally {
+          if (!doc.loadingTask.destroyed) await doc.loadingTask.destroy();
+        }
       } catch {
         // a missing preview does not block merging
       }
-      return true;
     } catch (err) {
+      if (signal.aborted) return;
       if (err instanceof PasswordRequiredError || err instanceof IncorrectPasswordError) {
         const bad = err instanceof IncorrectPasswordError;
         patch(entry.id, {
-          isEncrypted: true,
+          passwordPrompt: entry.passwordPrompt ?? nextPrompt.current++,
+          passwordReason: bad ? 2 : 1,
           error: bad ? t('Incorrect password') : t('Password required'),
         });
-        setPendingPassword({ entryId: entry.id, reason: bad ? 2 : 1 });
-        return false;
+      } else {
+        patch(entry.id, {
+          passwordPrompt: undefined,
+          passwordReason: undefined,
+          error: err instanceof Error ? t(err.message) : t('Failed to read the PDF.'),
+        });
       }
-      patch(entry.id, { error: err instanceof Error ? t(err.message) : t('Failed to read the PDF.') });
-      return false;
+    } finally {
+      if (inspections.current.get(entry.id) === request) inspections.current.delete(entry.id);
     }
-  };
-
-  const handlePasswordSubmit = async (password: string) => {
-    if (!pendingPassword) return;
-    const entry = entries.find((e) => e.id === pendingPassword.entryId);
-    if (!entry) {
-      setPendingPassword(null);
-      return;
-    }
-    const ok = await inspect(entry, password);
-    if (ok) {
-      setPendingPassword(null);
-    }
-  };
-
-  const handlePasswordCancel = () => {
-    setPendingPassword(null);
   };
 
   const addFiles = (files: File[]) => {
@@ -109,13 +110,13 @@ export default function MergePdfTool() {
   };
 
   const remove = (id: number) => {
-    if (pendingPassword?.entryId === id) setPendingPassword(null);
+    inspections.current.get(id)?.abort();
     setEntries((prev) => prev.filter((e) => e.id !== id));
   };
 
   const reset = () => {
+    for (const request of inspections.current.values()) request.abort();
     setEntries([]);
-    setPendingPassword(null);
     job.reset();
   };
 
@@ -143,7 +144,15 @@ export default function MergePdfTool() {
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="pdf-merge">
       {pendingPassword && (
-        <PasswordDialog reason={pendingPassword.reason} onSubmit={handlePasswordSubmit} onCancel={handlePasswordCancel} />
+        <PasswordDialog
+          key={pendingPassword.id}
+          reason={pendingPassword.passwordReason}
+          onSubmit={(password) => void inspect(pendingPassword, password)}
+          onCancel={() => {
+            inspections.current.get(pendingPassword.id)?.abort();
+            patch(pendingPassword.id, { passwordPrompt: undefined });
+          }}
+        />
       )}
 
       {entries.length === 0 ? (
@@ -225,10 +234,10 @@ export default function MergePdfTool() {
                   {entry.error && (
                     <div className={styles.rowError}>
                       {entry.error}
-                      {entry.isEncrypted && (
+                      {entry.passwordReason && (
                         <button
                           type="button"
-                          onClick={() => setPendingPassword({ entryId: entry.id, reason: 1 })}
+                          onClick={() => patch(entry.id, { passwordPrompt: nextPrompt.current++, passwordReason: 1 })}
                           style={{
                             marginLeft: '0.6rem',
                             padding: '0.15rem 0.5rem',

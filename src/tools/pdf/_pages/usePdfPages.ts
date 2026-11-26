@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 import type { PDFDocument } from 'pdf-lib';
-import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { loadPdfDocument, renderPdfThumbnail } from '../../image/_pdf/pdfRenderer';
 import { openPdf, PasswordRequiredError, IncorrectPasswordError } from './pdfPages';
 
@@ -36,8 +35,8 @@ export function usePdfPages(file: File | null, withThumbs: boolean): PdfPagesSta
       return;
     }
 
-    let cancelled = false;
-    let pdfjsDoc: PDFDocumentProxy | null = null;
+    const request = new AbortController();
+    const { signal } = request;
     let dismissPassword: (() => void) | undefined;
     setState({ ...EMPTY, loading: true });
 
@@ -50,7 +49,7 @@ export function usePdfPages(file: File | null, withThumbs: boolean): PdfPagesSta
           password: {
             reason,
             submit: (pw: string) => {
-              if (cancelled) return;
+              if (signal.aborted) return;
               dismissPassword = undefined;
               setState((s) => ({ ...s, password: null, loading: true }));
               resolve(pw);
@@ -62,34 +61,34 @@ export function usePdfPages(file: File | null, withThumbs: boolean): PdfPagesSta
 
     (async () => {
       let currentPw: string | undefined;
-      while (!cancelled) {
+      while (!signal.aborted) {
         try {
           const { doc, pageCount, bytes } = await openPdf(file, currentPw);
-          if (cancelled) return;
+          if (signal.aborted) return;
 
           setState({ loading: false, error: null, doc, pageCount, thumbs: {}, password: null });
           if (!withThumbs) return;
 
-          const viewDoc = await loadPdfDocument(new Blob([bytes as BlobPart], { type: 'application/pdf' }));
-          if (cancelled) {
-            void viewDoc.loadingTask.destroy();
-            return;
-          }
-          pdfjsDoc = viewDoc;
-
-          for (let p = 1; p <= pageCount; p++) {
-            if (cancelled) break;
+          try {
+            const viewDoc = await loadPdfDocument(new Blob([bytes as BlobPart], { type: 'application/pdf' }), { signal });
             try {
-              const url = await renderPdfThumbnail(viewDoc, p, 160);
-              if (cancelled) break;
-              setState((prev) => ({ ...prev, thumbs: { ...prev.thumbs, [p]: url } }));
-            } catch {
-              // placeholder fallback
+              for (let p = 1; p <= pageCount && !signal.aborted; p++) {
+                try {
+                  const url = await renderPdfThumbnail(viewDoc, p, 160, signal);
+                  if (!signal.aborted) setState((prev) => ({ ...prev, thumbs: { ...prev.thumbs, [p]: url } }));
+                } catch {
+                  // A page that fails to render keeps its placeholder.
+                }
+              }
+            } finally {
+              if (!viewDoc.loadingTask.destroyed) await viewDoc.loadingTask.destroy();
             }
+          } catch {
+            // A PDF that opened for editing can still be exported without thumbnails.
           }
           return;
         } catch (err) {
-          if (cancelled) return;
+          if (signal.aborted) return;
           if (err instanceof PasswordRequiredError) {
             currentPw = await requestPassword(1);
           } else if (err instanceof IncorrectPasswordError) {
@@ -106,9 +105,8 @@ export function usePdfPages(file: File | null, withThumbs: boolean): PdfPagesSta
     })();
 
     return () => {
-      cancelled = true;
+      request.abort();
       dismissPassword?.();
-      void pdfjsDoc?.loadingTask.destroy();
     };
   }, [file, withThumbs]);
 
