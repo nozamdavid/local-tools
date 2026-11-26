@@ -247,6 +247,7 @@ export default function SplitTool() {
                     </div>
 
                     <div style={{ marginTop: 'var(--space-3)' }}>
+                      <div>{t('ZIP package')}</div>
                       <Button
                         variant="primary"
                         size="md"
@@ -254,9 +255,10 @@ export default function SplitTool() {
                         loading={exportingZip}
                         disabled={exportingZip}
                         onClick={handleDownloadAllZip}
+                        aria-label={t('Download All ({count} parts) as ZIP', { count: components.length })}
                         style={{ width: '100%' }}
                       >
-                        {t('Download All ({count} parts) as ZIP', { count: components.length })}
+                        {t('Download')}
                       </Button>
                     </div>
                   </div>
@@ -289,7 +291,8 @@ export default function SplitTool() {
                                 {t('{triangles} triangles • {vertices} vertices', {
                                   triangles: cTri.toLocaleString(),
                                   vertices: cVert.toLocaleString(),
-                                })}
+                                })}{' '}
+                                · {exportFormat.toUpperCase()}
                               </span>
                             </div>
                             <div style={{ display: 'flex', gap: 'var(--space-2)' }}>
@@ -308,8 +311,11 @@ export default function SplitTool() {
                                 loading={downloadingIdx === idx}
                                 disabled={downloadingIdx !== null}
                                 onClick={() => handleDownloadSingleComponent(idx)}
+                                aria-label={t('Download {file}', {
+                                  file: t('Part {number}', { number: idx + 1 }) + `.${exportFormat}`,
+                                })}
                               >
-                                .{exportFormat}
+                                {t('Download')}
                               </Button>
                             </div>
                           </div>

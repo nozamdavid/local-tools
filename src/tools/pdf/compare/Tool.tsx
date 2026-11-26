@@ -465,7 +465,7 @@ export default function CompareTool() {
                   {copied ? t('Copied!') : t('Copy Report')}
                 </Button>
                 <Button variant="primary" onClick={handleDownloadReport}>
-                  {t('Download Comparison (.txt)')}
+                  {t('Download')}
                 </Button>
               </div>
             </div>

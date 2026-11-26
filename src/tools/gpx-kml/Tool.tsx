@@ -244,7 +244,7 @@ export default function GpxKmlTool() {
 
             <div className={styles.actions}>
               <Button variant="primary" onClick={handleDownload}>
-                {t('Download {file}', { file: outputFilename })}
+                {t('Download')}
               </Button>
               <Button variant="secondary" onClick={handleCopy}>
                 {copied ? t('Copied to clipboard!') : t('Copy to clipboard')}

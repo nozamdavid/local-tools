@@ -5,6 +5,8 @@ import { Field, Slider, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
 import { downloadBlob } from '../../../lib/download';
+import { CopyImageButton } from '../../../components/CopyImageButton';
+import { canvasToBlob } from '../../../lib/image';
 import { BARCODE_FORMATS, validateBarcode, type BarcodeFormat, type BarcodeValidationResult } from '../_generate/barcode';
 import styles from './Tool.module.css';
 
@@ -91,42 +93,43 @@ export default function BarcodeGeneratorTool() {
     renderBarcode();
   }, [renderBarcode]);
 
-  // Download SVG
-  const handleDownloadSvg = () => {
+  const getSvg = () => {
     const svg = svgRef.current;
-    if (!svg || !validation.valid) return;
+    if (!svg || !validation.valid) throw new Error('No valid barcode to export.');
 
     const svgXml = new XMLSerializer().serializeToString(svg);
-    const blob = new Blob([svgXml], { type: 'image/svg+xml;charset=utf-8' });
-    downloadBlob(blob, `barcode-${format.toLowerCase()}-${validation.code}.svg`);
+    return new Blob([svgXml], { type: 'image/svg+xml;charset=utf-8' });
   };
 
-  // Download PNG
-  const handleDownloadPng = () => {
-    if (!validation.valid || !validation.code) return;
+  const getPng = () => {
+    if (!validation.valid || !validation.code) throw new Error('No valid barcode to export.');
 
     const canvas = document.createElement('canvas');
-    try {
-      JsBarcode(canvas, validation.code, {
-        format: format === 'UPC' ? 'UPC' : format,
-        width: barWidth,
-        height: height,
-        displayValue: showText,
-        fontSize: fontSize,
-        margin: margin,
-        lineColor: lineColor,
-        background: transparentBg ? 'transparent' : bgColor,
-        font: 'monospace',
-        textMargin: 4,
-      });
+    JsBarcode(canvas, validation.code, {
+      format: format === 'UPC' ? 'UPC' : format,
+      width: barWidth,
+      height: height,
+      displayValue: showText,
+      fontSize: fontSize,
+      margin: margin,
+      lineColor: lineColor,
+      background: transparentBg ? 'transparent' : bgColor,
+      font: 'monospace',
+      textMargin: 4,
+    });
+    return canvasToBlob(canvas, 'image/png');
+  };
 
-      canvas.toBlob((blob) => {
-        if (blob) {
-          downloadBlob(blob, `barcode-${format.toLowerCase()}-${validation.code}.png`);
-        }
-      }, 'image/png');
+  const exports = [
+    { format: 'PNG', filename: `barcode-${format.toLowerCase()}-${validation.code}.png`, getImage: getPng },
+    { format: 'SVG', filename: `barcode-${format.toLowerCase()}-${validation.code}.svg`, getImage: getSvg },
+  ];
+
+  const handleDownload = async (getImage: () => Blob | Promise<Blob>, filename: string) => {
+    try {
+      downloadBlob(await getImage(), filename);
     } catch (err) {
-      console.error('Failed to create PNG canvas:', err);
+      console.error('Failed to export barcode:', err);
     }
   };
 
@@ -247,12 +250,20 @@ export default function BarcodeGeneratorTool() {
             </div>
 
             <div className={styles.actions}>
-              <Button className={styles.actionBtn} disabled={!validation.valid} onClick={handleDownloadPng}>
-                {t('Download PNG')}
-              </Button>
-              <Button variant="secondary" className={styles.actionBtn} disabled={!validation.valid} onClick={handleDownloadSvg}>
-                {t('Download SVG')}
-              </Button>
+              {exports.map(({ format, filename, getImage }) => (
+                <div key={format} className={styles.exportActions} role="group" aria-label={format}>
+                  <span>{format}</span>
+                  <Button
+                    variant={format === 'PNG' ? 'primary' : 'secondary'}
+                    className={styles.actionBtn}
+                    disabled={!validation.valid}
+                    onClick={() => handleDownload(getImage, filename)}
+                  >
+                    {t('Download')}
+                  </Button>
+                  <CopyImageButton getImage={getImage} filename={filename} disabled={!validation.valid} />
+                </div>
+              ))}
             </div>
           </div>
         </div>

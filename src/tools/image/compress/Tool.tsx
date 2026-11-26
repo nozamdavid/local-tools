@@ -9,6 +9,7 @@ import { useI18n } from '../../../lib/i18n';
 import { decodeImage, IMAGE_ACCEPT, type EncodableMime } from '../../../lib/image';
 import { formatBytes } from '../../../lib/format';
 import { downloadBlob } from '../../../lib/download';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { useJob } from '../../../lib/useJob';
 import { useObjectUrl } from '../../../lib/useObjectUrl';
 import { compressImage, detectAlpha, renderScaledCanvas, type CompressResult } from '../_basic';
@@ -211,10 +212,12 @@ export default function CompressTool() {
                       'Notice: The compressed file is larger than the original input. This can occur when an image is already heavily compressed.',
                     )}
                   </p>
-                  <div style={{ marginTop: '0.75rem' }}>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem', marginTop: '0.75rem' }}>
+                    <span>{t('Original ({size})', { size: formatBytes(file.size) })}</span>
                     <Button variant="secondary" onClick={() => downloadBlob(file, file.name)}>
-                      {t('Keep and download original ({size})', { size: formatBytes(file.size) })}
+                      {t('Download')}
                     </Button>
+                    <CopyImageButton getImage={() => file} filename={file.name} />
                   </div>
                 </div>
               )}

@@ -563,15 +563,24 @@ export default function FileInspectorTool() {
             <div className={styles.card}>
               <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{t('Export diagnostic report')}</h3>
               <div className={styles.btnGroup}>
-                <Button variant="primary" onClick={handleExportJson}>
-                  {t('Export JSON')}
-                </Button>
-                <Button variant="secondary" onClick={handleExportTxt}>
-                  {t('Export TXT')}
-                </Button>
-                <Button variant="secondary" onClick={handleExportHtml}>
-                  {t('Export HTML')}
-                </Button>
+                <div>
+                  <div>JSON</div>
+                  <Button variant="primary" onClick={handleExportJson} aria-label={t('Download {file}', { file: 'JSON' })}>
+                    {t('Download')}
+                  </Button>
+                </div>
+                <div>
+                  <div>TXT</div>
+                  <Button variant="secondary" onClick={handleExportTxt} aria-label={t('Download {file}', { file: 'TXT' })}>
+                    {t('Download')}
+                  </Button>
+                </div>
+                <div>
+                  <div>HTML</div>
+                  <Button variant="secondary" onClick={handleExportHtml} aria-label={t('Download {file}', { file: 'HTML' })}>
+                    {t('Download')}
+                  </Button>
+                </div>
               </div>
 
               {/* No Antivirus / Safety Claim Disclaimer */}

@@ -3,8 +3,10 @@ import { formatBytes, formatNumber } from '../lib/format';
 import { downloadBlob } from '../lib/download';
 import { useObjectUrl } from '../lib/useObjectUrl';
 import { decodeJxlToBlob, isJxlFile } from '../lib/jxl';
+import { extensionOf, mimeOf } from '../lib/toolInputs';
 import { CircleCheck, Download, RotateCcw } from 'lucide-react';
 import { Button } from './Controls';
+import { CopyImageButton } from './CopyImageButton';
 import { useFocusFallback } from './useFocusFallback';
 import { ContinueWith } from './ContinueWith';
 import { useI18n } from '../lib/i18n';
@@ -23,7 +25,11 @@ export function ResultPanel({ blob, filename, kind, originalSize, beforePreview,
   const { t } = useI18n();
   const url = useObjectUrl(blob);
   const [textContent, setTextContent] = useState<string>('');
-  const [jxlPreviewUrl, setJxlPreviewUrl] = useState<string | null>(null);
+  const [jxlPreview, setJxlPreview] = useState<{ source: Blob; filename: string; png: Blob } | null>(null);
+  const jxlPreviewBlob = kind === 'image' && jxlPreview?.source === blob && jxlPreview.filename === filename ? jxlPreview.png : undefined;
+  const jxlPreviewUrl = useObjectUrl(jxlPreviewBlob);
+  const imageMime = kind === 'image' ? mimeOf(new File([], filename, { type: blob.type })) : '';
+  const canCopyImage = imageMime.startsWith('image/') && extensionOf(filename) !== 'zip';
   const panelRef = useRef<HTMLDivElement>(null);
   useFocusFallback(panelRef);
   const titleId = useId();
@@ -45,7 +51,6 @@ export function ResultPanel({ blob, filename, kind, originalSize, beforePreview,
 
   useEffect(() => {
     let cancelled = false;
-    let localUrl: string | null = null;
 
     if (kind === 'image') {
       const checkJxl = async () => {
@@ -53,8 +58,7 @@ export function ResultPanel({ blob, filename, kind, originalSize, beforePreview,
           try {
             const pngBlob = await decodeJxlToBlob(await blob.arrayBuffer());
             if (!cancelled) {
-              localUrl = URL.createObjectURL(pngBlob);
-              setJxlPreviewUrl(localUrl);
+              setJxlPreview({ source: blob, filename, png: pngBlob });
             }
           } catch {
             // Keep fallback
@@ -66,9 +70,6 @@ export function ResultPanel({ blob, filename, kind, originalSize, beforePreview,
 
     return () => {
       cancelled = true;
-      if (localUrl) {
-        URL.revokeObjectURL(localUrl);
-      }
     };
   }, [blob, filename, kind]);
 
@@ -161,6 +162,13 @@ export function ResultPanel({ blob, filename, kind, originalSize, beforePreview,
         <Button variant="ghost" icon={<RotateCcw />} onClick={onReset}>
           {t('Start over')}
         </Button>
+        {canCopyImage && (
+          <CopyImageButton
+            getImage={() => jxlPreviewBlob ?? (imageMime === blob.type ? blob : blob.slice(0, blob.size, imageMime))}
+            filename={filename}
+            size="lg"
+          />
+        )}
         <Button variant="primary" size="lg" icon={<Download />} onClick={() => downloadBlob(blob, filename)}>
           {t('Download')}
         </Button>

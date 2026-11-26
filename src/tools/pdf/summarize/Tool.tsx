@@ -336,7 +336,7 @@ export default function SummarizeTool() {
                   {copied ? t('Copied!') : t('Copy summary')}
                 </Button>
                 <Button variant="primary" onClick={handleDownload}>
-                  {t('Download summary (.txt)')}
+                  {t('Download')}
                 </Button>
               </div>
             </div>

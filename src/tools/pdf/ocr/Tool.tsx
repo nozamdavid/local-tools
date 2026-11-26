@@ -117,6 +117,7 @@ export default function OcrTool() {
 
   const file = source.file;
   const base = file ? file.name.replace(/\.pdf$/i, '') : 'document';
+  const textFilename = `${base}-ocr.txt`;
   const running = job.status === 'running';
   const dpiOptions = [
     { value: '300', label: t('300 DPI (best accuracy)') },
@@ -151,8 +152,13 @@ export default function OcrTool() {
             <div>
               <PdfPreview blob={job.result} filename={`${base}-ocr.pdf`} pageCount={total} onReset={handleReset} />
               <div className="action-buttons" style={{ marginTop: '1rem' }}>
-                <Button variant="secondary" onClick={() => downloadBlob(new Blob([text], { type: 'text/plain' }), `${base}-ocr.txt`)}>
-                  {t('Download text (.txt)')}
+                <span>{textFilename}</span>
+                <Button
+                  variant="secondary"
+                  onClick={() => downloadBlob(new Blob([text], { type: 'text/plain' }), textFilename)}
+                  aria-label={t('Download text (.txt)')}
+                >
+                  {t('Download')}
                 </Button>
               </div>
             </div>

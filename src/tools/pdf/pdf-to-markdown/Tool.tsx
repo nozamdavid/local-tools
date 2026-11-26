@@ -137,8 +137,9 @@ export default function PdfToMarkdownTool() {
                 <Button variant="secondary" onClick={handleCopy}>
                   {copied ? t('Copied') : t('Copy')}
                 </Button>
+                <span>{outName}</span>
                 <Button variant="primary" onClick={() => downloadBlob(new Blob([markdown], { type: 'text/markdown' }), outName)}>
-                  {t('Download {file}', { file: outName })}
+                  {t('Download')}
                 </Button>
               </div>
             </div>

@@ -307,7 +307,7 @@ export default function TranslateTool() {
                   {copied ? t('Copied!') : t('Copy translated text')}
                 </Button>
                 <Button variant="primary" onClick={handleDownload}>
-                  {t('Download text (.txt)')}
+                  {t('Download')}
                 </Button>
               </div>
             </div>

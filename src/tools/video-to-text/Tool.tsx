@@ -242,7 +242,7 @@ export default function VideoToTextTool() {
                     {copied ? `✓ ${t('Copied!')}` : t('Copy text')}
                   </Button>
                   <Button variant="primary" onClick={handleDownloadTxt}>
-                    {t('Download .txt')}
+                    {t('Download')}
                   </Button>
                 </div>
               </div>

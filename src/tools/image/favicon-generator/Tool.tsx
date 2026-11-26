@@ -7,6 +7,7 @@ import { getToolMeta } from '../../registry';
 import { decodeImage, imageToCanvas, canvasToBlob, encodeIco } from '../../../lib/image';
 import { zipFiles } from '../../../lib/zip';
 import { downloadBlob } from '../../../lib/download';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { useI18n } from '../../../lib/i18n';
 import { copyText } from '../../../lib/clipboard';
 import styles from './Tool.module.css';
@@ -247,12 +248,13 @@ export default function FaviconGeneratorTool() {
               <div style={{ fontWeight: 600, fontSize: '1.1rem' }}>
                 {t('Favicon package ready ({count} files)', { count: generatedFiles.length + 2 })}
               </div>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
                   {t('Create a new favicon')}
                 </Button>
+                <span>favicon_package.zip</span>
                 <Button variant="primary" onClick={() => downloadBlob(zipBlob, 'favicon_package.zip')}>
-                  {t('Download all (.zip)')}
+                  {t('Download')}
                 </Button>
               </div>
             </div>
@@ -282,6 +284,7 @@ export default function FaviconGeneratorTool() {
                 >
                   {t('Download')}
                 </Button>
+                {icoBlob && <CopyImageButton getImage={() => icoBlob} filename="favicon.ico" size="sm" />}
               </div>
 
               {generatedFiles.map((f) => (
@@ -298,6 +301,7 @@ export default function FaviconGeneratorTool() {
                   >
                     {t('Download')}
                   </Button>
+                  <CopyImageButton getImage={() => f.blob} filename={f.name} size="sm" />
                 </div>
               ))}
             </div>

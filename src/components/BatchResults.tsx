@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { formatBytes, formatNumber } from '../lib/format';
 import { downloadBlob } from '../lib/download';
 import { useObjectUrl } from '../lib/useObjectUrl';
 import { zipFiles } from '../lib/zip';
+import { extensionOf, mimeOf } from '../lib/toolInputs';
 import { Download, File as FileIcon, FolderDown, RotateCcw } from 'lucide-react';
 import { Button } from './Controls';
+import { CopyImageButton } from './CopyImageButton';
 import { useFocusFallback } from './useFocusFallback';
 import { ContinueWith } from './ContinueWith';
 import { useI18n } from '../lib/i18n';
@@ -20,10 +22,17 @@ export interface BatchResultsProps {
   onReset: () => void;
 }
 
+const ARCHIVE_FILENAME = 'loconvert-images.zip';
+
 function BatchRow({ item }: { item: BatchResultItem }) {
   const { t } = useI18n();
-  const isImage = item.blob.type.startsWith('image/');
-  const url = useObjectUrl(isImage ? item.blob : undefined);
+  const { blob, name } = item;
+  const image = useMemo(() => {
+    const mime = mimeOf(new File([], name, { type: blob.type }));
+    if (!mime.startsWith('image/') || extensionOf(name) === 'zip') return undefined;
+    return mime === blob.type ? blob : blob.slice(0, blob.size, mime);
+  }, [blob, name]);
+  const url = useObjectUrl(image);
 
   let change: { label: string; className: string } | null = null;
   if (item.originalSize && item.originalSize > 0) {
@@ -36,39 +45,43 @@ function BatchRow({ item }: { item: BatchResultItem }) {
 
   return (
     <li className="batch-item">
-      {url ? (
-        <img src={url} alt="" className="batch-thumb" />
-      ) : (
-        <div className="batch-thumb batch-thumb-fallback" aria-hidden="true">
-          <FileIcon />
-        </div>
-      )}
-
-      <div className="batch-info">
-        <div className="batch-name" title={item.name}>
-          {item.name}
-        </div>
-        <div className="batch-meta">
-          {item.originalSize !== undefined && <>{formatBytes(item.originalSize)} → </>}
-          {formatBytes(item.blob.size)}
-          {change && (
-            <>
-              {' · '}
-              <span className={change.className}>{change.label}</span>
-            </>
-          )}
+      <div className="batch-file">
+        {url ? (
+          <img src={url} alt="" className="batch-thumb" />
+        ) : (
+          <div className="batch-thumb batch-thumb-fallback" aria-hidden="true">
+            <FileIcon />
+          </div>
+        )}
+        <div className="batch-info">
+          <div className="batch-name" title={name}>
+            {name}
+          </div>
+          <div className="batch-meta">
+            {item.originalSize !== undefined && <>{formatBytes(item.originalSize)} → </>}
+            {formatBytes(blob.size)}
+            {change && (
+              <>
+                {' · '}
+                <span className={change.className}>{change.label}</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
 
-      <Button
-        variant="ghost"
-        size="sm"
-        icon={<Download />}
-        aria-label={t('Download {file}', { file: item.name })}
-        onClick={() => downloadBlob(item.blob, item.name)}
-      >
-        {t('Save')}
-      </Button>
+      <div className="batch-row-actions">
+        {image && <CopyImageButton getImage={() => image} filename={name} size="sm" />}
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Download />}
+          aria-label={t('Download {file}', { file: name })}
+          onClick={() => downloadBlob(blob, name)}
+        >
+          {t('Download')}
+        </Button>
+      </div>
     </li>
   );
 }
@@ -90,7 +103,7 @@ export function BatchResults({ items, onReset }: BatchResultsProps) {
     setError(null);
     try {
       const zip = await zipFiles(items.map(({ name, blob }) => ({ name, blob })));
-      downloadBlob(zip, 'loconvert-images.zip');
+      downloadBlob(zip, ARCHIVE_FILENAME);
     } catch (err) {
       setError(err instanceof Error ? err.message : t('Could not create the ZIP file.'));
     } finally {
@@ -123,9 +136,20 @@ export function BatchResults({ items, onReset }: BatchResultsProps) {
         <Button variant="ghost" icon={<RotateCcw />} onClick={onReset}>
           {t('Start over')}
         </Button>
-        <Button variant="primary" size="lg" icon={<FolderDown />} loading={zipping} onClick={downloadAll} disabled={items.length === 0}>
-          {zipping ? t('Zipping…') : t('Download all {count} (.zip)', { count: items.length })}
-        </Button>
+        <div className="batch-archive">
+          <span className="batch-meta">{ARCHIVE_FILENAME}</span>
+          <Button
+            variant="primary"
+            size="lg"
+            icon={<FolderDown />}
+            aria-label={t('Download all {count} (.zip)', { count: items.length })}
+            loading={zipping}
+            onClick={downloadAll}
+            disabled={items.length === 0}
+          >
+            {t('Download')}
+          </Button>
+        </div>
       </div>
     </div>
   );

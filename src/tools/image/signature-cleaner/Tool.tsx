@@ -5,6 +5,7 @@ import { Field, Select, Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { decodeImage, IMAGE_ACCEPT } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { formatBytes } from '../../../lib/format';
 import { cleanSignaturePixels, cropImageData, type CleanerOptions } from '../_utility/cleaner';
 import { useI18n } from '../../../lib/i18n';
@@ -136,11 +137,7 @@ export default function SignatureCleanerTool() {
     }
   }, [sourceData, preset, threshold, detail, contrast, outputMode, cropToInk]);
 
-  const handleDownload = () => {
-    if (!resultBlob || !file) return;
-    const baseName = file.name.replace(/\.[^.]+$/, '');
-    downloadBlob(resultBlob, `${baseName}-cleaned.png`);
-  };
+  const resultFilename = file ? `${file.name.replace(/\.[^.]+$/, '')}-cleaned.png` : '';
 
   const handleReset = () => {
     setFile(null);
@@ -336,13 +333,18 @@ export default function SignatureCleanerTool() {
             </div>
 
             {/* Actions */}
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
               <Button variant="secondary" onClick={handleReset}>
                 {t('Start over')}
               </Button>
-              <Button variant="primary" onClick={handleDownload} disabled={!resultBlob || isEmpty}>
-                {t('⬇ Download cleaned PNG')}
+              <Button
+                variant="primary"
+                onClick={() => resultBlob && downloadBlob(resultBlob, resultFilename)}
+                disabled={!resultBlob || isEmpty}
+              >
+                {t('Download')}
               </Button>
+              {resultBlob && <CopyImageButton getImage={() => resultBlob} filename={resultFilename} disabled={isEmpty} />}
             </div>
           </div>
         )}

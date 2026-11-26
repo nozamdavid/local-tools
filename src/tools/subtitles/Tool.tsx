@@ -700,12 +700,18 @@ export default function SubtitlesTool() {
                   </Button>
 
                   <div className={styles.buttonGroup}>
-                    <Button variant="secondary" onClick={handleDownloadSrt}>
-                      {t('Download .srt')}
-                    </Button>
-                    <Button variant="secondary" onClick={handleDownloadVtt}>
-                      {t('Download .vtt')}
-                    </Button>
+                    <div>
+                      <div>SRT</div>
+                      <Button variant="secondary" onClick={handleDownloadSrt} aria-label={t('Download .srt')}>
+                        {t('Download')}
+                      </Button>
+                    </div>
+                    <div>
+                      <div>WebVTT</div>
+                      <Button variant="secondary" onClick={handleDownloadVtt} aria-label={t('Download .vtt')}>
+                        {t('Download')}
+                      </Button>
+                    </div>
                     {isVideoSource && (
                       <>
                         <Button variant="secondary" onClick={handleEmbedSoft}>

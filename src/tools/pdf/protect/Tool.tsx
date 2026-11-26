@@ -201,7 +201,7 @@ function PdfPreviewLocked({ blob, filename, onReset }: { blob: Blob; filename: s
           {t('Start over')}
         </Button>
         <Button variant="primary" onClick={() => downloadBlob(blob, filename)}>
-          {t('Download {file}', { file: filename })}
+          {t('Download')}
         </Button>
       </div>
     </div>

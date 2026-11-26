@@ -7,6 +7,7 @@ import { useI18n } from '../../../lib/i18n';
 import { copyText } from '../../../lib/clipboard';
 import { formatBytes } from '../../../lib/format';
 import { downloadBlob } from '../../../lib/download';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { loadImage } from '../../../lib/image';
 import styles from './Tool.module.css';
 
@@ -174,11 +175,7 @@ export default function Base64Tool() {
     }
   };
 
-  const downloadDecoded = () => {
-    if (!decodeResult) return;
-    const ext = decodeResult.mime.split('/')[1] || 'png';
-    downloadBlob(decodeResult.blob, `decoded-image.${ext}`);
-  };
+  const decodedFilename = `decoded-image.${decodeResult?.mime.split('/')[1] || 'png'}`;
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="img-base64">
@@ -249,7 +246,7 @@ export default function Base64Tool() {
                           onClick={() => downloadTextFile(encodeResult.dataUri, 'datauri')}
                           style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
                         >
-                          {t('Download .txt')}
+                          {t('Download')}
                         </Button>
                         <Button
                           variant="secondary"
@@ -273,7 +270,7 @@ export default function Base64Tool() {
                           onClick={() => downloadTextFile(encodeResult.rawBase64, 'base64')}
                           style={{ padding: '0.25rem 0.65rem', fontSize: '0.8rem' }}
                         >
-                          {t('Download .txt')}
+                          {t('Download')}
                         </Button>
                         <Button
                           variant="secondary"
@@ -379,10 +376,11 @@ export default function Base64Tool() {
                     </span>
                   </div>
 
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <Button variant="primary" onClick={downloadDecoded}>
-                      {t('Download decoded image')}
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', marginTop: '0.5rem' }}>
+                    <Button variant="primary" onClick={() => downloadBlob(decodeResult.blob, decodedFilename)}>
+                      {t('Download')}
                     </Button>
+                    <CopyImageButton getImage={() => decodeResult.blob} filename={decodedFilename} />
                   </div>
                 </div>
               </div>

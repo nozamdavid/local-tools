@@ -61,4 +61,4 @@ Browsers treat the LAN HTTP address as an insecure context, so features that req
 ssh -N -L 127.0.0.1:3052:192.168.0.199:3052 your-user@192.168.0.199
 ```
 
-Keep the SSH session open and visit `http://localhost:3052`. Browsers treat localhost as a secure context and can prompt for camera permission there.
+Keep the SSH session open and visit `http://localhost:3052`. Browsers treat localhost as a secure context and can prompt for camera or image clipboard access there. On the direct LAN HTTP address, **Copy** opens the finished image so you can right-click or press and hold it and choose **Copy Image**.

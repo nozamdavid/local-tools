@@ -345,7 +345,7 @@ ${safeHtml}
               {copied ? `✓ ${t('Copied')}` : t('Copy CSS')}
             </Button>
             <Button variant="primary" onClick={handleDownload}>
-              {t('Download CSS')}
+              {t('Download')}
             </Button>
           </div>
         </div>

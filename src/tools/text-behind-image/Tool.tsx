@@ -3,9 +3,11 @@ import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { ProgressBar } from '../../components/ProgressBar';
 import { Field, Select, Slider, Button } from '../../components/Controls';
+import { CopyImageButton } from '../../components/CopyImageButton';
 import { getToolMeta } from '../registry';
 import { formatBytes, withSuffix } from '../../lib/format';
 import { downloadBlob } from '../../lib/download';
+import { canvasToBlob } from '../../lib/image';
 import { useI18n } from '../../lib/i18n';
 import { SegmentClient } from '../_segment/segmentClient';
 import { drawTextLayers, calculateTargetSize } from '../_segment/composite';
@@ -275,10 +277,10 @@ export default function TextBehindImageTool() {
   };
 
   // Full-resolution export
-  const handleDownload = async () => {
+  const getExportImage = () => {
     const img = imageEl;
     const maskCanvas = maskCanvasRef.current;
-    if (!img || !maskCanvas || !file) return;
+    if (!img || !maskCanvas) throw new Error('Export failed.');
 
     const fullW = img.naturalWidth;
     const fullH = img.naturalHeight;
@@ -287,7 +289,7 @@ export default function TextBehindImageTool() {
     fullCanvas.width = fullW;
     fullCanvas.height = fullH;
     const ctx = fullCanvas.getContext('2d');
-    if (!ctx) return;
+    if (!ctx) throw new Error('Could not create canvas context');
 
     // 1. Draw full-res background
     ctx.drawImage(img, 0, 0, fullW, fullH);
@@ -311,12 +313,19 @@ export default function TextBehindImageTool() {
       ctx.drawImage(subjectCanvas, 0, 0);
     }
 
-    fullCanvas.toBlob((blob) => {
-      if (blob) {
-        const outName = withSuffix(file.name, '-text-behind', 'png');
-        downloadBlob(blob, outName);
-      }
-    }, 'image/png');
+    return canvasToBlob(fullCanvas, 'image/png');
+  };
+
+  const outputFilename = file ? withSuffix(file.name, '-text-behind', 'png') : '';
+  const canExport = imageEl !== null && segmentProgress === 1;
+
+  const handleDownload = async () => {
+    if (!canExport) return;
+    try {
+      downloadBlob(await getExportImage(), outputFilename);
+    } catch {
+      setError('Export failed.');
+    }
   };
 
   const handleReset = () => {
@@ -387,8 +396,14 @@ export default function TextBehindImageTool() {
                   <Button variant="secondary" onClick={handleReset}>
                     {t('Choose another image')}
                   </Button>
-                  <Button variant="primary" onClick={handleDownload}>
-                    {t('Download PNG (Full Resolution)')}
+                  {canExport && imageEl && (
+                    <span className="meta-chip" style={{ alignSelf: 'center' }}>
+                      PNG · {imageEl.naturalWidth} × {imageEl.naturalHeight}
+                    </span>
+                  )}
+                  <CopyImageButton getImage={getExportImage} disabled={!canExport} filename={outputFilename} />
+                  <Button variant="primary" onClick={handleDownload} disabled={!canExport} aria-label={t('Download PNG (Full Resolution)')}>
+                    {t('Download')}
                   </Button>
                 </div>
               </div>

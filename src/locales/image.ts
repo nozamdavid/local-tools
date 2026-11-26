@@ -2,6 +2,23 @@ import type { Locale } from '../lib/i18n';
 
 // Translation order is Spanish, Italian, German, Portuguese, French.
 const translations: Record<string, [string, string, string, string, string]> = {
+  'PNG strip': ['Franja PNG', 'Striscia PNG', 'PNG-Farbstreifen', 'Faixa PNG', 'Bande PNG'],
+  'Original ({size})': ['Original ({size})', 'Originale ({size})', 'Original ({size})', 'Original ({size})', 'Original ({size})'],
+  'Label (300 DPI PNG)': [
+    'Etiqueta (PNG, 300 ppp)',
+    'Etichetta (PNG, 300 DPI)',
+    'Etikett (PNG, 300 dpi)',
+    'Etiqueta (PNG, 300 dpi)',
+    'Étiquette (PNG, 300 ppp)',
+  ],
+  'Sheet PDF': ['Hoja en PDF', 'Foglio PDF', 'Bogen als PDF', 'Folha em PDF', 'Planche PDF'],
+  'All 10 avatars (.zip)': [
+    'Los 10 avatares (.zip)',
+    'Tutti e 10 gli avatar (.zip)',
+    'Alle 10 Avatare (.zip)',
+    'Os 10 avatares (.zip)',
+    'Les 10 avatars (.zip)',
+  ],
   '{percent}% reduction': [
     '{percent}% de reducción',
     '{percent}% di riduzione',

@@ -1145,10 +1145,45 @@ img.preview-media {
 
 .batch-item {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
+  justify-content: flex-end;
   gap: var(--space-3);
   padding: var(--space-2) 0;
   border-bottom: 1px solid var(--border);
+}
+
+.batch-file {
+  display: flex;
+  flex: 1 1 12rem;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.batch-row-actions,
+.batch-archive {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  min-width: 0;
+  max-width: 100%;
+}
+
+.result-panel .action-buttons > .btn,
+.batch-row-actions .btn,
+.batch-archive .btn {
+  min-width: 0;
+  max-width: 100%;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.batch-row-actions .field-error {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .batch-thumb {
@@ -1188,6 +1223,7 @@ img.preview-media {
   font-size: var(--text-sm);
   color: var(--text-muted);
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
 }
 
 .batch-delta-smaller {

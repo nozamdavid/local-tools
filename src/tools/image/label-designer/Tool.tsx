@@ -4,6 +4,8 @@ import { ToolPage } from '../../../components/ToolPage';
 import { Field, Select, Button, Slider } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { downloadBlob } from '../../../lib/download';
+import { CopyImageButton } from '../../../components/CopyImageButton';
+import { canvasToBlob } from '../../../lib/image';
 import { useI18n } from '../../../lib/i18n';
 import { type LabelElement, type ImageElement, LABEL_PRESETS, renderLabelToCanvas } from '../_generate/label';
 import styles from './Tool.module.css';
@@ -336,15 +338,15 @@ export default function LabelDesignerTool() {
     setSelectedId(newEl.id);
   };
 
-  // Export Single Label (300 DPI PNG)
+  const pngFilename = `label-${labelWidth}x${labelHeight}mm.png`;
+  const getLabelPng = async () => {
+    const canvas = await renderLabelToCanvas(elements, labelWidth, labelHeight, 300);
+    return canvasToBlob(canvas, 'image/png');
+  };
+
   const handleExportSinglePng = async () => {
     try {
-      const canvas = await renderLabelToCanvas(elements, labelWidth, labelHeight, 300);
-      canvas.toBlob((blob) => {
-        if (blob) {
-          downloadBlob(blob, `label-${labelWidth}x${labelHeight}mm.png`);
-        }
-      }, 'image/png');
+      downloadBlob(await getLabelPng(), pngFilename);
     } catch (e) {
       console.error('Failed to export label PNG:', e);
     }
@@ -354,9 +356,7 @@ export default function LabelDesignerTool() {
   const handleExportSheetPdf = async () => {
     try {
       // 1. Render single label to 300 DPI canvas
-      const canvas = await renderLabelToCanvas(elements, labelWidth, labelHeight, 300);
-      const pngBlob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, 'image/png'));
-      if (!pngBlob) return;
+      const pngBlob = await getLabelPng();
       const pngBytes = await pngBlob.arrayBuffer();
 
       // 2. Create PDF document
@@ -448,12 +448,19 @@ export default function LabelDesignerTool() {
           </div>
 
           <div className={styles.toolbarGroup}>
-            <Button variant="secondary" className={styles.smallBtn} onClick={handleExportSinglePng}>
-              {t('Export label (300 DPI PNG)')}
-            </Button>
-            <Button className={styles.smallBtn} onClick={handleExportSheetPdf}>
-              {t('Export sheet PDF')}
-            </Button>
+            <div className={styles.toolbarGroup} role="group" aria-label={t('Label (300 DPI PNG)')}>
+              <span>{t('Label (300 DPI PNG)')}</span>
+              <Button variant="secondary" className={styles.smallBtn} onClick={handleExportSinglePng}>
+                {t('Download')}
+              </Button>
+              <CopyImageButton getImage={getLabelPng} filename={pngFilename} size="sm" />
+            </div>
+            <div className={styles.toolbarGroup} role="group" aria-label={t('Sheet PDF')}>
+              <span>{t('Sheet PDF')}</span>
+              <Button className={styles.smallBtn} onClick={handleExportSheetPdf}>
+                {t('Download')}
+              </Button>
+            </div>
             <Button variant="secondary" className={styles.smallBtn} onClick={handlePrint}>
               {t('Print sheet')}
             </Button>

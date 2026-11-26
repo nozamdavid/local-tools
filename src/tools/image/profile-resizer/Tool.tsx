@@ -336,8 +336,9 @@ export default function ProfileResizerTool() {
                 <Button variant="secondary" onClick={() => setFile(null)}>
                   {t('Choose a different photo')}
                 </Button>
+                <span>{t('All 10 avatars (.zip)')}</span>
                 <Button variant="primary" onClick={handleExportAll} disabled={exporting}>
-                  {exporting ? t('Exporting ZIP…') : t('Export all 10 avatars (.zip)')}
+                  {exporting ? t('Exporting ZIP…') : t('Download')}
                 </Button>
               </div>
             </div>

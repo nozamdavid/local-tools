@@ -7,6 +7,7 @@ import { useI18n } from '../../../lib/i18n';
 import { copyText } from '../../../lib/clipboard';
 import { decodeImage } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { type PaletteColor, extractPalette, generatePaletteStripBlob } from '../_color/palette';
 import styles from './Tool.module.css';
 
@@ -105,10 +106,12 @@ export default function ColorPaletteTool() {
     downloadBlob(blob, 'color-palette.json');
   };
 
+  const pngFilename = 'palette-strip.png';
+  const getPngStrip = () => generatePaletteStripBlob(palette);
+
   const downloadPngStrip = async () => {
     try {
-      const blob = await generatePaletteStripBlob(palette);
-      downloadBlob(blob, 'palette-strip.png');
+      downloadBlob(await getPngStrip(), pngFilename);
     } catch (err) {
       setError(err instanceof Error ? t(err.message) : t('Failed to generate PNG palette strip'));
     }
@@ -233,13 +236,20 @@ export default function ColorPaletteTool() {
                       {copiedKey === 'export-copy' ? t('Copied to clipboard!') : t('Copy to clipboard')}
                     </Button>
                     {exportMode === 'json' && (
-                      <Button variant="secondary" onClick={downloadJson}>
-                        {t('Download JSON')}
-                      </Button>
+                      <div className={styles.exportGroup} role="group" aria-label="JSON">
+                        <span>JSON</span>
+                        <Button variant="secondary" onClick={downloadJson}>
+                          {t('Download')}
+                        </Button>
+                      </div>
                     )}
-                    <Button variant="primary" onClick={downloadPngStrip}>
-                      {t('Download PNG strip')}
-                    </Button>
+                    <div className={styles.exportGroup} role="group" aria-label={t('PNG strip')}>
+                      <span>{t('PNG strip')}</span>
+                      <Button variant="primary" onClick={downloadPngStrip}>
+                        {t('Download')}
+                      </Button>
+                      <CopyImageButton getImage={getPngStrip} filename={pngFilename} />
+                    </div>
                   </div>
                 </div>
               </>

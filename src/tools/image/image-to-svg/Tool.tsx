@@ -7,6 +7,7 @@ import { useI18n } from '../../../lib/i18n';
 import { copyText } from '../../../lib/clipboard';
 import { decodeImage, IMAGE_ACCEPT } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { formatBytes } from '../../../lib/format';
 import { generateEmbeddedSvg, generatePixelSvg } from '../_utility/svg';
 
@@ -110,11 +111,7 @@ export default function ImageToSvgTool() {
     }
   };
 
-  const handleDownload = () => {
-    if (!svgBlob || !file) return;
-    const baseName = file.name.replace(/\.[^.]+$/, '');
-    downloadBlob(svgBlob, `${baseName}.svg`);
-  };
+  const resultFilename = file ? `${file.name.replace(/\.[^.]+$/, '')}.svg` : '';
 
   const handleReset = () => {
     setFile(null);
@@ -272,9 +269,10 @@ export default function ImageToSvgTool() {
                 <Button variant="secondary" onClick={handleCopy} disabled={!svgString}>
                   {copied ? `✓ ${t('Copied SVG code!')}` : `📋 ${t('Copy SVG')}`}
                 </Button>
-                <Button variant="primary" onClick={handleDownload} disabled={!svgBlob}>
-                  ⬇ {t('Download SVG')}
+                <Button variant="primary" onClick={() => svgBlob && downloadBlob(svgBlob, resultFilename)} disabled={!svgBlob}>
+                  {t('Download')}
                 </Button>
+                {svgBlob && <CopyImageButton getImage={() => svgBlob} filename={resultFilename} />}
               </div>
             </div>
           </div>

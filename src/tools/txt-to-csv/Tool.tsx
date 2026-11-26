@@ -197,6 +197,7 @@ export default function TxtToCsvTool() {
             <div className={styles.previewHeader}>
               <div className={styles.previewTitle}>
                 {t('CSV preview')}
+                <span className={styles.metaBadge}>{sourceName}</span>
                 <span className={styles.metaBadge}>{t('{count} rows', { count: totalRows })}</span>
                 <span className={styles.metaBadge}>{t('{count} columns', { count: maxCols })}</span>
               </div>
@@ -230,7 +231,7 @@ export default function TxtToCsvTool() {
 
             <div className={styles.actions}>
               <Button variant="primary" onClick={handleDownload}>
-                {t('Download CSV ({file})', { file: sourceName })}
+                {t('Download')}
               </Button>
               <Button variant="secondary" onClick={handleCopy}>
                 {copied ? t('Copied to clipboard!') : t('Copy full CSV')}

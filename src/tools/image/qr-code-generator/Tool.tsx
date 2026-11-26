@@ -4,6 +4,8 @@ import { ToolPage } from '../../../components/ToolPage';
 import { Field, Slider, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { downloadBlob } from '../../../lib/download';
+import { CopyImageButton } from '../../../components/CopyImageButton';
+import { canvasToBlob } from '../../../lib/image';
 import { type QrContentType, type WifiData, type EmailData, type SmsData, type VCardData, buildQrString } from '../_generate/qr';
 import styles from './Tool.module.css';
 import { useI18n } from '../../../lib/i18n';
@@ -171,53 +173,55 @@ export default function QrCodeGeneratorTool() {
     renderQr();
   }, [renderQr]);
 
-  // Download PNG
-  const handleDownloadPng = () => {
+  const getPng = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
-    canvas.toBlob((blob) => {
-      if (blob) {
-        downloadBlob(blob, `qrcode-${contentType}.png`);
-      }
-    }, 'image/png');
+    if (!canvas) throw new Error('No QR code to export.');
+    return canvasToBlob(canvas, 'image/png');
   };
 
-  // Download SVG
-  const handleDownloadSvg = async () => {
+  const getSvg = async () => {
     const textToEncode = qrString.trim() || ' ';
     const actualBg = transparentBg ? '#00000000' : lightColor;
 
+    let svg = await QRCode.toString(textToEncode, {
+      type: 'svg',
+      width: size,
+      margin: margin,
+      errorCorrectionLevel: effectiveEcLevel,
+      color: {
+        dark: darkColor,
+        light: actualBg,
+      },
+    });
+
+    // Embed logo inside SVG if present
+    if (logoDataUrl) {
+      const logoSize = Math.floor(size * 0.22);
+      const x = Math.round((size - logoSize) / 2);
+      const y = Math.round((size - logoSize) / 2);
+      const pad = Math.max(3, Math.round(logoSize * 0.08));
+      const plateBg = transparentBg ? '#ffffff' : lightColor;
+
+      const logoElement = `
+        <rect x="${x - pad}" y="${y - pad}" width="${logoSize + pad * 2}" height="${logoSize + pad * 2}" rx="6" fill="${plateBg}" />
+        <image href="${logoDataUrl}" x="${x}" y="${y}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet" />
+      `;
+      svg = svg.replace('</svg>', `${logoElement}</svg>`);
+    }
+
+    return new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+  };
+
+  const exports = [
+    { format: 'PNG', filename: `qrcode-${contentType}.png`, getImage: getPng },
+    { format: 'SVG', filename: `qrcode-${contentType}.svg`, getImage: getSvg },
+  ];
+
+  const handleDownload = async (getImage: () => Blob | Promise<Blob>, filename: string) => {
     try {
-      let svg = await QRCode.toString(textToEncode, {
-        type: 'svg',
-        width: size,
-        margin: margin,
-        errorCorrectionLevel: effectiveEcLevel,
-        color: {
-          dark: darkColor,
-          light: actualBg,
-        },
-      });
-
-      // Embed logo inside SVG if present
-      if (logoDataUrl) {
-        const logoSize = Math.floor(size * 0.22);
-        const x = Math.round((size - logoSize) / 2);
-        const y = Math.round((size - logoSize) / 2);
-        const pad = Math.max(3, Math.round(logoSize * 0.08));
-        const plateBg = transparentBg ? '#ffffff' : lightColor;
-
-        const logoElement = `
-          <rect x="${x - pad}" y="${y - pad}" width="${logoSize + pad * 2}" height="${logoSize + pad * 2}" rx="6" fill="${plateBg}" />
-          <image href="${logoDataUrl}" x="${x}" y="${y}" width="${logoSize}" height="${logoSize}" preserveAspectRatio="xMidYMid meet" />
-        `;
-        svg = svg.replace('</svg>', `${logoElement}</svg>`);
-      }
-
-      const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-      downloadBlob(blob, `qrcode-${contentType}.svg`);
+      downloadBlob(await getImage(), filename);
     } catch (err) {
-      console.error('Failed to generate SVG:', err);
+      console.error('Failed to export QR code:', err);
     }
   };
 
@@ -590,12 +594,19 @@ export default function QrCodeGeneratorTool() {
             </div>
 
             <div className={styles.actions}>
-              <Button className={styles.actionBtn} onClick={handleDownloadPng}>
-                {t('Download PNG')}
-              </Button>
-              <Button variant="secondary" className={styles.actionBtn} onClick={handleDownloadSvg}>
-                {t('Download SVG')}
-              </Button>
+              {exports.map(({ format, filename, getImage }) => (
+                <div key={format} className={styles.exportActions} role="group" aria-label={format}>
+                  <span>{format}</span>
+                  <Button
+                    variant={format === 'PNG' ? 'primary' : 'secondary'}
+                    className={styles.actionBtn}
+                    onClick={() => handleDownload(getImage, filename)}
+                  >
+                    {t('Download')}
+                  </Button>
+                  <CopyImageButton getImage={getImage} filename={filename} />
+                </div>
+              ))}
             </div>
           </div>
         </div>

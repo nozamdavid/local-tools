@@ -204,8 +204,9 @@ export default function ZipExtractTool() {
                   loading={extracting}
                   disabled={selectedIds.size === 0 || extracting}
                   onClick={downloadSelected}
+                  aria-label={t('Download selected')}
                 >
-                  {t('Download selected')}
+                  {t('Download')}
                 </Button>
               </div>
 

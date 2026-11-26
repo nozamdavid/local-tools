@@ -337,12 +337,18 @@ export default function VideoHealthTool() {
 
             {/* Action Buttons */}
             <div className={styles.actionRow}>
-              <Button variant="primary" onClick={handleDownloadJson}>
-                {t('Download Diagnostic (JSON)')}
-              </Button>
-              <Button variant="secondary" onClick={handleDownloadTxt}>
-                {t('Download Report (TXT)')}
-              </Button>
+              <div>
+                <div>JSON</div>
+                <Button variant="primary" onClick={handleDownloadJson} aria-label={t('Download Diagnostic (JSON)')}>
+                  {t('Download')}
+                </Button>
+              </div>
+              <div>
+                <div>TXT</div>
+                <Button variant="secondary" onClick={handleDownloadTxt} aria-label={t('Download Report (TXT)')}>
+                  {t('Download')}
+                </Button>
+              </div>
               <Button variant="secondary" onClick={() => setReport(null)}>
                 {t('Inspect Another Video')}
               </Button>

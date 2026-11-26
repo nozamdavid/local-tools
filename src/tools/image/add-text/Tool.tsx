@@ -3,6 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
 import { FileDrop } from '../../../components/FileDrop';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { Button, Field, Slider, Select } from '../../../components/Controls';
 import { decodeImage, IMAGE_ACCEPT, EncodableMime } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
@@ -154,17 +155,23 @@ export default function Tool() {
     }
   };
 
-  const handleExport = async () => {
+  const exportExt = exportMime === 'image/jpeg' ? 'jpg' : exportMime === 'image/webp' ? 'webp' : 'png';
+  const exportFilename = withSuffix(file ? file.name : 'image-with-text.png', '-text', exportExt);
+
+  const getExportBlob = async () => {
     setIsExporting(true);
     try {
-      const blob = await exportDocument(doc, exportMime, quality / 100);
-      const ext = exportMime === 'image/jpeg' ? 'jpg' : exportMime === 'image/webp' ? 'webp' : 'png';
-      const outName = withSuffix(file ? file.name : 'image-with-text.png', '-text', ext);
-      downloadBlob(blob, outName);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : t('Export failed.'));
+      return await exportDocument(doc, exportMime, quality / 100);
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleExport = async () => {
+    try {
+      downloadBlob(await getExportBlob(), exportFilename);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : t('Export failed.'));
     }
   };
 
@@ -620,9 +627,12 @@ export default function Tool() {
               )}
             </div>
 
-            <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleExport}>
-              {isExporting ? t('Exporting…') : t('Download image')}
-            </Button>
+            <div className={styles.exportControls}>
+              <Button variant="primary" data-testid="export-btn" loading={isExporting} onClick={handleExport}>
+                {t('Download')}
+              </Button>
+              <CopyImageButton getImage={getExportBlob} disabled={isExporting} filename={exportFilename} />
+            </div>
           </div>
         </div>
       )}

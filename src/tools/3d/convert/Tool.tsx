@@ -108,8 +108,9 @@ export default function ConvertTool() {
                       loading={exporting}
                       disabled={exporting}
                       onClick={() => handleExport()}
+                      aria-label={t('Convert and download')}
                     >
-                      {t('Convert and download')}
+                      {t('Download')}
                     </Button>
                   </div>
                 </div>
@@ -139,8 +140,9 @@ export default function ConvertTool() {
                       variant="primary"
                       icon={<Download size={15} />}
                       onClick={() => downloadBlob(lastExportedBlob.blob, lastExportedBlob.filename)}
+                      aria-label={t('Download {file}', { file: lastExportedBlob.filename })}
                     >
-                      {t('Download again')}
+                      {t('Download')}
                     </Button>
                     <ContinueWith results={[{ name: lastExportedBlob.filename, blob: lastExportedBlob.blob }]} />
                   </div>

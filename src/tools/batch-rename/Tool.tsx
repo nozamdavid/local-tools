@@ -307,7 +307,7 @@ export default function BatchRenameTool() {
                   {t('Clear all')}
                 </Button>
                 <Button variant="primary" disabled={zipping || hasCollisions} onClick={handleDownloadZip}>
-                  {zipping ? t('Creating ZIP…') : t('Download renamed ZIP')}
+                  {zipping ? t('Creating ZIP…') : t('Download')}
                 </Button>
               </div>
             </div>

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { getToolMeta } from '../../registry';
 import { FileDrop } from '../../../components/FileDrop';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { Button, Field, Slider, Select } from '../../../components/Controls';
 import { decodeImage, IMAGE_ACCEPT, EncodableMime } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
@@ -265,6 +266,9 @@ export default function Tool() {
     }
   };
 
+  const exportExt = exportMime === 'image/jpeg' ? 'jpg' : exportMime === 'image/webp' ? 'webp' : 'png';
+  const exportFilename = withSuffix(files[0] ? files[0].name : 'watermarked.png', '-watermarked', exportExt);
+
   // Batch process all images
   const processAllImages = async () => {
     if (files.length === 0) return;
@@ -283,8 +287,7 @@ export default function Tool() {
         };
 
         const blob = await exportDocument(itemDoc, exportMime, quality / 100);
-        const ext = exportMime === 'image/jpeg' ? 'jpg' : exportMime === 'image/webp' ? 'webp' : 'png';
-        const outName = withSuffix(f.name, '-watermarked', ext);
+        const outName = withSuffix(f.name, '-watermarked', exportExt);
 
         results.push({
           name: outName,
@@ -302,17 +305,20 @@ export default function Tool() {
   };
 
   // Single export
-  const handleSingleExport = async () => {
+  const getExportBlob = async () => {
     setIsExporting(true);
     try {
-      const blob = await exportDocument(doc, exportMime, quality / 100);
-      const ext = exportMime === 'image/jpeg' ? 'jpg' : exportMime === 'image/webp' ? 'webp' : 'png';
-      const outName = withSuffix(files[0] ? files[0].name : 'watermarked.png', '-watermarked', ext);
-      downloadBlob(blob, outName);
-    } catch (err) {
-      alert(t(err instanceof Error ? err.message : 'Export failed.'));
+      return await exportDocument(doc, exportMime, quality / 100);
     } finally {
       setIsExporting(false);
+    }
+  };
+
+  const handleSingleExport = async () => {
+    try {
+      downloadBlob(await getExportBlob(), exportFilename);
+    } catch (err) {
+      alert(t(err instanceof Error ? err.message : 'Export failed.'));
     }
   };
 
@@ -507,9 +513,12 @@ export default function Tool() {
               )}
             </div>
 
-            <Button variant="primary" data-testid="export-btn" disabled={isExporting} onClick={handleSingleExport}>
-              {isExporting ? t('Exporting…') : t('Download image')}
-            </Button>
+            <div className={styles.exportControls}>
+              <Button variant="primary" data-testid="export-btn" loading={isExporting} onClick={handleSingleExport}>
+                {t('Download')}
+              </Button>
+              <CopyImageButton getImage={getExportBlob} disabled={isExporting} filename={exportFilename} />
+            </div>
           </div>
         </div>
       )}

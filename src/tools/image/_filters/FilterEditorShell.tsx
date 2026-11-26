@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useId } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { ResultPanel } from '../../../components/ResultPanel';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
@@ -153,25 +154,29 @@ export function FilterEditorShell<T>({
       });
   }, [previewSourceCanvas, options, showOriginal, render]);
 
-  const handleDownload = async () => {
-    if (!fullSourceCanvas || !file) return;
+  const exportExt = format === 'image/png' ? 'png' : format === 'image/webp' ? 'webp' : 'jpg';
+  const exportFilename = file ? withSuffix(file.name, suffix, exportExt) : '';
 
+  const getExportBlob = async () => {
+    if (!fullSourceCanvas) throw new Error(t('Failed to decode image'));
     setIsProcessing(true);
     try {
       const renderedCanvas = await render(fullSourceCanvas, options, false);
       const q = format === 'image/png' ? undefined : quality / 100;
-      const blob = await canvasToBlob(renderedCanvas, format, q);
-
-      const ext = format === 'image/png' ? 'png' : format === 'image/webp' ? 'webp' : 'jpg';
-      const outName = withSuffix(file.name, suffix, ext);
-
-      downloadBlob(blob, outName);
-      setResultBlob(blob);
-      setResultFilename(outName);
-    } catch (err: any) {
-      alert(t('Export failed: {error}', { error: err?.message || String(err) }));
+      return await canvasToBlob(renderedCanvas, format, q);
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      const blob = await getExportBlob();
+      downloadBlob(blob, exportFilename);
+      setResultBlob(blob);
+      setResultFilename(exportFilename);
+    } catch (err: any) {
+      alert(t('Export failed: {error}', { error: err?.message || String(err) }));
     }
   };
 
@@ -288,9 +293,10 @@ export function FilterEditorShell<T>({
                 <Button variant="secondary" onClick={handleFullReset}>
                   {t('Choose different file')}
                 </Button>
-                <Button variant="primary" onClick={handleDownload} disabled={isProcessing} data-testid="download-btn">
-                  {isProcessing ? t('Processing full image...') : t('Download')}
+                <Button variant="primary" onClick={handleDownload} loading={isProcessing} data-testid="download-btn">
+                  {t('Download')}
                 </Button>
+                <CopyImageButton getImage={getExportBlob} disabled={isProcessing} filename={exportFilename} />
               </div>
             </div>
           </div>

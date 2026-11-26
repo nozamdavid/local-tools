@@ -101,7 +101,7 @@ export function PdfPreview({ blob, filename, originalSize, pageCount, onReset }:
           {t('Start over')}
         </Button>
         <Button variant="primary" onClick={() => downloadBlob(blob, filename)}>
-          {t('Download {filename}', { filename })}
+          {t('Download')}
         </Button>
       </div>
     </div>

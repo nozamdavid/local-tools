@@ -7,6 +7,7 @@ import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
 import { decodeImage, encodeIco, IMAGE_ACCEPT } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { zipFiles } from '../../../lib/zip';
 import { formatBytes } from '../../../lib/format';
 import { useObjectUrl } from '../../../lib/useObjectUrl';
@@ -136,6 +137,7 @@ function ExtractedItemRow({ item }: { item: ExtractedFrameItem }) {
     <div
       style={{
         display: 'flex',
+        flexWrap: 'wrap',
         alignItems: 'center',
         justifyContent: 'space-between',
         padding: '0.75rem 1rem',
@@ -181,13 +183,12 @@ function ExtractedItemRow({ item }: { item: ExtractedFrameItem }) {
         </div>
       </div>
 
-      <Button
-        variant="secondary"
-        style={{ padding: '0.35rem 0.75rem', fontSize: '0.85rem', flexShrink: 0 }}
-        onClick={() => downloadBlob(item.blob, item.name)}
-      >
-        {t('Download')}
-      </Button>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+        <Button variant="secondary" size="sm" onClick={() => downloadBlob(item.blob, item.name)}>
+          {t('Download')}
+        </Button>
+        <CopyImageButton getImage={() => item.blob} filename={item.name} size="sm" />
+      </div>
     </div>
   );
 }
@@ -787,12 +788,13 @@ export default function IconConverterTool() {
                   {t('Every embedded frame extracted with transparency preserved')}
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
                   {t('Convert more')}
                 </Button>
+                <span>extracted-icon-frames.zip</span>
                 <Button variant="primary" onClick={handleDownloadAllZip}>
-                  {t('Download all as ZIP')}
+                  {t('Download')}
                 </Button>
               </div>
             </div>
@@ -829,14 +831,17 @@ export default function IconConverterTool() {
                   px
                 </span>
               </div>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.75rem' }}>
                 <Button variant="secondary" onClick={handleReset}>
                   {t('Convert more')}
                 </Button>
                 {generatedIcos.length > 1 && (
-                  <Button variant="primary" onClick={handleDownloadAllZip}>
-                    {t('Download all as ZIP')}
-                  </Button>
+                  <>
+                    <span>favicons.zip</span>
+                    <Button variant="primary" onClick={handleDownloadAllZip}>
+                      {t('Download')}
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
@@ -847,8 +852,10 @@ export default function IconConverterTool() {
                   key={idx}
                   style={{
                     display: 'flex',
+                    flexWrap: 'wrap',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    gap: '0.75rem',
                     padding: '0.75rem 1rem',
                     background: 'rgba(255, 255, 255, 0.03)',
                     borderRadius: '8px',
@@ -863,9 +870,12 @@ export default function IconConverterTool() {
                       · {formatBytes(ico.blob.size)}
                     </span>
                   </div>
-                  <Button variant="primary" onClick={() => downloadBlob(ico.blob, ico.name)}>
-                    {generatedIcos.length === 1 ? `${t('Download')} favicon.ico` : t('Download ICO')}
-                  </Button>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+                    <Button variant="primary" onClick={() => downloadBlob(ico.blob, ico.name)}>
+                      {t('Download')}
+                    </Button>
+                    <CopyImageButton getImage={() => ico.blob} filename={ico.name} />
+                  </div>
                 </div>
               ))}
             </div>

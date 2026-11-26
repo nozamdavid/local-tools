@@ -316,7 +316,7 @@ export default function ExifViewerTool() {
                 {copied ? t('Copied!') : t('Copy as JSON')}
               </Button>
               <Button variant="primary" onClick={downloadJson} disabled={!rawExif}>
-                {t('Download JSON')}
+                {t('Download')}
               </Button>
             </div>
           )}

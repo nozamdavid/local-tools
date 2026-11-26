@@ -468,7 +468,7 @@ export default function JsonCsvTool() {
 
             <div className={styles.actions}>
               <Button variant="primary" onClick={handleDownloadSingle}>
-                {t('Download {file}', { file: outputFilename })}
+                {t('Download')}
               </Button>
               <Button variant="secondary" onClick={handleCopy}>
                 {copied ? t('Copied to clipboard!') : t('Copy to clipboard')}
@@ -485,9 +485,12 @@ export default function JsonCsvTool() {
           <div className={styles.resultCard}>
             <div className={styles.resultHeader}>
               <div className={styles.resultTitle}>{t('Batch conversion results ({count} files)', { count: batchResults.length })}</div>
-              <Button variant="primary" onClick={handleDownloadZip}>
-                {t('Download all as ZIP')}
-              </Button>
+              <div>
+                <div>{t('ZIP package')}</div>
+                <Button variant="primary" onClick={handleDownloadZip} aria-label={t('Download all as ZIP')}>
+                  {t('Download')}
+                </Button>
+              </div>
             </div>
 
             <div className={styles.batchList}>
@@ -508,7 +511,11 @@ export default function JsonCsvTool() {
                     )}
                   </div>
                   {!item.error && (
-                    <Button variant="secondary" onClick={() => downloadBlob(item.blob, item.outputName)}>
+                    <Button
+                      variant="secondary"
+                      onClick={() => downloadBlob(item.blob, item.outputName)}
+                      aria-label={t('Download {file}', { file: item.outputName })}
+                    >
                       {t('Download')}
                     </Button>
                   )}

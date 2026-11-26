@@ -120,8 +120,9 @@ export default function CompressPdfTool() {
                 sourceSize: formatBytes(file.size),
               })}
               <div className={styles.inlineAction}>
-                <Button variant="secondary" onClick={() => downloadBlob(file, file.name)}>
-                  {t('Download the original instead')}
+                <div>{file.name}</div>
+                <Button variant="secondary" onClick={() => downloadBlob(file, file.name)} aria-label={t('Download the original instead')}>
+                  {t('Download')}
                 </Button>
               </div>
             </div>

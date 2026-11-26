@@ -1,0 +1,27 @@
+.dialog {
+  width: min(32rem, calc(100% - 2rem));
+  max-height: calc(100% - 2rem);
+  margin: auto;
+  padding: var(--space-4);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  color: var(--text);
+  background: var(--surface);
+  box-shadow: var(--shadow-lg);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 60%);
+}
+
+.dialog p,
+.dialog button {
+  margin-top: var(--space-3);
+}
+
+.image {
+  display: block;
+  max-height: 55vh;
+  margin: var(--space-3) auto 0;
+  object-fit: contain;
+}

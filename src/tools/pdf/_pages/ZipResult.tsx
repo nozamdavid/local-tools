@@ -27,7 +27,11 @@ export function ZipResult({ zip, zipName, items, onReset }: ZipResultProps) {
               </div>
               <div className="batch-meta">{formatBytes(item.blob.size)}</div>
             </div>
-            <Button variant="secondary" onClick={() => downloadBlob(item.blob, item.name)}>
+            <Button
+              variant="secondary"
+              onClick={() => downloadBlob(item.blob, item.name)}
+              aria-label={t('Download {filename}', { filename: item.name })}
+            >
               {t('Download')}
             </Button>
           </li>
@@ -38,8 +42,11 @@ export function ZipResult({ zip, zipName, items, onReset }: ZipResultProps) {
         <Button variant="secondary" onClick={onReset}>
           {t('Start over')}
         </Button>
-        <Button variant="primary" onClick={() => downloadBlob(zip, zipName)}>
-          {t('Download {filename}', { filename: zipName })}
+        <span className="batch-name" title={zipName}>
+          {zipName}
+        </span>
+        <Button variant="primary" onClick={() => downloadBlob(zip, zipName)} aria-label={t('Download {filename}', { filename: zipName })}>
+          {t('Download')}
         </Button>
       </div>
     </div>

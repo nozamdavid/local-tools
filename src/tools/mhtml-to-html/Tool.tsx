@@ -157,6 +157,7 @@ export default function MhtmlToHtmlTool() {
               <div className={styles.previewTitle}>
                 {t('HTML preview')}
                 <span className={styles.badge}>{outputMode === 'standalone' ? t('Standalone HTML') : t('ZIP package')}</span>
+                <span className={styles.badge}>{outputMode === 'standalone' ? `${sourceName}.html` : `${sourceName}.zip`}</span>
               </div>
 
               <div className={styles.statsRow}>
@@ -178,7 +179,7 @@ export default function MhtmlToHtmlTool() {
 
             <div className={styles.actions}>
               <Button variant="primary" onClick={handleDownload}>
-                {t('Download {file}', { file: outputMode === 'standalone' ? `${sourceName}.html` : `${sourceName}.zip` })}
+                {t('Download')}
               </Button>
               <Button variant="secondary" onClick={handleReset}>
                 {t('Reset')}

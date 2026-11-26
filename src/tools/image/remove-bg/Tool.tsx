@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useId } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { ProgressBar } from '../../../components/ProgressBar';
 import { Field, Slider, Select, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
@@ -48,6 +49,9 @@ export default function RemoveBgTool() {
   // Background Replacement Settings
   const [bgReplacement, setBgReplacement] = useState<BgReplacement>('transparent');
   const [customBgColor, setCustomBgColor] = useState<string>('#ffffff');
+
+  const [exportFormat, setExportFormat] = useState<'png' | 'webp'>('png');
+  const [isExporting, setIsExporting] = useState(false);
 
   const bgSelectId = useId();
   const segmentClientRef = useRef<SegmentClient | null>(null);
@@ -246,20 +250,24 @@ export default function RemoveBgTool() {
     setBgColorHex(detected.hex);
   };
 
-  // Download Handler
-  const handleDownload = async (format: 'png' | 'webp') => {
-    if (!sourceData) return;
-    const exportCanvas = document.createElement('canvas');
-    renderResultToCanvas(exportCanvas);
+  const exportFilename = withSuffix(file?.name || 'image.png', '-nobg', exportFormat);
+  const isWaitingForMask = mode === 'ai' && isAiLoading;
 
+  const getExportBlob = async () => {
+    setIsExporting(true);
     try {
-      const mime = format === 'png' ? 'image/png' : 'image/webp';
-      const blob = await canvasToBlob(exportCanvas, mime);
-      const originalName = file?.name || 'image.png';
-      const ext = format === 'png' ? '.png' : '.webp';
-      const outName = withSuffix(originalName, '-nobg').replace(/\.[^.]+$/, ext);
-      downloadBlob(blob, outName);
-    } catch (err: any) {
+      const exportCanvas = document.createElement('canvas');
+      renderResultToCanvas(exportCanvas);
+      return await canvasToBlob(exportCanvas, `image/${exportFormat}`);
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      downloadBlob(await getExportBlob(), exportFilename);
+    } catch (err) {
       console.error('Failed to download image:', err);
     }
   };
@@ -512,14 +520,23 @@ export default function RemoveBgTool() {
                 )}
               </div>
 
-              {/* Download Buttons */}
               <div className={styles.actions}>
-                <Button className={styles.actionBtn} onClick={() => handleDownload('png')}>
-                  {t('Download PNG')}
-                </Button>
-                <Button variant="secondary" className={styles.actionBtn} onClick={() => handleDownload('webp')}>
-                  {t('Download WebP')}
-                </Button>
+                <Field label={t('Output format')}>
+                  <Select
+                    value={exportFormat}
+                    onChange={(e) => setExportFormat(e.target.value === 'webp' ? 'webp' : 'png')}
+                    options={[
+                      { value: 'png', label: t('PNG') },
+                      { value: 'webp', label: t('WebP') },
+                    ]}
+                  />
+                </Field>
+                <div className={styles.actionButtons}>
+                  <Button onClick={handleDownload} loading={isExporting} disabled={isWaitingForMask}>
+                    {t('Download')}
+                  </Button>
+                  <CopyImageButton getImage={getExportBlob} disabled={isExporting || isWaitingForMask} filename={exportFilename} />
+                </div>
               </div>
             </div>
           </div>

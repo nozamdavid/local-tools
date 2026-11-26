@@ -296,7 +296,7 @@ export default function CsvViewerTool() {
 
             <div className={styles.actions}>
               <Button variant="primary" onClick={handleDownload}>
-                {t('Download CSV')}
+                {t('Download')}
               </Button>
               <Button variant="secondary" onClick={handleCopyVisiblePage}>
                 {copied ? t('Copied to clipboard!') : t('Copy visible page')}

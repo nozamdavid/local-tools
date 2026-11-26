@@ -288,8 +288,9 @@ export default function VideoInfoTool() {
               <Button variant="primary" onClick={handleCopyText}>
                 {copied ? `✓ ${t('Copied to clipboard!')}` : t('Copy as text')}
               </Button>
-              <Button variant="secondary" onClick={handleDownloadJSON}>
-                {t('Download JSON')}
+              <span>JSON</span>
+              <Button variant="secondary" onClick={handleDownloadJSON} aria-label={t('Download JSON')}>
+                {t('Download')}
               </Button>
             </div>
             <Button variant="secondary" onClick={handleReset}>

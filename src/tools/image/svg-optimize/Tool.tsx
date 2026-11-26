@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '../../../components/Controls';
 import { ContinueWith } from '../../../components/ContinueWith';
+import { CopyImageButton } from '../../../components/CopyImageButton';
 import { FileDrop } from '../../../components/FileDrop';
 import { ToolPage } from '../../../components/ToolPage';
 import { downloadBlob } from '../../../lib/download';
@@ -75,6 +76,7 @@ export default function SvgOptimizeTool() {
   };
 
   const basename = file?.name.replace(/\.svg$/i, '') || 'image';
+  const optimizedFilename = `${basename}-optimized.svg`;
 
   return (
     <ToolPage title={meta.title} description={meta.description} currentId="img-svg-optimize">
@@ -122,6 +124,12 @@ export default function SvgOptimizeTool() {
                     </p>
                   )}
                 </div>
+                <div className={styles.downloadActions} role="group" aria-label={t('Original')}>
+                  <Button variant="secondary" onClick={() => downloadBlob(file, file.name)}>
+                    {t('Download')}
+                  </Button>
+                  {result.originalPreview && <CopyImageButton getImage={() => file} filename={file.name} />}
+                </div>
               </figure>
               <figure className={styles.previewCard}>
                 <figcaption>{t('Optimized SVG')}</figcaption>
@@ -138,17 +146,17 @@ export default function SvgOptimizeTool() {
                     </p>
                   )}
                 </div>
+                <div className={styles.downloadActions} role="group" aria-label={t('Optimized SVG')}>
+                  <Button variant="primary" onClick={() => downloadBlob(result.blob, optimizedFilename)}>
+                    {t('Download')}
+                  </Button>
+                  {result.optimizedPreview && <CopyImageButton getImage={() => result.blob} filename={optimizedFilename} />}
+                </div>
               </figure>
             </div>
 
             <div className={styles.downloadActions}>
-              <ContinueWith results={[{ name: `${basename}-optimized.svg`, blob: result.blob }]} />
-              <Button variant="secondary" onClick={() => downloadBlob(file, file.name)}>
-                {t('Download original')}
-              </Button>
-              <Button variant="primary" onClick={() => downloadBlob(result.blob, `${basename}-optimized.svg`)}>
-                {t('Download optimized SVG')}
-              </Button>
+              <ContinueWith results={[{ name: optimizedFilename, blob: result.blob }]} />
               <Button variant="ghost" onClick={reset}>
                 {t('Start over')}
               </Button>
