@@ -71,7 +71,7 @@
   grid-template-rows: minmax(0, 1fr) auto;
   min-height: 0;
   min-width: 0;
-  background: #10110f;
+  background: var(--surface-sunken);
 }
 
 .workspaceFrame {
@@ -100,9 +100,9 @@
 .imageFrame {
   position: relative;
   overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  background-color: #30322d;
-  background-image: conic-gradient(#41443d 25%, transparent 25% 50%, #41443d 50% 75%, transparent 75%);
+  box-shadow: var(--shadow-sm);
+  background-color: var(--surface-active);
+  background-image: conic-gradient(var(--border-strong) 25%, transparent 25% 50%, var(--border-strong) 50% 75%, transparent 75%);
   background-size: 16px 16px;
 }
 
@@ -135,9 +135,10 @@
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 0.25rem 0.75rem;
-  padding: 0.25rem 0.625rem;
-  border-top: 1px solid var(--border);
+  gap: var(--space-1) var(--space-3);
+  min-height: 3.25rem;
+  padding: var(--space-1) var(--space-3);
+  border-top: 1px solid var(--border-quiet);
   background: var(--surface);
   color: var(--text-muted);
   font: 0.75rem var(--font-mono);
@@ -146,7 +147,7 @@
 .zoomControls {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: var(--space-1);
 }
 
 .zoomControls output {
@@ -190,6 +191,11 @@
   }
 
   .workspaceCanvas {
-    padding: 0.875rem;
+    padding: var(--space-4);
+  }
+
+  .zoomControls button {
+    min-width: 2.5rem;
+    min-height: 2.5rem;
   }
 }

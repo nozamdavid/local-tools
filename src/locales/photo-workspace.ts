@@ -3,6 +3,20 @@ import type { Locale } from '../lib/i18n';
 // Spanish, Italian, German, Portuguese, French.
 const translations: Record<string, [string, string, string, string, string]> = {
   'Editing canvas': ['Lienzo de edición', 'Area di modifica', 'Bearbeitungsfläche', 'Tela de edição', 'Zone de retouche'],
+  'Move selected layer by one pixel': [
+    'Mover la capa seleccionada un píxel',
+    'Sposta il livello selezionato di un pixel',
+    'Ausgewählte Ebene um einen Pixel verschieben',
+    'Mover a camada selecionada um píxel',
+    'Déplacer le calque sélectionné d’un pixel',
+  ],
+  'Move selected layer by ten pixels': [
+    'Mover la capa seleccionada diez píxeles',
+    'Sposta il livello selezionato di dieci pixel',
+    'Ausgewählte Ebene um zehn Pixel verschieben',
+    'Mover a camada selecionada dez píxeis',
+    'Déplacer le calque sélectionné de dix pixels',
+  ],
   'Editing canvas. Arrow keys move the selected layer by one pixel. Hold Shift to move by ten. Delete removes the selected layer.': [
     'Lienzo de edición. Las flechas mueven la capa seleccionada un píxel. Mantén Mayús para moverla diez. Supr elimina la capa seleccionada.',
     'Area di modifica. I tasti freccia spostano il livello selezionato di un pixel. Tieni premuto Maiusc per spostarlo di dieci. Canc elimina il livello selezionato.',

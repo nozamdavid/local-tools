@@ -72,6 +72,22 @@ type DragAction =
   | { type: 'crop-move'; startX: number; startY: number; origRect: CropRect }
   | { type: 'crop-resize'; handle: string; startX: number; startY: number; origRect: CropRect };
 
+function isCanvasKeyboardEvent(event: KeyboardEvent) {
+  return (
+    !event.defaultPrevented &&
+    !event.isComposing &&
+    event.keyCode !== 229 &&
+    !event.altKey &&
+    !event.ctrlKey &&
+    !event.metaKey &&
+    !event.getModifierState('AltGraph')
+  );
+}
+
+function isDeleteKey(event: KeyboardEvent) {
+  return (event.key === 'Delete' || event.key === 'Backspace') && !event.shiftKey && !event.repeat;
+}
+
 export function CanvasStage({
   document: doc,
   selectedLayerId,
@@ -656,7 +672,14 @@ export function CanvasStage({
   };
 
   const handleCanvasKey = (e: React.KeyboardEvent<HTMLCanvasElement>) => {
-    if (mode !== 'select' || e.altKey || e.ctrlKey || e.metaKey) return;
+    if (!isCanvasKeyboardEvent(e.nativeEvent) || window.getSelection()?.isCollapsed === false) return;
+    if (isDeleteKey(e.nativeEvent) && selectedLayerId && onDeleteLayer) {
+      e.preventDefault();
+      onDeleteLayer(selectedLayerId);
+      return;
+    }
+
+    if (mode !== 'select') return;
     const layer = doc.layers.find((item) => item.id === selectedLayerId);
     const dx = Number(e.key === 'ArrowRight') - Number(e.key === 'ArrowLeft');
     const dy = Number(e.key === 'ArrowDown') - Number(e.key === 'ArrowUp');
@@ -670,23 +693,31 @@ export function CanvasStage({
     onPushDoc({ ...doc, layers: doc.layers.map((item) => (item.id === layer.id ? moved : item)) });
   };
 
-  // Keyboard listener for Delete
+  // Compact editors also allow Delete when the page has no focused control.
   useEffect(() => {
+    if (workspace || !selectedLayerId || !onDeleteLayer) return;
     const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
-        return;
-      }
+      if (!isDeleteKey(e) || !isCanvasKeyboardEvent(e) || window.getSelection()?.isCollapsed === false) return;
 
-      if ((e.key === 'Delete' || e.key === 'Backspace') && selectedLayerId && onDeleteLayer) {
-        e.preventDefault();
-        onDeleteLayer(selectedLayerId);
-      }
+      const target = e.target;
+      if (
+        !(target instanceof Element) ||
+        target.closest(
+          'input, textarea, select, button, label, a[href], summary, [contenteditable], audio[controls], video[controls], iframe, ' +
+            'dialog, [role="dialog"], [role="alertdialog"], [popover], [role="button"], [role="textbox"], [role="combobox"], ' +
+            '[role="listbox"], [role="menu"], [role="slider"], [role="spinbutton"]',
+        ) ||
+        document.querySelector('dialog[open], [role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]')
+      )
+        return;
+
+      e.preventDefault();
+      onDeleteLayer(selectedLayerId);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedLayerId, onDeleteLayer]);
+  }, [workspace, selectedLayerId, onDeleteLayer]);
 
   const getCursorClass = () => {
     if (mode === 'draw') return styles.modeDraw;
@@ -704,6 +735,13 @@ export function CanvasStage({
           ? 'Editing canvas. Arrow keys move the selected layer by one pixel. Hold Shift to move by ten. Delete removes the selected layer.'
           : 'Editing canvas',
       )}
+      aria-keyshortcuts={
+        workspace
+          ? mode === 'select'
+            ? 'ArrowUp ArrowDown ArrowLeft ArrowRight Shift+ArrowUp Shift+ArrowDown Shift+ArrowLeft Shift+ArrowRight Delete Backspace'
+            : 'Delete Backspace'
+          : undefined
+      }
       className={`${styles.canvasElement} ${getCursorClass()} ${rotationPreview ? styles.rotatingCanvas : ''}`}
       tabIndex={workspace ? 0 : undefined}
       width={doc.width}

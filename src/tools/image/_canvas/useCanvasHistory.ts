@@ -16,7 +16,7 @@ function cloneDoc(doc: CanvasDocument): CanvasDocument {
   };
 }
 
-export function useCanvasHistory(initialDoc: CanvasDocument) {
+export function useCanvasHistory(initialDoc: CanvasDocument, { keyboardShortcuts = true } = {}) {
   const [history, setHistory] = useState<CanvasDocument[]>([cloneDoc(initialDoc)]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
 
@@ -59,6 +59,7 @@ export function useCanvasHistory(initialDoc: CanvasDocument) {
 
   // Global undo/redo keyboard listener
   useEffect(() => {
+    if (!keyboardShortcuts) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable)) {
@@ -80,7 +81,7 @@ export function useCanvasHistory(initialDoc: CanvasDocument) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undo, redo]);
+  }, [keyboardShortcuts, undo, redo]);
 
   return {
     document: history[currentIndex] || initialDoc,

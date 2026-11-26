@@ -53,7 +53,8 @@ Theme-dependent colours resolve through `light-dark()`. Charcoal is the first-vi
 | `--surface-sunken` | Wells, previews, chips, inner panels |
 | `--surface-raised` | Menus and dialogs |
 | `--surface-hover` / `--surface-active` | Hover and pressed fills |
-| `--border` / `--border-strong` / `--border-hover` | Lines: default, inputs and secondary buttons, hover |
+| `--border-quiet` | Subtle divisions between sections, panels and rows |
+| `--border` / `--border-strong` / `--border-hover` | Default, emphasized and hovered control edges |
 | `--text` / `--text-muted` / `--text-subtle` | Primary, secondary, placeholder/decorative text |
 | `--signal` / `--signal-ink` | Signal-lime fill and dark ink for shared primary buttons |
 | `--accent` / `--accent-hover` | Theme-aware emphasis for focus and interactive states |

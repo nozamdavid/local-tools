@@ -1,5 +1,4 @@
 .workspace {
-  color-scheme: dark;
   position: fixed;
   inset: 0;
   width: 100%;
@@ -23,10 +22,10 @@
   display: grid;
   grid-template-columns: auto minmax(0, 1fr) auto auto;
   align-items: center;
-  gap: 0.75rem;
+  gap: var(--space-3);
   background: var(--surface);
-  border-bottom: 1px solid var(--border);
-  padding: 0.5rem 0.875rem;
+  border-bottom: 1px solid var(--border-quiet);
+  padding: var(--space-2) var(--space-4);
 }
 
 .filename {
@@ -50,12 +49,16 @@
 }
 
 .historyGroup {
-  border-inline: 1px solid var(--border);
-  padding-inline: 0.5rem;
+  border-inline-end: 1px solid var(--border-quiet);
+  padding-inline-end: var(--space-2);
 }
 
 .exportActions {
   position: relative;
+}
+
+.exportActions > button {
+  min-height: 2.25rem;
 }
 
 .formatButton {
@@ -134,16 +137,16 @@
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: 5.75rem minmax(0, 1fr) minmax(15rem, 18rem);
+  grid-template-columns: 6rem minmax(0, 1fr) minmax(15rem, 18rem);
   grid-template-rows: minmax(0, 1fr);
 }
 
 .toolRail {
   display: flex;
   flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem;
-  border-inline-end: 1px solid var(--border);
+  gap: var(--space-1);
+  padding: var(--space-2);
+  border-inline-end: 1px solid var(--border-quiet);
   background: var(--surface);
   overflow: auto;
   overscroll-behavior: contain;
@@ -152,19 +155,32 @@
 .toolButton {
   flex: none;
   flex-direction: column;
-  gap: 0.25rem;
-  min-height: 2.75rem;
-  padding: 0.375rem 0.125rem;
-  font-size: 0.75rem;
-  font-weight: 550;
-  line-height: 1.15;
+  gap: var(--space-1);
+  min-height: 3rem;
+  padding: var(--space-1);
+  font-size: var(--text-xs);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-tight);
   text-align: center;
+  overflow-wrap: anywhere;
+}
+
+.toolIcon {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.toolKey {
+  padding-inline: 0.2em;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  font: 0.625rem var(--font-mono);
 }
 
 .toolButton[aria-pressed='true'],
 .layerList button[aria-pressed='true'] {
   color: var(--accent-text);
-  border-color: var(--accent-border);
   background: var(--accent-soft);
 }
 
@@ -174,7 +190,7 @@
   min-width: 0;
   overflow: auto;
   overscroll-behavior: contain;
-  border-inline-start: 1px solid var(--border);
+  border-inline-start: 1px solid var(--border-quiet);
   background: var(--surface);
 }
 
@@ -183,28 +199,47 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 0.875rem;
-  padding: 0.875rem;
+  gap: var(--space-3);
+  padding: var(--space-4);
 }
 
 .inspector h2 {
   display: flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: var(--space-1-5);
   margin: 0;
-  font-size: 0.875rem;
-  font-weight: 650;
+  font-size: var(--text-md);
+  font-weight: var(--weight-semibold);
 }
 
 .controlGrid {
   display: grid;
   min-width: 0;
-  gap: 0.75rem;
+  gap: var(--space-3);
 }
 
-.controlGrid > :global(.field),
+.controlsPanel :global(.field) {
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.controlsPanel :global(.field-label) {
+  font-size: var(--text-sm);
+}
+
+.controlsPanel :is(:global(.input), :global(.select), :global(.textarea)):not(:hover, :focus, [aria-invalid='true']) {
+  border-color: color-mix(in srgb, var(--input-border) 94%, var(--surface));
+}
+
 .controlsPanel :global(.slider) {
   min-width: 0;
+}
+
+.controlsPanel :global(.slider-value) {
+  padding-inline: 0;
+  border-color: transparent;
+  background: transparent;
+  text-align: end;
 }
 
 .controlGrid > :global(.btn) {
@@ -263,8 +298,8 @@
 }
 
 .layerSection {
-  border-top: 1px solid var(--border);
-  gap: 0.375rem;
+  border-top: 1px solid var(--border-quiet);
+  gap: var(--space-2);
 }
 
 .layerHeading {
@@ -311,18 +346,18 @@
 
   .toolRail {
     flex-flow: row wrap;
-    gap: 0.125rem;
+    gap: var(--space-0-5);
     border-inline-end: 0;
-    border-bottom: 1px solid var(--border);
-    padding: 0.25rem;
+    border-bottom: 1px solid var(--border-quiet);
+    padding: var(--space-1);
   }
 
   .toolButton {
     flex: 1 0 calc((100% - 0.625rem) / 6);
-    justify-content: flex-start;
     min-width: 0;
-    font-size: 0.6875rem;
-    overflow-wrap: anywhere;
+    min-height: 2.75rem;
+    font-size: var(--text-2xs);
+    padding: var(--space-1) var(--space-0-5);
   }
 
   .transformActions > button {
@@ -331,13 +366,16 @@
 
   .inspector {
     border-inline-start: 0;
-    border-top: 1px solid var(--border);
+    border-top: 1px solid var(--border-quiet);
   }
 
   .controlsPanel,
   .layerSection {
-    gap: 0.625rem;
-    padding: 0.625rem;
+    padding: var(--space-3);
+  }
+
+  .controlsPanel :global(.slider) {
+    height: 2.5rem;
   }
 
   .controlGrid {
@@ -352,18 +390,19 @@
 @media (max-width: 500px) {
   .topBar {
     grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 0.25rem 0.375rem;
-    padding: 0.375rem 0.5rem;
+    gap: var(--space-1) var(--space-1-5);
+    padding: var(--space-1) var(--space-2);
   }
 
   .historyGroup {
     border-inline-end: 0;
-    padding-inline: 0.25rem 0;
+    padding-inline: 0;
     gap: 0;
   }
 
   .exportActions {
     grid-column: 1 / -1;
+    flex-wrap: wrap;
     justify-content: flex-end;
   }
 }

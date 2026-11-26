@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -27,6 +27,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { getToolMeta } from '../../registry';
 import { FileDrop } from '../../../components/FileDrop';
 import { CopyImageButton } from '../../../components/CopyImageButton';
+import { EditorShortcuts } from '../../../components/EditorShortcuts';
 import { normalizeRotation, RotationControl } from '../../../components/RotationControl';
 import { Button, Field, Slider, Select } from '../../../components/Controls';
 import { decodeImage, IMAGE_ACCEPT, EncodableMime } from '../../../lib/image';
@@ -60,6 +61,20 @@ const TOOLS = [
 
 type TabType = (typeof TOOLS)[number]['id'];
 type PhotoSource = { file: File; original: HTMLImageElement; initialDoc: CanvasDocument };
+
+const TOOL_SHORTCUTS: Partial<Record<TabType, string>> = {
+  select: 'V',
+  crop: 'C',
+  text: 'T',
+  draw: 'B',
+  highlight: 'H',
+  arrow: 'A',
+  shapes: 'U',
+  redact: 'R',
+};
+const UNDO_KEYS = ['Ctrl+Z', 'Meta+Z'];
+const REDO_KEYS = ['Ctrl+Shift+Z', 'Meta+Shift+Z', 'Ctrl+Y', 'Meta+Y'];
+const NUDGE_KEYS = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
 const SHAPES = [
   { type: 'rect', label: 'Rectangle' },
@@ -168,7 +183,7 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
   const [isExporting, setIsExporting] = useState<boolean>(false);
 
   // Canvas history
-  const { document: doc, canUndo, canRedo, undo, redo, pushDoc } = useCanvasHistory(initialDoc);
+  const { document: doc, canUndo, canRedo, undo, redo, pushDoc } = useCanvasHistory(initialDoc, { keyboardShortcuts: false });
   const base = getBaseTransform(doc);
   const [anglePreview, setAnglePreview] = useState<{ doc: CanvasDocument; angle: number } | null>(null);
   const previewAngle = activeTab === 'transform' && anglePreview?.doc === doc ? anglePreview.angle : null;
@@ -525,20 +540,64 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
     setActiveTab(tab);
   };
 
+  const shortcuts = [
+    ...TOOLS.flatMap(({ id, label }) => {
+      const key = TOOL_SHORTCUTS[id];
+      return key ? [{ label: t(label), keys: [key] }] : [];
+    }),
+    { label: t('Undo'), keys: UNDO_KEYS },
+    { label: t('Redo'), keys: REDO_KEYS },
+    { label: t('Move selected layer by one pixel'), keys: NUDGE_KEYS },
+    { label: t('Move selected layer by ten pixels'), keys: NUDGE_KEYS.map((key) => `Shift+${key}`) },
+    { label: t('Delete layer'), keys: ['Delete', 'Backspace'] },
+  ];
+
+  const handleWorkspaceKey = (event: KeyboardEvent<HTMLDialogElement>) => {
+    const { currentTarget, target, nativeEvent } = event;
+    if (event.defaultPrevented || !(target instanceof Element) || !currentTarget.contains(target)) return;
+
+    const key = event.key.toUpperCase();
+    const command = event.ctrlKey !== event.metaKey;
+    const composing = nativeEvent.isComposing || nativeEvent.keyCode === 229;
+    const alt = event.altKey || event.getModifierState('AltGraph');
+    const nativeControl = target.closest(
+      'input, textarea, select, [contenteditable], [role="textbox"], [role="combobox"], [role="listbox"], [role="menu"], ' +
+        '[role="slider"], [role="spinbutton"]',
+    );
+    const nestedOverlay = target.closest('dialog, [role="dialog"], [role="alertdialog"], [popover]') !== currentTarget;
+
+    // Keep global palette triggers inside the workspace without swallowing native edits.
+    if (((event.ctrlKey || event.metaKey) && key === 'K') || key === '/') {
+      event.stopPropagation();
+      const paletteShortcut = key === 'K' ? command && !event.shiftKey : !event.ctrlKey && !event.metaKey && !event.shiftKey;
+      if (paletteShortcut && !composing && !alt && !nativeControl && !nestedOverlay) event.preventDefault();
+      return;
+    }
+    if (composing || alt || closing || closeFailed || nativeControl || nestedOverlay || window.getSelection()?.isCollapsed === false)
+      return;
+
+    if (command && (key === 'Z' || (key === 'Y' && !event.shiftKey))) {
+      event.preventDefault();
+      if (key === 'Y' || event.shiftKey) redo();
+      else undo();
+      return;
+    }
+    if (event.ctrlKey || event.metaKey || event.shiftKey || event.repeat) return;
+
+    const nextTool = TOOLS.find(({ id }) => TOOL_SHORTCUTS[id] === key);
+    if (nextTool) {
+      event.preventDefault();
+      selectTool(nextTool.id);
+    }
+  };
+
   return createPortal(
     <dialog
       ref={dialogRef}
+      data-editor-workspace
       className={styles.workspace}
       aria-label={t('Photo Editor')}
-      onKeyDown={(event) => {
-        if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') event.preventDefault();
-        if (
-          event.key === '/' &&
-          event.target instanceof HTMLElement &&
-          !event.target.closest('input, textarea, select, [contenteditable="true"]')
-        )
-          event.preventDefault();
-      }}
+      onKeyDown={handleWorkspaceKey}
       onCancel={(event) => {
         if (event.target !== event.currentTarget) return;
         event.preventDefault();
@@ -565,7 +624,8 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
             type="button"
             className={styles.iconBtn}
             aria-label={t('Undo')}
-            title={t('Undo (Ctrl+Z)')}
+            aria-keyshortcuts="Control+Z Meta+Z"
+            title={`${t('Undo')} (Ctrl+Z / ⌘Z)`}
             data-testid="undo-btn"
             disabled={!canUndo}
             onClick={undo}
@@ -576,13 +636,15 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
             type="button"
             className={styles.iconBtn}
             aria-label={t('Redo')}
-            title={t('Redo (Ctrl+Shift+Z)')}
+            aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y"
+            title={`${t('Redo')} (Ctrl+Shift+Z / ⇧⌘Z)`}
             data-testid="redo-btn"
             disabled={!canRedo}
             onClick={redo}
           >
             <Redo2 aria-hidden="true" />
           </button>
+          <EditorShortcuts shortcuts={shortcuts} />
         </div>
         <div className={styles.exportActions}>
           <CopyImageButton getImage={getExportBlob} disabled={isExporting} size="sm" filename={exportFilename} />
@@ -648,19 +710,31 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
 
       <div className={styles.workArea}>
         <nav className={styles.toolRail} aria-label={t('Photo editing tools')}>
-          {TOOLS.filter(({ id }) => id !== 'export').map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              className={styles.toolButton}
-              aria-pressed={activeTab === id}
-              title={t(label)}
-              onClick={() => selectTool(id)}
-            >
-              <Icon aria-hidden="true" />
-              <span>{t(label)}</span>
-            </button>
-          ))}
+          {TOOLS.filter(({ id }) => id !== 'export').map(({ id, label, icon: Icon }) => {
+            const key = TOOL_SHORTCUTS[id];
+            const name = t(label);
+            return (
+              <button
+                key={id}
+                type="button"
+                className={styles.toolButton}
+                aria-pressed={activeTab === id}
+                aria-keyshortcuts={key}
+                title={key ? `${name} (${key})` : name}
+                onClick={() => selectTool(id)}
+              >
+                <span className={styles.toolIcon}>
+                  <Icon aria-hidden="true" />
+                  {key && (
+                    <kbd className={styles.toolKey} aria-hidden="true">
+                      {key}
+                    </kbd>
+                  )}
+                </span>
+                <span>{name}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <CanvasStage
@@ -675,7 +749,7 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
           workspace
           onSelectLayer={setSelectedLayerId}
           onPushDoc={pushDoc}
-          onDeleteLayer={deleteLayer}
+          onDeleteLayer={closing || closeFailed ? undefined : deleteLayer}
         />
 
         <aside id="photo-inspector" ref={inspectorRef} className={styles.inspector} aria-labelledby="photo-inspector-title">
@@ -1080,7 +1154,7 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
                   className={styles.iconBtn}
                   disabled={!selectedLayer}
                   aria-label={t('Delete layer')}
-                  title={t('Delete layer')}
+                  title={`${t('Delete layer')} (${t('Delete')} / ${t('Backspace')})`}
                   onClick={() => selectedLayer && deleteLayer(selectedLayer.id)}
                 >
                   <Trash2 aria-hidden="true" />

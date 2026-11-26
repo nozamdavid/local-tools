@@ -5,7 +5,7 @@ description: A charcoal developer workspace with signal-lime actions.
 
 ## Overview
 
-Loconvert pairs a charcoal workspace with crisp rules, compact controls, and a single strong action color. Keep the workspace legible across dark, light, and system appearance settings. See the [design system](docs/design-system.md) for tokens, component APIs, and implementation details.
+Loconvert pairs a charcoal workspace with compact controls and a single strong action color. Keep the workspace legible across dark, light, and system appearance settings. See the [design system](docs/design-system.md) for tokens, component APIs, and implementation details.
 
 ## Colors
 
@@ -17,11 +17,11 @@ Use bold, fluid Geist display type for the home headline and smaller Geist headi
 
 ## Layout
 
-Pair the home headline with the file picker in the first section and stack them on narrow screens. Below it, use a compact directory with ruled rows for media families, category links, and counts. Let category links wrap within the row.
+Pair the home headline with the file picker in the first section and stack them on narrow screens. Below it, use a compact directory with media families, category links, and counts. Let category links and catalogue descriptions wrap within their rows.
 
 ## Elevation & Depth
 
-Separate rows and working surfaces with thin rules and changes in surface tone. Reserve shadow for layers such as dialogs.
+Use spacing to group headings, file previews, and actions. Use quiet rules between directory groups and surface tone to distinguish working areas. Keep control boundaries distinct and reserve shadow for layers such as dialogs.
 
 ## Shapes
 

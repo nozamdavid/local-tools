@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -28,8 +28,9 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { Button, Field, Select } from '../../components/Controls';
+import { Button, Field, Kbd, Select } from '../../components/Controls';
 import { CopyImageButton } from '../../components/CopyImageButton';
+import { EditorShortcuts } from '../../components/EditorShortcuts';
 import { FileDrop } from '../../components/FileDrop';
 import { ProgressBar } from '../../components/ProgressBar';
 import { normalizeRotation, RotationControl } from '../../components/RotationControl';
@@ -73,11 +74,11 @@ const initial: Draft = {
   format: 'mp4',
 };
 const tools = [
-  { id: 'trim', label: 'Trim', Icon: Brackets },
-  { id: 'crop', label: 'Crop', Icon: Crop },
-  { id: 'transform', label: 'Transform', Icon: RotateCw },
-  { id: 'speed', label: 'Speed', Icon: Gauge },
-  { id: 'audio', label: 'Audio', Icon: AudioLines },
+  { id: 'trim', label: 'Trim', Icon: Brackets, shortcut: 'T' },
+  { id: 'crop', label: 'Crop', Icon: Crop, shortcut: 'C' },
+  { id: 'transform', label: 'Transform', Icon: RotateCw, shortcut: 'R' },
+  { id: 'speed', label: 'Speed', Icon: Gauge, shortcut: undefined },
+  { id: 'audio', label: 'Audio', Icon: AudioLines, shortcut: undefined },
 ] as const;
 
 type NumberFieldProps = { label: string; value: number; min: number; max: number; step?: number; onChange: (value: number) => void };
@@ -128,12 +129,16 @@ function IconAction({
   disabled,
   onClick,
   pressed,
+  shortcut,
+  hint = shortcut,
 }: {
   label: string;
   children: ReactNode;
   disabled?: boolean;
   onClick: () => void;
   pressed?: boolean;
+  shortcut?: string;
+  hint?: string;
 }) {
   return (
     <Button
@@ -143,7 +148,8 @@ function IconAction({
       onClick={onClick}
       aria-pressed={pressed}
       aria-label={label}
-      title={label}
+      aria-keyshortcuts={shortcut}
+      title={hint ? `${label} (${hint})` : label}
       icon={children}
     />
   );
@@ -244,6 +250,7 @@ export default function VideoEditor() {
   const canSplit =
     location && location.source > clips[location.index].start + splitMargin && location.source < clips[location.index].end - splitMargin;
   const canTrim = selected && trimPoint > selected.start + margin && trimPoint < selected.end - margin;
+  const canRemove = !!selected && clips.length > 1;
   const canResetTrim = selected && trimBounds && (selected.start !== trimBounds.start || selected.end !== trimBounds.end);
   const exporting = !!job && 'progress' in job;
   const controlsDisabled = loadingAudio || leaving;
@@ -474,7 +481,7 @@ export default function VideoEditor() {
   }
 
   function removeClip() {
-    if (!selected || clips.length < 2) return;
+    if (!canRemove) return;
     const sourceIndex = selected.sourceIndex ?? 0;
     let segments = edit.segments.filter((_, index) => index !== selectedIndex);
     let nextBounds = history.present.trimBounds.filter((_, index) => index !== selectedIndex);
@@ -537,6 +544,15 @@ export default function VideoEditor() {
     apply({ ...history.present, edit: updated }, seekTime);
   }
 
+  function trimAtPlayhead(boundary: 'start' | 'end') {
+    if (canTrim) trim(boundary, trimPoint);
+  }
+
+  function openPane(nextPane: Pane) {
+    setRotationPreview(null);
+    setPane(nextPane);
+  }
+
   function stepFrame(direction: -1 | 1) {
     const previous = location && direction === -1 && preview.time <= clips[location.index].at ? clips[location.index - 1] : undefined;
     const rate = previous ? videos[previous.sourceIndex ?? 0].frameRate : playheadRate;
@@ -548,26 +564,58 @@ export default function VideoEditor() {
     preview.seek(time);
   }
 
-  const handleShortcut = useEffectEvent((event: KeyboardEvent) => {
-    if (!ready || leaving || event.defaultPrevented || event.isComposing || event.altKey) return;
-    const target = event.target as HTMLElement | null;
+  function handleShortcut(event: KeyboardEvent<HTMLDivElement>) {
+    if (!ready || leaving || event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+    if (event.altKey || event.getModifierState('AltGraph')) return;
+
+    const target = event.target;
+    if (!(target instanceof Element) || !event.currentTarget.contains(target)) return;
+    if (
+      target.closest('dialog, [role="dialog"], [role="alertdialog"], [popover]') ||
+      document.querySelector('dialog[open], [role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]')
+    )
+      return;
+    if (
+      target !== playheadInput.current &&
+      target.closest('input, select, textarea, [contenteditable], [role="textbox"], [role="combobox"], [role="spinbutton"]')
+    )
+      return;
+
     const key = event.key.toLowerCase();
-    const splitFromPlayhead = target === playheadInput.current && key === 's' && !event.ctrlKey && !event.metaKey && !event.shiftKey;
-    if (!splitFromPlayhead && target?.closest('input, select, textarea, [contenteditable], dialog')) return;
-    if ((event.metaKey || event.ctrlKey) && key === 'z') changeHistory(event.shiftKey ? 'redo' : 'undo');
-    else if ((event.metaKey || event.ctrlKey) && key === 'y') changeHistory('redo');
-    else if (event.metaKey || event.ctrlKey) return;
-    else if (key === ' ' && !target?.closest('button, a')) void preview.togglePlayback();
-    else if (key === 'arrowleft' || key === 'arrowright') stepFrame(key === 'arrowleft' ? -1 : 1);
-    else if (key === 's') split();
-    else return;
-    event.preventDefault();
-  });
-  useEffect(() => {
-    const listener = (event: KeyboardEvent) => handleShortcut(event);
-    window.addEventListener('keydown', listener);
-    return () => window.removeEventListener('keydown', listener);
-  }, []);
+    if (event.metaKey || event.ctrlKey) {
+      if (event.metaKey && event.ctrlKey) return;
+      if (key !== 'z' && (key !== 'y' || event.shiftKey)) return;
+      event.preventDefault();
+      if (!event.repeat) changeHistory(key === 'y' || event.shiftKey ? 'redo' : 'undo');
+      return;
+    }
+    if (event.shiftKey) return;
+
+    const paneTool = tools.find(({ shortcut }) => shortcut?.toLowerCase() === key);
+    if (paneTool) {
+      event.preventDefault();
+      if (!event.repeat) openPane(paneTool.id);
+    } else if (key === ' ' && !target.closest('button, a, [role="button"], [role="switch"]')) {
+      event.preventDefault();
+      if (!event.repeat) void preview.togglePlayback();
+    } else if (key === 'arrowleft' || key === 'arrowright') {
+      event.preventDefault();
+      if (key === 'arrowleft' ? preview.time > 0 : preview.time < duration) stepFrame(key === 'arrowleft' ? -1 : 1);
+    } else if (key === 'home' || key === 'end') {
+      event.preventDefault();
+      if (!event.repeat) scrubTo(key === 'home' ? 0 : duration);
+    } else if (key === 's' || key === 'i' || key === 'o' || key === 'delete' || key === 'backspace') {
+      event.preventDefault();
+      if (event.repeat) return;
+      if (key === 's') split();
+      else if (key === 'i' || key === 'o') trimAtPlayhead(key === 'i' ? 'start' : 'end');
+      else if (canRemove) {
+        // Clips use positional keys, so the last timeline button disappears after removal.
+        if (target.matches(`.${styles.clip}:nth-child(${clips.length})`)) playheadInput.current?.focus({ preventScroll: true });
+        removeClip();
+      }
+    }
+  }
 
   async function pickSoundtrack(file: File) {
     if (!matchesAccept(file, audioAccept)) {
@@ -665,7 +713,12 @@ export default function VideoEditor() {
   const cropVideo = pane === 'crop' && crop && metadata ? preview.videoRef.current : null;
 
   return (
-    <div className={styles.workspace}>
+    <div
+      className={styles.workspace}
+      data-editor-workspace={ready ? '' : undefined}
+      tabIndex={ready ? -1 : undefined}
+      onKeyDown={handleShortcut}
+    >
       <header className={styles.header}>
         {source ? (
           <IconAction label={t('Back to home')} disabled={leaving} onClick={() => void leave(true)}>
@@ -685,13 +738,41 @@ export default function VideoEditor() {
         {ready && (
           <>
             <div className={styles.history}>
-              <IconAction label={t('Undo')} disabled={!history.past.length || leaving} onClick={() => changeHistory('undo')}>
+              <IconAction
+                label={t('Undo')}
+                shortcut="Control+Z Meta+Z"
+                hint={`${t('Ctrl')}+Z / ${t('Cmd')}+Z`}
+                disabled={!history.past.length || leaving}
+                onClick={() => changeHistory('undo')}
+              >
                 <Undo2 />
               </IconAction>
-              <IconAction label={t('Redo')} disabled={!history.future.length || leaving} onClick={() => changeHistory('redo')}>
+              <IconAction
+                label={t('Redo')}
+                shortcut="Control+Shift+Z Meta+Shift+Z Control+Y Meta+Y"
+                hint={`${t('Ctrl')}+${t('Shift')}+Z / ${t('Cmd')}+${t('Shift')}+Z`}
+                disabled={!history.future.length || leaving}
+                onClick={() => changeHistory('redo')}
+              >
                 <Redo2 />
               </IconAction>
             </div>
+            <EditorShortcuts
+              shortcuts={[
+                { label: `${t('Play')} / ${t('Pause')}`, keys: ['Space'] },
+                { label: t('Previous frame'), keys: ['ArrowLeft'] },
+                { label: t('Next frame'), keys: ['ArrowRight'] },
+                { label: t('Go to start of timeline'), keys: ['Home'] },
+                { label: t('Go to end of timeline'), keys: ['End'] },
+                { label: t('Split at playhead'), keys: ['S'] },
+                { label: t('Set in to playhead'), keys: ['I'] },
+                { label: t('Set out to playhead'), keys: ['O'] },
+                { label: t('Remove selected clip'), keys: ['Delete', 'Backspace'] },
+                ...tools.flatMap(({ label, shortcut }) => (shortcut ? [{ label: t(label), keys: [shortcut] }] : [])),
+                { label: t('Undo'), keys: ['Ctrl+Z', 'Meta+Z'] },
+                { label: t('Redo'), keys: ['Ctrl+Shift+Z', 'Meta+Shift+Z', 'Ctrl+Y', 'Meta+Y'] },
+              ]}
+            />
             <div className={styles.export}>
               <label htmlFor={formatId} className="sr-only">
                 {t('Export format')}
@@ -815,20 +896,26 @@ export default function VideoEditor() {
         <>
           <div className={styles.body}>
             <aside className={styles.rail} aria-label={t('Video editing tools')}>
-              <button type="button" className={styles.railButton} title={t('Split at playhead')} disabled={!canSplit} onClick={split}>
+              <button
+                type="button"
+                className={styles.railButton}
+                title={`${t('Split at playhead')} (S)`}
+                aria-keyshortcuts="S"
+                disabled={!canSplit}
+                onClick={split}
+              >
                 <Scissors size={18} aria-hidden="true" />
                 <span>{t('Cut')}</span>
               </button>
-              {tools.map(({ id, label, Icon }) => (
+              {tools.map(({ id, label, Icon, shortcut }) => (
                 <button
                   key={id}
                   type="button"
                   className={styles.railButton}
                   aria-pressed={pane === id}
-                  onClick={() => {
-                    setRotationPreview(null);
-                    setPane(id);
-                  }}
+                  aria-keyshortcuts={shortcut}
+                  title={shortcut ? `${t(label)} (${shortcut})` : undefined}
+                  onClick={() => openPane(id)}
                 >
                   <Icon size={18} aria-hidden="true" />
                   <span>{t(label)}</span>
@@ -875,18 +962,31 @@ export default function VideoEditor() {
                   {formatPlayhead(preview.time)} <span>/ {formatPlayhead(duration)}</span>
                 </span>
                 <div className={styles.playback}>
-                  <IconAction label={t('Previous frame')} onClick={() => stepFrame(-1)} disabled={preview.time <= 0}>
+                  <IconAction
+                    label={t('Previous frame')}
+                    shortcut="ArrowLeft"
+                    hint="←"
+                    onClick={() => stepFrame(-1)}
+                    disabled={preview.time <= 0}
+                  >
                     <SkipBack />
                   </IconAction>
                   <Button
                     variant="secondary"
                     size="sm"
                     aria-label={t(preview.playing ? 'Pause' : 'Play')}
-                    title={t(preview.playing ? 'Pause' : 'Play')}
+                    title={`${t(preview.playing ? 'Pause' : 'Play')} (${t('Space')})`}
+                    aria-keyshortcuts="Space"
                     icon={preview.playing ? <Pause /> : <Play />}
                     onClick={() => void preview.togglePlayback()}
                   />
-                  <IconAction label={t('Next frame')} onClick={() => stepFrame(1)} disabled={preview.time >= duration}>
+                  <IconAction
+                    label={t('Next frame')}
+                    shortcut="ArrowRight"
+                    hint="→"
+                    onClick={() => stepFrame(1)}
+                    disabled={preview.time >= duration}
+                  >
                     <SkipForward />
                   </IconAction>
                 </div>
@@ -922,19 +1022,21 @@ export default function VideoEditor() {
                   size="sm"
                   aria-label={t('Split at playhead')}
                   aria-keyshortcuts="S"
-                  title={t('Split at playhead')}
+                  title={`${t('Split at playhead')} (S)`}
                   disabled={!canSplit}
                   icon={<Scissors />}
                   onClick={split}
                 >
                   {t('Split')}
+                  <Kbd>S</Kbd>
                 </Button>
                 <Button
                   variant="ghost"
                   size="sm"
                   aria-label={t('Remove selected clip')}
-                  title={t('Remove selected clip')}
-                  disabled={clips.length < 2}
+                  aria-keyshortcuts="Delete Backspace"
+                  title={`${t('Remove selected clip')} (${t('Del')} / ${t('Backspace')})`}
+                  disabled={!canRemove}
                   icon={<Trash2 />}
                   onClick={removeClip}
                 >
@@ -975,11 +1077,7 @@ export default function VideoEditor() {
                       step="any"
                       aria-label={t('Timeline playhead')}
                       aria-valuetext={formatPlayhead(preview.time)}
-                      onKeyDown={(event) => {
-                        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-                        event.preventDefault();
-                        stepFrame(event.key === 'ArrowLeft' ? -1 : 1);
-                      }}
+                      aria-keyshortcuts="ArrowLeft ArrowRight Home End"
                       onChange={(event) => scrubTo(Number(event.currentTarget.value))}
                     />
                   </div>
@@ -1116,11 +1214,27 @@ export default function VideoEditor() {
                     onChange={(value) => trim('end', value)}
                   />
                   <div className={styles.actions}>
-                    <Button variant="secondary" size="sm" disabled={!canTrim} onClick={() => trim('start', trimPoint)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      aria-keyshortcuts="I"
+                      aria-label={t('Set in to playhead')}
+                      disabled={!canTrim}
+                      onClick={() => trimAtPlayhead('start')}
+                    >
                       {t('Set in to playhead')}
+                      <Kbd>I</Kbd>
                     </Button>
-                    <Button variant="secondary" size="sm" disabled={!canTrim} onClick={() => trim('end', trimPoint)}>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      aria-keyshortcuts="O"
+                      aria-label={t('Set out to playhead')}
+                      disabled={!canTrim}
+                      onClick={() => trimAtPlayhead('end')}
+                    >
                       {t('Set out to playhead')}
+                      <Kbd>O</Kbd>
                     </Button>
                     <Button variant="ghost" size="sm" disabled={!canResetTrim} onClick={resetTrim}>
                       {t('Reset trim')}

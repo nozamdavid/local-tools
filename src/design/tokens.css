@@ -66,6 +66,7 @@
 
   /* Lines */
   --border: light-dark(var(--gray-150), var(--gray-800));
+  --border-quiet: color-mix(in srgb, var(--border) 70%, transparent);
   --border-strong: light-dark(var(--gray-200), var(--gray-750));
   --border-hover: light-dark(var(--gray-300), var(--gray-700));
 
