@@ -3,6 +3,7 @@ import { Maximize, Minus, Plus } from 'lucide-react';
 import { CanvasDocument, Layer, TransformHandle, PathLayer } from './types';
 import { renderDocument } from './render';
 import { useI18n } from '../../../lib/i18n';
+import { RotationMask } from '../../../components/RotationMask';
 import styles from './CanvasStage.module.css';
 
 export interface CropRect {
@@ -36,7 +37,11 @@ export interface CanvasStageProps {
   shapeConfig?: ShapeConfig;
   drawConfig?: DrawConfig;
   cropRect?: CropRect;
-  rotationPreview?: { delta: number; width: number; height: number };
+  rotationPreview?: {
+    delta: number;
+    surround: { width: number; height: number };
+    kept: { width: number; height: number; x?: number; y?: number };
+  };
   workspace?: boolean;
   onCropChange?: (rect: CropRect) => void;
   onSelectLayer: (layerId: string | null) => void;
@@ -113,9 +118,9 @@ export function CanvasStage({
   };
   const zoom = 2 ** (zoomStep / 2);
   const scale = fitScale(doc.width, doc.height) * zoom;
-  const width = rotationPreview?.width ?? doc.width;
-  const height = rotationPreview?.height ?? doc.height;
-  const displayScale = rotationPreview ? fitScale(width, height) * zoom : scale;
+  const surround = rotationPreview?.surround ?? doc;
+  const kept = rotationPreview?.kept ?? doc;
+  const displayScale = rotationPreview ? fitScale(surround.width, surround.height) * zoom : scale;
   const nextLayer = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pointerId = useRef<number | null>(null);
@@ -149,7 +154,7 @@ export function CanvasStage({
     if (!workspace || !viewport) return;
     viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
     viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
-  }, [displayScale, width, height, workspace]);
+  }, [displayScale, surround.width, surround.height, workspace]);
 
   // Redraw canvas with layers & overlays
   const redraw = useCallback(() => {
@@ -747,8 +752,8 @@ export function CanvasStage({
       width={doc.width}
       height={doc.height}
       style={{
-        width: `${Math.max(1, doc.width * displayScale)}px`,
-        height: `${Math.max(1, doc.height * displayScale)}px`,
+        width: rotationPreview ? doc.width * displayScale : Math.max(1, doc.width * displayScale),
+        height: rotationPreview ? doc.height * displayScale : Math.max(1, doc.height * displayScale),
         transform: rotationPreview ? `translate(-50%, -50%) rotate(${rotationPreview.delta}deg)` : undefined,
       }}
       onKeyDown={workspace ? handleCanvasKey : undefined}
@@ -766,23 +771,26 @@ export function CanvasStage({
         <div
           ref={containerRef}
           className={styles.workspaceFrame}
-          style={{ '--image-ratio': doc.height / doc.width } as React.CSSProperties}
+          style={{ '--image-ratio': rotationPreview ? 1 : doc.height / doc.width } as React.CSSProperties}
         >
           <div ref={scrollRef} className={styles.workspaceScroll}>
             <div className={styles.workspaceCanvas}>
               <div
-                className={styles.imageFrame}
-                style={{ width: Math.max(1, width * displayScale), height: Math.max(1, height * displayScale) }}
+                className={rotationPreview ? `${styles.imageFrame} ${styles.imageFrameRotating}` : styles.imageFrame}
+                style={{
+                  width: rotationPreview ? surround.width * displayScale : Math.max(1, doc.width * displayScale),
+                  height: rotationPreview ? surround.height * displayScale : Math.max(1, doc.height * displayScale),
+                }}
               >
                 {canvas}
-                {rotationPreview && <div className={styles.straightenGrid} aria-hidden="true" />}
+                {rotationPreview && <RotationMask kept={rotationPreview.kept} surround={rotationPreview.surround} />}
               </div>
             </div>
           </div>
         </div>
         <footer className={styles.workspaceFooter}>
           <span>
-            {width} × {height} px
+            {kept.width} × {kept.height} px
           </span>
           <div className={styles.zoomControls} role="group" aria-label={t('Canvas zoom')}>
             <button
@@ -794,7 +802,7 @@ export function CanvasStage({
             >
               <Minus aria-hidden="true" />
             </button>
-            <output aria-live="polite">{Math.max(1, Math.round(scale * 100))}%</output>
+            <output aria-live="polite">{Math.max(1, Math.round(displayScale * 100))}%</output>
             <button
               type="button"
               aria-label={t('Zoom in')}

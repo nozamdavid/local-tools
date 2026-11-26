@@ -118,8 +118,9 @@ function fitFilters({ width, height }: FrameSize): string[] {
 
 function videoFilters(edit: VideoEdit, frame: FrameSize): string[] {
   const output = getRotatedFrame(edit.crop ?? frame, edit.rotation);
+  const rescale = output.contentWidth !== output.width || output.contentHeight !== output.height;
   const filters: string[] = [];
-  if (!output.cardinal) filters.push('format=yuv444p');
+  if (!output.cardinal || rescale) filters.push('format=yuv444p');
   if (edit.crop) {
     const { x, y, width, height } = edit.crop;
     filters.push(`crop=${Math.round(width)}:${Math.round(height)}:${Math.round(x)}:${Math.round(y)}:exact=1`);
@@ -127,10 +128,11 @@ function videoFilters(edit: VideoEdit, frame: FrameSize): string[] {
   if (output.rotation === 90) filters.push('transpose=clock');
   if (output.rotation === -180) filters.push('hflip', 'vflip');
   if (output.rotation === -90) filters.push('transpose=cclock');
-  if (!output.cardinal) filters.push(`rotate=${output.radians}:ow=${output.width}:oh=${output.height}:fillcolor=black`);
+  if (!output.cardinal) filters.push(`rotate=${output.radians}:ow=${output.contentWidth}:oh=${output.contentHeight}`);
   if (edit.flipH) filters.push('hflip');
   if (edit.flipV) filters.push('vflip');
-  filters.push('pad=ceil(iw/2)*2:ceil(ih/2)*2:0:0', 'format=yuv420p');
+  if (rescale) filters.push(`scale=${output.width}:${output.height}:flags=bilinear`, 'setsar=1');
+  filters.push('format=yuv420p');
   return filters;
 }
 

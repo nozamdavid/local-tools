@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -35,13 +35,14 @@ import { downloadBlob } from '../../../lib/download';
 import { withSuffix } from '../../../lib/format';
 import { clearPendingFiles } from '../../../lib/handoff';
 import { rememberRecentFiles } from '../../../lib/recentFiles';
+import { getRotationCrop } from '../../../lib/rotationCrop';
 import { CanvasDocument, Layer, TextLayer, Adjustments } from '../_canvas/types';
 import { useCanvasHistory } from '../_canvas/useCanvasHistory';
 import { CanvasStage, CropRect, StageMode, DrawConfig, ShapeConfig } from '../_canvas/CanvasStage';
 import { drawDocumentBase, exportDocument } from '../_canvas/render';
 import { useI18n } from '../../../lib/i18n';
 import { restorePhotoDraft, savePhotoDraft } from './photoDraft';
-import { flipPhoto, getBaseTransform, rotatedSize, rotatePhoto } from './photoTransform';
+import { flipPhoto, getBaseTransform, getPhotoRotationPreview, getPhotoRotationSurround, rotatePhoto } from './photoTransform';
 import styles from './Tool.module.css';
 
 const TOOLS = [
@@ -186,9 +187,20 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
   const { document: doc, canUndo, canRedo, undo, redo, pushDoc } = useCanvasHistory(initialDoc, { keyboardShortcuts: false });
   const base = getBaseTransform(doc);
   const [anglePreview, setAnglePreview] = useState<{ doc: CanvasDocument; angle: number } | null>(null);
-  const previewAngle = activeTab === 'transform' && anglePreview?.doc === doc ? anglePreview.angle : null;
+  const rotating = activeTab === 'transform';
+  // Reuse the rendered composite, including redaction layers, throughout the gesture.
+  const rotationSource = useMemo(() => (rotating ? getPhotoRotationPreview(doc) : undefined), [doc, rotating]);
+  const previewAngle = anglePreview?.doc === doc ? anglePreview.angle : base.angle;
+  const delta = normalizeRotation(previewAngle - base.angle);
+  const kept = delta ? getRotationCrop(base.width, base.height, previewAngle) : rotationSource?.frame;
   const rotationPreview =
-    previewAngle !== null ? { ...rotatedSize(base.width, base.height, previewAngle), delta: previewAngle - base.angle } : undefined;
+    rotationSource && kept
+      ? {
+          delta,
+          surround: delta ? getPhotoRotationSurround(base.width, base.height, previewAngle, kept) : rotationSource.document,
+          kept,
+        }
+      : undefined;
   const latestDoc = useRef(doc);
   const savedDoc = useRef(doc);
 
@@ -738,7 +750,7 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
         </nav>
 
         <CanvasStage
-          document={doc}
+          document={rotationSource?.document ?? doc}
           selectedLayerId={selectedLayer?.id ?? null}
           mode={stageMode}
           cropRect={activeTab === 'crop' ? cropRect : undefined}

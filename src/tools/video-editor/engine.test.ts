@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
+import { getRotationCrop } from '../../lib/rotationCrop';
 import { exportVideoEdit, type VideoEdit } from './engine';
-import { getRotatedFrame } from './timeline';
+import { getRotatedFrame, getRotationSurround } from './timeline';
 
 type Core = {
   FS: {
@@ -94,7 +95,7 @@ async function inspect(blob: Blob, extension: string) {
   expect(code).toBeLessThanOrEqual(0);
   return JSON.parse(new TextDecoder().decode(core.FS.readFile('inspected.json'))) as {
     format: { duration: string };
-    streams: Array<{ codec_type: string; codec_name: string; width: number; height: number }>;
+    streams: Array<{ codec_type: string; codec_name: string; pix_fmt: string; width: number; height: number }>;
   };
 }
 
@@ -162,7 +163,7 @@ beforeAll(async () => {
     '-i',
     'color=magenta:s=96x64:r=10:d=0.4',
     '-vf',
-    'drawbox=14:10:56:36:blue:t=fill,drawbox=18:14:10:10:red:t=fill,drawbox=55:31:10:10:lime:t=fill',
+    'drawbox=14:10:56:36:blue:t=fill,drawbox=26:18:10:10:red:t=fill,drawbox=46:28:10:10:lime:t=fill',
     '-c:v',
     'libx264',
     'rotation.mp4',
@@ -172,10 +173,21 @@ beforeAll(async () => {
 
 afterAll(() => vi.unstubAllGlobals());
 
+it('keeps exact cardinal dimensions and encloses the full rotation for editing', () => {
+  const crop = { width: 51, height: 33 };
+  for (const rotation of [0, 180]) expect(getRotationCrop(crop.width, crop.height, rotation)).toEqual(crop);
+  for (const rotation of [-90, 90]) {
+    expect(getRotationCrop(crop.width, crop.height, rotation)).toEqual({ width: 33, height: 51 });
+    expect(getRotatedFrame(crop, rotation)).toMatchObject({ contentWidth: 33, contentHeight: 51, width: 34, height: 52 });
+    expect(getRotationSurround(crop, rotation)).toEqual({ width: 33, height: 51 });
+  }
+  expect(getRotationSurround({ width: 56, height: 36 }, -30)).toEqual({ width: 67, height: 60 });
+});
+
 it.each([
-  { rotation: 15, format: 'mp4', width: 64, height: 50, red: [16, 11], green: [47, 37] },
-  { rotation: -30, format: 'webm', width: 68, height: 60, red: [13, 32], green: [54, 28] },
-  { rotation: 270, format: 'mp4', width: 36, height: 56, red: [9, 47], green: [26, 10] },
+  { rotation: 15, format: 'mp4', width: 50, height: 22, red: [15, 3], green: [32, 18] },
+  { rotation: -30, format: 'webm', width: 36, height: 20, red: [5, 11], green: [28, 9] },
+  { rotation: 270, format: 'mp4', width: 36, height: 56, red: [13, 39], green: [23, 19] },
 ] as const)('crops and rotates by $rotation degrees in $format', async ({ rotation, format, width, height, red, green }) => {
   const crop = { x: 14, y: 10, width: 56, height: 36 };
   expect(getRotatedFrame(crop, rotation)).toMatchObject({ width, height });
@@ -188,21 +200,45 @@ it.each([
     new AbortController().signal,
   );
   const probe = await inspect(blob, format);
-  expect(probe.streams).toMatchObject([{ codec_type: 'video', width, height }]);
+  expect(probe.streams).toMatchObject([{ codec_type: 'video', pix_fmt: 'yuv420p', width, height }]);
   execute('-i', `inspected.${format}`, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'frame.rgb');
   const pixels = core.FS.readFile('frame.rgb');
   const pixel = (x: number, y: number) => pixels.slice((y * width + x) * 3, (y * width + x) * 3 + 3);
   for (const [point, channel] of [
     [red, 0],
     [green, 1],
-    [[width / 2, height / 2], 2],
+    [[Math.floor(width / 2), Math.floor(height / 2)], 2],
   ] as const) {
     const color = pixel(point[0], point[1]);
     expect(color[channel]).toBeGreaterThan(200);
     expect(color[(channel + 1) % 3]).toBeLessThan(35);
     expect(color[(channel + 2) % 3]).toBeLessThan(35);
   }
-  if (rotation !== 270) expect(Math.max(...pixel(0, 0), ...pixel(width - 1, height - 1))).toBeLessThan(20);
+  for (const x of [0, width - 1]) {
+    for (const y of [0, height - 1]) expect(Math.max(...pixel(x, y))).toBeGreaterThan(200);
+  }
+});
+
+it.each([
+  { cropWidth: 35, cropHeight: 57, rotation: -31, format: 'webm', width: 20, height: 32, keptWidth: 20, keptHeight: 33 },
+  { cropWidth: 1, cropHeight: 2, rotation: 43, format: 'mp4', width: 2, height: 2, keptWidth: 1, keptHeight: 1 },
+] as const)('exports a $width × $height rotated portrait crop without black edges', async (test) => {
+  const { cropWidth, cropHeight, rotation, format, width, height, keptWidth, keptHeight } = test;
+  const crop = { x: 2, y: 4, width: cropWidth, height: cropHeight };
+  expect(getRotationCrop(crop.width, crop.height, -rotation)).toEqual({ width: keptWidth, height: keptHeight });
+  const blob = await exportVideoEdit(
+    localFile('portrait.mp4', 'video/mp4'),
+    { ...baseEdit, segments: [{ start: 0, end: 0.2 }], crop, rotation },
+    null,
+    format,
+    () => {},
+    new AbortController().signal,
+  );
+  const probe = await inspect(blob, format);
+  expect(probe.streams).toMatchObject([{ codec_type: 'video', pix_fmt: 'yuv420p', width, height }]);
+  execute('-i', `inspected.${format}`, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'frame.rgb');
+  const frame = core.FS.readFile('frame.rgb');
+  for (let channel = 1; channel < frame.length; channel += 3) expect(frame[channel]).toBeGreaterThan(100);
 });
 
 it('reorders and speeds up ranges, rotates a crop, and fades the source under a delayed mix in MP4', async () => {
@@ -233,14 +269,16 @@ it('reorders and speeds up ranges, rotates a crop, and fades the source under a 
   expect(blob.type).toBe('video/mp4');
   const probe = await inspect(blob, 'mp4');
   expect(probe.streams).toMatchObject([
-    { codec_name: 'h264', codec_type: 'video', width: 34, height: 52 },
+    { codec_name: 'h264', codec_type: 'video', pix_fmt: 'yuv420p', width: 34, height: 52 },
     { codec_name: 'aac', codec_type: 'audio' },
   ]);
   expect(Number(probe.format.duration)).toBeCloseTo(1.6, 1);
 
   execute('-ss', '0.2', '-i', 'inspected.mp4', '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'frame.rgb');
-  const [firstRed, , firstBlue] = core.FS.readFile('frame.rgb');
+  const firstFrame = core.FS.readFile('frame.rgb');
+  const [firstRed, , firstBlue] = firstFrame;
   expect(firstBlue).toBeGreaterThan(firstRed + 150);
+  expect(firstFrame.at(-1)).toBeGreaterThan(150);
   execute('-ss', '1.2', '-i', 'inspected.mp4', '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'frame.rgb');
   const [secondRed, , secondBlue] = core.FS.readFile('frame.rgb');
   expect(secondRed).toBeGreaterThan(secondBlue + 150);

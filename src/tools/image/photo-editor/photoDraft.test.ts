@@ -3,7 +3,7 @@ import { canvasToBlob, imageToCanvas, loadImage } from '../../../lib/image';
 import { readRecentDraft, writeRecentDraft } from '../../../lib/recentFiles';
 import type { CanvasDocument, ImageLayer } from '../_canvas/types';
 import { restorePhotoDraft, savePhotoDraft } from './photoDraft';
-import { rotatePhoto } from './photoTransform';
+import { flipPhoto, getPhotoRotationPreview, rotatePhoto } from './photoTransform';
 
 vi.mock('../../../lib/image', () => ({ canvasToBlob: vi.fn(), imageToCanvas: vi.fn(), loadImage: vi.fn() }));
 vi.mock('../../../lib/recentFiles', () => ({ readRecentDraft: vi.fn(), writeRecentDraft: vi.fn() }));
@@ -57,6 +57,84 @@ it('persists an exact rotation and its moved solid mask while reusing the origin
   const reopened = await restorePhotoDraft(file, reopenedOriginal);
   expect(reopened).toEqual({ ...rotated, baseImage: reopenedOriginal });
   expect(reopened?.baseImage).toBe(reopenedOriginal);
+});
+
+it('reframes a legacy expanded draft around its cropped raster without shifting content relative to the base', async () => {
+  const baseImage = new Blob(['crop pixels'], { type: 'image/png' });
+  const croppedRaster = { naturalWidth: 320, naturalHeight: 240 } as HTMLImageElement;
+  vi.mocked(loadImage).mockResolvedValue(croppedRaster);
+  vi.mocked(readRecentDraft).mockResolvedValue({
+    version: 1,
+    width: 396,
+    height: 396,
+    baseImage,
+    baseTransform: { width: 320, height: 240, angle: 45, flipX: true },
+    layers: [
+      { id: 'mask', type: 'redact', redactType: 'solid', x: 180.9, y: 192.9, width: 20, height: 12 },
+      { id: 'pen', type: 'path', x: 0, y: 0, width: 0, height: 0, points: [{ x: 190, y: 200 }], stroke: '#000', strokeWidth: 4 },
+    ],
+  });
+
+  const restored = await restorePhotoDraft(file, original);
+  expect(restored).toMatchObject({
+    width: 169,
+    height: 169,
+    baseTransform: { width: 320, height: 240, angle: 45, flipX: true },
+    layers: [{ x: 66.5, y: 78.5, width: 21, height: 13 }, { points: [{ x: 76.5, y: 86.5 }] }],
+  });
+  expect(restored?.baseImage).toBe(croppedRaster);
+  if (!restored) throw new Error('Expected a restored draft');
+
+  const resetAfterFlip = rotatePhoto(flipPhoto(restored, true), 0);
+  expect(resetAfterFlip).toMatchObject({
+    width: 320,
+    height: 240,
+    baseTransform: { angle: 0, flipX: false },
+  });
+  expect(resetAfterFlip.baseImage).toBe(croppedRaster);
+});
+
+it('keeps the full surround and saved crop aligned for a rotated text layer, path, and solid mask', () => {
+  const doc: CanvasDocument = {
+    ...originalDoc,
+    layers: [
+      { id: 'label', type: 'text', text: 'Label', x: 20, y: 24, width: 40, height: 20, fontSize: 16, fontFamily: 'sans', fill: '#000' },
+      { id: 'pen', type: 'path', x: 0, y: 0, width: 0, height: 0, points: [{ x: 330, y: 240 }], stroke: '#000', strokeWidth: 4 },
+      { id: 'mask', type: 'redact', redactType: 'solid', x: 325, y: 236, width: 10, height: 8 },
+    ],
+  };
+  const rotated = rotatePhoto(doc, 45);
+  const { document: surround, frame } = getPhotoRotationPreview(rotated);
+  expect(rotated).toMatchObject({ width: 339, height: 339 });
+  expect(surround).toMatchObject({ width: 793, height: 793, baseTransform: rotated.baseTransform });
+  expect(surround.baseImage).toBe(original);
+  expect(frame).toEqual({ x: 227, y: 227, width: 339, height: 339 });
+  expect(rotated.layers[0].y).toBeLessThan(0);
+  expect(surround.layers[0]).toMatchObject({ x: rotated.layers[0].x + frame.x, y: rotated.layers[0].y + frame.y, rotation: 45 });
+
+  const mark = 169.5 + 10 / Math.sqrt(2);
+  expect(rotated.layers[1]).toMatchObject({ points: [{ x: mark, y: mark }] });
+  expect(rotated.layers[2]).toMatchObject({ x: mark - 5, y: mark - 4, width: 10, height: 8, rotation: 45 });
+  expect(surround.layers[2]).toMatchObject({ x: mark - 5 + frame.x, y: mark - 4 + frame.y, width: 10, height: 8, rotation: 45 });
+
+  const quarter = rotatePhoto(doc, 90);
+  expect(quarter).toMatchObject({ width: 480, height: 640 });
+  expect(quarter.layers[1]).toMatchObject({ points: [{ x: 240, y: 330 }] });
+  expect(quarter.layers[2]).toMatchObject({ rotation: 90 });
+
+  const reset = rotatePhoto(rotatePhoto(rotated, -19.2), 0);
+  expect(reset).toMatchObject({ width: 640, height: 480, baseTransform: { angle: 0 } });
+  expect(reset.baseImage).toBe(original);
+  for (const [index, layer] of reset.layers.entries()) {
+    expect(layer.x).toBeCloseTo(doc.layers[index].x, 8);
+    expect(layer.y).toBeCloseTo(doc.layers[index].y, 8);
+    expect(layer.rotation ?? 0).toBe(0);
+  }
+  const path = reset.layers[1];
+  if (path.type !== 'path') throw new Error('Expected path layer');
+  expect(path.points[0].x).toBeCloseTo(330, 8);
+  expect(path.points[0].y).toBeCloseTo(240, 8);
+  expect(getPhotoRotationPreview(doc, 45)).toEqual({ document: surround, frame });
 });
 
 it('round trips the cropped base, pasted image and other edits', async () => {

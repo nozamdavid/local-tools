@@ -10,6 +10,7 @@ export function usePreview(
   reportError: (error: string) => void,
   sourceUrls: readonly string[],
   projectSize: FrameSize | null,
+  showSurround: boolean,
 ) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const soundtrackRef = useRef<HTMLAudioElement>(null);
@@ -29,7 +30,7 @@ export function usePreview(
 
   function renderFrame() {
     if (ready && !waitingForSources && !pendingSeek.current && canvasRef.current && videoRef.current) {
-      drawFrame(canvasRef.current, videoRef.current, edit, 1280, projectSize);
+      drawFrame(canvasRef.current, videoRef.current, edit, 1280, projectSize, showSurround);
     }
   }
 
@@ -217,6 +218,7 @@ export function usePreview(
   }
 
   const onTick = useEffectEvent(tick);
+  const clearPreview = useEffectEvent(clearFrame);
   const syncPreview = useEffectEvent(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -252,8 +254,13 @@ export function usePreview(
   });
 
   useLayoutEffect(() => {
+    // A seek can delay the next draw. Discard any wider frame before showing the kept preview.
+    if (!showSurround) clearPreview();
+  }, [showSurround]);
+
+  useLayoutEffect(() => {
     syncPreview();
-  }, [edit, projectSize, ready, sourceUrls]);
+  }, [edit, projectSize, ready, sourceUrls, showSurround]);
 
   useEffect(() => {
     if (!playing) return;

@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -34,6 +34,7 @@ import { EditorShortcuts } from '../../components/EditorShortcuts';
 import { FileDrop } from '../../components/FileDrop';
 import { ProgressBar } from '../../components/ProgressBar';
 import { normalizeRotation, RotationControl } from '../../components/RotationControl';
+import { RotationMask } from '../../components/RotationMask';
 import { downloadBlob } from '../../lib/download';
 import { describeError } from '../../lib/errors';
 import { formatDuration, formatNumber, withSuffix } from '../../lib/format';
@@ -41,7 +42,7 @@ import { matchesAccept } from '../../lib/handoff';
 import { useI18n } from '../../lib/i18n';
 import { useObjectUrl } from '../../lib/useObjectUrl';
 import { exportVideoEdit, type VideoEdit } from './engine';
-import { buildTimeline, getRotatedFrame, locateTime, readAudioDuration } from './timeline';
+import { buildTimeline, getRotatedFrame, getRotationSurround, locateTime, readAudioDuration } from './timeline';
 import { useClipDrag } from './useClipDrag';
 import { useDraft, type Draft } from './useDraft';
 import { usePreview } from './usePreview';
@@ -235,7 +236,8 @@ export default function VideoEditor() {
   const metadata = useMemo(() => (source ? { width: source.width, height: source.height } : null), [source]);
   const soundtrackUrl = useObjectUrl(soundtrack);
   const ready = !!source;
-  const preview = usePreview(liveEdit, ready, (text) => setNotice({ text, error: true }), sourceUrls, metadata);
+  const showSurround = pane === 'transform';
+  const preview = usePreview(liveEdit, ready, (text) => setNotice({ text, error: true }), sourceUrls, metadata, showSurround);
   const { clips, duration } = buildTimeline(edit);
   const clipDrag = useClipDrag(edit.segments, moveClipTo);
   const selected = clips[selectedIndex];
@@ -709,6 +711,7 @@ export default function VideoEditor() {
   const showSourceNames = videos.length > 1;
   const percent = (time: number) => `${duration ? (100 * time) / duration : 0}%`;
   const outputSize = crop && getRotatedFrame(crop, liveEdit.rotation);
+  const surround = showSurround && crop ? getRotationSurround(crop, liveEdit.rotation) : null;
   const previewVolume = Math.round(edit.volume * 100);
   const cropVideo = pane === 'crop' && crop && metadata ? preview.videoRef.current : null;
 
@@ -925,18 +928,18 @@ export default function VideoEditor() {
                 <FolderOpen />
               </IconAction>
             </aside>
-            <section
-              className={pane === 'transform' ? `${styles.stage} ${styles.transformStage}` : styles.stage}
-              aria-label={t('Video preview')}
-            >
+            <section className={showSurround ? `${styles.stage} ${styles.transformStage}` : styles.stage} aria-label={t('Video preview')}>
               <div className={styles.monitor}>
-                <canvas
-                  className={styles.canvas}
-                  ref={preview.canvasRef}
+                <div
+                  className={styles.frame}
                   hidden={!!cropVideo}
-                  aria-label={t('Current video frame')}
-                  role="img"
-                />
+                  style={surround ? ({ '--aspect': surround.width / surround.height } as CSSProperties) : undefined}
+                >
+                  <canvas className={styles.canvas} ref={preview.canvasRef} aria-label={t('Current video frame')} role="img" />
+                  {surround && outputSize && (
+                    <RotationMask kept={{ width: outputSize.contentWidth, height: outputSize.contentHeight }} surround={surround} />
+                  )}
+                </div>
                 {cropVideo && metadata && crop && (
                   <CropFrame
                     video={cropVideo}
@@ -947,7 +950,7 @@ export default function VideoEditor() {
                   />
                 )}
               </div>
-              {pane === 'transform' && (
+              {showSurround && (
                 <div className={styles.rotationBar}>
                   <RotationControl
                     angle={edit.rotation}

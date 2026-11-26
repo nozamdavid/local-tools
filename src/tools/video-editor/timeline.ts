@@ -1,3 +1,4 @@
+import { getRotationCrop } from '../../lib/rotationCrop';
 import type { VideoEdit } from './engine';
 
 export interface Clip {
@@ -13,25 +14,35 @@ export type FrameSize = { width: number; height: number };
 export function getRotatedFrame(crop: FrameSize, angle: number) {
   const width = Math.round(crop.width);
   const height = Math.round(crop.height);
-  const rotation = (((angle % 360) + 540) % 360) - 180;
+  const degrees = angle % 360;
+  const rotation = degrees >= 180 ? degrees - 360 : degrees < -180 ? degrees + 360 : degrees;
   const radians = (rotation * Math.PI) / 180;
   const cardinal = rotation % 90 === 0;
-  const turned = Math.abs(rotation) === 90;
-  const sin = Math.abs(Math.sin(radians));
-  const cos = Math.abs(Math.cos(radians));
-  const contentWidth = cardinal ? (turned ? height : width) : width * cos + height * sin;
-  const contentHeight = cardinal ? (turned ? width : height) : width * sin + height * cos;
-  // MP4 and WebM use 4:2:0. Keep the legacy top-left alignment for any extra pixel at a quarter turn.
-  const outputWidth = Math.ceil(contentWidth / 2) * 2;
-  const outputHeight = Math.ceil(contentHeight / 2) * 2;
+  const kept = getRotationCrop(width, height, rotation);
+  // Non-cardinal rotations round inward for 4:2:0. Cardinal turns keep the whole crop.
+  const contentWidth = cardinal ? kept.width : Math.max(1, 2 * Math.floor(kept.width / 2));
+  const contentHeight = cardinal ? kept.height : Math.max(1, 2 * Math.floor(kept.height / 2));
   return {
     rotation,
     radians,
     cardinal,
-    width: outputWidth,
-    height: outputHeight,
-    centerX: (cardinal ? contentWidth : outputWidth) / 2,
-    centerY: (cardinal ? contentHeight : outputHeight) / 2,
+    contentWidth,
+    contentHeight,
+    width: 2 * Math.ceil(contentWidth / 2),
+    height: 2 * Math.ceil(contentHeight / 2),
+  };
+}
+
+export function getRotationSurround(crop: FrameSize, angle: number): FrameSize {
+  const { radians, cardinal, contentWidth, contentHeight } = getRotatedFrame(crop, angle);
+  if (cardinal) return { width: contentWidth, height: contentHeight };
+  const cropWidth = Math.round(crop.width);
+  const cropHeight = Math.round(crop.height);
+  const sin = Math.abs(Math.sin(radians));
+  const cos = Math.abs(Math.cos(radians));
+  return {
+    width: Math.ceil(cropWidth * cos + cropHeight * sin),
+    height: Math.ceil(cropWidth * sin + cropHeight * cos),
   };
 }
 
@@ -72,6 +83,7 @@ export function drawFrame(
   edit: VideoEdit,
   maxEdge = Infinity,
   projectSize: FrameSize | null = null,
+  showSurround = false,
 ) {
   if (!hasVideoFrame(video)) return false;
   const frame = projectSize ?? { width: video.videoWidth, height: video.videoHeight };
@@ -82,7 +94,8 @@ export function drawFrame(
     width: Math.round(crop.width),
     height: Math.round(crop.height),
   };
-  const output = getRotatedFrame({ width, height }, edit.rotation);
+  const rotated = getRotatedFrame({ width, height }, edit.rotation);
+  const output = showSurround ? getRotationSurround({ width, height }, edit.rotation) : rotated;
   const scale = Math.min(1, maxEdge / Math.max(output.width, output.height));
   const outputWidth = Math.max(1, Math.round(output.width * scale));
   const outputHeight = Math.max(1, Math.round(output.height * scale));
@@ -95,15 +108,42 @@ export function drawFrame(
   context.resetTransform();
   context.fillStyle = 'black';
   context.fillRect(0, 0, outputWidth, outputHeight);
+
+  const left = Math.max(x, fitted.x);
+  const right = Math.min(x + width, fitted.x + fitted.width);
+  const top = Math.max(y, fitted.y);
+  const bottom = Math.min(y + height, fitted.y + fitted.height);
+  if (left >= right || top >= bottom) return true;
+  const scaleX = video.videoWidth / fitted.width;
+  const scaleY = video.videoHeight / fitted.height;
+
+  const renderWidth = showSurround ? output.width : rotated.contentWidth;
+  const renderHeight = showSurround ? output.height : rotated.contentHeight;
   context.save();
-  context.scale(outputWidth / output.width, outputHeight / output.height);
-  context.translate(output.centerX, output.centerY);
+  context.scale(outputWidth / renderWidth, outputHeight / renderHeight);
+  context.translate(renderWidth / 2, renderHeight / 2);
   context.scale(edit.flipH ? -1 : 1, edit.flipV ? -1 : 1);
-  context.rotate(output.radians);
-  context.beginPath();
-  context.rect(-width / 2, -height / 2, width, height);
-  context.clip();
-  context.drawImage(video, fitted.x - x - width / 2, fitted.y - y - height / 2, fitted.width, fitted.height);
+  context.rotate(rotated.radians);
+  if (!showSurround && !rotated.cardinal && (width === 1 || height === 1)) {
+    // Extend a one-pixel source strip to cover the footprint of the centered output samples.
+    const cos = Math.abs(Math.cos(rotated.radians));
+    const sin = Math.abs(Math.sin(rotated.radians));
+    context.scale(
+      width === 1 ? Math.max(1, renderWidth * cos + renderHeight * sin) : 1,
+      height === 1 ? Math.max(1, renderWidth * sin + renderHeight * cos) : 1,
+    );
+  }
+  context.drawImage(
+    video,
+    (left - fitted.x) * scaleX,
+    (top - fitted.y) * scaleY,
+    (right - left) * scaleX,
+    (bottom - top) * scaleY,
+    left - x - width / 2,
+    top - y - height / 2,
+    right - left,
+    bottom - top,
+  );
   context.restore();
   return true;
 }
