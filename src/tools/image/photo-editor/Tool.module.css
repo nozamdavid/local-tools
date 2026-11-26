@@ -58,6 +58,20 @@
   position: relative;
 }
 
+.formatButton {
+  font-family: var(--font-mono);
+}
+
+.formatButton[aria-pressed='true'] {
+  border-color: var(--accent-border);
+  color: var(--accent-text);
+}
+
+.formatButton svg {
+  width: 0.875rem;
+  height: 0.875rem;
+}
+
 .exportActions > :global(.field-error) {
   position: absolute;
   z-index: 1;
@@ -211,6 +225,19 @@
   text-align: start;
 }
 
+.transformActions {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.375rem;
+}
+
+.transformActions > button {
+  gap: 0.25rem;
+  min-width: 0;
+  width: 100%;
+  padding-inline: 0.25rem;
+}
+
 .colorInput {
   width: 2.25rem;
   height: 2rem;
@@ -279,24 +306,38 @@
 
 @media (max-width: 700px) {
   .workArea {
-    grid-template: auto minmax(0, 1fr) auto / minmax(0, 1fr);
+    grid-template: auto minmax(0, max-content) minmax(0, 1fr) / minmax(0, 1fr);
   }
 
   .toolRail {
-    flex-direction: row;
+    flex-flow: row wrap;
+    gap: 0.125rem;
     border-inline-end: 0;
     border-bottom: 1px solid var(--border);
-    padding: 0.375rem 0.5rem;
+    padding: 0.25rem;
   }
 
   .toolButton {
-    width: 4.75rem;
+    flex: 1 0 calc((100% - 0.625rem) / 6);
+    justify-content: flex-start;
+    min-width: 0;
+    font-size: 0.6875rem;
+    overflow-wrap: anywhere;
+  }
+
+  .transformActions > button {
+    min-height: 2.5rem;
   }
 
   .inspector {
-    max-height: 33dvh;
     border-inline-start: 0;
     border-top: 1px solid var(--border);
+  }
+
+  .controlsPanel,
+  .layerSection {
+    gap: 0.625rem;
+    padding: 0.625rem;
   }
 
   .controlGrid {
@@ -317,6 +358,8 @@
 
   .historyGroup {
     border-inline-end: 0;
+    padding-inline: 0.25rem 0;
+    gap: 0;
   }
 
   .exportActions {

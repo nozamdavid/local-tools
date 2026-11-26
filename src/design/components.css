@@ -188,11 +188,16 @@
 
 .input:focus,
 .textarea:focus,
-.select:focus {
+.select:focus-visible:not([data-pointer-focus]) {
   border-color: var(--accent);
   outline: 2px solid var(--accent);
   outline-offset: 1px;
   box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+.layout select[data-pointer-focus]:focus {
+  outline: none;
+  box-shadow: none;
 }
 
 .input:disabled,
@@ -246,13 +251,13 @@
 .slider::-webkit-slider-runnable-track {
   height: 6px;
   border-radius: var(--radius-full);
-  background: linear-gradient(to right, var(--accent) var(--fill), var(--surface-active) var(--fill));
+  background: linear-gradient(to right, var(--accent) var(--fill), var(--input-border) var(--fill));
 }
 
 .slider::-moz-range-track {
   height: 6px;
   border-radius: var(--radius-full);
-  background: var(--surface-active);
+  background: var(--input-border);
 }
 
 .slider::-moz-range-progress {
@@ -1306,9 +1311,9 @@ img.preview-media {
     input[type='url'],
     input[type='password'],
     input[type='tel'],
-    textarea,
-    select
-  ):focus {
+    textarea
+  ):focus,
+:where(.tool-content) select:focus-visible:not([data-pointer-focus]) {
   border-color: var(--accent);
   outline: 2px solid var(--accent);
   outline-offset: 1px;

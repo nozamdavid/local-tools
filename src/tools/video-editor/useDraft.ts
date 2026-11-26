@@ -1,9 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { createRecentDraftProjectId, readRecentDraft, rememberRecentFiles, writeRecentDraft } from '../../lib/recentFiles';
+import { createRecentDraftProjectId, readVideoDraft, videoDraftProject, writeVideoDraft, type VideoDraftSave } from '../../lib/recentFiles';
 import type { Segment, VideoEdit } from './engine';
 import type { VideoSource } from './videoSources';
-
-export const EDITOR_PATH = '/video/video-editor';
 
 export interface Draft {
   edit: VideoEdit;
@@ -16,9 +14,8 @@ export interface Draft {
 
 interface Save {
   file: File;
-  kind: 'sample' | 'promoted-sample' | 'new-project' | 'project';
-  projectId?: string;
-  opened: Promise<void> | null;
+  kind: 'sample' | 'promoted-sample' | 'project';
+  project: ReturnType<typeof videoDraftProject> | null;
   draft: Draft | null;
   revision: number;
   saved: number;
@@ -28,16 +25,15 @@ interface Save {
 export function useDraft() {
   const active = useRef<Save | null>(null);
   const timeout = useRef<number | undefined>(undefined);
-  const [failed, setFailed] = useState(false);
+  const [status, setStatus] = useState<Exclude<VideoDraftSave, 'saved'> | null>(null);
 
   function begin(file: File, kind: Save['kind'], projectId?: string) {
     window.clearTimeout(timeout.current);
-    setFailed(false);
+    setStatus(null);
     active.current = {
       file,
       kind,
-      projectId,
-      opened: kind === 'project' ? rememberRecentFiles([file], EDITOR_PATH) : null,
+      project: kind === 'sample' ? null : videoDraftProject(file, projectId),
       draft: null,
       revision: 0,
       saved: 0,
@@ -48,19 +44,32 @@ export function useDraft() {
 
   async function restore(file: File, sample: boolean) {
     const current = begin(file, sample ? 'sample' : 'project');
-    if (sample) return;
-    await current.opened;
-    return readRecentDraft<Draft>(file, EDITOR_PATH);
+    if (!current.project) return;
+    try {
+      const project = await current.project;
+      const draft = await readVideoDraft<Draft>(file, project);
+      if (active.current === current && project.revision === null) {
+        current.revision++;
+        void flush();
+      }
+      return draft;
+    } catch {
+      if (active.current === current) {
+        current.revision++;
+        setStatus('storage');
+      }
+      return null;
+    }
   }
 
   function startProject(anchor: File) {
-    begin(anchor, 'new-project', createRecentDraftProjectId());
+    begin(anchor, 'project', createRecentDraftProjectId());
   }
 
   async function promoteSample(anchor: File): Promise<void> {
     const current = active.current;
     if (current?.file !== anchor || current.kind !== 'sample') return;
-    current.projectId = createRecentDraftProjectId();
+    current.project = videoDraftProject(anchor, createRecentDraftProjectId());
     current.kind = 'promoted-sample';
   }
 
@@ -70,24 +79,24 @@ export function useDraft() {
     if (!current) return Promise.resolve(true);
     current.pending = current.pending.then(async () => {
       const { revision, draft } = current;
-      if (!draft || current.saved === revision) return true;
-      const createProject = current.kind === 'new-project' || current.kind === 'promoted-sample';
-      let saved = true;
-      if (current.kind !== 'promoted-sample' || draft.additionalSources?.length) {
-        try {
-          await current.opened;
-          const sourceBytes = draft.additionalSources?.reduce((total, { file }) => total + file.size, 0) ?? 0;
-          const bytes = sourceBytes + (draft.soundtrack?.size ?? 0) + JSON.stringify(draft).length * 2;
-          const project = current.projectId ? { id: current.projectId, create: createProject } : undefined;
-          saved = await writeRecentDraft(current.file, EDITOR_PATH, draft, bytes, project);
-          if (saved) current.kind = 'project';
-        } catch {
-          saved = false;
-        }
+      if (!current.project || current.saved === revision) return true;
+      if (current.kind === 'promoted-sample' && !draft?.additionalSources?.length) {
+        current.saved = revision;
+        if (active.current === current) setStatus(null);
+        return true;
       }
-      if (saved) current.saved = revision;
-      if (active.current === current && revision === current.revision) setFailed(!saved);
-      return saved;
+      let result: VideoDraftSave;
+      try {
+        result = await writeVideoDraft(current.file, await current.project, draft);
+      } catch {
+        result = 'storage';
+      }
+      if (result === 'saved') {
+        current.saved = revision;
+        current.kind = 'project';
+      }
+      if (active.current === current && revision === current.revision) setStatus(result === 'saved' ? null : result);
+      return result === 'saved' || !draft;
     });
     return current.pending;
   }
@@ -104,7 +113,7 @@ export function useDraft() {
   useEffect(() => {
     function guard(event: BeforeUnloadEvent) {
       const current = active.current;
-      if (!current || current.revision === current.saved) return;
+      if (!current?.draft || current.revision === current.saved) return;
       void flush();
       event.preventDefault();
     }
@@ -121,5 +130,5 @@ export function useDraft() {
     };
   }, []);
 
-  return { restore, startProject, promoteSample, schedule, flush, failed };
+  return { restore, startProject, promoteSample, schedule, flush, status };
 }

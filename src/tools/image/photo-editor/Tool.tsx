@@ -4,17 +4,20 @@ import { useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   ArrowUpRight,
+  ChevronDown,
   Crop,
   Download,
   Highlighter,
   Layers,
-  MousePointer2,
   Paintbrush,
   Redo2,
+  RotateCcw,
   RotateCw,
   Shapes,
   SlidersHorizontal,
   Square,
+  TrianglesCenterlineDashedHorizontal,
+  TrianglesCenterlineDashedVertical,
   Trash2,
   Type,
   Undo2,
@@ -24,6 +27,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { getToolMeta } from '../../registry';
 import { FileDrop } from '../../../components/FileDrop';
 import { CopyImageButton } from '../../../components/CopyImageButton';
+import { normalizeRotation, RotationControl } from '../../../components/RotationControl';
 import { Button, Field, Slider, Select } from '../../../components/Controls';
 import { decodeImage, IMAGE_ACCEPT, EncodableMime } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
@@ -33,20 +37,21 @@ import { rememberRecentFiles } from '../../../lib/recentFiles';
 import { CanvasDocument, Layer, TextLayer, Adjustments } from '../_canvas/types';
 import { useCanvasHistory } from '../_canvas/useCanvasHistory';
 import { CanvasStage, CropRect, StageMode, DrawConfig, ShapeConfig } from '../_canvas/CanvasStage';
-import { exportDocument } from '../_canvas/render';
+import { drawDocumentBase, exportDocument } from '../_canvas/render';
 import { useI18n } from '../../../lib/i18n';
 import { restorePhotoDraft, savePhotoDraft } from './photoDraft';
+import { flipPhoto, getBaseTransform, rotatedSize, rotatePhoto } from './photoTransform';
 import styles from './Tool.module.css';
 
 const TOOLS = [
-  { id: 'select', label: 'Select layer', icon: MousePointer2 },
+  { id: 'select', label: 'Layers', icon: Layers },
   { id: 'adjust', label: 'Adjust', icon: SlidersHorizontal },
   { id: 'filters', label: 'Filters', icon: WandSparkles },
   { id: 'crop', label: 'Crop', icon: Crop },
   { id: 'transform', label: 'Rotate', icon: RotateCw },
   { id: 'text', label: 'Text', icon: Type },
   { id: 'draw', label: 'Draw', icon: Paintbrush },
-  { id: 'highlight', label: 'Highlighter', icon: Highlighter },
+  { id: 'highlight', label: 'Highlight', icon: Highlighter },
   { id: 'arrow', label: 'Arrow', icon: ArrowUpRight },
   { id: 'shapes', label: 'Shapes', icon: Shapes },
   { id: 'redact', label: 'Redact', icon: Square },
@@ -126,6 +131,7 @@ export default function Tool() {
     <ToolPage title={meta.title} description={meta.description} currentId="img-photo-editor">
       <FileDrop
         accept={IMAGE_ACCEPT}
+        icon={null}
         label={t('Choose an image to edit')}
         hint={t('Supports JPG, PNG, WebP, GIF, BMP, AVIF, HEIC and SVG.')}
         onFiles={handleFileDrop}
@@ -146,6 +152,7 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const exitRef = useRef<HTMLButtonElement>(null);
   const closeGuardRef = useRef<HTMLDivElement>(null);
+  const inspectorRef = useRef<HTMLElement>(null);
   const [activeTab, setActiveTab] = useState<TabType>('adjust');
   const [selectedLayerId, setSelectedLayerId] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
@@ -162,6 +169,11 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
 
   // Canvas history
   const { document: doc, canUndo, canRedo, undo, redo, pushDoc } = useCanvasHistory(initialDoc);
+  const base = getBaseTransform(doc);
+  const [anglePreview, setAnglePreview] = useState<{ doc: CanvasDocument; angle: number } | null>(null);
+  const previewAngle = activeTab === 'transform' && anglePreview?.doc === doc ? anglePreview.angle : null;
+  const rotationPreview =
+    previewAngle !== null ? { ...rotatedSize(base.width, base.height, previewAngle), delta: previewAngle - base.angle } : undefined;
   const latestDoc = useRef(doc);
   const savedDoc = useRef(doc);
 
@@ -222,6 +234,10 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
   useEffect(() => {
     if (closeFailed) closeGuardRef.current?.focus();
   }, [closeFailed]);
+
+  useLayoutEffect(() => {
+    if (inspectorRef.current) inspectorRef.current.scrollTop = 0;
+  }, [activeTab]);
 
   const returnHome = () => {
     leaving.current = true;
@@ -361,7 +377,8 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
     const ctx = offscreen.getContext('2d');
     if (!ctx) return;
 
-    ctx.drawImage(doc.baseImage, x, y, cw, ch, 0, 0, cw, ch);
+    ctx.translate(-x, -y);
+    drawDocumentBase(ctx, doc, false);
 
     const croppedLayers = doc.layers.map((l) => {
       if (l.type === 'path') {
@@ -382,6 +399,7 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
       width: cw,
       height: ch,
       baseImage: offscreen,
+      baseTransform: undefined,
       layers: croppedLayers,
     };
 
@@ -390,90 +408,10 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
     setActiveTab('adjust');
   };
 
-  // Rotate 90 CW / CCW
-  const rotateBase = (clockwise: boolean) => {
-    if (!doc.baseImage) return;
-    const offscreen = document.createElement('canvas');
-    offscreen.width = doc.height;
-    offscreen.height = doc.width;
-    const ctx = offscreen.getContext('2d');
-    if (!ctx) return;
-
-    ctx.save();
-    ctx.translate(offscreen.width / 2, offscreen.height / 2);
-    ctx.rotate((clockwise ? 90 : -90) * (Math.PI / 180));
-    ctx.drawImage(doc.baseImage, -doc.width / 2, -doc.height / 2);
-    ctx.restore();
-
-    const rotatePoint = ({ x, y }: { x: number; y: number }) => (clockwise ? { x: doc.height - y, y: x } : { x: y, y: doc.width - x });
-
-    const transformedLayers = doc.layers.map((layer) => {
-      if (layer.type === 'path') return { ...layer, points: layer.points.map(rotatePoint) };
-      const center = rotatePoint({ x: layer.x + layer.width / 2, y: layer.y + layer.height / 2 });
-      if (layer.type === 'redact') {
-        return { ...layer, x: center.x - layer.height / 2, y: center.y - layer.width / 2, width: layer.height, height: layer.width };
-      }
-      return {
-        ...layer,
-        x: center.x - layer.width / 2,
-        y: center.y - layer.height / 2,
-        rotation: ((layer.rotation ?? 0) + (clockwise ? 90 : -90)) % 360,
-      };
-    });
-
-    const newDoc: CanvasDocument = {
-      ...doc,
-      width: offscreen.width,
-      height: offscreen.height,
-      baseImage: offscreen,
-      layers: transformedLayers,
-    };
-
-    pushDoc(newDoc);
-    setCropRect({ x: 0, y: 0, width: newDoc.width, height: newDoc.height });
-  };
-
-  // Flip Horizontal / Vertical
-  const flipBase = (horizontal: boolean) => {
-    if (!doc.baseImage) return;
-    const offscreen = document.createElement('canvas');
-    offscreen.width = doc.width;
-    offscreen.height = doc.height;
-    const ctx = offscreen.getContext('2d');
-    if (!ctx) return;
-
-    ctx.save();
-    if (horizontal) {
-      ctx.translate(doc.width, 0);
-      ctx.scale(-1, 1);
-    } else {
-      ctx.translate(0, doc.height);
-      ctx.scale(1, -1);
-    }
-    ctx.drawImage(doc.baseImage, 0, 0);
-    ctx.restore();
-
-    const flipPoint = ({ x, y }: { x: number; y: number }) => (horizontal ? { x: doc.width - x, y } : { x, y: doc.height - y });
-
-    const transformedLayers = doc.layers.map((layer) => {
-      if (layer.type === 'path') return { ...layer, points: layer.points.map(flipPoint) };
-      const center = flipPoint({ x: layer.x + layer.width / 2, y: layer.y + layer.height / 2 });
-      return {
-        ...layer,
-        x: center.x - layer.width / 2,
-        y: center.y - layer.height / 2,
-        rotation: -(layer.rotation ?? 0),
-        flipX: horizontal ? !layer.flipX : layer.flipX,
-        flipY: horizontal ? layer.flipY : !layer.flipY,
-      };
-    });
-
-    const newDoc: CanvasDocument = {
-      ...doc,
-      baseImage: offscreen,
-      layers: transformedLayers,
-    };
-
+  const applyRotation = (angle: number) => {
+    setAnglePreview(null);
+    const newDoc = rotatePhoto(doc, normalizeRotation(angle));
+    if (newDoc === doc) return;
     pushDoc(newDoc);
   };
 
@@ -536,6 +474,7 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
 
   // Export
   const exportExt = exportMime === 'image/jpeg' ? 'jpg' : exportMime === 'image/webp' ? 'webp' : 'png';
+  const exportLabel = exportMime === 'image/jpeg' ? 'JPEG' : exportMime === 'image/webp' ? 'WebP' : 'PNG';
   const exportFilename = withSuffix(file.name, '-edited', exportExt);
 
   const getExportBlob = () => exportDocument(doc, exportMime, quality / 100);
@@ -556,13 +495,15 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
 
   const tool = TOOLS.find(({ id }) => id === activeTab) ?? TOOLS[0];
   const stageMode: StageMode =
-    activeTab === 'crop'
-      ? 'crop'
-      : activeTab === 'draw' || activeTab === 'highlight'
-        ? 'draw'
-        : activeTab === 'shapes' || activeTab === 'redact' || activeTab === 'arrow'
-          ? 'shape'
-          : 'select';
+    activeTab === 'transform'
+      ? 'view'
+      : activeTab === 'crop'
+        ? 'crop'
+        : activeTab === 'draw' || activeTab === 'highlight'
+          ? 'draw'
+          : activeTab === 'shapes' || activeTab === 'redact' || activeTab === 'arrow'
+            ? 'shape'
+            : 'select';
   const activeDraw = activeTab === 'highlight' ? highlightConfig : drawConfig;
   const setActiveDraw = activeTab === 'highlight' ? setHighlightConfig : setDrawConfig;
   const currentShape: ShapeConfig = {
@@ -580,6 +521,7 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
 
   const selectTool = (tab: TabType) => {
     if (tab === 'crop' && activeTab !== 'crop') handleAspectChange('free');
+    if (tab !== 'transform') setAnglePreview(null);
     setActiveTab(tab);
   };
 
@@ -645,6 +587,19 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
         <div className={styles.exportActions}>
           <CopyImageButton getImage={getExportBlob} disabled={isExporting} size="sm" filename={exportFilename} />
           <Button
+            variant="secondary"
+            size="sm"
+            className={styles.formatButton}
+            title={t('Export settings')}
+            aria-label={`${t('Export settings')} (${exportLabel})`}
+            aria-pressed={activeTab === 'export'}
+            aria-controls="photo-inspector"
+            onClick={() => selectTool('export')}
+          >
+            {exportLabel}
+            <ChevronDown aria-hidden="true" />
+          </Button>
+          <Button
             variant="primary"
             size="sm"
             icon={<Download aria-hidden="true" />}
@@ -693,7 +648,7 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
 
       <div className={styles.workArea}>
         <nav className={styles.toolRail} aria-label={t('Photo editing tools')}>
-          {TOOLS.map(({ id, label, icon: Icon }) => (
+          {TOOLS.filter(({ id }) => id !== 'export').map(({ id, label, icon: Icon }) => (
             <button
               key={id}
               type="button"
@@ -712,7 +667,8 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
           document={doc}
           selectedLayerId={selectedLayer?.id ?? null}
           mode={stageMode}
-          cropRect={cropRect}
+          cropRect={activeTab === 'crop' ? cropRect : undefined}
+          rotationPreview={rotationPreview}
           onCropChange={setCropRect}
           drawConfig={activeDraw}
           shapeConfig={currentShape}
@@ -722,7 +678,7 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
           onDeleteLayer={deleteLayer}
         />
 
-        <aside className={styles.inspector} aria-labelledby="photo-inspector-title">
+        <aside id="photo-inspector" ref={inspectorRef} className={styles.inspector} aria-labelledby="photo-inspector-title">
           <section className={styles.controlsPanel}>
             <h2 id="photo-inspector-title">{t(tool.label)}</h2>
             {activeTab === 'adjust' && (
@@ -774,7 +730,8 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
                   ].map((p) => (
                     <Button
                       key={p.id}
-                      variant={doc.adjustments?.preset === p.id ? 'primary' : 'secondary'}
+                      variant={(doc.adjustments?.preset ?? 'none') === p.id ? 'primary' : 'secondary'}
+                      aria-pressed={(doc.adjustments?.preset ?? 'none') === p.id}
                       onClick={() => setFilterPreset(p.id as Adjustments['preset'])}
                     >
                       {t(p.label)}
@@ -839,22 +796,33 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
             )}
 
             {activeTab === 'transform' && (
-              <Field label={t('Rotate and flip')}>
-                <div className={styles.btnGroup}>
-                  <Button variant="secondary" onClick={() => rotateBase(true)}>
-                    {t('Rotate 90° clockwise')}
-                  </Button>
-                  <Button variant="secondary" onClick={() => rotateBase(false)}>
-                    {t('Rotate 90° counterclockwise')}
-                  </Button>
-                  <Button variant="secondary" onClick={() => flipBase(true)}>
-                    {t('Flip horizontal')}
-                  </Button>
-                  <Button variant="secondary" onClick={() => flipBase(false)}>
-                    {t('Flip vertical')}
-                  </Button>
+              <>
+                <RotationControl
+                  angle={base.angle}
+                  onChange={applyRotation}
+                  onPreview={(angle) => setAnglePreview(angle === null ? null : { doc, angle })}
+                />
+                <div className={styles.transformActions} role="group" aria-label={t('Rotate and flip')}>
+                  {[
+                    { label: 'Rotate 90° counterclockwise', icon: RotateCcw, angle: -90, onClick: () => applyRotation(base.angle - 90) },
+                    { label: 'Rotate 90° clockwise', icon: RotateCw, angle: 90, onClick: () => applyRotation(base.angle + 90) },
+                    { label: 'Flip horizontal', icon: TrianglesCenterlineDashedVertical, onClick: () => pushDoc(flipPhoto(doc, true)) },
+                    { label: 'Flip vertical', icon: TrianglesCenterlineDashedHorizontal, onClick: () => pushDoc(flipPhoto(doc, false)) },
+                  ].map(({ label, icon: Icon, angle, onClick }) => (
+                    <Button
+                      key={label}
+                      variant="secondary"
+                      size="sm"
+                      title={t(label)}
+                      aria-label={t(label)}
+                      icon={<Icon aria-hidden="true" />}
+                      onClick={onClick}
+                    >
+                      {angle && '90°'}
+                    </Button>
+                  ))}
                 </div>
-              </Field>
+              </>
             )}
 
             {activeTab === 'text' && (

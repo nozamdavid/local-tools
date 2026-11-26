@@ -7,8 +7,7 @@ type Raster = HTMLImageElement | HTMLCanvasElement;
 type SavedLayer = Exclude<Layer, ImageLayer> | (Omit<ImageLayer, 'image'> & { image: Blob });
 type PhotoDraft = Omit<CanvasDocument, 'baseImage' | 'layers'> & { version: 1; baseImage: Blob | null; layers: SavedLayer[] };
 
-// The editor creates a new base canvas for each crop or transform. Reuse its
-// encoded pixels while subsequent edits change only the layers or adjustments.
+// Crops create a new base canvas. Reuse its encoded pixels for subsequent edits.
 const savedRasters = new WeakMap<Raster, Promise<Blob>>();
 function encodeRaster(image: Raster): Promise<Blob> {
   const cached = savedRasters.get(image);
@@ -57,6 +56,7 @@ export async function restorePhotoDraft(file: File, original: HTMLImageElement):
     return {
       width: draft.width,
       height: draft.height,
+      baseTransform: draft.baseTransform,
       adjustments: draft.adjustments,
       backgroundColor: draft.backgroundColor,
       baseImage,

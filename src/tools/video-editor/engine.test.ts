@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { afterAll, beforeAll, expect, it, vi } from 'vitest';
 import { exportVideoEdit, type VideoEdit } from './engine';
+import { getRotatedFrame } from './timeline';
 
 type Core = {
   FS: {
@@ -155,10 +156,54 @@ beforeAll(async () => {
   );
   execute('-i', 'source.mp4', '-an', '-c:v', 'copy', 'silent.mp4');
   execute('-f', 'lavfi', '-i', 'color=green:s=40x80:r=20:d=1.2', '-c:v', 'libx264', 'portrait.mp4');
+  execute(
+    '-f',
+    'lavfi',
+    '-i',
+    'color=magenta:s=96x64:r=10:d=0.4',
+    '-vf',
+    'drawbox=14:10:56:36:blue:t=fill,drawbox=18:14:10:10:red:t=fill,drawbox=55:31:10:10:lime:t=fill',
+    '-c:v',
+    'libx264',
+    'rotation.mp4',
+  );
   execute('-f', 'lavfi', '-i', 'sine=frequency=880:sample_rate=48000:duration=0.4', 'music.wav');
 }, 15000);
 
 afterAll(() => vi.unstubAllGlobals());
+
+it.each([
+  { rotation: 15, format: 'mp4', width: 64, height: 50, red: [16, 11], green: [47, 37] },
+  { rotation: -30, format: 'webm', width: 68, height: 60, red: [13, 32], green: [54, 28] },
+  { rotation: 270, format: 'mp4', width: 36, height: 56, red: [9, 47], green: [26, 10] },
+] as const)('crops and rotates by $rotation degrees in $format', async ({ rotation, format, width, height, red, green }) => {
+  const crop = { x: 14, y: 10, width: 56, height: 36 };
+  expect(getRotatedFrame(crop, rotation)).toMatchObject({ width, height });
+  const blob = await exportVideoEdit(
+    localFile('rotation.mp4', 'video/mp4'),
+    { ...baseEdit, segments: [{ start: 0, end: 0.4 }], crop, rotation },
+    null,
+    format,
+    () => {},
+    new AbortController().signal,
+  );
+  const probe = await inspect(blob, format);
+  expect(probe.streams).toMatchObject([{ codec_type: 'video', width, height }]);
+  execute('-i', `inspected.${format}`, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'frame.rgb');
+  const pixels = core.FS.readFile('frame.rgb');
+  const pixel = (x: number, y: number) => pixels.slice((y * width + x) * 3, (y * width + x) * 3 + 3);
+  for (const [point, channel] of [
+    [red, 0],
+    [green, 1],
+    [[width / 2, height / 2], 2],
+  ] as const) {
+    const color = pixel(point[0], point[1]);
+    expect(color[channel]).toBeGreaterThan(200);
+    expect(color[(channel + 1) % 3]).toBeLessThan(35);
+    expect(color[(channel + 2) % 3]).toBeLessThan(35);
+  }
+  if (rotation !== 270) expect(Math.max(...pixel(0, 0), ...pixel(width - 1, height - 1))).toBeLessThan(20);
+});
 
 it('reorders and speeds up ranges, rotates a crop, and fades the source under a delayed mix in MP4', async () => {
   const progress: number[] = [];

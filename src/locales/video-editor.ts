@@ -2,6 +2,8 @@ import type { Locale } from '../lib/i18n';
 
 // Spanish, Italian, German, Portuguese, French.
 const rows: Record<string, [string, string, string, string, string]> = {
+  '{count} videos': ['{count} vídeos', '{count} video', '{count} Videos', '{count} vídeos', '{count} vidéos'],
+  'Entire timeline': ['Toda la línea de tiempo', 'Intera timeline', 'Gesamte Zeitleiste', 'Toda a linha do tempo', 'Tout le montage'],
   'Back to home': ['Volver al inicio', 'Torna alla home', 'Zur Startseite', 'Voltar ao início', 'Retour à l’accueil'],
   'Add videos': ['Añadir vídeos', 'Aggiungi video', 'Videos hinzufügen', 'Adicionar vídeos', 'Ajouter des vidéos'],
   'Drop videos here': ['Suelta vídeos aquí', 'Trascina qui i video', 'Videos hier ablegen', 'Largue vídeos aqui', 'Déposez des vidéos ici'],
@@ -37,7 +39,13 @@ const rows: Record<string, [string, string, string, string, string]> = {
     'Dividir no cursor',
     'Scinder à la tête de lecture',
   ],
-  'Cut selected clip': ['Cortar el clip', 'Elimina la clip', 'Clip entfernen', 'Cortar o clipe', 'Supprimer la séquence'],
+  'Remove selected clip': [
+    'Quitar el clip seleccionado',
+    'Rimuovi la clip selezionata',
+    'Ausgewählten Clip entfernen',
+    'Remover o clipe selecionado',
+    'Supprimer la séquence sélectionnée',
+  ],
   'Trim in (s)': ['Inicio del clip (s)', 'Inizio clip (s)', 'Clipanfang (s)', 'Início do clipe (s)', 'Début de la séquence (s)'],
   'Trim out (s)': ['Fin del clip (s)', 'Fine clip (s)', 'Clipende (s)', 'Fim do clipe (s)', 'Fin de la séquence (s)'],
   'Set in to playhead': [
@@ -76,6 +84,28 @@ const rows: Record<string, [string, string, string, string, string]> = {
   'Width (px)': ['Anchura (px)', 'Larghezza (px)', 'Breite (px)', 'Largura (px)', 'Largeur (px)'],
   'Height (px)': ['Altura (px)', 'Altezza (px)', 'Höhe (px)', 'Altura (px)', 'Hauteur (px)'],
   Transform: ['Transformar', 'Trasforma', 'Transformieren', 'Transformar', 'Transformer'],
+  'Rotation angle (degrees)': [
+    'Ángulo de rotación (grados)',
+    'Angolo di rotazione (gradi)',
+    'Drehwinkel (Grad)',
+    'Ângulo de rotação (graus)',
+    'Angle de rotation (degrés)',
+  ],
+  'Reset rotation': [
+    'Restablecer la rotación',
+    'Ripristina rotazione',
+    'Drehung zurücksetzen',
+    'Repor a rotação',
+    'Réinitialiser la rotation',
+  ],
+  'Output duration': ['Duración del resultado', 'Durata del risultato', 'Ausgabedauer', 'Duração do resultado', 'Durée de sortie'],
+  '{duration} output': [
+    '{duration} de salida',
+    '{duration} in uscita',
+    '{duration} Ausgabe',
+    '{duration} de saída',
+    '{duration} en sortie',
+  ],
   'Playback speed': [
     'Velocidad de reproducción',
     'Velocità di riproduzione',
@@ -147,19 +177,33 @@ const rows: Record<string, [string, string, string, string, string]> = {
     'Exportação cancelada.',
     'Exportation annulée.',
   ],
-  'Your edits could not be saved on this device.': [
-    'No se han podido guardar los cambios en este dispositivo.',
-    'Impossibile salvare le modifiche su questo dispositivo.',
-    'Deine Änderungen konnten auf diesem Gerät nicht gespeichert werden.',
-    'Não foi possível guardar as alterações neste dispositivo.',
-    'Vos modifications n’ont pas pu être enregistrées sur cet appareil.',
+  'This project is too large to save in this browser. Export your video before leaving.': [
+    'Este proyecto es demasiado grande para guardarlo en este navegador. Exporta el vídeo antes de salir.',
+    'Questo progetto è troppo grande per essere salvato in questo browser. Esporta il video prima di uscire.',
+    'Dieses Projekt ist zu groß für den Browserspeicher. Exportiere dein Video vor dem Verlassen.',
+    'Este projeto é demasiado grande para ser guardado neste navegador. Exporta o vídeo antes de sair.',
+    'Ce projet est trop volumineux pour être enregistré dans ce navigateur. Exportez votre vidéo avant de quitter.',
   ],
-  'Your edits could not be saved on this device. Leave this video anyway?': [
-    'No se han podido guardar los cambios en este dispositivo. ¿Salir del vídeo de todos modos?',
-    'Impossibile salvare le modifiche su questo dispositivo. Vuoi comunque uscire dal video?',
-    'Deine Änderungen konnten auf diesem Gerät nicht gespeichert werden. Video trotzdem verlassen?',
-    'Não foi possível guardar as alterações neste dispositivo. Sair do vídeo mesmo assim?',
-    'Vos modifications n’ont pas pu être enregistrées sur cet appareil. Quitter la vidéo quand même ?',
+  'This project could not be saved. Retry saving or export your video before leaving.': [
+    'No se ha podido guardar el proyecto. Vuelve a intentarlo o exporta el vídeo antes de salir.',
+    'Impossibile salvare il progetto. Riprova o esporta il video prima di uscire.',
+    'Das Projekt konnte nicht gespeichert werden. Versuche es erneut oder exportiere dein Video vor dem Verlassen.',
+    'Não foi possível guardar o projeto. Tenta novamente ou exporta o vídeo antes de sair.',
+    'Impossible d’enregistrer le projet. Réessayez ou exportez votre vidéo avant de quitter.',
+  ],
+  'This project changed or was removed in Recent files. Export your video to keep these edits.': [
+    'Este proyecto ha cambiado o se ha eliminado de Archivos recientes. Exporta el vídeo para conservar los cambios.',
+    'Questo progetto è stato modificato o rimosso dai file recenti. Esporta il video per conservare le modifiche.',
+    'Dieses Projekt wurde geändert oder aus den zuletzt verwendeten Dateien entfernt. Exportiere dein Video, um diese Änderungen zu behalten.',
+    'Este projeto foi alterado ou removido dos ficheiros recentes. Exporta o vídeo para manter estas alterações.',
+    'Ce projet a changé ou a été supprimé des fichiers récents. Exportez la vidéo pour conserver ces modifications.',
+  ],
+  'Your latest edits will be lost if you leave. Leave this video anyway?': [
+    'Si sales, perderás los últimos cambios. ¿Salir del vídeo de todos modos?',
+    'Se esci, perderai le ultime modifiche. Vuoi comunque uscire dal video?',
+    'Beim Verlassen gehen deine neuesten Änderungen verloren. Video trotzdem verlassen?',
+    'Se saíres, perderás as últimas alterações. Sair do vídeo mesmo assim?',
+    'Vos dernières modifications seront perdues si vous quittez. Quitter la vidéo quand même ?',
   ],
   'This video could not be opened. Try an MP4 with H.264 video or a WebM file.': [
     'No se ha podido abrir este vídeo. Prueba con un MP4 con vídeo H.264 o un archivo WebM.',

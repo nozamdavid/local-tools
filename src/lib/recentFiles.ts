@@ -4,16 +4,19 @@ import { bytesToHex } from '@noble/hashes/utils.js';
 const DB_NAME = 'loconvert-recent-files';
 const ENTRIES = 'entries';
 const DRAFTS = 'drafts';
+const VIDEO_ASSETS = 'video-assets';
 const MAX_ENTRIES = 10;
 const MAX_FILES_PER_ENTRY = 24;
 const MAX_FILE_BYTES = 64 * 1024 * 1024;
 const MAX_TOTAL_BYTES = 128 * 1024 * 1024;
+const MAX_VIDEO_PROJECT_BYTES = 512 * 1024 * 1024;
+const MAX_VIDEO_TOTAL_BYTES = 1024 * 1024 * 1024;
 const HASH_CHUNK_BYTES = 1024 * 1024;
 const PHOTO_EDITOR = '/image/photo-editor';
 const VIDEO_EDITOR = '/video/video-editor';
 const changes = new EventTarget();
 const fileHashes = new WeakMap<File, Promise<string>>();
-const draftProjects = new WeakMap<File, string>();
+const recentVideoEntries = new WeakMap<File, string>();
 let channel: BroadcastChannel | undefined;
 
 interface StoredFile {
@@ -43,6 +46,7 @@ type PersistedFile = Omit<StoredFile, 'blob'> & { blob: Blob | BufferedBlob };
 interface StoredEntry extends Omit<RecentFilesEntry, 'files'> {
   files: PersistedFile[];
   draftBytes: number;
+  video?: { revision: string; assets: string[] };
 }
 
 interface DraftAsset {
@@ -55,10 +59,14 @@ interface DraftRecord {
   value: unknown;
 }
 
-interface DraftProject {
+interface VideoDraftProject {
   id: string;
-  create: boolean;
+  reopened: boolean;
+  revision: string | null | undefined;
+  assetIds: WeakMap<Blob, string>;
 }
+
+export type VideoDraftSave = 'saved' | 'session' | 'storage' | 'conflict';
 
 function fileMetadata(file: File): Omit<StoredFile, 'blob'> {
   return { name: file.name, lastModified: file.lastModified, relativePath: file.webkitRelativePath || '' };
@@ -155,11 +163,14 @@ export function subscribeToRecentFiles(listener: () => void) {
 
 function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(DB_NAME, 1);
+    const request = indexedDB.open(DB_NAME, 2);
     let blocked = false;
-    request.onupgradeneeded = () => {
-      request.result.createObjectStore(ENTRIES, { keyPath: 'id' });
-      request.result.createObjectStore(DRAFTS);
+    request.onupgradeneeded = ({ oldVersion }) => {
+      if (oldVersion === 0) {
+        request.result.createObjectStore(ENTRIES, { keyPath: 'id' });
+        request.result.createObjectStore(DRAFTS);
+      }
+      request.result.createObjectStore(VIDEO_ASSETS);
     };
     request.onblocked = () => {
       blocked = true;
@@ -186,8 +197,9 @@ async function runTransaction(names: string[], mode: IDBTransactionMode, run: (t
       transaction.onabort = () => reject(transaction.error);
       try {
         run(transaction);
-      } catch {
+      } catch (error) {
         transaction.abort();
+        reject(error);
       }
     });
   } finally {
@@ -195,9 +207,12 @@ async function runTransaction(names: string[], mode: IDBTransactionMode, run: (t
   }
 }
 
-async function updateEntries(update: (entries: IDBObjectStore, drafts: IDBObjectStore) => void, notify = () => true): Promise<void> {
-  await runTransaction([ENTRIES, DRAFTS], 'readwrite', (transaction) =>
-    update(transaction.objectStore(ENTRIES), transaction.objectStore(DRAFTS)),
+async function updateEntries(
+  update: (entries: IDBObjectStore, drafts: IDBObjectStore, videoAssets: IDBObjectStore) => void,
+  notify = () => true,
+): Promise<void> {
+  await runTransaction([ENTRIES, DRAFTS, VIDEO_ASSETS], 'readwrite', (transaction) =>
+    update(transaction.objectStore(ENTRIES), transaction.objectStore(DRAFTS), transaction.objectStore(VIDEO_ASSETS)),
   );
   if (!notify()) return;
   changes.dispatchEvent(new Event('change'));
@@ -237,8 +252,8 @@ async function entryId(files: File[], toolPath: string) {
   const metadata = files.map((file) => [file.name, file.size, file.lastModified, file.type, file.webkitRelativePath || '']);
   if (!isRecentEditorPath(toolPath) || files.length !== 1) return JSON.stringify([toolPath, metadata]);
   const [file] = files;
-  const projectId = toolPath === VIDEO_EDITOR ? draftProjects.get(file) : undefined;
-  if (projectId) return projectEntryId(projectId);
+  const recentId = toolPath === VIDEO_EDITOR ? recentVideoEntries.get(file) : undefined;
+  if (recentId) return recentId;
   // An editor draft must match the source bytes even when metadata is identical.
   let contentHash = fileHashes.get(file);
   if (!contentHash) {
@@ -248,15 +263,27 @@ async function entryId(files: File[], toolPath: string) {
   return JSON.stringify([toolPath, metadata, await contentHash]);
 }
 
+function deleteEntry(entries: IDBObjectStore, drafts: IDBObjectStore, videoAssets: IDBObjectStore, id: string, entry?: StoredEntry) {
+  entries.delete(id);
+  drafts.delete(id);
+  for (const asset of entry?.video?.assets ?? []) videoAssets.delete([id, asset]);
+}
+
 async function saveEntry(
   id: string,
-  build: (previous: StoredEntry | undefined, newestAt: number, drafts: IDBObjectStore) => StoredEntry | undefined,
+  build: (
+    previous: StoredEntry | undefined,
+    newestAt: number,
+    drafts: IDBObjectStore,
+    videoAssets: IDBObjectStore,
+  ) => StoredEntry | undefined,
   notifyOnSave = () => true,
 ): Promise<boolean> {
   let saved = false;
   let evicted = false;
+  let writeError: unknown;
   await updateEntries(
-    (entries, drafts) => {
+    (entries, drafts, videoAssets) => {
       const request = entries.getAll();
       request.onsuccess = () => {
         try {
@@ -266,28 +293,35 @@ async function saveEntry(
             existing.find((item) => item.id === id),
             existing[0]?.openedAt ?? 0,
             drafts,
+            videoAssets,
           );
           if (!entry) return;
           const others = existing.filter((item) => item.id !== id);
           let count = 1 + others.length;
-          let bytes = others.reduce((total, item) => total + item.size + item.draftBytes, entry.size + entry.draftBytes);
+          const bytesByGroup = { recent: 0, video: 0 };
+          for (const item of [entry, ...others]) {
+            bytesByGroup[item.video ? 'video' : 'recent'] += item.size + item.draftBytes;
+          }
           for (const item of others.reverse()) {
-            if (count <= MAX_ENTRIES && bytes <= MAX_TOTAL_BYTES) break;
-            entries.delete(item.id);
-            drafts.delete(item.id);
+            const group = item.video ? 'video' : 'recent';
+            if (count <= MAX_ENTRIES && bytesByGroup[group] <= (item.video ? MAX_VIDEO_TOTAL_BYTES : MAX_TOTAL_BYTES)) continue;
+            deleteEntry(entries, drafts, videoAssets, item.id, item);
             count--;
-            bytes -= item.size + item.draftBytes;
+            bytesByGroup[group] -= item.size + item.draftBytes;
             evicted = true;
           }
           entries.put(entry);
           saved = true;
-        } catch {
+        } catch (error) {
+          writeError = error;
           entries.transaction.abort();
         }
       };
     },
     () => saved && (notifyOnSave() || evicted),
-  );
+  ).catch((error: unknown) => {
+    throw writeError ?? error;
+  });
   return saved;
 }
 
@@ -300,11 +334,10 @@ export async function rememberRecentFiles(files: File[], toolPath: string): Prom
 
     // A repeat replaces the stored bytes and moves the selection to the top.
     const id = await entryId(files, toolPath);
-    const isDraftProject = toolPath === VIDEO_EDITOR && files.length === 1 && draftProjects.has(files[0]);
     const save = (storedFiles: PersistedFile[]) =>
       saveEntry(id, (previous, newestAt) => {
         // A stale recent entry can still be clicked while a removal is propagating.
-        if (isDraftProject && !previous) return;
+        if (previous?.video || (toolPath === VIDEO_EDITOR && files.length === 1 && recentVideoEntries.has(files[0]))) return;
         return {
           id,
           toolPath,
@@ -335,16 +368,27 @@ export async function rememberRecentFiles(files: File[], toolPath: string): Prom
 export async function listRecentFiles(): Promise<RecentFilesEntry[]> {
   let entries: StoredEntry[] = [];
   try {
-    await runTransaction([ENTRIES], 'readonly', (transaction) => {
+    await runTransaction([ENTRIES, VIDEO_ASSETS], 'readonly', (transaction) => {
       const request = transaction.objectStore(ENTRIES).getAll();
       request.onsuccess = () => {
         entries = request.result as StoredEntry[];
+        const videoAssets = transaction.objectStore(VIDEO_ASSETS);
+        for (const entry of entries) {
+          if (!entry.video) continue;
+          const source = videoAssets.get([entry.id, entry.video.assets[0]]);
+          source.onsuccess = () => {
+            if (source.result?.file) entry.files = [{ ...source.result.file, blob: source.result.blob }];
+          };
+        }
       };
     });
-    return entries.sort(newestFirst).map((entry) => ({
-      ...entry,
-      files: entry.files.map((file) => ({ ...file, blob: restoreBlob(file.blob) })),
-    }));
+    return entries
+      .filter((entry) => entry.files.length)
+      .sort(newestFirst)
+      .map((entry) => ({
+        ...entry,
+        files: entry.files.map((file) => ({ ...file, blob: restoreBlob(file.blob) })),
+      }));
   } catch {
     return [];
   }
@@ -353,15 +397,15 @@ export async function listRecentFiles(): Promise<RecentFilesEntry[]> {
 export function restoreRecentFiles(entry: RecentFilesEntry): File[] {
   return entry.files.map(({ blob, ...metadata }) => {
     const file = restoreFile(blob, metadata);
-    if (entry.draftProjectId) draftProjects.set(file, entry.draftProjectId);
+    if (entry.toolPath === VIDEO_EDITOR) recentVideoEntries.set(file, entry.id);
     return file;
   });
 }
 
 export function removeRecentFiles(id: string): Promise<boolean> {
-  return updateEntries((entries, drafts) => {
-    entries.delete(id);
-    drafts.delete(id);
+  return updateEntries((entries, drafts, videoAssets) => {
+    const request = entries.get(id);
+    request.onsuccess = () => deleteEntry(entries, drafts, videoAssets, id, request.result as StoredEntry | undefined);
   }).then(
     () => true,
     () => false,
@@ -369,9 +413,10 @@ export function removeRecentFiles(id: string): Promise<boolean> {
 }
 
 export function clearRecentFiles(): Promise<boolean> {
-  return updateEntries((entries, drafts) => {
+  return updateEntries((entries, drafts, videoAssets) => {
     entries.clear();
     drafts.clear();
+    videoAssets.clear();
   }).then(
     () => true,
     () => false,
@@ -395,61 +440,162 @@ export async function readRecentDraft<T>(file: File, toolPath: string): Promise<
   }
 }
 
+export async function videoDraftProject(file: File, projectId?: string): Promise<VideoDraftProject> {
+  if (file.size > MAX_VIDEO_PROJECT_BYTES) projectId ??= createRecentDraftProjectId();
+  return {
+    id: projectId ? projectEntryId(projectId) : await entryId([file], VIDEO_EDITOR),
+    reopened: recentVideoEntries.has(file),
+    revision: null,
+    assetIds: new WeakMap(),
+  };
+}
+
+export async function readVideoDraft<T>(file: File, project: VideoDraftProject): Promise<T | null> {
+  if (file.size > MAX_VIDEO_PROJECT_BYTES) return null;
+  let entry: StoredEntry | undefined;
+  let draft: unknown;
+  const assets = new Map<string, Blob>();
+  // Read the draft and its media from one snapshot. Removing an entry deletes both.
+  await updateEntries(
+    (entries, drafts, videoAssets) => {
+      const request = entries.get(project.id);
+      request.onsuccess = () => {
+        entry = request.result as StoredEntry | undefined;
+        if (!entry) return;
+        entries.put({ ...entry, openedAt: Math.max(entry.openedAt, Date.now()) });
+        const savedDraft = drafts.get(project.id);
+        savedDraft.onsuccess = () => {
+          draft = savedDraft.result;
+        };
+        for (const id of entry.video?.assets.slice(1) ?? []) {
+          const savedAsset = videoAssets.get([project.id, id]);
+          savedAsset.onsuccess = () => {
+            const asset = savedAsset.result as DraftAsset | undefined;
+            if (!asset) {
+              drafts.transaction.abort();
+              return;
+            }
+            const blob = asset.file ? restoreFile(asset.blob, asset.file) : restoreBlob(asset.blob);
+            assets.set(id, blob);
+            project.assetIds.set(blob, id);
+          };
+        }
+      };
+    },
+    () => !!entry,
+  );
+  if (!entry) return null;
+  if (entry.video) {
+    project.assetIds.set(file, entry.video.assets[0]);
+    draft = mapDraftAssets(draft, VIDEO_EDITOR, (id: string) => {
+      const blob = assets.get(id);
+      if (!blob) throw new Error('Stored video project is missing media.');
+      return blob;
+    });
+  } else {
+    draft = restoreDraft(draft, VIDEO_EDITOR);
+  }
+  project.revision = entry.video?.revision;
+  return (draft as T | undefined) ?? null;
+}
+
+export async function writeVideoDraft(file: File, project: VideoDraftProject, draft: unknown): Promise<VideoDraftSave> {
+  try {
+    const media = new Map<string, Blob>();
+    const reference = (blob: Blob) => {
+      let id = project.assetIds.get(blob);
+      if (!id) {
+        id = createRecentDraftProjectId();
+        project.assetIds.set(blob, id);
+      }
+      media.set(id, blob);
+      return id;
+    };
+    // The first asset is the anchor used by Recent files to reopen the project.
+    reference(file);
+    const value = mapDraftAssets(draft, VIDEO_EDITOR, reference);
+    const extraBytes = new Blob([JSON.stringify(value)]).size + [...media.values()].reduce((total, blob) => total + blob.size, -file.size);
+    if (file.size + extraBytes > MAX_VIDEO_PROJECT_BYTES) return 'session';
+
+    const names = (draft as { additionalSources?: { file: File }[] } | null)?.additionalSources?.map(({ file }) => file.name) ?? [];
+    const revision = createRecentDraftProjectId();
+    let added: [string, Blob][] = [];
+    let listChanged = false;
+    const save = (buffered?: Map<string, BufferedBlob>) =>
+      saveEntry(
+        project.id,
+        (previous, newestAt, drafts, videoAssets) => {
+          // Compare within the write transaction so a stale tab cannot overwrite
+          // a newer draft or recreate a project that was removed or evicted.
+          if ((previous ? previous.video?.revision : null) !== project.revision || (!previous && project.reopened)) return;
+          const previousAssets = new Set(previous?.video?.assets);
+          added = [...media].filter(([id]) => !previousAssets.has(id));
+          for (const [id, blob] of added) {
+            const asset: DraftAsset = { blob: buffered?.get(id) ?? blob.slice(0, blob.size, blob.type) };
+            if (blob instanceof File) asset.file = fileMetadata(blob);
+            videoAssets.put(asset, [project.id, id]);
+          }
+          for (const id of previousAssets) {
+            if (!media.has(id)) videoAssets.delete([project.id, id]);
+          }
+          drafts.put(value, project.id);
+          const oldNames = previous?.additionalVideoNames ?? [];
+          listChanged = !previous || oldNames.length !== names.length || oldNames.some((name, index) => name !== names[index]);
+          return {
+            id: project.id,
+            toolPath: VIDEO_EDITOR,
+            openedAt: previous?.openedAt ?? Math.max(Date.now(), newestAt + 1),
+            size: file.size,
+            files: [],
+            draftBytes: extraBytes,
+            additionalVideoNames: names.length ? names : undefined,
+            video: { revision, assets: [...media.keys()] },
+          };
+        },
+        () => listChanged,
+      );
+    let saved: boolean;
+    try {
+      saved = await save();
+    } catch (error) {
+      if (!isBlobStorageError(error)) throw error;
+      // Private WebKit can reject Blob storage. Preserve the small-project
+      // ArrayBuffer fallback and cap the memory it can use on one write.
+      if (added.reduce((total, [, blob]) => total + blob.size, 0) > MAX_FILE_BYTES) return 'session';
+      const buffered = new Map<string, BufferedBlob>();
+      for (const [id, blob] of added) buffered.set(id, await bufferBlob(blob));
+      saved = await save(buffered);
+    }
+    if (!saved) return 'conflict';
+    project.revision = revision;
+    return 'saved';
+  } catch {
+    return 'storage';
+  }
+}
+
 /** extraBytes includes the draft's assets and metadata separately from the stored source file. */
-export async function writeRecentDraft(
-  file: File,
-  toolPath: string,
-  draft: unknown,
-  extraBytes: number,
-  project?: DraftProject,
-): Promise<boolean> {
+export async function writeRecentDraft(file: File, toolPath: string, draft: unknown, extraBytes: number): Promise<boolean> {
   try {
     if (!Number.isSafeInteger(extraBytes) || extraBytes < 0 || file.size + extraBytes > MAX_FILE_BYTES) return false;
     const { assets, record } = collectDraftAssets(draft, toolPath, extraBytes);
-    const id = project ? projectEntryId(project.id) : await entryId([file], toolPath);
-    const names =
-      toolPath === VIDEO_EDITOR &&
-      draft &&
-      typeof draft === 'object' &&
-      'additionalSources' in draft &&
-      Array.isArray(draft.additionalSources)
-        ? draft.additionalSources.map(({ file }: { file: File }) => file.name)
-        : [];
-    let namesChanged = false;
-    const save = (value: unknown, source?: PersistedFile) =>
+    const id = await entryId([file], toolPath);
+    const save = (value: unknown) =>
       saveEntry(
         id,
-        (previous, newestAt, drafts) => {
-          const entry: Omit<StoredEntry, 'draftBytes'> | undefined =
-            previous ??
-            (source && {
-              id,
-              toolPath,
-              openedAt: Math.max(Date.now(), newestAt + 1),
-              size: file.size,
-              files: [source],
-              draftProjectId: project?.id,
-            });
-          if (!entry) return;
+        (previous, _newestAt, drafts) => {
+          if (!previous) return;
           drafts.put(value, id);
-          if (toolPath !== VIDEO_EDITOR) return { ...entry, draftBytes: extraBytes };
-          const previousNames = entry.additionalVideoNames ?? [];
-          namesChanged = previousNames.length !== names.length || previousNames.some((name, index) => name !== names[index]);
-          return { ...entry, draftBytes: extraBytes, additionalVideoNames: names.length ? names : undefined };
+          return { ...previous, draftBytes: extraBytes };
         },
-        () => !!project?.create || namesChanged,
+        () => false,
       );
-    const metadata = project?.create ? fileMetadata(file) : undefined;
     try {
-      // IndexedDB's native File clone omits the folder path.
-      return await save(
-        toolPath === VIDEO_EDITOR && assets.length ? record : draft,
-        metadata && { ...metadata, blob: file.slice(0, file.size, file.type) },
-      );
+      return await save(draft);
     } catch (error) {
       if (!isBlobStorageError(error)) throw error;
       for (const { blob, asset } of assets) asset.blob = await bufferBlob(blob);
-      return await save(record, metadata && { ...metadata, blob: await bufferBlob(file) });
+      return await save(record);
     }
   } catch {
     return false;

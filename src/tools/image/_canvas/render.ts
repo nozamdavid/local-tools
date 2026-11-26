@@ -65,10 +65,26 @@ function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w:
 
 function renderRedactLayer(ctx: CanvasRenderingContext2D, layer: RedactLayer, isPreview: boolean) {
   if (layer.redactType === 'solid') {
-    const x = Math.floor(layer.x);
-    const y = Math.floor(layer.y);
     ctx.fillStyle = '#000000';
-    ctx.fillRect(x, y, Math.ceil(layer.x + layer.width) - x, Math.ceil(layer.y + layer.height) - y);
+    const angle = layer.rotation ?? 0;
+    const cx = layer.x + layer.width / 2;
+    const cy = layer.y + layer.height / 2;
+    if (angle % 90 === 0) {
+      const swap = angle % 180 !== 0;
+      const width = swap ? layer.height : layer.width;
+      const height = swap ? layer.width : layer.height;
+      const x = Math.floor(cx - width / 2);
+      const y = Math.floor(cy - height / 2);
+      ctx.fillRect(x, y, Math.ceil(cx + width / 2) - x, Math.ceil(cy + height / 2) - y);
+    } else {
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate((angle * Math.PI) / 180);
+      // Cover the sampling footprint and keep antialiasing outside the redacted area.
+      const bleed = 2;
+      ctx.fillRect(-layer.width / 2 - bleed, -layer.height / 2 - bleed, layer.width + 2 * bleed, layer.height + 2 * bleed);
+      ctx.restore();
+    }
     return;
   }
 
@@ -392,6 +408,22 @@ export function renderLayer(ctx: CanvasRenderingContext2D, layer: Layer, isPrevi
   ctx.restore();
 }
 
+export function drawDocumentBase(ctx: CanvasRenderingContext2D, doc: CanvasDocument, withAdjustments = true) {
+  if (!doc.baseImage) return;
+  ctx.save();
+  if (withAdjustments) ctx.filter = getAdjustmentFilter(doc);
+  const base = doc.baseTransform;
+  if (base) {
+    ctx.translate(doc.width / 2, doc.height / 2);
+    ctx.rotate((base.angle * Math.PI) / 180);
+    ctx.scale(base.flipX ? -1 : 1, base.flipY ? -1 : 1);
+    ctx.drawImage(doc.baseImage, -base.width / 2, -base.height / 2, base.width, base.height);
+  } else {
+    ctx.drawImage(doc.baseImage, 0, 0, doc.width, doc.height);
+  }
+  ctx.restore();
+}
+
 export function renderDocument(ctx: CanvasRenderingContext2D, doc: CanvasDocument, isPreview = false) {
   ctx.clearRect(0, 0, doc.width, doc.height);
 
@@ -400,13 +432,7 @@ export function renderDocument(ctx: CanvasRenderingContext2D, doc: CanvasDocumen
     ctx.fillRect(0, 0, doc.width, doc.height);
   }
 
-  if (doc.baseImage) {
-    ctx.save();
-    const filter = getAdjustmentFilter(doc);
-    ctx.filter = filter;
-    ctx.drawImage(doc.baseImage, 0, 0, doc.width, doc.height);
-    ctx.restore();
-  }
+  drawDocumentBase(ctx, doc);
 
   const solidRedactions: RedactLayer[] = [];
   for (const layer of doc.layers) {

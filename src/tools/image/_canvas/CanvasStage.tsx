@@ -12,7 +12,7 @@ export interface CropRect {
   height: number;
 }
 
-export type StageMode = 'select' | 'draw' | 'shape' | 'crop';
+export type StageMode = 'select' | 'draw' | 'shape' | 'crop' | 'view';
 
 export interface ShapeConfig {
   type: 'rect' | 'ellipse' | 'arrow' | 'line' | 'redact';
@@ -36,6 +36,7 @@ export interface CanvasStageProps {
   shapeConfig?: ShapeConfig;
   drawConfig?: DrawConfig;
   cropRect?: CropRect;
+  rotationPreview?: { delta: number; width: number; height: number };
   workspace?: boolean;
   onCropChange?: (rect: CropRect) => void;
   onSelectLayer: (layerId: string | null) => void;
@@ -78,6 +79,7 @@ export function CanvasStage({
   shapeConfig,
   drawConfig,
   cropRect,
+  rotationPreview,
   workspace = false,
   onCropChange,
   onSelectLayer,
@@ -87,9 +89,17 @@ export function CanvasStage({
   const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [fitScale, setFitScale] = useState(1);
+  const [available, setAvailable] = useState({ width: Infinity, height: Infinity });
   const [zoomStep, setZoomStep] = useState(0);
-  const scale = fitScale * 2 ** (zoomStep / 2);
+  const fitScale = (width: number, height: number) => {
+    const fit = Math.min(available.width / width, available.height / height, 1);
+    return workspace ? fit : Math.max(0.05, fit);
+  };
+  const zoom = 2 ** (zoomStep / 2);
+  const scale = fitScale(doc.width, doc.height) * zoom;
+  const width = rotationPreview?.width ?? doc.width;
+  const height = rotationPreview?.height ?? doc.height;
+  const displayScale = rotationPreview ? fitScale(width, height) * zoom : scale;
   const nextLayer = useRef(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const pointerId = useRef<number | null>(null);
@@ -101,12 +111,11 @@ export function CanvasStage({
     const updateScale = () => {
       if (!containerRef.current) return;
       const { clientWidth, clientHeight } = containerRef.current;
-      const pad = workspace ? 56 : 32;
+      const pad = workspace && !window.matchMedia('(max-width: 700px)').matches ? 56 : 32;
       const minimum = workspace ? 1 : 100;
       const availW = Math.max(minimum, clientWidth - pad);
       const availH = Math.max(minimum, (clientHeight || 520) - pad);
-      const s = Math.min(availW / doc.width, availH / doc.height, 1);
-      setFitScale(workspace ? s : Math.max(0.05, s));
+      setAvailable((previous) => (previous.width === availW && previous.height === availH ? previous : { width: availW, height: availH }));
     };
 
     updateScale();
@@ -117,14 +126,14 @@ export function CanvasStage({
       ro.disconnect();
       window.removeEventListener('resize', updateScale);
     };
-  }, [doc.width, doc.height, workspace]);
+  }, [workspace]);
 
   useEffect(() => {
     const viewport = scrollRef.current;
     if (!workspace || !viewport) return;
     viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
     viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
-  }, [scale, doc.width, doc.height, workspace]);
+  }, [displayScale, width, height, workspace]);
 
   // Redraw canvas with layers & overlays
   const redraw = useCallback(() => {
@@ -343,7 +352,7 @@ export function CanvasStage({
 
   // Pointer Down
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (e.button !== 0 || pointerId.current !== null) return;
+    if (mode === 'view' || e.button !== 0 || pointerId.current !== null) return;
     if (workspace) e.currentTarget.focus({ preventScroll: true });
     pointerId.current = e.pointerId;
     e.currentTarget.setPointerCapture(e.pointerId);
@@ -691,15 +700,18 @@ export function CanvasStage({
       data-testid="canvas-stage"
       role="img"
       aria-label={t(
-        'Editing canvas. Placing, moving and resizing layers needs a pointer; the side panel controls and the Delete key edit the selected layer.',
+        workspace && mode === 'select'
+          ? 'Editing canvas. Arrow keys move the selected layer by one pixel. Hold Shift to move by ten. Delete removes the selected layer.'
+          : 'Editing canvas',
       )}
-      className={`${styles.canvasElement} ${getCursorClass()}`}
+      className={`${styles.canvasElement} ${getCursorClass()} ${rotationPreview ? styles.rotatingCanvas : ''}`}
       tabIndex={workspace ? 0 : undefined}
       width={doc.width}
       height={doc.height}
       style={{
-        width: `${Math.max(1, doc.width * scale)}px`,
-        height: `${Math.max(1, doc.height * scale)}px`,
+        width: `${Math.max(1, doc.width * displayScale)}px`,
+        height: `${Math.max(1, doc.height * displayScale)}px`,
+        transform: rotationPreview ? `translate(-50%, -50%) rotate(${rotationPreview.delta}deg)` : undefined,
       }}
       onKeyDown={workspace ? handleCanvasKey : undefined}
       onPointerDown={handlePointerDown}
@@ -713,14 +725,26 @@ export function CanvasStage({
   if (workspace) {
     return (
       <div className={styles.workspace}>
-        <div ref={containerRef} className={styles.workspaceFrame}>
+        <div
+          ref={containerRef}
+          className={styles.workspaceFrame}
+          style={{ '--image-ratio': doc.height / doc.width } as React.CSSProperties}
+        >
           <div ref={scrollRef} className={styles.workspaceScroll}>
-            <div className={styles.workspaceCanvas}>{canvas}</div>
+            <div className={styles.workspaceCanvas}>
+              <div
+                className={styles.imageFrame}
+                style={{ width: Math.max(1, width * displayScale), height: Math.max(1, height * displayScale) }}
+              >
+                {canvas}
+                {rotationPreview && <div className={styles.straightenGrid} aria-hidden="true" />}
+              </div>
+            </div>
           </div>
         </div>
         <footer className={styles.workspaceFooter}>
           <span>
-            {doc.width} × {doc.height} px
+            {width} × {height} px
           </span>
           <div className={styles.zoomControls} role="group" aria-label={t('Canvas zoom')}>
             <button

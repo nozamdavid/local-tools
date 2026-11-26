@@ -26,7 +26,7 @@ export function FileDrop({
   multiple = false,
   label = multiple ? 'Drop files here' : 'Drop a file here',
   hint,
-  icon,
+  icon = <Upload />,
   rememberInHistory = true,
   onFiles,
 }: FileDropProps) {
@@ -142,9 +142,11 @@ export function FileDrop({
       onClick={openPicker}
     >
       <input ref={fileInputRef} type="file" accept={accept} multiple={multiple} hidden tabIndex={-1} onChange={handleChange} />
-      <span className="file-drop-icon" aria-hidden="true">
-        {icon ?? <Upload />}
-      </span>
+      {icon && (
+        <span className="file-drop-icon" aria-hidden="true">
+          {icon}
+        </span>
+      )}
       <div className="file-drop-label" id={labelId}>
         {t(isDragOver ? 'Release to open' : label)}
       </div>

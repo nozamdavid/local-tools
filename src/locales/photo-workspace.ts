@@ -2,6 +2,14 @@ import type { Locale } from '../lib/i18n';
 
 // Spanish, Italian, German, Portuguese, French.
 const translations: Record<string, [string, string, string, string, string]> = {
+  'Editing canvas': ['Lienzo de edición', 'Area di modifica', 'Bearbeitungsfläche', 'Tela de edição', 'Zone de retouche'],
+  'Editing canvas. Arrow keys move the selected layer by one pixel. Hold Shift to move by ten. Delete removes the selected layer.': [
+    'Lienzo de edición. Las flechas mueven la capa seleccionada un píxel. Mantén Mayús para moverla diez. Supr elimina la capa seleccionada.',
+    'Area di modifica. I tasti freccia spostano il livello selezionato di un pixel. Tieni premuto Maiusc per spostarlo di dieci. Canc elimina il livello selezionato.',
+    'Bearbeitungsfläche. Die Pfeiltasten verschieben die ausgewählte Ebene um ein Pixel. Halte die Umschalttaste gedrückt, um sie um zehn Pixel zu verschieben. Entf löscht die ausgewählte Ebene.',
+    'Tela de edição. As setas movem a camada selecionada um píxel. Mantém Shift premido para mover dez. Delete elimina a camada selecionada.',
+    'Zone de retouche. Les flèches déplacent le calque sélectionné d’un pixel. Maintenez Maj pour le déplacer de dix pixels. Suppr supprime le calque sélectionné.',
+  ],
   'Select layer': ['Seleccionar capa', 'Seleziona livello', 'Ebene auswählen', 'Selecionar camada', 'Sélectionner un calque'],
   Highlighter: ['Resaltador', 'Evidenziatore', 'Textmarker', 'Marcador', 'Surligneur'],
   Redact: ['Ocultar', 'Oscura', 'Schwärzen', 'Ocultar', 'Masquer'],

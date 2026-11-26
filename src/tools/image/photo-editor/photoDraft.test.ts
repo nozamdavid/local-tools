@@ -3,6 +3,7 @@ import { canvasToBlob, imageToCanvas, loadImage } from '../../../lib/image';
 import { readRecentDraft, writeRecentDraft } from '../../../lib/recentFiles';
 import type { CanvasDocument, ImageLayer } from '../_canvas/types';
 import { restorePhotoDraft, savePhotoDraft } from './photoDraft';
+import { rotatePhoto } from './photoTransform';
 
 vi.mock('../../../lib/image', () => ({ canvasToBlob: vi.fn(), imageToCanvas: vi.fn(), loadImage: vi.fn() }));
 vi.mock('../../../lib/recentFiles', () => ({ readRecentDraft: vi.fn(), writeRecentDraft: vi.fn() }));
@@ -36,6 +37,26 @@ it('restores an unchanged base using the supplied original without encoding or d
   expect(canvasToBlob).not.toHaveBeenCalled();
   expect(imageToCanvas).not.toHaveBeenCalled();
   expect(loadImage).not.toHaveBeenCalled();
+});
+
+it('persists an exact rotation and its moved solid mask while reusing the original raster', async () => {
+  const rotated = rotatePhoto(
+    {
+      ...originalDoc,
+      layers: [{ id: 'mask', type: 'redact', redactType: 'solid', x: 11, y: 24, width: 80, height: 40 }],
+    },
+    17.3,
+  );
+
+  await expect(savePhotoDraft(file, rotated, original)).resolves.toBe(true);
+  expect(rotated.baseTransform).toEqual({ angle: 17.3, width: 640, height: 480 });
+  expect(rotated.layers[0]).toMatchObject({ rotation: 17.3, redactType: 'solid', width: 80, height: 40 });
+  expect(canvasToBlob).not.toHaveBeenCalled();
+
+  const reopenedOriginal = { ...original };
+  const reopened = await restorePhotoDraft(file, reopenedOriginal);
+  expect(reopened).toEqual({ ...rotated, baseImage: reopenedOriginal });
+  expect(reopened?.baseImage).toBe(reopenedOriginal);
 });
 
 it('round trips the cropped base, pasted image and other edits', async () => {

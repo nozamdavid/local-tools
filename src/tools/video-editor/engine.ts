@@ -1,5 +1,6 @@
 import { getFFmpeg, runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
 import { withMediaJobLock } from '../../lib/mediaQueue';
+import { getRotatedFrame, type FrameSize } from './timeline';
 
 export type Segment = { start: number; end: number; sourceIndex?: number };
 
@@ -7,7 +8,7 @@ export type VideoEdit = {
   segments: Segment[];
   speed: number;
   crop: { x: number; y: number; width: number; height: number } | null;
-  rotation: 0 | 90 | 180 | 270;
+  rotation: number;
   flipH: boolean;
   flipV: boolean;
   volume: number;
@@ -28,8 +29,6 @@ type ProbeStream = {
   duration?: string;
   disposition?: { attached_pic?: number };
 };
-
-type FrameSize = { width: number; height: number };
 
 const sourceName = 'video-editor-source';
 const probeName = 'video-editor-probe.json';
@@ -117,15 +116,18 @@ function fitFilters({ width, height }: FrameSize): string[] {
   ];
 }
 
-function videoFilters(edit: VideoEdit): string[] {
+function videoFilters(edit: VideoEdit, frame: FrameSize): string[] {
+  const output = getRotatedFrame(edit.crop ?? frame, edit.rotation);
   const filters: string[] = [];
+  if (!output.cardinal) filters.push('format=yuv444p');
   if (edit.crop) {
     const { x, y, width, height } = edit.crop;
     filters.push(`crop=${Math.round(width)}:${Math.round(height)}:${Math.round(x)}:${Math.round(y)}:exact=1`);
   }
-  if (edit.rotation === 90) filters.push('transpose=clock');
-  if (edit.rotation === 180) filters.push('hflip', 'vflip');
-  if (edit.rotation === 270) filters.push('transpose=cclock');
+  if (output.rotation === 90) filters.push('transpose=clock');
+  if (output.rotation === -180) filters.push('hflip', 'vflip');
+  if (output.rotation === -90) filters.push('transpose=cclock');
+  if (!output.cardinal) filters.push(`rotate=${output.radians}:ow=${output.width}:oh=${output.height}:fillcolor=black`);
   if (edit.flipH) filters.push('hflip');
   if (edit.flipV) filters.push('vflip');
   filters.push('pad=ceil(iw/2)*2:ceil(ih/2)*2:0:0', 'format=yuv420p');
@@ -135,6 +137,7 @@ function videoFilters(edit: VideoEdit): string[] {
 function validateEdit(edit: VideoEdit) {
   const { segments, speed, crop, volume, fadeIn, fadeOut, audioOffset, audioVolume } = edit;
   if (!Number.isFinite(speed) || speed <= 0) throw new Error('Video speed must be greater than zero.');
+  if (!Number.isFinite(edit.rotation)) throw new Error('Select a valid rotation angle.');
   if (
     !segments.length ||
     segments.some(({ start, end }) => !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start)
@@ -198,15 +201,11 @@ export async function exportVideoEdit(
       const duration = segments.reduce((total, { start, end }) => total + (end - start) / edit.speed, 0);
       if (!Number.isFinite(duration) || duration < 0.000001) throw new Error('Invalid output duration.');
 
-      let fit: string[] = [];
-      if (files.length > 1) {
-        const anchor = sources.get(0);
-        const size = projectSize ?? (anchor ? displaySize(anchor.video) : await readAnchorSize(files[0]));
-        signal.throwIfAborted();
-        if (![size.width, size.height].every((value) => Number.isSafeInteger(value) && value > 0)) {
-          throw new Error('Invalid project frame size.');
-        }
-        fit = fitFilters(size);
+      const anchor = sources.get(0);
+      const size = projectSize ?? (anchor ? displaySize(anchor.video) : await readAnchorSize(files[0]));
+      signal.throwIfAborted();
+      if (![size.width, size.height].every((value) => Number.isSafeInteger(value) && value > 0)) {
+        throw new Error('Invalid project frame size.');
       }
 
       const args: string[] = ['-hide_banner', '-loglevel', 'info'];
@@ -221,6 +220,8 @@ export async function exportVideoEdit(
       // Give each range a separate input seek so reordering does not buffer decoded frames from other ranges.
       for (const [index, { start, end, source }] of segments.entries()) {
         const { name, video, audio } = source;
+        const native = displaySize({ ...video, sample_aspect_ratio: '1:1' });
+        const fit = files.length > 1 || native.width !== size.width || native.height !== size.height ? fitFilters(size) : [];
         const length = seconds(end - start);
         args.push('-ss', seconds(start), '-i', name);
         const videoLabel = `[v${index}]`;
@@ -244,7 +245,7 @@ export async function exportVideoEdit(
       }
 
       const videoJoin = videoLabels.length > 1 ? `interleave=nb_inputs=${videoLabels.length},` : '';
-      graph.push(`${videoLabels.join('')}${videoJoin}${videoFilters(edit).join(',')}[video]`);
+      graph.push(`${videoLabels.join('')}${videoJoin}${videoFilters(edit, size).join(',')}[video]`);
 
       const mixLabels: string[] = [];
       const durationArg = seconds(duration);

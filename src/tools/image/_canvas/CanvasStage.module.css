@@ -97,12 +97,37 @@
   padding: 1.5rem;
 }
 
-.workspaceCanvas .canvasElement {
+.imageFrame {
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
   background-color: #30322d;
   background-image: conic-gradient(#41443d 25%, transparent 25% 50%, #41443d 50% 75%, transparent 75%);
   background-size: 16px 16px;
+}
+
+.workspaceCanvas .canvasElement {
+  box-shadow: none;
   touch-action: none;
   user-select: none;
+}
+
+.rotatingCanvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+}
+
+.straightenGrid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(to right, transparent calc(100% - 1px), rgb(255 255 255 / 40%) calc(100% - 1px)),
+    linear-gradient(to bottom, transparent calc(100% - 1px), rgb(255 255 255 / 40%) calc(100% - 1px));
+  background-size:
+    33.333% 100%,
+    100% 33.333%;
 }
 
 .workspaceFooter {
@@ -157,4 +182,14 @@
 .zoomControls svg {
   width: 0.875rem;
   height: 0.875rem;
+}
+
+@media (max-width: 700px) {
+  .workspaceFrame {
+    height: clamp(6rem, calc((100vw - 2rem) * var(--image-ratio) + 2rem), min(42dvh, max(6rem, 100dvh - 24.5rem)));
+  }
+
+  .workspaceCanvas {
+    padding: 0.875rem;
+  }
 }

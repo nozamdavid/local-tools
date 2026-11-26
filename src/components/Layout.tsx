@@ -12,6 +12,15 @@ import { translate, useI18n } from '../lib/i18n';
 
 const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
 
+// Some browsers keep :focus-visible on a native select after its popup closes.
+// Keep the focus target for Tab, and show the ring again for keyboard navigation.
+function trackSelectFocus(event: React.PointerEvent | React.KeyboardEvent | React.FocusEvent) {
+  const select = event.target;
+  if (!(select instanceof HTMLSelectElement) || select.multiple || select.size > 1) return;
+  if (event.type === 'pointerdown') select.dataset.pointerFocus = '';
+  else if (!('key' in event) || (event.key !== 'Escape' && event.key !== 'Enter')) delete select.dataset.pointerFocus;
+}
+
 function MobileNav({
   id,
   onNavigate,
@@ -132,7 +141,7 @@ export function Layout() {
   const mediaList = MEDIA_LIST.map(localizeMediaInfo);
 
   return (
-    <div className="layout">
+    <div className="layout" onPointerDownCapture={trackSelectFocus} onKeyDownCapture={trackSelectFocus} onBlurCapture={trackSelectFocus}>
       <a
         href="#main"
         className="skip-link"

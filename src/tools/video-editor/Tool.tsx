@@ -11,6 +11,7 @@ import {
   FlipVertical2,
   FolderOpen,
   Gauge,
+  GripVertical,
   Music2,
   Pause,
   Play,
@@ -30,6 +31,7 @@ import { Button, Field, Select } from '../../components/Controls';
 import { CopyImageButton } from '../../components/CopyImageButton';
 import { FileDrop } from '../../components/FileDrop';
 import { ProgressBar } from '../../components/ProgressBar';
+import { normalizeRotation, RotationControl } from '../../components/RotationControl';
 import { downloadBlob } from '../../lib/download';
 import { describeError } from '../../lib/errors';
 import { formatDuration, formatNumber, withSuffix } from '../../lib/format';
@@ -37,7 +39,8 @@ import { matchesAccept } from '../../lib/handoff';
 import { useI18n } from '../../lib/i18n';
 import { useObjectUrl } from '../../lib/useObjectUrl';
 import { exportVideoEdit, type VideoEdit } from './engine';
-import { buildTimeline, locateTime, readAudioDuration } from './timeline';
+import { buildTimeline, getRotatedFrame, locateTime, readAudioDuration } from './timeline';
+import { useClipDrag } from './useClipDrag';
 import { useDraft, type Draft } from './useDraft';
 import { usePreview } from './usePreview';
 import { CropFrame } from './CropFrame';
@@ -170,7 +173,7 @@ function restoreDraft(source: VideoSource, restored: Draft | null): Draft {
           end: Math.min(lengthOf(segment), Math.max(bounds.end, segment.end)),
         };
       });
-      return { ...restored, edit: { ...restored.edit, segments }, trimBounds };
+      return { ...restored, edit: { ...restored.edit, rotation: normalizeRotation(restored.edit.rotation), segments }, trimBounds };
     }
   }
   const segments = [{ start: 0, end: source.duration }];
@@ -197,6 +200,7 @@ export default function VideoEditor() {
   const latestHistory = useRef(history);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [pane, setPane] = useState<Pane>('cut');
+  const [rotationPreview, setRotationPreview] = useState<{ draft: Draft; angle: number } | null>(null);
   const [notice, setNotice] = useState<{ text: string; error: boolean; params?: { file: string } } | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [loadingSample, setLoadingSample] = useState(false);
@@ -213,14 +217,19 @@ export default function VideoEditor() {
   const soundtrackInput = useRef<HTMLInputElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const { edit, soundtrack, soundtrackDuration, format, additionalSources } = history.present;
+  const liveEdit = useMemo(
+    () => (pane === 'transform' && rotationPreview?.draft === history.present ? { ...edit, rotation: rotationPreview.angle } : edit),
+    [edit, history.present, pane, rotationPreview],
+  );
   const videos = useMemo(() => (source ? [source, ...(additionalSources ?? [])] : []), [source, additionalSources]);
   const files = useMemo(() => videos.map(({ file }) => file), [videos]);
   const sourceUrls = useSourceUrls(files);
   const metadata = useMemo(() => (source ? { width: source.width, height: source.height } : null), [source]);
   const soundtrackUrl = useObjectUrl(soundtrack);
   const ready = !!source;
-  const preview = usePreview(edit, ready, (text) => setNotice({ text, error: true }), sourceUrls, metadata);
+  const preview = usePreview(liveEdit, ready, (text) => setNotice({ text, error: true }), sourceUrls, metadata);
   const { clips, duration } = buildTimeline(edit);
+  const clipDrag = useClipDrag(edit.segments, moveClipTo);
   const selected = clips[selectedIndex];
   const selectedSource = videos[selected?.sourceIndex ?? 0];
   const trimBounds = history.present.trimBounds[selectedIndex];
@@ -346,7 +355,7 @@ export default function VideoEditor() {
     setLeaving(true);
     preview.pause();
     const saved = await persistence.flush();
-    if (!saved && !window.confirm(t('Your edits could not be saved on this device. Leave this video anyway?'))) {
+    if (!saved && !window.confirm(t('Your latest edits will be lost if you leave. Leave this video anyway?'))) {
       setLeaving(false);
       return;
     }
@@ -415,6 +424,12 @@ export default function VideoEditor() {
     apply({ ...history.present, edit: next });
   }
 
+  function commitRotation(angle: number) {
+    const current = latestHistory.current.present;
+    if (angle === normalizeRotation(current.edit.rotation)) return;
+    apply({ ...current, edit: { ...current.edit, rotation: angle } });
+  }
+
   function changeHistory(direction: 'undo' | 'redo') {
     const undo = direction === 'undo';
     const snapshot = undo ? history.past.at(-1) : history.future[0];
@@ -480,21 +495,27 @@ export default function VideoEditor() {
     );
   }
 
-  function moveClip(direction: -1 | 1) {
-    const destination = selectedIndex + direction;
-    if (!selected || !clips[destination]) return;
+  function moveClipTo(from: number, destination: number) {
+    const clip = clips[from];
+    if (leaving || !clip || !clips[destination] || from === destination) return;
     const segments = edit.segments.slice();
     const bounds = history.present.trimBounds.slice();
-    [segments[selectedIndex], segments[destination]] = [segments[destination], segments[selectedIndex]];
-    [bounds[selectedIndex], bounds[destination]] = [bounds[destination], bounds[selectedIndex]];
+    const [segment] = segments.splice(from, 1);
+    const [bound] = bounds.splice(from, 1);
+    segments.splice(destination, 0, segment);
+    bounds.splice(destination, 0, bound);
     const updated = { ...edit, segments };
     const newClip = buildTimeline(updated).clips[destination];
-    const relativePosition = location?.index === selectedIndex ? preview.time - selected.at : 0;
+    const relativePosition = location?.index === from ? preview.time - clip.at : 0;
     apply(
       { ...history.present, edit: updated, trimBounds: bounds },
       newClip.at + Math.min(relativePosition, Math.max(0, newClip.length - 1e-6)),
       destination,
     );
+  }
+
+  function moveClip(direction: -1 | 1) {
+    moveClipTo(selectedIndex, selectedIndex + direction);
   }
 
   function resetTrim() {
@@ -517,7 +538,12 @@ export default function VideoEditor() {
   function stepFrame(direction: -1 | 1) {
     const previous = location && direction === -1 && preview.time <= clips[location.index].at ? clips[location.index - 1] : undefined;
     const rate = previous ? videos[previous.sourceIndex ?? 0].frameRate : playheadRate;
-    preview.seek(preview.time + direction / (rate * edit.speed));
+    scrubTo(preview.time + direction / (rate * edit.speed));
+  }
+
+  function scrubTo(time: number) {
+    setSelectedIndex(locateTime(clips, time, edit.speed).index);
+    preview.seek(time);
   }
 
   const handleShortcut = useEffectEvent((event: KeyboardEvent) => {
@@ -631,9 +657,7 @@ export default function VideoEditor() {
   const addingVideos = opening !== null;
   const showSourceNames = videos.length > 1;
   const percent = (time: number) => `${duration ? (100 * time) / duration : 0}%`;
-  const rotated = edit.rotation === 90 || edit.rotation === 270;
-  const frameWidth = crop && (rotated ? crop.height : crop.width);
-  const frameHeight = crop && (rotated ? crop.width : crop.height);
+  const outputSize = crop && getRotatedFrame(crop, liveEdit.rotation);
   const previewVolume = Math.round(edit.volume * 100);
   const cropVideo = pane === 'crop' && crop && metadata ? preview.videoRef.current : null;
 
@@ -653,7 +677,7 @@ export default function VideoEditor() {
           <h1 tabIndex={-1} ref={title}>
             {t('Video Editor')}
           </h1>
-          {source && <span title={source.file.name}>{source.file.name}</span>}
+          {source && <span>{showSourceNames ? t('{count} videos', { count: formatNumber(videos.length) }) : source.file.name}</span>}
         </div>
         {ready && (
           <>
@@ -733,7 +757,20 @@ export default function VideoEditor() {
             {t(notice.text, notice.params)}
           </p>
         )}
-        {ready && persistence.failed && <p className={styles.error}>{t('Your edits could not be saved on this device.')}</p>}
+        {ready && persistence.status === 'session' && (
+          <p role="status">{t('This project is too large to save in this browser. Export your video before leaving.')}</p>
+        )}
+        {ready && persistence.status === 'conflict' && (
+          <p role="status">{t('This project changed or was removed in Recent files. Export your video to keep these edits.')}</p>
+        )}
+        {ready && persistence.status === 'storage' && (
+          <>
+            <p className={styles.error}>{t('This project could not be saved. Retry saving or export your video before leaving.')}</p>
+            <Button size="sm" variant="secondary" onClick={() => void persistence.flush()}>
+              {t('Retry save')}
+            </Button>
+          </>
+        )}
         {job && 'progress' in job && (
           <div className={styles.job}>
             <ProgressBar value={job.progress} label="Exporting video…" indeterminate={job.progress <= 0} />
@@ -754,7 +791,7 @@ export default function VideoEditor() {
 
       {!ready ? (
         <div className={styles.intake}>
-          <FileDrop accept={videoAccept} multiple label="Drop videos here" icon={<Film />} onFiles={(files) => void openVideos(files)} />
+          <FileDrop accept={videoAccept} multiple label="Drop videos here" icon={null} onFiles={(files) => void openVideos(files)} />
           <Button
             variant="secondary"
             size="sm"
@@ -776,7 +813,16 @@ export default function VideoEditor() {
           <div className={styles.body}>
             <aside className={styles.rail} aria-label={t('Video editing tools')}>
               {tools.map(({ id, label, Icon }) => (
-                <button key={id} type="button" className={styles.railButton} aria-pressed={pane === id} onClick={() => setPane(id)}>
+                <button
+                  key={id}
+                  type="button"
+                  className={styles.railButton}
+                  aria-pressed={pane === id}
+                  onClick={() => {
+                    setRotationPreview(null);
+                    setPane(id);
+                  }}
+                >
                   <Icon size={18} aria-hidden="true" />
                   <span>{t(label)}</span>
                 </button>
@@ -785,7 +831,10 @@ export default function VideoEditor() {
                 <FolderOpen />
               </IconAction>
             </aside>
-            <section className={styles.stage} aria-label={t('Video preview')}>
+            <section
+              className={pane === 'transform' ? `${styles.stage} ${styles.transformStage}` : styles.stage}
+              aria-label={t('Video preview')}
+            >
               <div className={styles.monitor}>
                 <canvas
                   className={styles.canvas}
@@ -804,6 +853,16 @@ export default function VideoEditor() {
                   />
                 )}
               </div>
+              {pane === 'transform' && (
+                <div className={styles.rotationBar}>
+                  <RotationControl
+                    angle={edit.rotation}
+                    onChange={commitRotation}
+                    onPreview={(angle) => setRotationPreview(angle === null ? null : { draft: history.present, angle })}
+                    disabled={leaving}
+                  />
+                </div>
+              )}
               <div className={styles.transport}>
                 <span className={styles.time}>
                   {formatPlayhead(preview.time)} <span>/ {formatPlayhead(duration)}</span>
@@ -826,7 +885,7 @@ export default function VideoEditor() {
                 </div>
                 <div className={styles.frameActions}>
                   <span className={styles.resolution}>
-                    {frameWidth} × {frameHeight}
+                    {outputSize?.width} × {outputSize?.height}
                   </span>
                   <CopyImageButton
                     getImage={preview.copyFrame}
@@ -837,72 +896,220 @@ export default function VideoEditor() {
                 </div>
               </div>
             </section>
-            <section className={styles.inspector} aria-label={t(tools.find((tool) => tool.id === pane)!.label)}>
-              <h2>{t(tools.find((tool) => tool.id === pane)!.label)}</h2>
-              {pane === 'cut' && selected && (
-                <>
+            <section className={styles.timeline} aria-labelledby="video-editor-timeline">
+              <div className={styles.timelineHeader}>
+                <h2 id="video-editor-timeline">{t('Timeline')}</h2>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={<Plus />}
+                  aria-disabled={addingVideos || leaving}
+                  onClick={() => {
+                    if (!addingVideos && !leaving) videosInput.current?.click();
+                  }}
+                >
+                  {t('Add videos')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t('Split at playhead')}
+                  title={t('Split at playhead')}
+                  disabled={!canSplit}
+                  icon={<Scissors />}
+                  onClick={split}
+                >
+                  {t('Split')}
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  aria-label={t('Remove selected clip')}
+                  title={t('Remove selected clip')}
+                  disabled={clips.length < 2}
+                  icon={<Trash2 />}
+                  onClick={cut}
+                >
+                  {t('Remove')}
+                </Button>
+              </div>
+              {addingVideos && (
+                <p className={styles.timelineStatus} role="status">
+                  {t(openingLabel)}
+                </p>
+              )}
+              <div className={styles.tracks}>
+                <div className={styles.trackLabels}>
+                  <span aria-hidden="true" />
+                  <span>
+                    <Film size={14} aria-hidden="true" />
+                    {t('Video')}
+                  </span>
+                  <span>
+                    <Music2 size={14} aria-hidden="true" />
+                    {t('Audio')}
+                  </span>
+                </div>
+                <div className={styles.trackArea}>
+                  <div className={styles.ruler}>
+                    {[0, 0.25, 0.5, 0.75, 1].map((fraction) => (
+                      <span key={fraction} style={{ left: `${fraction * 100}%` }}>
+                        {formatDuration(duration * fraction)}
+                      </span>
+                    ))}
+                    <input
+                      type="range"
+                      className={styles.scrubber}
+                      min={0}
+                      max={duration}
+                      value={preview.time}
+                      step="any"
+                      aria-label={t('Timeline playhead')}
+                      aria-valuetext={formatPlayhead(preview.time)}
+                      onKeyDown={(event) => {
+                        if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+                        event.preventDefault();
+                        stepFrame(event.key === 'ArrowLeft' ? -1 : 1);
+                      }}
+                      onChange={(event) => scrubTo(Number(event.currentTarget.value))}
+                    />
+                  </div>
+                  <div className={styles.videoTrack} data-dragging={!!clipDrag.feedback} {...clipDrag.trackEvents}>
+                    {clips.map((clip, index) => {
+                      const sourceIndex = clip.sourceIndex ?? 0;
+                      const clipSource = videos[sourceIndex];
+                      const clipNumber = t('Clip {number}', { number: index + 1 });
+                      const label = showSourceNames ? clipSource.file.name : clipNumber;
+                      const range = `${formatDuration(clip.start)} – ${formatDuration(clip.end)}`;
+                      return (
+                        <button
+                          type="button"
+                          key={index}
+                          className={clips.length > 1 ? `${styles.clip} ${styles.reorderableClip}` : styles.clip}
+                          data-dragged={clipDrag.feedback?.index === index}
+                          style={{ width: percent(clip.length) }}
+                          aria-pressed={index === selectedIndex}
+                          aria-label={showSourceNames ? `${label} (${clipNumber})` : clipNumber}
+                          title={showSourceNames ? `${label}\n${range}` : range}
+                          onPointerDown={(event) => clipDrag.start(event, index)}
+                          onClick={() => {
+                            setSelectedIndex(index);
+                            preview.seek(clip.at, edit, index);
+                          }}
+                        >
+                          <SourceClipThumbnails
+                            sourceUrl={sourceUrls[sourceIndex]}
+                            duration={clipSource.duration}
+                            start={clip.start}
+                            end={clip.end}
+                          />
+                          {clips.length > 1 ? <GripVertical size={14} aria-hidden="true" /> : <Film size={14} aria-hidden="true" />}
+                          <span>{label}</span>
+                        </button>
+                      );
+                    })}
+                    {clipDrag.feedback?.marker != null && (
+                      <span
+                        className={styles.clipInsertion}
+                        style={{ left: `clamp(2px, ${clipDrag.feedback.marker}px, calc(100% - 2px))` }}
+                        aria-hidden="true"
+                      />
+                    )}
+                  </div>
+                  <div className={styles.audioTrack}>
+                    {soundtrack && audioCoverage > 0 ? (
+                      <button
+                        type="button"
+                        className={styles.audioClip}
+                        style={{ width: percent(audioCoverage), marginLeft: percent(Math.max(0, edit.audioOffset)) }}
+                        aria-pressed={pane === 'audio'}
+                        onClick={() => setPane('audio')}
+                        title={soundtrack.name}
+                      >
+                        <Music2 size={14} aria-hidden="true" />
+                        <span>{soundtrack.name}</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className={styles.audioPlaceholder}
+                        disabled={controlsDisabled}
+                        onClick={() => {
+                          setPane('audio');
+                          if (!soundtrack) soundtrackInput.current?.click();
+                        }}
+                      >
+                        <Music2 size={14} aria-hidden="true" />
+                        {t(soundtrack ? 'Edit soundtrack' : 'Add soundtrack')}
+                      </button>
+                    )}
+                  </div>
+                  <div className={styles.playhead} style={{ left: percent(preview.time) }} aria-hidden="true" />
+                </div>
+              </div>
+              {selected && (
+                <div className={styles.timelineSelection}>
+                  <div className={styles.timelineClipLabel}>
+                    <span>{t('Clip {number}', { number: selectedIndex + 1 })}</span>
+                    {showSourceNames && <span title={selectedSource.file.name}>{selectedSource.file.name}</span>}
+                  </div>
                   <div className={styles.actions}>
-                    <Button variant="secondary" size="sm" disabled={!canSplit} onClick={split} icon={<Scissors />}>
-                      {t('Split at playhead')}
+                    <Button variant="ghost" size="sm" disabled={selectedIndex === 0} onClick={() => moveClip(-1)} icon={<ArrowLeft />}>
+                      {t('Move earlier')}
                     </Button>
-                    <Button variant="ghost" size="sm" disabled={clips.length < 2} onClick={cut} icon={<Trash2 />}>
-                      {t('Cut selected clip')}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      disabled={selectedIndex + 1 === clips.length}
+                      onClick={() => moveClip(1)}
+                      icon={<ArrowRight />}
+                    >
+                      {t('Move later')}
                     </Button>
                   </div>
-                  <fieldset className={styles.inspectorGroup}>
-                    <legend
-                      className={showSourceNames ? styles.clipSourceName : undefined}
-                      title={showSourceNames ? selectedSource.file.name : undefined}
-                    >
-                      {showSourceNames ? selectedSource.file.name : t('Clip {number}', { number: selectedIndex + 1 })}
-                    </legend>
-                    <NumberField
-                      label={t('Trim in (s)')}
-                      value={selected.start}
-                      min={trimBounds.start}
-                      max={Math.max(selected.start, selected.end - margin)}
-                      onChange={(value) => trim('start', value)}
-                    />
-                    <NumberField
-                      label={t('Trim out (s)')}
-                      value={selected.end}
-                      min={Math.min(selected.end, selected.start + margin)}
-                      max={trimBounds.end}
-                      onChange={(value) => trim('end', value)}
-                    />
-                    <div className={styles.actions}>
-                      <Button variant="secondary" size="sm" disabled={!canTrim} onClick={() => trim('start', trimPoint)}>
-                        {t('Set in to playhead')}
-                      </Button>
-                      <Button variant="secondary" size="sm" disabled={!canTrim} onClick={() => trim('end', trimPoint)}>
-                        {t('Set out to playhead')}
-                      </Button>
-                      <Button variant="ghost" size="sm" disabled={!canResetTrim} onClick={resetTrim}>
-                        {t('Reset trim')}
-                      </Button>
-                    </div>
-                    <div className={styles.actions}>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={selectedIndex === 0}
-                        onClick={() => moveClip(-1)}
-                        icon={<ArrowLeft />}
-                      >
-                        {t('Move earlier')}
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        disabled={selectedIndex + 1 === clips.length}
-                        onClick={() => moveClip(1)}
-                        icon={<ArrowRight />}
-                      >
-                        {t('Move later')}
-                      </Button>
-                    </div>
-                  </fieldset>
-                </>
+                </div>
+              )}
+            </section>
+
+            <section className={styles.inspector} aria-label={t(tools.find((tool) => tool.id === pane)!.label)}>
+              <div className={styles.inspectorHeading}>
+                <h2>{t(tools.find((tool) => tool.id === pane)!.label)}</h2>
+                {clips.length > 1 && pane !== 'cut' && <span>{t('Entire timeline')}</span>}
+              </div>
+              {pane === 'cut' && selected && (
+                <fieldset className={styles.inspectorGroup}>
+                  <legend
+                    className={showSourceNames ? styles.clipSourceName : undefined}
+                    title={showSourceNames ? selectedSource.file.name : undefined}
+                  >
+                    {showSourceNames ? selectedSource.file.name : t('Clip {number}', { number: selectedIndex + 1 })}
+                  </legend>
+                  <NumberField
+                    label={t('Trim in (s)')}
+                    value={selected.start}
+                    min={trimBounds.start}
+                    max={Math.max(selected.start, selected.end - margin)}
+                    onChange={(value) => trim('start', value)}
+                  />
+                  <NumberField
+                    label={t('Trim out (s)')}
+                    value={selected.end}
+                    min={Math.min(selected.end, selected.start + margin)}
+                    max={trimBounds.end}
+                    onChange={(value) => trim('end', value)}
+                  />
+                  <div className={styles.actions}>
+                    <Button variant="secondary" size="sm" disabled={!canTrim} onClick={() => trim('start', trimPoint)}>
+                      {t('Set in to playhead')}
+                    </Button>
+                    <Button variant="secondary" size="sm" disabled={!canTrim} onClick={() => trim('end', trimPoint)}>
+                      {t('Set out to playhead')}
+                    </Button>
+                    <Button variant="ghost" size="sm" disabled={!canResetTrim} onClick={resetTrim}>
+                      {t('Reset trim')}
+                    </Button>
+                  </div>
+                </fieldset>
               )}
               {pane === 'crop' && crop && fullCrop && (
                 <>
@@ -958,7 +1165,7 @@ export default function VideoEditor() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => updateEdit({ rotation: ((edit.rotation + 270) % 360) as VideoEdit['rotation'] })}
+                      onClick={() => commitRotation(normalizeRotation(edit.rotation - 90))}
                       icon={<RotateCcw />}
                     >
                       {t('Rotate left')}
@@ -966,7 +1173,7 @@ export default function VideoEditor() {
                     <Button
                       variant="secondary"
                       size="sm"
-                      onClick={() => updateEdit({ rotation: ((edit.rotation + 90) % 360) as VideoEdit['rotation'] })}
+                      onClick={() => commitRotation(normalizeRotation(edit.rotation + 90))}
                       icon={<RotateCw />}
                     >
                       {t('Rotate right')}
@@ -990,18 +1197,28 @@ export default function VideoEditor() {
                       {t('Flip vertical')}
                     </Button>
                   </div>
-                  <output className={styles.resolution}>{edit.rotation}°</output>
                 </>
               )}
               {pane === 'speed' && (
-                <Field label={t('Playback speed')} htmlFor={speedId}>
-                  <Select
-                    id={speedId}
-                    value={edit.speed}
-                    options={speeds.map((speed) => ({ value: String(speed), label: `${formatNumber(speed, 2)}×` }))}
-                    onChange={(event) => updateEdit({ speed: Number(event.currentTarget.value) })}
-                  />
-                </Field>
+                <div className={styles.speedBar}>
+                  <div className={styles.speedOptions} role="radiogroup" aria-label={t('Playback speed')}>
+                    {speeds.map((speed) => (
+                      <label className={styles.speedOption} key={speed}>
+                        <input
+                          type="radio"
+                          name={speedId}
+                          checked={edit.speed === speed}
+                          disabled={leaving}
+                          onChange={() => updateEdit({ speed })}
+                        />
+                        <span>{formatNumber(speed, 2)}×</span>
+                      </label>
+                    ))}
+                  </div>
+                  <output className={styles.speedDuration} aria-label={t('Output duration')}>
+                    {t('{duration} output', { duration: formatDuration(duration) })}
+                  </output>
+                </div>
               )}
               {pane === 'audio' && (
                 <>
@@ -1107,134 +1324,6 @@ export default function VideoEditor() {
               )}
             </section>
           </div>
-
-          <section className={styles.timeline} aria-labelledby="video-editor-timeline">
-            <div className={styles.timelineHeader}>
-              <h2 id="video-editor-timeline">{t('Timeline')}</h2>
-              <Button
-                variant="secondary"
-                size="sm"
-                icon={<Plus />}
-                aria-disabled={addingVideos || leaving}
-                onClick={() => {
-                  if (!addingVideos && !leaving) videosInput.current?.click();
-                }}
-              >
-                {t('Add videos')}
-              </Button>
-              <Button variant="ghost" size="sm" disabled={!canSplit} icon={<Scissors />} onClick={split}>
-                {t('Split')}
-              </Button>
-              <Button variant="ghost" size="sm" disabled={clips.length < 2} icon={<Trash2 />} onClick={cut}>
-                {t('Cut')}
-              </Button>
-            </div>
-            {addingVideos && (
-              <p className={styles.timelineStatus} role="status">
-                {t(openingLabel)}
-              </p>
-            )}
-            <div className={styles.tracks}>
-              <div className={styles.trackLabels}>
-                <span aria-hidden="true" />
-                <span>
-                  <Film size={14} aria-hidden="true" />
-                  {t('Video')}
-                </span>
-                <span>
-                  <Music2 size={14} aria-hidden="true" />
-                  {t('Audio')}
-                </span>
-              </div>
-              <div className={styles.trackArea}>
-                <div className={styles.ruler}>
-                  {[0, 0.25, 0.5, 0.75, 1].map((fraction) => (
-                    <span key={fraction} style={{ left: `${fraction * 100}%` }}>
-                      {formatDuration(duration * fraction)}
-                    </span>
-                  ))}
-                  <input
-                    type="range"
-                    className={styles.scrubber}
-                    min={0}
-                    max={duration}
-                    value={preview.time}
-                    step="any"
-                    aria-label={t('Timeline playhead')}
-                    aria-valuetext={formatPlayhead(preview.time)}
-                    onKeyDown={(event) => {
-                      if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-                      event.preventDefault();
-                      stepFrame(event.key === 'ArrowLeft' ? -1 : 1);
-                    }}
-                    onChange={(event) => preview.seek(Number(event.currentTarget.value))}
-                  />
-                </div>
-                <div className={styles.videoTrack}>
-                  {clips.map((clip, index) => {
-                    const sourceIndex = clip.sourceIndex ?? 0;
-                    const clipSource = videos[sourceIndex];
-                    const clipNumber = t('Clip {number}', { number: index + 1 });
-                    const label = showSourceNames ? clipSource.file.name : clipNumber;
-                    const range = `${formatDuration(clip.start)} – ${formatDuration(clip.end)}`;
-                    return (
-                      <button
-                        type="button"
-                        key={index}
-                        className={styles.clip}
-                        style={{ width: percent(clip.length) }}
-                        aria-pressed={index === selectedIndex}
-                        aria-label={showSourceNames ? `${label} (${clipNumber})` : clipNumber}
-                        title={showSourceNames ? `${label}\n${range}` : range}
-                        onClick={() => {
-                          setSelectedIndex(index);
-                          setPane('cut');
-                          preview.seek(clip.at, edit, index);
-                        }}
-                      >
-                        <SourceClipThumbnails
-                          sourceUrl={sourceUrls[sourceIndex]}
-                          duration={clipSource.duration}
-                          start={clip.start}
-                          end={clip.end}
-                        />
-                        <Film size={14} aria-hidden="true" /> <span>{label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className={styles.audioTrack}>
-                  {soundtrack && audioCoverage > 0 ? (
-                    <button
-                      type="button"
-                      className={styles.audioClip}
-                      style={{ width: percent(audioCoverage), marginLeft: percent(Math.max(0, edit.audioOffset)) }}
-                      aria-pressed={pane === 'audio'}
-                      onClick={() => setPane('audio')}
-                      title={soundtrack.name}
-                    >
-                      <Music2 size={14} aria-hidden="true" />
-                      <span>{soundtrack.name}</span>
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      className={styles.audioPlaceholder}
-                      disabled={controlsDisabled}
-                      onClick={() => {
-                        setPane('audio');
-                        if (!soundtrack) soundtrackInput.current?.click();
-                      }}
-                    >
-                      <Music2 size={14} aria-hidden="true" />
-                      {t(soundtrack ? 'Edit soundtrack' : 'Add soundtrack')}
-                    </button>
-                  )}
-                </div>
-                <div className={styles.playhead} style={{ left: percent(preview.time) }} aria-hidden="true" />
-              </div>
-            </div>
-          </section>
         </>
       )}
     </div>

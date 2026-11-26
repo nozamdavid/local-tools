@@ -115,6 +115,13 @@ export interface CanvasDocument {
   width: number;
   height: number;
   baseImage: HTMLImageElement | HTMLCanvasElement | null;
+  baseTransform?: {
+    width: number;
+    height: number;
+    angle: number;
+    flipX?: boolean;
+    flipY?: boolean;
+  };
   backgroundColor?: string;
   adjustments?: Adjustments;
   layers: Layer[];
