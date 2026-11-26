@@ -68,19 +68,13 @@ export class SegmentClient {
       }
     };
 
-    this.worker.onerror = (err) => {
-      const errorMsg = err.message || translate('Worker encountered an error.');
+    const handleWorkerFailure = (message?: string) => {
+      const errorMsg = message || translate('Worker encountered an error.');
       const localizedError = translate('Video segmentation worker failed: {message}', { message: errorMsg });
-      if (this.initReject) {
-        this.initReject(new Error(localizedError));
-        this.initResolve = null;
-        this.initReject = null;
-      }
-      for (const [, pending] of this.pendingRequests) {
-        pending.reject(new Error(localizedError));
-      }
-      this.pendingRequests.clear();
+      this.stopWorker(new Error(localizedError));
     };
+    this.worker.onerror = (err) => handleWorkerFailure(err.message);
+    this.worker.onmessageerror = () => handleWorkerFailure();
   }
 
   public async init(onProgress?: (progress: any) => void, modelId?: string): Promise<{ device: string; model: string }> {
@@ -131,7 +125,10 @@ export class SegmentClient {
   }
 
   public terminate() {
-    const error = new Error(translate('Video segmentation was cancelled.'));
+    this.stopWorker(new Error(translate('Video segmentation was cancelled.')));
+  }
+
+  private stopWorker(error: Error) {
     this.initReject?.(error);
     for (const [, pending] of this.pendingRequests) {
       pending.reject(error);
@@ -144,5 +141,6 @@ export class SegmentClient {
     this.initPromise = null;
     this.initResolve = null;
     this.initReject = null;
+    this.onProgressCallback = undefined;
   }
 }

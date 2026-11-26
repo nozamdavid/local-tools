@@ -1,4 +1,4 @@
-import { runFFmpegWithinMediaJob, type RunFFmpegInput } from '../../lib/ffmpeg';
+import { runFFmpegWithinMediaJob, WEBM_AUDIO_ENCODER, type RunFFmpegInput } from '../../lib/ffmpeg';
 import { withMediaJobLock } from '../../lib/mediaQueue';
 import type { SegmentClient } from './segmentClient';
 import { calculateTargetSize } from './composite';
@@ -33,7 +33,12 @@ export interface ProcessVideoOptions {
   ) => void;
 }
 
-function waitForVideoEvent(video: HTMLVideoElement, event: 'loadedmetadata' | 'seeked', signal: AbortSignal, start: () => void) {
+export function waitForVideoEvent(
+  video: HTMLVideoElement,
+  event: 'loadedmetadata' | 'loadeddata' | 'seeked',
+  signal: AbortSignal,
+  start: () => void,
+) {
   return new Promise<void>((resolve, reject) => {
     signal.throwIfAborted();
     const cleanup = () => {
@@ -79,7 +84,7 @@ export async function processVideo(options: ProcessVideoOptions): Promise<Blob> 
     const inputs: RunFFmpegInput[] = [];
     const totalFrames = await collectVideoFrames(options, inputs);
     return encodeVideo(options, inputs, totalFrames);
-  });
+  }, options.abortSignal);
 }
 
 async function collectVideoFrames(options: ProcessVideoOptions, inputs: RunFFmpegInput[]): Promise<number> {
@@ -251,6 +256,8 @@ async function encodeVideo(
       '0:v:0',
       '-map',
       '1:a?',
+      '-c:a',
+      WEBM_AUDIO_ENCODER,
       '-t',
       String(totalFrames / fps),
       outputName,

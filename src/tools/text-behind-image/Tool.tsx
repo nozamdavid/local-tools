@@ -67,6 +67,16 @@ export default function TextBehindImageTool() {
   const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const isDraggingRef = useRef<boolean>(false);
   const segmentClientRef = useRef<SegmentClient | null>(null);
+  const imageRequest = useRef(0);
+
+  useEffect(
+    () => () => {
+      imageRequest.current++;
+      segmentClientRef.current?.terminate();
+      segmentClientRef.current = null;
+    },
+    [],
+  );
 
   const canvasHintId = useId();
   const fontId = useId();
@@ -109,27 +119,36 @@ export default function TextBehindImageTool() {
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
+    const request = ++imageRequest.current;
+    segmentClientRef.current?.terminate();
+    segmentClientRef.current = null;
     setFile(selected);
     setError(null);
     setImageEl(null);
+    setSegmentProgress(0);
     maskCanvasRef.current = null;
 
     const img = new Image();
     const objectUrl = URL.createObjectURL(selected);
-    img.src = objectUrl;
+    let client: SegmentClient | undefined;
 
     try {
-      await new Promise<void>((resolve, reject) => {
-        img.onload = () => resolve();
-        img.onerror = () => reject(new Error('Failed to load image file'));
-      });
+      try {
+        img.src = objectUrl;
+        await img.decode().catch(() => {
+          throw new Error('Failed to load image file');
+        });
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
+      if (imageRequest.current !== request) return;
 
       setImageEl(img);
       setSegmenting(true);
       setSegmentProgress(0);
       setProgressMessage({ key: 'Initializing AI subject segmentation...' });
 
-      const client = new SegmentClient();
+      client = new SegmentClient();
       segmentClientRef.current = client;
 
       await client.init((p) => {
@@ -154,6 +173,7 @@ export default function TextBehindImageTool() {
       const frameData = sCtx.getImageData(0, 0, segW, segH);
 
       const { mask } = await client.segmentFrame(frameData.data, segW, segH);
+      if (imageRequest.current !== request) return;
 
       // Store mask in offscreen canvas with alpha channel
       const maskCanvas = document.createElement('canvas');
@@ -176,11 +196,12 @@ export default function TextBehindImageTool() {
       setSegmenting(false);
       setSegmentProgress(1);
     } catch (err: any) {
+      if (imageRequest.current !== request) return;
       setError(err?.message || 'Failed to segment image.');
       setSegmenting(false);
     } finally {
-      segmentClientRef.current?.terminate();
-      segmentClientRef.current = null;
+      client?.terminate();
+      if (segmentClientRef.current === client) segmentClientRef.current = null;
     }
   };
 
@@ -329,9 +350,13 @@ export default function TextBehindImageTool() {
   };
 
   const handleReset = () => {
+    imageRequest.current++;
     segmentClientRef.current?.terminate();
+    segmentClientRef.current = null;
     setFile(null);
     setImageEl(null);
+    setSegmenting(false);
+    setSegmentProgress(0);
     maskCanvasRef.current = null;
     setError(null);
   };

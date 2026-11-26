@@ -1,4 +1,4 @@
-import { getFFmpeg, runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
+import { getFFmpeg, runFFmpegWithinMediaJob, WEBM_AUDIO_ENCODER } from '../../lib/ffmpeg';
 import { withMediaJobLock } from '../../lib/mediaQueue';
 import { getRotatedFrame, type FrameSize } from './timeline';
 
@@ -280,12 +280,12 @@ export async function exportVideoEdit(
       if (mixLabels.length === 2) graph.push(`${mixLabels.join('')}amix=inputs=2:duration=first:normalize=0[audio]`);
 
       const output = `video-editor-export.${format}`;
-      // VP9 and Opus can trap in the bundled WASM build. WebM supports VP8 and Vorbis.
+      // VP9 can trap in the bundled WASM build.
       const videoCodec =
         format === 'mp4'
           ? ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-movflags', '+faststart']
           : ['-c:v', 'libvpx', '-deadline', 'good', '-cpu-used', '4', '-crf', '10', '-b:v', '1M'];
-      const audioCodec = format === 'mp4' ? 'aac' : 'libvorbis';
+      const audioCodec = format === 'mp4' ? 'aac' : WEBM_AUDIO_ENCODER;
       const audioMap = mixLabels.length === 2 ? '[audio]' : mixLabels[0];
       let progress = 0;
       const reportProgress = ({ time }: { time: number }) => {
@@ -334,5 +334,5 @@ export async function exportVideoEdit(
         }
       }
     }
-  });
+  }, signal);
 }

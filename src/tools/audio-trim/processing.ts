@@ -279,7 +279,7 @@ export async function loadAudioAnalysis(file: File, signal: AbortSignal, onProgr
   assertFileWithinLimit(file);
   throwIfAborted(signal);
 
-  const native = await withMediaJobLock(() => decodeNativeWaveform(file, signal, onProgress));
+  const native = await withMediaJobLock(() => decodeNativeWaveform(file, signal, onProgress), signal);
   throwIfAborted(signal);
   if (native.peaks) {
     onProgress(1);

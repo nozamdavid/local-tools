@@ -10,7 +10,7 @@ import { formatBytes, formatDuration, withSuffix } from '../../lib/format';
 import { useObjectUrl } from '../../lib/useObjectUrl';
 import { useI18n } from '../../lib/i18n';
 import { SegmentClient } from '../_segment/segmentClient';
-import { processVideo } from '../_segment/videoProcessor';
+import { processVideo, waitForVideoEvent } from '../_segment/videoProcessor';
 import { drawTextLayers, drawSubjectOnTop, calculateTargetSize } from '../_segment/composite';
 import type { TextLayer, VideoMaxResolution, FrameProcessingProgress } from '../_segment/types';
 import styles from './Tool.module.css';
@@ -126,61 +126,55 @@ export default function TextBehindVideoTool() {
   }, [textLayer]);
 
   useEffect(() => {
-    if (firstFrameDataRef.current && firstFrameMaskRef.current) {
-      renderFirstFramePreview();
-    }
-  }, [textLayer, renderFirstFramePreview]);
+    renderFirstFramePreview();
+  }, [loadingPreview, status, renderFirstFramePreview]);
 
   // Extract first frame and segment it
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
+    abortControllerRef.current?.abort();
+    segmentClientRef.current?.terminate();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    const { signal } = controller;
     setFile(selected);
     setMetaError(null);
     setVideoMeta(null);
     setStatus('idle');
     setResultBlob(null);
     setError(null);
+    setLoadingPreview(true);
+    setLoadingProgress(0);
+    setLoadingLabel(t('Loading video & initializing AI model...'));
     firstFrameDataRef.current = null;
     firstFrameMaskRef.current = null;
 
     try {
       const vMeta = await getVideoMeta(selected);
+      if (signal.aborted) return;
       setVideoMeta(vMeta);
     } catch {
+      if (signal.aborted) return;
       setMetaError('Could not read video metadata, but you can still proceed.');
     }
 
     const objectUrl = URL.createObjectURL(selected);
     const video = document.createElement('video');
-    video.src = objectUrl;
     video.muted = true;
     video.playsInline = true;
     video.preload = 'auto';
 
-    setLoadingPreview(true);
-    setLoadingProgress(0);
-    setLoadingLabel(t('Loading video & initializing AI model...'));
-
-    const client = new SegmentClient();
-    segmentClientRef.current = client;
+    let client: SegmentClient | undefined;
 
     try {
-      await new Promise<void>((resolve, reject) => {
-        video.onloadedmetadata = () => resolve();
-        video.onerror = () => reject(new Error(t('Failed to load video file')));
+      await waitForVideoEvent(video, 'loadeddata', signal, () => {
+        video.src = objectUrl;
       });
+      signal.throwIfAborted();
 
-      // Seek to first frame
-      video.currentTime = 0.001;
-      await new Promise<void>((resolve) => {
-        const onSeeked = () => {
-          video.removeEventListener('seeked', onSeeked);
-          resolve();
-        };
-        video.addEventListener('seeked', onSeeked);
-      });
-
+      client = new SegmentClient();
+      segmentClientRef.current = client;
       await client.init((p) => {
         if (p?.progress !== undefined) {
           setLoadingProgress(Math.min(0.99, p.progress / 100));
@@ -205,16 +199,21 @@ export default function TextBehindVideoTool() {
       firstFrameDataRef.current = frameData;
 
       const { mask } = await client.segmentFrame(frameData.data, targetSize.width, targetSize.height);
+      signal.throwIfAborted();
       firstFrameMaskRef.current = mask;
 
       setLoadingPreview(false);
       setLoadingProgress(1);
     } catch (err: any) {
+      if (signal.aborted) return;
       setError(err?.message || t('Failed to prepare video preview.'));
       setLoadingPreview(false);
     } finally {
-      client.terminate();
-      segmentClientRef.current = null;
+      client?.terminate();
+      if (segmentClientRef.current === client) segmentClientRef.current = null;
+      if (abortControllerRef.current === controller) abortControllerRef.current = null;
+      video.removeAttribute('src');
+      video.load();
       URL.revokeObjectURL(objectUrl);
     }
   };
@@ -280,6 +279,7 @@ export default function TextBehindVideoTool() {
     setMetaError(null);
     setStatus('idle');
     setResultBlob(null);
+    setLoadingPreview(false);
     setError(null);
     firstFrameDataRef.current = null;
     firstFrameMaskRef.current = null;

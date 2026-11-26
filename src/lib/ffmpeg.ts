@@ -49,6 +49,16 @@ export function mimeFromName(name: string): string {
 let ffmpegInstance: FFmpeg | null = null;
 let loadPromise: Promise<FFmpeg> | null = null;
 
+// The bundled WASM Opus encoder can trap on stereo audio.
+export const WEBM_AUDIO_ENCODER = 'libvorbis';
+
+function resetWorker(ffmpeg: FFmpeg) {
+  if (ffmpegInstance !== ffmpeg) return;
+  ffmpegInstance = null;
+  loadPromise = null;
+  ffmpeg.terminate();
+}
+
 export async function getFFmpeg(): Promise<FFmpeg> {
   if (ffmpegInstance && ffmpegInstance.loaded) {
     return ffmpegInstance;
@@ -91,7 +101,7 @@ export interface RunFFmpegOptions {
 }
 
 export function runFFmpeg(opts: RunFFmpegOptions): Promise<Blob> {
-  return withMediaJobLock(() => runFFmpegWithinMediaJob(opts));
+  return withMediaJobLock(() => runFFmpegWithinMediaJob(opts), opts.signal);
 }
 
 /** Use only inside a `withMediaJobLock` callback, such as an adapter fallback. */
@@ -99,17 +109,9 @@ export async function runFFmpegWithinMediaJob(opts: RunFFmpegOptions): Promise<B
   opts.signal?.throwIfAborted();
   const ffmpeg = await getFFmpeg();
   const logLines: string[] = [];
-  let aborted = false;
   // Aborting a worker message alone does not stop the synchronous WASM job.
   // Only the operation holding the media lock may terminate this instance.
-  const abort = () => {
-    aborted = true;
-    ffmpeg.terminate();
-    if (ffmpegInstance === ffmpeg) {
-      ffmpegInstance = null;
-      loadPromise = null;
-    }
-  };
+  const abort = () => resetWorker(ffmpeg);
   opts.signal?.addEventListener('abort', abort, { once: true });
 
   const handleLog = ({ message }: { message: string }) => {
@@ -145,13 +147,17 @@ export async function runFFmpegWithinMediaJob(opts: RunFFmpegOptions): Promise<B
         buffer = new Uint8Array(ab);
       }
       opts.signal?.throwIfAborted();
-      await ffmpeg.writeFile(input.name, buffer);
       filesToCleanup.add(input.name);
+      await ffmpeg.writeFile(input.name, buffer);
     }
 
     filesToCleanup.add(opts.output);
 
-    const exitCode = await ffmpeg.exec(opts.args);
+    const exitCode = await ffmpeg.exec(opts.args).catch((error: unknown) => {
+      // A rejected exec can leave the WASM core unusable. A normal nonzero exit resets it.
+      resetWorker(ffmpeg);
+      throw error;
+    });
 
     if (exitCode !== 0) {
       const recentLogs = logLines.slice(-20).join('\n');
@@ -175,7 +181,7 @@ export async function runFFmpegWithinMediaJob(opts: RunFFmpegOptions): Promise<B
   } finally {
     opts.signal?.removeEventListener('abort', abort);
     for (const file of filesToCleanup) {
-      if (aborted) break;
+      if (!ffmpeg.loaded) break;
       try {
         await ffmpeg.deleteFile(file);
       } catch {

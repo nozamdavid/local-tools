@@ -452,7 +452,7 @@ export function withMediabunnyFallback(
     options.signal?.throwIfAborted();
     progress.done();
     return result;
-  });
+  }, options.signal);
 }
 
 function toMetadataRecord(value: unknown): Record<string, string> {

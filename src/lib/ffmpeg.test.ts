@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const state = vi.hoisted(() => ({
-  instances: [] as Array<{ terminated: boolean; finish?: () => void }>,
+  instances: [] as Array<{ terminated: boolean; finish?: () => void; reject?: (error: unknown) => void }>,
   executions: 0,
   failNextLoad: false,
 }));
@@ -12,7 +12,7 @@ vi.mock('@ffmpeg/ffmpeg', () => ({
     loaded = false;
     terminated = false;
     finish?: () => void;
-    reject?: (error: Error) => void;
+    reject?: (error: unknown) => void;
     constructor() {
       state.instances.push(this);
     }
@@ -62,6 +62,22 @@ it('can load FFmpeg again after a worker fails to start', async () => {
   expect(state.instances).toHaveLength(2);
 });
 
+it('replaces the worker after an execution trap so the next job can run', async () => {
+  const { runFFmpeg } = await import('./ffmpeg');
+  const first = runFFmpeg({ inputs: [], args: [], output: 'first.webm' });
+  const rejected = expect(first).rejects.toBe('RuntimeError: memory access out of bounds');
+  await vi.waitFor(() => expect(state.executions).toBe(1));
+  state.instances[0].reject?.('RuntimeError: memory access out of bounds');
+  await rejected;
+  expect(state.instances[0].terminated).toBe(true);
+
+  const next = runFFmpeg({ inputs: [], args: [], output: 'next.webm' });
+  await vi.waitFor(() => expect(state.executions).toBe(2));
+  expect(state.instances).toHaveLength(2);
+  state.instances[1].finish?.();
+  await expect(next).resolves.toBeInstanceOf(Blob);
+});
+
 describe('FFmpeg cancellation', () => {
   it('terminates an active job and gives the next job a fresh worker', async () => {
     const { runFFmpeg } = await import('./ffmpeg');
@@ -88,11 +104,15 @@ describe('FFmpeg cancellation', () => {
     const queued = runFFmpeg({ inputs: [], args: [], output: 'queued.wav', signal: controller.signal });
     const rejected = expect(queued).rejects.toMatchObject({ name: 'AbortError' });
     controller.abort();
+    await rejected;
     expect(state.instances[0].terminated).toBe(false);
     state.instances[0].finish?.();
     await first;
-    await rejected;
-    expect(state.executions).toBe(1);
+    // Let a later job reach the lock to check the aborted callback was skipped.
+    const next = runFFmpeg({ inputs: [], args: [], output: 'next.wav' });
+    await vi.waitFor(() => expect(state.executions).toBe(2));
+    state.instances[0].finish?.();
+    await next;
     expect(state.instances[0].terminated).toBe(false);
   });
 });

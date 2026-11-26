@@ -78,9 +78,9 @@ function getScratchContext(width: number, height: number) {
   if (scratchCanvas.width !== width || scratchCanvas.height !== height) {
     scratchCanvas.width = width;
     scratchCanvas.height = height;
-    scratchCtx = scratchCanvas.getContext('2d');
   }
-  return { canvas: scratchCanvas, ctx: scratchCtx! };
+  scratchCtx ??= scratchCanvas.getContext('2d');
+  return { canvas: scratchCanvas, ctx: scratchCtx };
 }
 
 export function drawSubjectOnTop(
@@ -91,6 +91,7 @@ export function drawSubjectOnTop(
   height: number,
 ) {
   const { canvas, ctx } = getScratchContext(width, height);
+  if (!ctx) throw new Error('Could not create 2D canvas context');
   const subjectData = ctx.createImageData(width, height);
   const src = frameImageData.data;
   const dst = subjectData.data;

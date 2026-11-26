@@ -7,7 +7,7 @@ import { Field, Select, Button } from '../../components/Controls';
 import { getToolMeta } from '../registry';
 import { getVideoMeta, type VideoMeta } from '../../lib/media';
 import { formatBytes, formatDuration, replaceExt } from '../../lib/format';
-import { runFFmpeg, runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
+import { runFFmpeg, runFFmpegWithinMediaJob, WEBM_AUDIO_ENCODER } from '../../lib/ffmpeg';
 import { convertTransparentWebm } from '../../lib/transparentWebm';
 import { withMediabunnyFallback, type MediabunnyOptions, type MediabunnyOutput } from '../../lib/mediabunny';
 import type { AudioCodec, VideoCodec } from 'mediabunny';
@@ -74,7 +74,7 @@ function buildEncodeArgs(format: OutputFormat, fastCopy: boolean, gifFps: string
         '-pix_fmt',
         'yuv420p',
         '-c:a',
-        'libopus',
+        WEBM_AUDIO_ENCODER,
         '-b:a',
         '96k',
       ];

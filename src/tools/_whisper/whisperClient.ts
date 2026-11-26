@@ -119,15 +119,17 @@ export class WhisperTranscriptionJob {
           }
         };
 
-        worker.onerror = (err) => {
+        const handleWorkerFailure = (message?: string) => {
           reject(
             new Error(
               translate('Speech transcription worker failed: {message}', {
-                message: err.message || translate('Worker error during speech transcription'),
+                message: message || translate('Worker error during speech transcription'),
               }),
             ),
           );
         };
+        worker.onerror = (err) => handleWorkerFailure(err.message);
+        worker.onmessageerror = () => handleWorkerFailure();
 
         const msg: WorkerInMessage = {
           type: 'transcribe',

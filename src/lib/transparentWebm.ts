@@ -1,4 +1,4 @@
-import { runFFmpeg } from './ffmpeg';
+import { runFFmpeg, WEBM_AUDIO_ENCODER } from './ffmpeg';
 
 export async function convertTransparentWebm(file: Blob, format: string, onProgress?: (ratio: number) => void): Promise<Blob | null> {
   const header = await file.slice(0, 4).arrayBuffer();
@@ -29,7 +29,9 @@ export async function convertTransparentWebm(file: Blob, format: string, onProgr
   const output = `output.${format}`;
   // Stream copy preserves the alpha packets and avoids decoding transparent video in WebCodecs.
   const streams =
-    format === 'mkv' ? ['-map', '0', '-c', 'copy'] : ['-map', '0:v', '-map', '0:a?', '-c:v', 'copy', '-c:a', 'libopus', '-b:a', '96k'];
+    format === 'mkv'
+      ? ['-map', '0', '-c', 'copy']
+      : ['-map', '0:v', '-map', '0:a?', '-c:v', 'copy', '-c:a', WEBM_AUDIO_ENCODER, '-b:a', '96k'];
   return runFFmpeg({
     inputs: [{ name: inputName, data: file }],
     args: ['-i', inputName, ...streams, output],

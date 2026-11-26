@@ -11,7 +11,25 @@ export async function embedSoftSubtitles(videoFile: File, cues: SubtitleCue[], o
   const srtName = 'subs.srt';
   const outputName = withSuffix(videoFile.name, '-subtitled-soft', 'mp4');
 
-  const args = ['-i', inputName, '-i', srtName, '-c', 'copy', '-c:s', 'mov_text', '-movflags', '+faststart', outputName];
+  const args = [
+    '-i',
+    inputName,
+    '-i',
+    srtName,
+    '-map',
+    '0:v:0',
+    '-map',
+    '0:a?',
+    '-map',
+    '1:s:0',
+    '-c',
+    'copy',
+    '-c:s',
+    'mov_text',
+    '-movflags',
+    '+faststart',
+    outputName,
+  ];
 
   return runFFmpeg({
     inputs: [
