@@ -1,7 +1,7 @@
 import { getFFmpeg, runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
 import { withMediaJobLock } from '../../lib/mediaQueue';
 
-export type Segment = { start: number; end: number };
+export type Segment = { start: number; end: number; sourceIndex?: number };
 
 export type VideoEdit = {
   segments: Segment[];
@@ -20,10 +20,16 @@ export type VideoEdit = {
 type ProbeStream = {
   index: number;
   codec_type: string;
+  width?: number;
+  height?: number;
+  sample_aspect_ratio?: string;
+  side_data_list?: { rotation?: number }[];
   start_time?: string;
   duration?: string;
   disposition?: { attached_pic?: number };
 };
+
+type FrameSize = { width: number; height: number };
 
 const sourceName = 'video-editor-source';
 const probeName = 'video-editor-probe.json';
@@ -48,22 +54,23 @@ function tempoFilters(speed: number): string[] {
   return filters;
 }
 
-async function probeSource(ffmpeg: Awaited<ReturnType<typeof getFFmpeg>>) {
+async function probeSource(ffmpeg: Awaited<ReturnType<typeof getFFmpeg>>, name: string) {
   const exitCode = await ffmpeg.ffprobe([
     '-hide_banner',
     '-show_entries',
-    'stream=index,codec_type,start_time,duration:stream_disposition=attached_pic:format=start_time,duration',
+    'stream=index,codec_type,start_time,duration,width,height,sample_aspect_ratio:stream_disposition=attached_pic:stream_side_data=rotation:format=start_time,duration',
     '-of',
     'json',
     '-o',
     probeName,
-    sourceName,
+    name,
   ]);
   // Some builds leave the return code unset (-1) when ffprobe writes its report.
   if (exitCode > 0) throw new Error('FFmpeg could not read the source video metadata.');
   const result = await ffmpeg.readFile(probeName, 'utf8').catch(() => {
     throw new Error('FFmpeg could not read the source video metadata.');
   });
+  await ffmpeg.deleteFile(probeName);
   const probe = JSON.parse(String(result)) as {
     streams?: ProbeStream[];
     format?: { start_time?: string; duration?: string };
@@ -74,7 +81,40 @@ async function probeSource(ffmpeg: Awaited<ReturnType<typeof getFFmpeg>>) {
   const videoDuration = Number(video.duration);
   const startOffset = Number(video.start_time ?? 0) - Number(probe.format?.start_time ?? 0);
   const duration = videoDuration > 0 ? videoDuration + Math.max(0, startOffset) : Number(probe.format?.duration);
-  return { video, audio, duration };
+  return { name, video, audio, duration };
+}
+
+function displaySize(video: ProbeStream): FrameSize {
+  const [numerator, denominator] = (video.sample_aspect_ratio ?? '').split(':').map(Number);
+  const pixelAspect = numerator > 0 && denominator > 0 ? numerator / denominator : 1;
+  const width = Math.round(Number(video.width) * Math.max(1, pixelAspect));
+  const height = Math.round(Number(video.height) * Math.max(1, 1 / pixelAspect));
+  const rotation = video.side_data_list?.find((entry) => entry.rotation !== undefined)?.rotation ?? 0;
+  return Math.abs(rotation) % 180 === 90 ? { width: height, height: width } : { width, height };
+}
+
+async function readAnchorSize(file: File): Promise<FrameSize> {
+  // When source 0 has no ranges, read its metadata without copying it into WASM.
+  const { ALL_FORMATS, BlobSource, Input } = await import('mediabunny');
+  const input = new Input({ source: new BlobSource(file), formats: ALL_FORMATS });
+  try {
+    const video = await input.getPrimaryVideoTrack();
+    if (!video) throw new Error('The project anchor has no video track.');
+    const [width, height] = await Promise.all([video.getDisplayWidth(), video.getDisplayHeight()]);
+    return { width, height };
+  } finally {
+    input.dispose();
+  }
+}
+
+function fitFilters({ width, height }: FrameSize): string[] {
+  // Use display aspect ratio after FFmpeg's automatic orientation. Full chroma resolution keeps padding aligned to pixels.
+  return [
+    `scale=w='max(1,round(min(${width},${height}*dar)))':h='max(1,round(min(${height},${width}/dar)))'`,
+    'format=yuv444p',
+    'setsar=1',
+    `pad=${width}:${height}:floor((ow-iw)/2):floor((oh-ih)/2):black`,
+  ];
 }
 
 function videoFilters(edit: VideoEdit): string[] {
@@ -113,35 +153,61 @@ function validateEdit(edit: VideoEdit) {
 }
 
 export async function exportVideoEdit(
-  file: File,
+  file: File | readonly File[],
   edit: VideoEdit,
   soundtrack: File | null,
   format: 'mp4' | 'webm',
   onProgress: (value: number) => void,
   signal: AbortSignal,
+  projectSize?: FrameSize,
 ): Promise<Blob> {
   signal.throwIfAborted();
   validateEdit(edit);
+  const files: readonly File[] = Array.isArray(file) ? file : [file as File];
+  const ranges = edit.segments.map(({ start, end, sourceIndex = 0 }) => ({ start, end, sourceIndex }));
+  if (ranges.some(({ sourceIndex }) => !Number.isInteger(sourceIndex) || sourceIndex < 0 || !files[sourceIndex])) {
+    throw new Error('A video range refers to an invalid source index.');
+  }
 
   return withMediaJobLock(async () => {
     signal.throwIfAborted();
     const ffmpeg = await getFFmpeg();
     signal.throwIfAborted();
-    const sourceBytes = new Uint8Array(await file.arrayBuffer());
-    signal.throwIfAborted();
+    const stagedFiles = new Set([probeName]);
     onProgress(0);
     try {
-      await ffmpeg.writeFile(sourceName, sourceBytes);
-      signal.throwIfAborted();
-      const { video, audio, duration: sourceDuration } = await probeSource(ffmpeg);
-      signal.throwIfAborted();
-      const segments = edit.segments.map(({ start, end }) => ({
-        start,
-        end: sourceDuration > 0 ? Math.min(end, sourceDuration) : end,
-      }));
+      const sources = new Map<number, Awaited<ReturnType<typeof probeSource>>>();
+      const segments = [];
+      for (const { start, end, sourceIndex } of ranges) {
+        let source = sources.get(sourceIndex);
+        if (!source) {
+          signal.throwIfAborted();
+          const name = `${sourceName}-${sourceIndex}`;
+          const bytes = new Uint8Array(await files[sourceIndex].arrayBuffer());
+          signal.throwIfAborted();
+          stagedFiles.add(name);
+          await ffmpeg.writeFile(name, bytes);
+          signal.throwIfAborted();
+          source = await probeSource(ffmpeg, name);
+          signal.throwIfAborted();
+          sources.set(sourceIndex, source);
+        }
+        segments.push({ start, end: source.duration > 0 ? Math.min(end, source.duration) : end, source });
+      }
       if (segments.some(({ start, end }) => end - start < 0.000001)) throw new Error('A video range falls outside the source.');
       const duration = segments.reduce((total, { start, end }) => total + (end - start) / edit.speed, 0);
       if (!Number.isFinite(duration) || duration < 0.000001) throw new Error('Invalid output duration.');
+
+      let fit: string[] = [];
+      if (files.length > 1) {
+        const anchor = sources.get(0);
+        const size = projectSize ?? (anchor ? displaySize(anchor.video) : await readAnchorSize(files[0]));
+        signal.throwIfAborted();
+        if (![size.width, size.height].every((value) => Number.isSafeInteger(value) && value > 0)) {
+          throw new Error('Invalid project frame size.');
+        }
+        fit = fitFilters(size);
+      }
 
       const args: string[] = ['-hide_banner', '-loglevel', 'info'];
       const graph: string[] = [];
@@ -149,23 +215,30 @@ export async function exportVideoEdit(
       const audioLabels: string[] = [];
       const audioFormat = `aformat=sample_rates=${sampleRate}:channel_layouts=stereo`;
       const activeSoundtrack = edit.audioOffset < duration ? soundtrack : null;
+      const hasSourceAudio = segments.some(({ source }) => source.audio);
       let outputStart = 0;
 
       // Give each range a separate input seek so reordering does not buffer decoded frames from other ranges.
-      for (const [index, { start, end }] of segments.entries()) {
+      for (const [index, { start, end, source }] of segments.entries()) {
+        const { name, video, audio } = source;
         const length = seconds(end - start);
-        args.push('-ss', seconds(start), '-i', sourceName);
+        args.push('-ss', seconds(start), '-i', name);
         const videoLabel = `[v${index}]`;
         videoLabels.push(videoLabel);
-        graph.push(
-          `[${index}:${video.index}]trim=end=${length},settb=AVTB,setpts=(PTS-STARTPTS)/${edit.speed}+${seconds(outputStart)}/TB${videoLabel}`,
-        );
-        if (audio) {
+        const rangeVideoFilters = [
+          `trim=end=${length}`,
+          'settb=AVTB',
+          `setpts=(PTS-STARTPTS)/${edit.speed}+${seconds(outputStart)}/TB`,
+          ...fit,
+        ];
+        graph.push(`[${index}:${video.index}]${rangeVideoFilters.join(',')}${videoLabel}`);
+        if (hasSourceAudio) {
           const audioLabel = `[a${index}]`;
           audioLabels.push(audioLabel);
-          graph.push(
-            `[${index}:${audio.index}]aresample=${sampleRate}:async=1:first_pts=0,${audioFormat},apad,atrim=duration=${length}${audioLabel}`,
-          );
+          const rangeAudio = audio
+            ? `[${index}:${audio.index}]aresample=${sampleRate}:async=1:first_pts=0,${audioFormat},apad`
+            : `anullsrc=sample_rate=${sampleRate}:channel_layout=stereo`;
+          graph.push(`${rangeAudio},atrim=duration=${length}${audioLabel}`);
         }
         outputStart += (end - start) / edit.speed;
       }
@@ -175,7 +248,7 @@ export async function exportVideoEdit(
 
       const mixLabels: string[] = [];
       const durationArg = seconds(duration);
-      if (audio) {
+      if (hasSourceAudio) {
         const sourceFilters = [
           ...(audioLabels.length > 1 ? [`concat=n=${audioLabels.length}:v=0:a=1`] : []),
           ...tempoFilters(edit.speed),
@@ -253,7 +326,7 @@ export async function exportVideoEdit(
       throw error;
     } finally {
       if (ffmpeg.loaded) {
-        for (const name of [sourceName, probeName]) {
+        for (const name of stagedFiles) {
           await ffmpeg.deleteFile(name).catch(() => undefined);
         }
       }

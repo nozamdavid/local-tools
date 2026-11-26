@@ -214,6 +214,7 @@ export function suggestToolsForFiles(files: File[]): ToolMeta[] {
       'pdf-merge',
       'pdf-compare',
       'img-compare',
+      'video-editor',
       'merge',
       'three-merge',
       'img-bulk-convert',

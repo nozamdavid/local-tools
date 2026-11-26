@@ -154,6 +154,7 @@ beforeAll(async () => {
     'source.mp4',
   );
   execute('-i', 'source.mp4', '-an', '-c:v', 'copy', 'silent.mp4');
+  execute('-f', 'lavfi', '-i', 'color=green:s=40x80:r=20:d=1.2', '-c:v', 'libx264', 'portrait.mp4');
   execute('-f', 'lavfi', '-i', 'sine=frequency=880:sample_rate=48000:duration=0.4', 'music.wav');
 }, 15000);
 
@@ -209,6 +210,70 @@ it('reorders and speeds up ranges, rotates a crop, and fades the source under a 
   expect(progress[0]).toBe(0);
   expect(progress.at(-1)).toBe(1);
   expect(progress).toEqual([...progress].sort((a, b) => a - b));
+});
+
+it.each(['mp4', 'webm'] as const)('exports reordered ranges from mixed sources to %s', async (format) => {
+  const blob = await exportVideoEdit(
+    [localFile('source.mp4', 'video/mp4'), localFile('portrait.mp4', 'video/mp4')],
+    {
+      ...baseEdit,
+      segments: [
+        { sourceIndex: 1, start: 0, end: 0.8 },
+        { sourceIndex: 0, start: 2.4, end: 3.2 },
+        { sourceIndex: 1, start: 0.8, end: 2 },
+        { start: 0.4, end: 1.2 },
+      ],
+      crop: { x: 16, y: 4, width: 64, height: 56 },
+      rotation: 90,
+    },
+    null,
+    format,
+    () => {},
+    new AbortController().signal,
+    format === 'webm' ? { width: 96, height: 64 } : undefined,
+  );
+  const probe = await inspect(blob, format);
+  expect(probe.streams).toMatchObject([{ codec_type: 'video', width: 56, height: 64 }, { codec_type: 'audio' }]);
+  expect(Number(probe.format.duration)).toBeCloseTo(2.8, 1);
+
+  for (const [time, channel] of [
+    [0.4, 1],
+    [1.2, 2],
+    [1.8, 1],
+    [2.4, 0],
+  ]) {
+    execute('-ss', String(time), '-i', `inspected.${format}`, '-frames:v', '1', '-f', 'rawvideo', '-pix_fmt', 'rgb24', 'frame.rgb');
+    const frame = core.FS.readFile('frame.rgb');
+    const center = frame.slice((32 * 56 + 28) * 3, (32 * 56 + 28) * 3 + 3);
+    expect(center[channel]).toBeGreaterThan(100);
+    expect(center[(channel + 1) % 3]).toBeLessThan(20);
+    expect(center[(channel + 2) % 3]).toBeLessThan(20);
+    const edge = (8 * 56 + 28) * 3;
+    if (channel === 1) expect(Math.max(...frame.slice(edge, edge + 3))).toBeLessThan(12);
+    else expect(frame[edge + channel]).toBeGreaterThan(150);
+  }
+
+  execute('-i', `inspected.${format}`, '-vn', '-ac', '1', '-ar', '48000', '-f', 's16le', 'output.pcm');
+  expect(rms(0.2, 0.7)).toBeLessThan(10);
+  expect(rms(0.9, 1.5)).toBeGreaterThan(1000);
+  expect(rms(1.65, 1.95)).toBeLessThan(10);
+  expect(rms(2.1, 2.7)).toBeGreaterThan(1000);
+});
+
+it('uses the anchor dimensions when only the silent source is on the timeline', async () => {
+  const anchor = localFile('source.mp4', 'video/mp4');
+  const readAnchor = vi.spyOn(anchor, 'arrayBuffer');
+  const blob = await exportVideoEdit(
+    [anchor, localFile('portrait.mp4', 'video/mp4')],
+    { ...baseEdit, segments: [{ sourceIndex: 1, start: 0, end: 0.8 }] },
+    null,
+    'mp4',
+    () => {},
+    new AbortController().signal,
+  );
+  const probe = await inspect(blob, 'mp4');
+  expect(probe.streams).toMatchObject([{ codec_type: 'video', width: 96, height: 64 }]);
+  expect(readAnchor).not.toHaveBeenCalled();
 });
 
 it.each([

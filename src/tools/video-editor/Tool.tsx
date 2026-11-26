@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useId, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -14,6 +14,7 @@ import {
   Music2,
   Pause,
   Play,
+  Plus,
   Redo2,
   RotateCcw,
   RotateCw,
@@ -36,11 +37,12 @@ import { matchesAccept } from '../../lib/handoff';
 import { useI18n } from '../../lib/i18n';
 import { useObjectUrl } from '../../lib/useObjectUrl';
 import { exportVideoEdit, type VideoEdit } from './engine';
-import { buildTimeline, locateTime, readAudioDuration, readFrameRate } from './timeline';
+import { buildTimeline, locateTime, readAudioDuration } from './timeline';
 import { useDraft, type Draft } from './useDraft';
 import { usePreview } from './usePreview';
 import { CropFrame } from './CropFrame';
-import { ClipThumbnails, useClipThumbnails } from './ClipThumbnails';
+import { SourceClipThumbnails } from './ClipThumbnails';
+import { probeVideoSource, useSourceUrls, type VideoSource } from './videoSources';
 import styles from './Tool.module.css';
 
 const videoAccept = 'video/*,.mp4,.m4v,.mov,.webm,.mkv,.avi,.ogv';
@@ -76,7 +78,7 @@ const tools = [
 
 type NumberFieldProps = { label: string; value: number; min: number; max: number; step?: number; onChange: (value: number) => void };
 type History = { past: Draft[]; present: Draft; future: Draft[] };
-type Source = { file: File; sample: boolean };
+type Source = VideoSource & { sample: boolean };
 type Job = { progress: number } | { blob: Blob; filename: string };
 type Pane = (typeof tools)[number]['id'];
 
@@ -149,130 +151,165 @@ function formatPlayhead(seconds: number) {
   return `${formatNumber(minutes, 0, 2)}:${formatNumber((hundredths % 6000) / 100, 2, 2, 2)}`;
 }
 
+function restoreDraft(source: VideoSource, restored: Draft | null): Draft {
+  if (restored?.edit.segments.length) {
+    const sources = [source, ...(restored.additionalSources ?? [])];
+    const lengthOf = (segment: { sourceIndex?: number }) => sources[segment.sourceIndex ?? 0]?.duration ?? 0;
+    const valid = restored.edit.segments.every((segment) => {
+      const { start, end } = segment;
+      return Number.isFinite(start) && Number.isFinite(end) && start >= 0 && end > start && start < lengthOf(segment);
+    });
+    if (valid) {
+      const segments = restored.edit.segments.map((segment) => ({ ...segment, end: Math.min(segment.end, lengthOf(segment)) }));
+      const trimBounds = segments.map((segment, index) => {
+        const bounds = restored.trimBounds?.[index];
+        if (!bounds || !Number.isFinite(bounds.start) || !Number.isFinite(bounds.end)) return segment;
+        return {
+          ...segment,
+          start: Math.max(0, Math.min(bounds.start, segment.start)),
+          end: Math.min(lengthOf(segment), Math.max(bounds.end, segment.end)),
+        };
+      });
+      return { ...restored, edit: { ...restored.edit, segments }, trimBounds };
+    }
+  }
+  const segments = [{ start: 0, end: source.duration }];
+  return { ...initial, edit: { ...initial.edit, segments }, trimBounds: segments };
+}
+
+function withAddedVideos(draft: Draft, videos: VideoSource[]): Draft {
+  const additionalSources = draft.additionalSources ?? [];
+  const segments = videos.map(({ duration }, index) => ({ start: 0, end: duration, sourceIndex: additionalSources.length + index + 1 }));
+  return {
+    ...draft,
+    additionalSources: [...additionalSources, ...videos],
+    edit: { ...draft.edit, segments: [...draft.edit.segments, ...segments] },
+    trimBounds: [...draft.trimBounds, ...segments],
+  };
+}
+
 export default function VideoEditor() {
   const { t } = useI18n();
   const navigate = useNavigate();
   const persistence = useDraft();
   const [source, setSource] = useState<Source | null>(null);
-  const [metadata, setMetadata] = useState<{ width: number; height: number; duration: number } | null>(null);
   const [history, setHistory] = useState<History>({ past: [], present: initial, future: [] });
+  const latestHistory = useRef(history);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [pane, setPane] = useState<Pane>('cut');
-  const [notice, setNotice] = useState<{ text: string; error: boolean } | null>(null);
+  const [notice, setNotice] = useState<{ text: string; error: boolean; params?: { file: string } } | null>(null);
   const [job, setJob] = useState<Job | null>(null);
   const [loadingSample, setLoadingSample] = useState(false);
+  const [opening, setOpening] = useState<number | null>(null);
   const [loadingAudio, setLoadingAudio] = useState(false);
   const [leaving, setLeaving] = useState(false);
-  const [frameRate, setFrameRate] = useState(30);
-  const sourceLoad = useRef(0);
-  const preparedSource = useRef<Source | null>(null);
   const lastVolume = useRef(1);
+  const mounted = useRef(false);
+  const videoRequest = useRef<AbortController | null>(null);
   const sampleRequest = useRef<AbortController | null>(null);
   const soundtrackRequest = useRef<AbortController | null>(null);
   const exportRequest = useRef<AbortController | null>(null);
+  const videosInput = useRef<HTMLInputElement>(null);
   const soundtrackInput = useRef<HTMLInputElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
-  const { edit, soundtrack, soundtrackDuration, format } = history.present;
-  const originalUrl = useObjectUrl(source?.file);
-  const frames = useClipThumbnails(originalUrl, metadata?.duration ?? 0);
+  const { edit, soundtrack, soundtrackDuration, format, additionalSources } = history.present;
+  const videos = useMemo(() => (source ? [source, ...(additionalSources ?? [])] : []), [source, additionalSources]);
+  const files = useMemo(() => videos.map(({ file }) => file), [videos]);
+  const sourceUrls = useSourceUrls(files);
+  const metadata = useMemo(() => (source ? { width: source.width, height: source.height } : null), [source]);
   const soundtrackUrl = useObjectUrl(soundtrack);
-  const ready = !!source && !!metadata;
-  const preview = usePreview(edit, ready, (text) => setNotice({ text, error: true }));
+  const ready = !!source;
+  const preview = usePreview(edit, ready, (text) => setNotice({ text, error: true }), sourceUrls, metadata);
   const { clips, duration } = buildTimeline(edit);
   const selected = clips[selectedIndex];
+  const selectedSource = videos[selected?.sourceIndex ?? 0];
   const trimBounds = history.present.trimBounds[selectedIndex];
   const location = ready ? locateTime(clips, preview.time, edit.speed) : null;
+  const playheadRate = videos[clips[location?.index ?? 0]?.sourceIndex ?? 0]?.frameRate ?? 30;
+  const frameRate = selectedSource?.frameRate ?? 30;
   const trimPoint = location?.index === selectedIndex ? location.source : -1;
   const margin = Math.min(0.01, 0.5 / frameRate);
+  const splitMargin = Math.min(0.01, 0.5 / playheadRate);
   const canSplit =
-    location && location.source > clips[location.index].start + margin && location.source < clips[location.index].end - margin;
+    location && location.source > clips[location.index].start + splitMargin && location.source < clips[location.index].end - splitMargin;
   const canTrim = selected && trimPoint > selected.start + margin && trimPoint < selected.end - margin;
   const canResetTrim = selected && trimBounds && (selected.start !== trimBounds.start || selected.end !== trimBounds.end);
   const exporting = !!job && 'progress' in job;
   const controlsDisabled = loadingAudio || leaving;
 
-  function report(text: string) {
-    setNotice({ text, error: true });
+  function report(text: string, params?: { file: string }) {
+    setNotice({ text, error: true, params });
   }
 
-  function openVideo(file: File, sample = false) {
-    sourceLoad.current++;
-    sampleRequest.current?.abort();
-    setLoadingSample(false);
-    setNotice(null);
-    setFrameRate(30);
-    preparedSource.current = null;
-    setSource({ file, sample });
+  function publishHistory(next: History) {
+    latestHistory.current = next;
+    setHistory(next);
   }
 
-  function sourceError() {
-    sourceLoad.current++;
-    preview.pause();
-    setSource(null);
-    setMetadata(null);
-    setHistory({ past: [], present: initial, future: [] });
-    report('This video could not be opened. Try an MP4 with H.264 video or a WebM file.');
-  }
-
-  const failImport = useEffectEvent(sourceError);
+  const abortOnUnmount = useEffectEvent(abortMedia);
   useEffect(() => {
-    if (!source || metadata) return;
-    const timeout = window.setTimeout(() => {
-      if (!preparedSource.current) failImport();
-    }, 12_000);
-    return () => window.clearTimeout(timeout);
-  }, [source, metadata]);
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+      // FileDrop consumes a homepage handoff on mount, including during Strict Mode's effect replay.
+      queueMicrotask(() => {
+        if (!mounted.current) abortOnUnmount();
+      });
+    };
+  }, []);
 
-  const abortRequests = useEffectEvent(() => {
-    sourceLoad.current++;
-    sampleRequest.current?.abort();
-    soundtrackRequest.current?.abort();
-    exportRequest.current?.abort();
-  });
-  useEffect(() => () => abortRequests(), []);
+  useEffect(() => {
+    if (ready) title.current?.focus({ preventScroll: true });
+  }, [ready]);
 
-  // Pin the source instance through metadata, history and asynchronous rate detection.
-  async function loadMetadata(video: HTMLVideoElement) {
-    if (!source || preparedSource.current === source) return;
-    const size = { width: video.videoWidth, height: video.videoHeight, duration: video.duration };
-    if (!size.width || !size.height || !Number.isFinite(size.duration) || size.duration <= 0) {
-      sourceError();
-      return;
+  async function openVideos(selection: File[], append = false, sample = false) {
+    if (!selection.length || leaving || (append && videoRequest.current)) return;
+    if (!sample) {
+      sampleRequest.current?.abort();
+      setLoadingSample(false);
     }
-    preparedSource.current = source;
-    const generation = sourceLoad.current;
-    const restored = await persistence.restore(source.file, source.sample).catch(() => null);
-    if (generation !== sourceLoad.current) return;
-
-    const fallbackSegment = { start: 0, end: size.duration };
-    const validRanges = restored?.edit.segments.every(({ start, end }) => start >= 0 && end > start && start < size.duration);
-    const segments =
-      validRanges && restored?.edit.segments.length
-        ? restored.edit.segments.map(({ start, end }) => ({ start, end: Math.min(end, size.duration) }))
-        : [fallbackSegment];
-    const draft =
-      restored && validRanges && restored.edit.segments.length
-        ? {
-            ...restored,
-            edit: { ...restored.edit, segments },
-            trimBounds: segments.map((segment, index) => {
-              const bounds = restored.trimBounds?.[index] ?? segment;
-              return { start: bounds.start, end: Math.min(bounds.end, size.duration) };
-            }),
-          }
-        : { ...initial, edit: { ...initial.edit, segments }, trimBounds: segments };
-    lastVolume.current = draft.edit.volume || 1;
-    setHistory({ past: [], present: draft, future: [] });
-    setSelectedIndex(0);
-    setPane('cut');
-    setMetadata(size);
-    preview.seek(0, draft.edit);
-    title.current?.focus({ preventScroll: true });
-    void readFrameRate(source.file)
-      .then((rate) => {
-        if (generation === sourceLoad.current) setFrameRate(rate);
-      })
-      .catch(() => undefined);
+    videoRequest.current?.abort();
+    const controller = new AbortController();
+    videoRequest.current = controller;
+    setOpening(selection.length);
+    setNotice(null);
+    let file = selection[0];
+    try {
+      const imported: VideoSource[] = [];
+      for (const selectedFile of selection) {
+        file = selectedFile;
+        if (!matchesAccept(file, videoAccept)) throw new Error('Unsupported video type');
+        imported.push(await probeVideoSource(file, controller.signal));
+      }
+      if (controller.signal.aborted || !mounted.current) return;
+      if (append) {
+        appendVideos.current?.(imported);
+        return;
+      }
+      const [anchor, ...additional] = imported;
+      const restored = additional.length ? null : await persistence.restore(anchor.file, sample).catch(() => null);
+      if (controller.signal.aborted || !mounted.current) return;
+      const baseline = restoreDraft(anchor, restored ?? null);
+      const draft = additional.length ? withAddedVideos(baseline, additional) : baseline;
+      lastVolume.current = draft.edit.volume || 1;
+      publishHistory({ past: additional.length ? [baseline] : [], present: draft, future: [] });
+      preview.seek(0, draft.edit, undefined, []);
+      setSelectedIndex(0);
+      setPane('cut');
+      setSource({ ...anchor, sample });
+      if (additional.length) {
+        persistence.startProject(anchor.file);
+        persistence.schedule(draft);
+      }
+    } catch {
+      if (!controller.signal.aborted && mounted.current)
+        report('{file} could not be opened. Try an MP4 with H.264 video or a WebM file.', { file: file.name });
+    } finally {
+      if (videoRequest.current === controller) {
+        videoRequest.current = null;
+        if (mounted.current) setOpening(null);
+      }
+    }
   }
 
   async function openSample() {
@@ -288,7 +325,10 @@ export default function VideoEditor() {
       const response = await fetch(`${import.meta.env.BASE_URL}samples/${name}`, { signal: controller.signal });
       if (!response.ok) throw new Error('Sample unavailable');
       const blob = await response.blob();
-      if (!controller.signal.aborted) openVideo(new File([blob], name, { type: `video/${format}` }), true);
+      if (!controller.signal.aborted) {
+        const file = new File([blob], name, { type: `video/${format}` });
+        await openVideos([file], false, true);
+      }
     } catch {
       if (!controller.signal.aborted) report('The sample video could not be loaded. Choose a video or try again.');
     } finally {
@@ -301,6 +341,8 @@ export default function VideoEditor() {
 
   async function leave(exit: boolean) {
     if (leaving) return;
+    videoRequest.current?.abort();
+    setOpening(null);
     setLeaving(true);
     preview.pause();
     const saved = await persistence.flush();
@@ -315,8 +357,7 @@ export default function VideoEditor() {
     }
     setLeaving(false);
     setSource(null);
-    setMetadata(null);
-    setHistory({ past: [], present: initial, future: [] });
+    publishHistory({ past: [], present: initial, future: [] });
     setJob(null);
     setNotice(null);
     setLoadingAudio(false);
@@ -324,22 +365,49 @@ export default function VideoEditor() {
   }
 
   function abortMedia() {
-    sourceLoad.current++;
+    videoRequest.current?.abort();
     sampleRequest.current?.abort();
     soundtrackRequest.current?.abort();
     exportRequest.current?.abort();
+    videoRequest.current = null;
     sampleRequest.current = null;
     soundtrackRequest.current = null;
     exportRequest.current = null;
   }
 
-  function apply(next: Draft, seekTime?: number, select = selectedIndex) {
+  function invalidateExport() {
+    exportRequest.current?.abort();
+    exportRequest.current = null;
+    setJob(null);
+  }
+
+  function seekEdit(next: Draft, time: number) {
+    // A changed source list may reuse a slot for a different file. Wait for its new URL mapping.
+    preview.seek(time, next.edit, undefined, next.additionalSources === additionalSources ? sourceUrls : []);
+  }
+
+  function apply(next: Draft, seekTime?: number, select?: number) {
     if (leaving) return;
-    setHistory({ past: [...history.past.slice(-79), history.present], present: next, future: [] });
-    if (seekTime !== undefined) preview.seek(seekTime, next.edit);
-    setSelectedIndex(select);
+    invalidateExport();
+    const current = latestHistory.current;
+    publishHistory({ past: [...current.past.slice(-79), current.present], present: next, future: [] });
+    if (seekTime !== undefined) seekEdit(next, seekTime);
+    if (select !== undefined) setSelectedIndex(select);
     persistence.schedule(next);
   }
+
+  const appendVideos = useRef<(videos: VideoSource[]) => void>(null);
+  appendVideos.current = (imported) => {
+    if (!source || leaving) return;
+    if (source.sample) {
+      void persistence.promoteSample(source.file).catch(() => undefined);
+      setSource({ ...source, sample: false });
+    }
+    const current = latestHistory.current.present;
+    const timeline = buildTimeline(current.edit);
+    setPane('cut');
+    apply(withAddedVideos(current, imported), timeline.duration, timeline.clips.length);
+  };
 
   function updateEdit(update: Partial<VideoEdit>) {
     const next = { ...edit, ...update };
@@ -352,23 +420,27 @@ export default function VideoEditor() {
     const snapshot = undo ? history.past.at(-1) : history.future[0];
     if (!snapshot || leaving) return;
     const next = { ...snapshot, format };
-    setHistory(
+    invalidateExport();
+    publishHistory(
       undo
         ? { past: history.past.slice(0, -1), present: next, future: [history.present, ...history.future] }
         : { past: [...history.past, history.present], present: next, future: history.future.slice(1) },
     );
     const { clips: nextClips, duration: nextDuration } = buildTimeline(next.edit);
-    const sameClip = next.trimBounds.findIndex(({ start, end }) => start === trimBounds?.start && end === trimBounds?.end);
+    const sameClip = next.trimBounds.findIndex(({ start, end, sourceIndex = 0 }) => {
+      const nextSource = sourceIndex === 0 ? source : next.additionalSources?.[sourceIndex - 1];
+      return nextSource?.file === selectedSource?.file && start === trimBounds?.start && end === trimBounds?.end;
+    });
     if (sameClip >= 0) {
       const clip = nextClips[sameClip];
       const sourceTime = location?.index === selectedIndex ? location.source : clip.start;
       const inside = Math.max(0, Math.min(clip.length - 1e-6, (sourceTime - clip.start) / next.edit.speed));
-      preview.seek(clip.at + inside, next.edit);
+      seekEdit(next, clip.at + inside);
       setSelectedIndex(sameClip);
     } else {
       const nextTime = Math.min(preview.time, nextDuration);
       setSelectedIndex(locateTime(nextClips, nextTime, next.edit.speed).index);
-      preview.seek(nextTime, next.edit);
+      seekEdit(next, nextTime);
     }
     persistence.schedule(next);
   }
@@ -378,19 +450,34 @@ export default function VideoEditor() {
     const { index, source: point } = location;
     const next = edit.segments.slice();
     const nextBounds = history.present.trimBounds.slice();
-    next.splice(index, 1, { start: next[index].start, end: point }, { start: point, end: next[index].end });
-    nextBounds.splice(index, 1, { start: nextBounds[index].start, end: point }, { start: point, end: nextBounds[index].end });
+    next.splice(index, 1, { ...next[index], end: point }, { ...next[index], start: point });
+    nextBounds.splice(index, 1, { ...nextBounds[index], end: point }, { ...nextBounds[index], start: point });
     const updated = { ...edit, segments: next };
     apply({ ...history.present, edit: updated, trimBounds: nextBounds }, buildTimeline(updated).clips[index + 1].at, index + 1);
   }
 
   function cut() {
     if (!selected || clips.length < 2) return;
-    const segments = edit.segments.filter((_, index) => index !== selectedIndex);
-    const nextBounds = history.present.trimBounds.filter((_, index) => index !== selectedIndex);
+    const sourceIndex = selected.sourceIndex ?? 0;
+    let segments = edit.segments.filter((_, index) => index !== selectedIndex);
+    let nextBounds = history.present.trimBounds.filter((_, index) => index !== selectedIndex);
+    let nextSources = additionalSources;
+    if (sourceIndex > 0 && !segments.some((segment) => segment.sourceIndex === sourceIndex)) {
+      nextSources = additionalSources?.filter((_, index) => index !== sourceIndex - 1);
+      const shiftSource = (segment: (typeof segments)[number]) =>
+        segment.sourceIndex !== undefined && segment.sourceIndex > sourceIndex
+          ? { ...segment, sourceIndex: segment.sourceIndex - 1 }
+          : segment;
+      segments = segments.map(shiftSource);
+      nextBounds = nextBounds.map(shiftSource);
+    }
     const updated = { ...edit, segments };
     const remaining = Math.min(selectedIndex, segments.length - 1);
-    apply({ ...history.present, edit: updated, trimBounds: nextBounds }, buildTimeline(updated).clips[remaining].at, remaining);
+    apply(
+      { ...history.present, edit: updated, trimBounds: nextBounds, additionalSources: nextSources },
+      buildTimeline(updated).clips[remaining].at,
+      remaining,
+    );
   }
 
   function moveClip(direction: -1 | 1) {
@@ -424,12 +511,13 @@ export default function VideoEditor() {
     const updated = { ...edit, segments };
     const nextClip = buildTimeline(updated).clips[selectedIndex];
     const seekTime = boundary === 'start' ? nextClip.at : nextClip.at + Math.max(0, nextClip.length - 1 / (frameRate * edit.speed));
-    preview.seek(seekTime, updated);
-    apply({ ...history.present, edit: updated });
+    apply({ ...history.present, edit: updated }, seekTime);
   }
 
   function stepFrame(direction: -1 | 1) {
-    preview.seek(preview.time + direction / (frameRate * edit.speed));
+    const previous = location && direction === -1 && preview.time <= clips[location.index].at ? clips[location.index - 1] : undefined;
+    const rate = previous ? videos[previous.sourceIndex ?? 0].frameRate : playheadRate;
+    preview.seek(preview.time + direction / (rate * edit.speed));
   }
 
   const handleShortcut = useEffectEvent((event: KeyboardEvent) => {
@@ -481,11 +569,12 @@ export default function VideoEditor() {
 
   const attachSoundtrack = useRef<(file: File, duration: number) => void>(null);
   attachSoundtrack.current = (file, audioDuration) => {
-    apply({ ...history.present, soundtrack: file, soundtrackDuration: audioDuration, edit: { ...edit, audioOffset: 0 } });
+    const current = latestHistory.current.present;
+    apply({ ...current, soundtrack: file, soundtrackDuration: audioDuration, edit: { ...current.edit, audioOffset: 0 } });
   };
 
   async function exportVideo() {
-    if (!source || exportRequest.current || !ready || leaving) return;
+    if (!source || !metadata || exportRequest.current || leaving) return;
     preview.pause();
     const controller = new AbortController();
     exportRequest.current = controller;
@@ -493,7 +582,7 @@ export default function VideoEditor() {
     setJob({ progress: 0 });
     try {
       const blob = await exportVideoEdit(
-        source.file,
+        files,
         edit,
         soundtrack,
         format,
@@ -501,6 +590,7 @@ export default function VideoEditor() {
           if (!controller.signal.aborted && exportRequest.current === controller) setJob({ progress });
         },
         controller.signal,
+        metadata,
       );
       if (controller.signal.aborted || exportRequest.current !== controller) return;
       const filename = withSuffix(source.file.name, '-edited', format);
@@ -516,9 +606,7 @@ export default function VideoEditor() {
   }
 
   function cancelExport() {
-    exportRequest.current?.abort();
-    exportRequest.current = null;
-    setJob(null);
+    invalidateExport();
     setNotice({ text: 'Export canceled.', error: false });
   }
 
@@ -539,6 +627,9 @@ export default function VideoEditor() {
   const formatId = useId();
   const speedId = useId();
   const audioCoverage = Math.max(0, Math.min(duration, edit.audioOffset + soundtrackDuration) - Math.max(0, edit.audioOffset));
+  const openingLabel = opening === 1 ? 'Opening video…' : 'Opening videos…';
+  const addingVideos = opening !== null;
+  const showSourceNames = videos.length > 1;
   const percent = (time: number) => `${duration ? (100 * time) / duration : 0}%`;
   const rotated = edit.rotation === 90 || edit.rotation === 270;
   const frameWidth = crop && (rotated ? crop.height : crop.width);
@@ -587,8 +678,10 @@ export default function VideoEditor() {
                 ]}
                 value={format}
                 onChange={(event) => {
-                  const next = { ...history.present, format: event.currentTarget.value as Draft['format'] };
-                  setHistory({ ...history, present: next });
+                  const current = latestHistory.current;
+                  const next = { ...current.present, format: event.currentTarget.value as Draft['format'] };
+                  invalidateExport();
+                  publishHistory({ ...current, present: next });
                   persistence.schedule(next);
                 }}
               />
@@ -600,18 +693,7 @@ export default function VideoEditor() {
         )}
       </header>
 
-      <video
-        {...preview.mediaEvents}
-        src={originalUrl}
-        ref={preview.videoRef}
-        hidden
-        preload="auto"
-        playsInline
-        onLoadedMetadata={(event) => void loadMetadata(event.currentTarget)}
-        onError={() => {
-          if (source && originalUrl) sourceError();
-        }}
-      />
+      <video {...preview.mediaEvents} ref={preview.videoRef} hidden preload="auto" playsInline />
       <audio
         src={soundtrackUrl}
         ref={preview.soundtrackRef}
@@ -619,6 +701,18 @@ export default function VideoEditor() {
         hidden
         onError={() => {
           if (soundtrackUrl) report('Could not play the soundtrack in this browser.');
+        }}
+      />
+      <input
+        type="file"
+        accept={videoAccept}
+        multiple
+        hidden
+        ref={videosInput}
+        onChange={(event) => {
+          const selection = Array.from(event.currentTarget.files ?? []);
+          event.currentTarget.value = '';
+          void openVideos(selection, true);
         }}
       />
       <input
@@ -636,7 +730,7 @@ export default function VideoEditor() {
       <div className={styles.feedback} aria-live="polite">
         {notice && (
           <p role={notice.error ? 'alert' : 'status'} className={notice.error ? styles.error : undefined}>
-            {t(notice.text)}
+            {t(notice.text, notice.params)}
           </p>
         )}
         {ready && persistence.failed && <p className={styles.error}>{t('Your edits could not be saved on this device.')}</p>}
@@ -660,17 +754,21 @@ export default function VideoEditor() {
 
       {!ready ? (
         <div className={styles.intake}>
-          {source ? (
+          <FileDrop accept={videoAccept} multiple label="Drop videos here" icon={<Film />} onFiles={(files) => void openVideos(files)} />
+          <Button
+            variant="secondary"
+            size="sm"
+            loading={loadingSample}
+            disabled={addingVideos}
+            icon={<Play />}
+            onClick={() => void openSample()}
+          >
+            {t('Try a sample video')}
+          </Button>
+          {addingVideos && (
             <p role="status">
-              <span className="spinner" aria-hidden="true" /> {t('Opening video…')}
+              <span className="spinner" aria-hidden="true" /> {t(openingLabel)}
             </p>
-          ) : (
-            <>
-              <FileDrop accept={videoAccept} label="Drop a video here" icon={<Film />} onFiles={([file]) => openVideo(file)} />
-              <Button variant="secondary" size="sm" loading={loadingSample} icon={<Play />} onClick={() => void openSample()}>
-                {t('Try a sample video')}
-              </Button>
-            </>
           )}
         </div>
       ) : (
@@ -734,7 +832,7 @@ export default function VideoEditor() {
                     getImage={preview.copyFrame}
                     disabled={preview.seeking}
                     size="sm"
-                    filename={withSuffix(source.file.name, '-frame', 'png')}
+                    filename={withSuffix((videos[preview.activeSourceIndex] ?? source).file.name, '-frame', 'png')}
                   />
                 </div>
               </div>
@@ -752,7 +850,12 @@ export default function VideoEditor() {
                     </Button>
                   </div>
                   <fieldset className={styles.inspectorGroup}>
-                    <legend>{t('Clip {number}', { number: selectedIndex + 1 })}</legend>
+                    <legend
+                      className={showSourceNames ? styles.clipSourceName : undefined}
+                      title={showSourceNames ? selectedSource.file.name : undefined}
+                    >
+                      {showSourceNames ? selectedSource.file.name : t('Clip {number}', { number: selectedIndex + 1 })}
+                    </legend>
                     <NumberField
                       label={t('Trim in (s)')}
                       value={selected.start}
@@ -1008,6 +1111,17 @@ export default function VideoEditor() {
           <section className={styles.timeline} aria-labelledby="video-editor-timeline">
             <div className={styles.timelineHeader}>
               <h2 id="video-editor-timeline">{t('Timeline')}</h2>
+              <Button
+                variant="secondary"
+                size="sm"
+                icon={<Plus />}
+                aria-disabled={addingVideos || leaving}
+                onClick={() => {
+                  if (!addingVideos && !leaving) videosInput.current?.click();
+                }}
+              >
+                {t('Add videos')}
+              </Button>
               <Button variant="ghost" size="sm" disabled={!canSplit} icon={<Scissors />} onClick={split}>
                 {t('Split')}
               </Button>
@@ -1015,6 +1129,11 @@ export default function VideoEditor() {
                 {t('Cut')}
               </Button>
             </div>
+            {addingVideos && (
+              <p className={styles.timelineStatus} role="status">
+                {t(openingLabel)}
+              </p>
+            )}
             <div className={styles.tracks}>
               <div className={styles.trackLabels}>
                 <span aria-hidden="true" />
@@ -1052,25 +1171,37 @@ export default function VideoEditor() {
                   />
                 </div>
                 <div className={styles.videoTrack}>
-                  {clips.map((clip, index) => (
-                    <button
-                      type="button"
-                      key={index}
-                      className={styles.clip}
-                      style={{ width: percent(clip.length) }}
-                      aria-pressed={index === selectedIndex}
-                      aria-label={t('Clip {number}', { number: index + 1 })}
-                      title={`${formatDuration(clip.start)} – ${formatDuration(clip.end)}`}
-                      onClick={() => {
-                        setSelectedIndex(index);
-                        setPane('cut');
-                        preview.seek(clip.at, edit, index);
-                      }}
-                    >
-                      <ClipThumbnails frames={frames} start={clip.start} end={clip.end} />
-                      <Film size={14} aria-hidden="true" /> <span>{t('Clip {number}', { number: index + 1 })}</span>
-                    </button>
-                  ))}
+                  {clips.map((clip, index) => {
+                    const sourceIndex = clip.sourceIndex ?? 0;
+                    const clipSource = videos[sourceIndex];
+                    const clipNumber = t('Clip {number}', { number: index + 1 });
+                    const label = showSourceNames ? clipSource.file.name : clipNumber;
+                    const range = `${formatDuration(clip.start)} – ${formatDuration(clip.end)}`;
+                    return (
+                      <button
+                        type="button"
+                        key={index}
+                        className={styles.clip}
+                        style={{ width: percent(clip.length) }}
+                        aria-pressed={index === selectedIndex}
+                        aria-label={showSourceNames ? `${label} (${clipNumber})` : clipNumber}
+                        title={showSourceNames ? `${label}\n${range}` : range}
+                        onClick={() => {
+                          setSelectedIndex(index);
+                          setPane('cut');
+                          preview.seek(clip.at, edit, index);
+                        }}
+                      >
+                        <SourceClipThumbnails
+                          sourceUrl={sourceUrls[sourceIndex]}
+                          duration={clipSource.duration}
+                          start={clip.start}
+                          end={clip.end}
+                        />
+                        <Film size={14} aria-hidden="true" /> <span>{label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
                 <div className={styles.audioTrack}>
                   {soundtrack && audioCoverage > 0 ? (

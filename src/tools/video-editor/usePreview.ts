@@ -1,42 +1,114 @@
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react';
 import type { VideoEdit } from './engine';
-import { buildTimeline, drawFrame, locateTime } from './timeline';
+import { buildTimeline, drawFrame, hasVideoFrame, locateTime, type Clip, type FrameSize } from './timeline';
 
-export function usePreview(edit: VideoEdit, ready: boolean, reportError: (error: string) => void) {
+type PendingSeek = { url: string | undefined; sourceTime: number; outputTime: number; applied: boolean };
+
+export function usePreview(
+  edit: VideoEdit,
+  ready: boolean,
+  reportError: (error: string) => void,
+  sourceUrls: readonly string[],
+  projectSize: FrameSize | null,
+) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const soundtrackRef = useRef<HTMLAudioElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const sourceIndex = useRef(0);
+  const clipIndex = useRef(0);
+  const pendingSeek = useRef<PendingSeek | null>(null);
+  const playbackRequested = useRef(false);
+  const playAttempt = useRef(0);
   const audioGraph = useRef<{ context: AudioContext; source: GainNode; soundtrack: GainNode } | null>(null);
   const audioFailed = useRef(false);
   const [playing, setPlaying] = useState(false);
   const [seeking, setSeeking] = useState(false);
   const [time, setTime] = useState(0);
+  const [activeSourceIndex, setActiveSourceIndex] = useState(0);
   const { clips, duration } = buildTimeline(edit);
+  const waitingForSources = ready && sourceUrls.length === 0;
 
   function renderFrame() {
-    if (ready && canvasRef.current && videoRef.current) drawFrame(canvasRef.current, videoRef.current, edit, 1280);
+    if (ready && !waitingForSources && !pendingSeek.current && canvasRef.current && videoRef.current) {
+      drawFrame(canvasRef.current, videoRef.current, edit, 1280, projectSize);
+    }
+  }
+
+  function clearFrame() {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const context = canvas.getContext('2d', { alpha: false });
+    context?.resetTransform();
+    context?.clearRect(0, 0, canvas.width, canvas.height);
   }
 
   function pause() {
+    playbackRequested.current = false;
+    playAttempt.current++;
     videoRef.current?.pause();
     soundtrackRef.current?.pause();
     setPlaying(false);
   }
 
-  function seek(outputTime: number, nextEdit = edit, clipIndex?: number) {
+  function advanceSeek() {
     const video = videoRef.current;
-    if (!video || nextEdit.segments.length === 0) return;
+    const request = pendingSeek.current;
+    if (
+      !video ||
+      !request?.url ||
+      video.getAttribute('src') !== request.url ||
+      video.currentSrc !== video.src ||
+      video.readyState < HTMLMediaElement.HAVE_METADATA
+    ) {
+      return;
+    }
+    if (!request.applied) {
+      request.applied = true;
+      const target = Math.min(request.sourceTime, video.duration);
+      if (video.currentTime !== target) {
+        video.currentTime = target;
+        return;
+      }
+    }
+    if (!hasVideoFrame(video)) return;
+    pendingSeek.current = null;
+    setSeeking(false);
+    renderFrame();
+    if (playbackRequested.current) playMedia(video, request.outputTime);
+  }
+
+  function loadSource(video: HTMLVideoElement, url: string | undefined) {
+    if (!url) return;
+    if (video.getAttribute('src') !== url || video.error) {
+      playAttempt.current++;
+      video.pause();
+      clearFrame();
+      video.src = url;
+    }
+    advanceSeek();
+  }
+
+  function requestSeek(clips: Clip[], index: number, sourceTime: number, outputTime: number, urls: readonly string[]) {
+    const video = videoRef.current;
+    if (!video) return;
+    const sourceIndex = clips[index].sourceIndex ?? 0;
+    const url = urls[sourceIndex];
+    clipIndex.current = index;
+    pendingSeek.current = { url, sourceTime, outputTime, applied: false };
+    setActiveSourceIndex(sourceIndex);
+    setSeeking(true);
+    setTime(outputTime);
+    soundtrackRef.current?.pause();
+    loadSource(video, url);
+  }
+
+  function seek(outputTime: number, nextEdit = edit, index?: number, nextSourceUrls = sourceUrls) {
+    if (nextEdit.segments.length === 0) return;
     pause();
     const timeline = buildTimeline(nextEdit);
     const nextTime = Math.max(0, Math.min(timeline.duration, outputTime));
     const target =
-      clipIndex === undefined
-        ? locateTime(timeline.clips, nextTime, nextEdit.speed)
-        : { index: clipIndex, source: timeline.clips[clipIndex].start };
-    sourceIndex.current = target.index;
-    video.currentTime = target.source;
-    setTime(nextTime);
+      index === undefined ? locateTime(timeline.clips, nextTime, nextEdit.speed) : { index, source: timeline.clips[index].start };
+    requestSeek(timeline.clips, target.index, target.source, nextTime, nextSourceUrls);
   }
 
   function updateAudio(video: HTMLVideoElement, outputTime: number, keepPlaying: boolean) {
@@ -68,11 +140,23 @@ export function usePreview(edit: VideoEdit, ready: boolean, reportError: (error:
     }
   }
 
-  async function togglePlayback() {
+  function playMedia(video: HTMLVideoElement, outputTime: number) {
+    video.playbackRate = edit.speed;
+    updateAudio(video, outputTime, true);
+    if (!video.paused && !video.ended) return;
+    const attempt = ++playAttempt.current;
+    void video.play().catch((error: unknown) => {
+      if (attempt !== playAttempt.current) return;
+      pause();
+      if (!(error instanceof DOMException && error.name === 'AbortError')) reportError('Could not play this video in your browser.');
+    });
+  }
+
+  function togglePlayback() {
     const video = videoRef.current;
     const soundtrack = soundtrackRef.current;
-    if (!ready || !video || !soundtrack) return;
-    if (!video.paused) {
+    if (!ready || waitingForSources || !video || !soundtrack) return;
+    if (playbackRequested.current) {
       pause();
       return;
     }
@@ -93,42 +177,37 @@ export function usePreview(edit: VideoEdit, ready: boolean, reportError: (error:
     }
     void audioGraph.current?.context.resume().catch(() => undefined);
     audioFailed.current = false;
-    if (time >= duration) seek(0);
-    video.playbackRate = edit.speed;
-    updateAudio(video, time >= duration ? 0 : time, true);
-    try {
-      await video.play();
-      setPlaying(!video.paused);
-    } catch (error) {
-      pause();
-      if (!(error instanceof DOMException && error.name === 'AbortError')) reportError('Could not play this video in your browser.');
+    playbackRequested.current = true;
+    setPlaying(true);
+    if (time >= duration && clips.length) {
+      requestSeek(clips, 0, clips[0].start, 0, sourceUrls);
+    } else if (!pendingSeek.current) {
+      playMedia(video, time);
     }
   }
 
   function tick() {
     const video = videoRef.current;
-    let clip = clips[sourceIndex.current];
-    if (!video || !clip) return;
-    if (video.seeking) {
+    let clip = clips[clipIndex.current];
+    if (!ready || waitingForSources || !playbackRequested.current || !video || !clip || pendingSeek.current) return;
+    if (!hasVideoFrame(video)) {
       soundtrackRef.current?.pause();
       return;
     }
     while (video.currentTime >= clip.end || video.ended) {
-      const next = clips[sourceIndex.current + 1];
+      const nextIndex = clipIndex.current + 1;
+      const next = clips[nextIndex];
       if (!next) {
         setTime(duration);
         pause();
         renderFrame();
         return;
       }
-      sourceIndex.current++;
-      if (next.start !== clip.end || video.ended) {
-        setTime(next.at);
-        video.currentTime = next.start;
-        soundtrackRef.current?.pause();
-        if (video.paused) void video.play().catch(pause);
+      if ((next.sourceIndex ?? 0) !== (clip.sourceIndex ?? 0) || next.start !== clip.end || video.ended) {
+        requestSeek(clips, nextIndex, next.start, next.at, sourceUrls);
         return;
       }
+      clipIndex.current = nextIndex;
       clip = next;
     }
     const output = clip.at + Math.max(0, video.currentTime - clip.start) / edit.speed;
@@ -138,15 +217,43 @@ export function usePreview(edit: VideoEdit, ready: boolean, reportError: (error:
   }
 
   const onTick = useEffectEvent(tick);
-  const onRedraw = useEffectEvent(() => {
-    renderFrame();
+  const syncPreview = useEffectEvent(() => {
     const video = videoRef.current;
-    if (ready && video) updateAudio(video, time, playing);
+    if (!video) return;
+    if (waitingForSources) {
+      if (playbackRequested.current) pause();
+      clearFrame();
+      return;
+    }
+    if (!ready || clips.length === 0) {
+      if (sourceUrls.length || (!pendingSeek.current && !video.hasAttribute('src'))) return;
+      pause();
+      pendingSeek.current = null;
+      clipIndex.current = 0;
+      setActiveSourceIndex(0);
+      setSeeking(false);
+      setTime(0);
+      video.removeAttribute('src');
+      video.load();
+      clearFrame();
+      return;
+    }
+    const request = pendingSeek.current;
+    if (request && !request.url) {
+      request.url = sourceUrls[activeSourceIndex];
+      loadSource(video, request.url);
+    } else if (!request && video.getAttribute('src') !== sourceUrls[activeSourceIndex]) {
+      const target = locateTime(clips, time, edit.speed);
+      const url = sourceUrls[clips[target.index].sourceIndex ?? 0];
+      if (url) requestSeek(clips, target.index, target.source, time, sourceUrls);
+    }
+    renderFrame();
+    updateAudio(video, time, playbackRequested.current && !pendingSeek.current);
   });
 
-  useEffect(() => {
-    onRedraw();
-  }, [edit, ready]);
+  useLayoutEffect(() => {
+    syncPreview();
+  }, [edit, projectSize, ready, sourceUrls]);
 
   useEffect(() => {
     if (!playing) return;
@@ -170,7 +277,9 @@ export function usePreview(edit: VideoEdit, ready: boolean, reportError: (error:
   async function copyFrame() {
     const video = videoRef.current;
     const canvas = document.createElement('canvas');
-    if (!video || video.seeking || !drawFrame(canvas, video, edit)) throw new Error('Frame unavailable');
+    if (!ready || waitingForSources || !video || pendingSeek.current || !drawFrame(canvas, video, edit, Infinity, projectSize)) {
+      throw new Error('Frame unavailable');
+    }
     return new Promise<Blob>((resolve, reject) =>
       canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('Could not encode the frame'))), 'image/png'),
     );
@@ -182,17 +291,24 @@ export function usePreview(edit: VideoEdit, ready: boolean, reportError: (error:
     canvasRef,
     time,
     playing,
-    seeking,
+    seeking: waitingForSources || seeking,
+    activeSourceIndex,
     seek,
     pause,
     togglePlayback,
     copyFrame,
     mediaEvents: {
-      onLoadedData: renderFrame,
-      onSeeking: () => setSeeking(true),
-      onSeeked: () => {
+      onLoadedMetadata: advanceSeek,
+      onLoadedData: advanceSeek,
+      onCanPlay: advanceSeek,
+      onSeeked: advanceSeek,
+      onEnded: tick,
+      onError: () => {
+        if (!videoRef.current?.error) return;
+        pause();
+        pendingSeek.current = null;
         setSeeking(false);
-        renderFrame();
+        reportError('This video could not be opened. Try an MP4 with H.264 video or a WebM file.');
       },
     },
   };

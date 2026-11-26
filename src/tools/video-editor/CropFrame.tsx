@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent } from 'react';
 import { useI18n } from '../../lib/i18n';
 import type { VideoEdit } from './engine';
+import { fitFrame, hasVideoFrame } from './timeline';
 import styles from './CropFrame.module.css';
 
 type Crop = NonNullable<VideoEdit['crop']>;
@@ -71,9 +72,13 @@ export function CropFrame({ video, width, height, crop, onChange }: CropFramePro
     if (!context) return;
 
     function paint() {
-      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && !video.seeking) {
-        context?.drawImage(video, 0, 0, canvasWidth, canvasHeight);
-      }
+      if (!context || !hasVideoFrame(video)) return;
+      const fit = fitFrame(video, { width, height });
+      const scaleX = canvasWidth / width;
+      const scaleY = canvasHeight / height;
+      context.fillStyle = 'black';
+      context.fillRect(0, 0, canvasWidth, canvasHeight);
+      context.drawImage(video, fit.x * scaleX, fit.y * scaleY, fit.width * scaleX, fit.height * scaleY);
     }
 
     const hasVideoFrames = typeof video.requestVideoFrameCallback === 'function';
@@ -90,19 +95,22 @@ export function CropFrame({ video, width, height, crop, onChange }: CropFramePro
       else if (!video.paused && !video.ended) frame = requestAnimationFrame(drawNextFrame);
     }
 
-    const paintEvents = ['loadeddata', 'seeked', 'pause', 'ended'];
+    const paintEvents = ['loadeddata', 'canplay', 'seeked', 'pause', 'ended'];
     for (const event of paintEvents) video.addEventListener(event, paint);
     video.addEventListener('playing', schedule);
+    const sourceChanges = new MutationObserver(() => context.clearRect(0, 0, canvasWidth, canvasHeight));
+    sourceChanges.observe(video, { attributes: true, attributeFilter: ['src'] });
     paint();
     schedule();
     return () => {
       for (const event of paintEvents) video.removeEventListener(event, paint);
       video.removeEventListener('playing', schedule);
+      sourceChanges.disconnect();
       if (frame === undefined) return;
       if (hasVideoFrames) video.cancelVideoFrameCallback(frame);
       else cancelAnimationFrame(frame);
     };
-  }, [video, canvasWidth, canvasHeight]);
+  }, [video, width, height, canvasWidth, canvasHeight]);
 
   function sourcePoint(frame: HTMLDivElement, { clientX, clientY }: Pick<PointerEvent, 'clientX' | 'clientY'>): Point {
     const bounds = frame.getBoundingClientRect();

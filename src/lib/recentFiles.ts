@@ -13,6 +13,7 @@ const PHOTO_EDITOR = '/image/photo-editor';
 const VIDEO_EDITOR = '/video/video-editor';
 const changes = new EventTarget();
 const fileHashes = new WeakMap<File, Promise<string>>();
+const draftProjects = new WeakMap<File, string>();
 let channel: BroadcastChannel | undefined;
 
 interface StoredFile {
@@ -28,6 +29,8 @@ export interface RecentFilesEntry {
   openedAt: number;
   size: number;
   files: StoredFile[];
+  draftProjectId?: string;
+  additionalVideoNames?: string[];
 }
 
 interface BufferedBlob {
@@ -50,6 +53,11 @@ interface DraftAsset {
 interface DraftRecord {
   recentFilesFormat: 'assets';
   value: unknown;
+}
+
+interface DraftProject {
+  id: string;
+  create: boolean;
 }
 
 function fileMetadata(file: File): Omit<StoredFile, 'blob'> {
@@ -78,13 +86,18 @@ function mapDraftAssets<T, U>(draft: unknown, toolPath: string, map: (value: T) 
       layers: layers.map((layer) => (layer.type === 'image' && layer.image ? { ...layer, image: map(layer.image) } : layer)),
     };
   }
-  if (toolPath === VIDEO_EDITOR && 'soundtrack' in draft && draft.soundtrack) {
-    return { ...draft, soundtrack: map(draft.soundtrack as T) };
+  if (toolPath === VIDEO_EDITOR) {
+    const { soundtrack, additionalSources } = draft as { soundtrack?: T | null; additionalSources?: { file: T }[] };
+    return {
+      ...draft,
+      ...(soundtrack && { soundtrack: map(soundtrack) }),
+      ...(additionalSources && { additionalSources: additionalSources.map((source) => ({ ...source, file: map(source.file) })) }),
+    };
   }
   return draft;
 }
 
-async function bufferDraft(draft: unknown, toolPath: string, extraBytes: number): Promise<DraftRecord> {
+function collectDraftAssets(draft: unknown, toolPath: string, extraBytes: number) {
   const assets: { blob: Blob; asset: DraftAsset }[] = [];
   const value = mapDraftAssets(draft, toolPath, (blob: Blob) => {
     const asset: DraftAsset = { blob };
@@ -95,8 +108,11 @@ async function bufferDraft(draft: unknown, toolPath: string, extraBytes: number)
   if (assets.reduce((total, { blob }) => total + blob.size, 0) > extraBytes) {
     throw new Error('Recent draft assets exceed the declared size.');
   }
-  for (const { blob, asset } of assets) asset.blob = { bytes: await blob.arrayBuffer(), type: blob.type };
-  return { recentFilesFormat: 'assets', value };
+  return { assets, record: { recentFilesFormat: 'assets', value } satisfies DraftRecord };
+}
+
+async function bufferBlob(blob: Blob): Promise<BufferedBlob> {
+  return { bytes: await blob.arrayBuffer(), type: blob.type };
 }
 
 function restoreDraft(draft: unknown, toolPath: string): unknown {
@@ -209,11 +225,21 @@ async function hashFile(file: File) {
   return bytesToHex(hash.digest());
 }
 
+export function createRecentDraftProjectId() {
+  return bytesToHex(crypto.getRandomValues(new Uint8Array(16)));
+}
+
+function projectEntryId(id: string) {
+  return JSON.stringify([VIDEO_EDITOR, id]);
+}
+
 async function entryId(files: File[], toolPath: string) {
   const metadata = files.map((file) => [file.name, file.size, file.lastModified, file.type, file.webkitRelativePath || '']);
   if (!isRecentEditorPath(toolPath) || files.length !== 1) return JSON.stringify([toolPath, metadata]);
-  // An editor draft must match the source bytes even when metadata is identical.
   const [file] = files;
+  const projectId = toolPath === VIDEO_EDITOR ? draftProjects.get(file) : undefined;
+  if (projectId) return projectEntryId(projectId);
+  // An editor draft must match the source bytes even when metadata is identical.
   let contentHash = fileHashes.get(file);
   if (!contentHash) {
     contentHash = hashFile(file);
@@ -225,7 +251,7 @@ async function entryId(files: File[], toolPath: string) {
 async function saveEntry(
   id: string,
   build: (previous: StoredEntry | undefined, newestAt: number, drafts: IDBObjectStore) => StoredEntry | undefined,
-  notifyOnSave = true,
+  notifyOnSave = () => true,
 ): Promise<boolean> {
   let saved = false;
   let evicted = false;
@@ -260,7 +286,7 @@ async function saveEntry(
         }
       };
     },
-    () => saved && (notifyOnSave || evicted),
+    () => saved && (notifyOnSave() || evicted),
   );
   return saved;
 }
@@ -274,15 +300,22 @@ export async function rememberRecentFiles(files: File[], toolPath: string): Prom
 
     // A repeat replaces the stored bytes and moves the selection to the top.
     const id = await entryId(files, toolPath);
+    const isDraftProject = toolPath === VIDEO_EDITOR && files.length === 1 && draftProjects.has(files[0]);
     const save = (storedFiles: PersistedFile[]) =>
-      saveEntry(id, (previous, newestAt) => ({
-        id,
-        toolPath,
-        openedAt: Math.max(Date.now(), newestAt + 1),
-        size,
-        files: storedFiles,
-        draftBytes: previous?.draftBytes ?? 0,
-      }));
+      saveEntry(id, (previous, newestAt) => {
+        // A stale recent entry can still be clicked while a removal is propagating.
+        if (isDraftProject && !previous) return;
+        return {
+          id,
+          toolPath,
+          openedAt: Math.max(Date.now(), newestAt + 1),
+          size,
+          files: storedFiles,
+          draftBytes: previous?.draftBytes ?? 0,
+          draftProjectId: previous?.draftProjectId,
+          additionalVideoNames: previous?.additionalVideoNames,
+        };
+      });
     try {
       await save(files.map((file) => ({ ...fileMetadata(file), blob: file.slice(0, file.size, file.type) })));
     } catch (error) {
@@ -290,7 +323,7 @@ export async function rememberRecentFiles(files: File[], toolPath: string): Prom
       // Some WebKit contexts store ArrayBuffers but abort transactions containing Blobs.
       const buffered: PersistedFile[] = [];
       for (const file of files) {
-        buffered.push({ ...fileMetadata(file), blob: { bytes: await file.arrayBuffer(), type: file.type } });
+        buffered.push({ ...fileMetadata(file), blob: await bufferBlob(file) });
       }
       await save(buffered);
     }
@@ -318,7 +351,11 @@ export async function listRecentFiles(): Promise<RecentFilesEntry[]> {
 }
 
 export function restoreRecentFiles(entry: RecentFilesEntry): File[] {
-  return entry.files.map(({ blob, ...metadata }) => restoreFile(blob, metadata));
+  return entry.files.map(({ blob, ...metadata }) => {
+    const file = restoreFile(blob, metadata);
+    if (entry.draftProjectId) draftProjects.set(file, entry.draftProjectId);
+    return file;
+  });
 }
 
 export function removeRecentFiles(id: string): Promise<boolean> {
@@ -358,34 +395,61 @@ export async function readRecentDraft<T>(file: File, toolPath: string): Promise<
   }
 }
 
-/** extraBytes is the combined size of the draft's assets and excludes the stored source file. */
-export async function writeRecentDraft(file: File, toolPath: string, draft: unknown, extraBytes: number): Promise<boolean> {
+/** extraBytes includes the draft's assets and metadata separately from the stored source file. */
+export async function writeRecentDraft(
+  file: File,
+  toolPath: string,
+  draft: unknown,
+  extraBytes: number,
+  project?: DraftProject,
+): Promise<boolean> {
   try {
     if (!Number.isSafeInteger(extraBytes) || extraBytes < 0 || file.size + extraBytes > MAX_FILE_BYTES) return false;
-    const id = await entryId([file], toolPath);
-    const save = (value: unknown) =>
+    const { assets, record } = collectDraftAssets(draft, toolPath, extraBytes);
+    const id = project ? projectEntryId(project.id) : await entryId([file], toolPath);
+    const names =
+      toolPath === VIDEO_EDITOR &&
+      draft &&
+      typeof draft === 'object' &&
+      'additionalSources' in draft &&
+      Array.isArray(draft.additionalSources)
+        ? draft.additionalSources.map(({ file }: { file: File }) => file.name)
+        : [];
+    let namesChanged = false;
+    const save = (value: unknown, source?: PersistedFile) =>
       saveEntry(
         id,
-        (previous, _newestAt, drafts) => {
-          if (!previous) return;
+        (previous, newestAt, drafts) => {
+          const entry: Omit<StoredEntry, 'draftBytes'> | undefined =
+            previous ??
+            (source && {
+              id,
+              toolPath,
+              openedAt: Math.max(Date.now(), newestAt + 1),
+              size: file.size,
+              files: [source],
+              draftProjectId: project?.id,
+            });
+          if (!entry) return;
           drafts.put(value, id);
-          return { ...previous, draftBytes: extraBytes };
+          if (toolPath !== VIDEO_EDITOR) return { ...entry, draftBytes: extraBytes };
+          const previousNames = entry.additionalVideoNames ?? [];
+          namesChanged = previousNames.length !== names.length || previousNames.some((name, index) => name !== names[index]);
+          return { ...entry, draftBytes: extraBytes, additionalVideoNames: names.length ? names : undefined };
         },
-        false,
+        () => !!project?.create || namesChanged,
       );
+    const metadata = project?.create ? fileMetadata(file) : undefined;
     try {
-      if (toolPath === VIDEO_EDITOR && draft && typeof draft === 'object' && 'soundtrack' in draft) {
-        const { soundtrack } = draft;
-        if (soundtrack instanceof File && soundtrack.webkitRelativePath) {
-          // IndexedDB's native File clone omits the folder path.
-          const value = { ...draft, soundtrack: { blob: soundtrack, file: fileMetadata(soundtrack) } };
-          return await save({ recentFilesFormat: 'assets', value } satisfies DraftRecord);
-        }
-      }
-      return await save(draft);
+      // IndexedDB's native File clone omits the folder path.
+      return await save(
+        toolPath === VIDEO_EDITOR && assets.length ? record : draft,
+        metadata && { ...metadata, blob: file.slice(0, file.size, file.type) },
+      );
     } catch (error) {
       if (!isBlobStorageError(error)) throw error;
-      return await save(await bufferDraft(draft, toolPath, extraBytes));
+      for (const { blob, asset } of assets) asset.blob = await bufferBlob(blob);
+      return await save(record, metadata && { ...metadata, blob: await bufferBlob(file) });
     }
   } catch {
     return false;

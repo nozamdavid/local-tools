@@ -156,10 +156,29 @@ describe('toolInputs and handoff classification', () => {
     expect(suggestToolsForFiles([createFile('photo.heic')])[0].id).toBe('img-heic-to-jpg');
     expect(suggestToolsForFiles([createFile('clip.avi')])[0].id).toBe('video-health');
     expect(suggestToolsForFiles([createFile('voice.webm', 'audio/webm')]).map(({ id }) => id)).not.toContain('video-editor');
+  });
 
-    const batch = suggestToolsForFiles([createFile('first.mp4'), createFile('second.webm')]).map(({ id }) => id);
-    expect(batch[0]).toBe('merge');
-    expect(batch).not.toContain('video-editor');
+  it('offers Video Editor first for batches of supported videos and hands off files in order', () => {
+    const first = createFile('first.mp4');
+    for (const files of [
+      [first, createFile('second.mp4')],
+      [first, createFile('second.webm'), createFile('third.mov')],
+    ]) {
+      const [editor, merge] = suggestToolsForFiles(files);
+      expect(editor.id).toBe('video-editor');
+      expect(merge.id).toBe('merge');
+      setPendingFiles(files, editor.path);
+      expect(takePendingFiles(editor.path, 'video/*', true)).toEqual({ accepted: files, rejected: [] });
+    }
+  });
+
+  it('preserves routing when a video batch contains unsupported video or non-video files', () => {
+    const first = createFile('first.mp4');
+    const toolsFor = (second: File) => suggestToolsForFiles([first, second]).map(({ id }) => id);
+
+    expect(toolsFor(createFile('second.avi'))).toEqual(['merge', 'batch-rename']);
+    expect(toolsFor(createFile('voice.webm', 'audio/webm'))).toEqual(['batch-rename']);
+    expect(toolsFor(createFile('photo.png'))).toEqual(['batch-rename']);
   });
 
   it('suggests image comparison only for exactly two supported images', () => {

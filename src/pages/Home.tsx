@@ -171,6 +171,7 @@ function RecentFiles() {
   if (entries.length === 0) return null;
 
   const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const filenames = new Intl.ListFormat(locale, { style: 'short', type: 'unit' });
   const remove = async (trigger: HTMLButtonElement, id?: string) => {
     const success = await (id ? removeRecentFiles(id) : clearRecentFiles());
     setError(!success);
@@ -200,10 +201,10 @@ function RecentFiles() {
       <ul className={styles.recentList}>
         {entries.map((entry, index) => {
           const first = entry.files[0];
-          const name =
-            entry.files.length === 1
-              ? first.name
-              : `${first.name} ${t('and {count} more', { count: formatNumber(entry.files.length - 1) })}`;
+          const additionalVideos = entry.additionalVideoNames ?? [];
+          const visibleNames = additionalVideos.length ? [first.name, additionalVideos[0]] : [first.name];
+          const remaining = entry.files.length + additionalVideos.length - visibleNames.length;
+          const name = filenames.format(visibleNames) + (remaining ? ` ${t('and {count} more', { count: formatNumber(remaining) })}` : '');
           const type = extensionOf(first.name).toUpperCase() || first.blob.type || t('File');
           const tool = recentTools.get(entry.toolPath);
           const detailsId = `recent-file-details-${index}`;

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import { readRecentDraft, rememberRecentFiles, writeRecentDraft } from '../../lib/recentFiles';
+import { createRecentDraftProjectId, readRecentDraft, rememberRecentFiles, writeRecentDraft } from '../../lib/recentFiles';
 import type { Segment, VideoEdit } from './engine';
+import type { VideoSource } from './videoSources';
 
 export const EDITOR_PATH = '/video/video-editor';
 
@@ -10,11 +11,14 @@ export interface Draft {
   soundtrack: File | null;
   soundtrackDuration: number;
   format: 'mp4' | 'webm';
+  additionalSources?: VideoSource[];
 }
 
 interface Save {
   file: File;
-  opened: Promise<void>;
+  kind: 'sample' | 'promoted-sample' | 'new-project' | 'project';
+  projectId?: string;
+  opened: Promise<void> | null;
   draft: Draft | null;
   revision: number;
   saved: number;
@@ -26,15 +30,38 @@ export function useDraft() {
   const timeout = useRef<number | undefined>(undefined);
   const [failed, setFailed] = useState(false);
 
-  async function restore(file: File, sample: boolean) {
+  function begin(file: File, kind: Save['kind'], projectId?: string) {
     window.clearTimeout(timeout.current);
-    active.current = null;
     setFailed(false);
+    active.current = {
+      file,
+      kind,
+      projectId,
+      opened: kind === 'project' ? rememberRecentFiles([file], EDITOR_PATH) : null,
+      draft: null,
+      revision: 0,
+      saved: 0,
+      pending: Promise.resolve(true),
+    };
+    return active.current;
+  }
+
+  async function restore(file: File, sample: boolean) {
+    const current = begin(file, sample ? 'sample' : 'project');
     if (sample) return;
-    const opened = rememberRecentFiles([file], EDITOR_PATH);
-    active.current = { file, opened, draft: null, revision: 0, saved: 0, pending: Promise.resolve(true) };
-    await opened;
+    await current.opened;
     return readRecentDraft<Draft>(file, EDITOR_PATH);
+  }
+
+  function startProject(anchor: File) {
+    begin(anchor, 'new-project', createRecentDraftProjectId());
+  }
+
+  async function promoteSample(anchor: File): Promise<void> {
+    const current = active.current;
+    if (current?.file !== anchor || current.kind !== 'sample') return;
+    current.projectId = createRecentDraftProjectId();
+    current.kind = 'promoted-sample';
   }
 
   function flush() {
@@ -44,13 +71,19 @@ export function useDraft() {
     current.pending = current.pending.then(async () => {
       const { revision, draft } = current;
       if (!draft || current.saved === revision) return true;
-      let saved = false;
-      try {
-        await current.opened;
-        const bytes = (draft.soundtrack?.size ?? 0) + JSON.stringify(draft).length * 2;
-        saved = await writeRecentDraft(current.file, EDITOR_PATH, draft, bytes);
-      } catch {
-        // Storage limits and denied browser storage can leave the live editor usable.
+      const createProject = current.kind === 'new-project' || current.kind === 'promoted-sample';
+      let saved = true;
+      if (current.kind !== 'promoted-sample' || draft.additionalSources?.length) {
+        try {
+          await current.opened;
+          const sourceBytes = draft.additionalSources?.reduce((total, { file }) => total + file.size, 0) ?? 0;
+          const bytes = sourceBytes + (draft.soundtrack?.size ?? 0) + JSON.stringify(draft).length * 2;
+          const project = current.projectId ? { id: current.projectId, create: createProject } : undefined;
+          saved = await writeRecentDraft(current.file, EDITOR_PATH, draft, bytes, project);
+          if (saved) current.kind = 'project';
+        } catch {
+          saved = false;
+        }
       }
       if (saved) current.saved = revision;
       if (active.current === current && revision === current.revision) setFailed(!saved);
@@ -61,7 +94,7 @@ export function useDraft() {
 
   function schedule(draft: Draft) {
     const current = active.current;
-    if (!current) return;
+    if (!current || current.kind === 'sample') return;
     current.draft = draft;
     current.revision++;
     window.clearTimeout(timeout.current);
@@ -88,5 +121,5 @@ export function useDraft() {
     };
   }, []);
 
-  return { restore, schedule, flush, failed };
+  return { restore, startProject, promoteSample, schedule, flush, failed };
 }

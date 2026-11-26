@@ -301,6 +301,13 @@
   font-weight: var(--weight-medium);
 }
 
+.clipSourceName {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .actions,
 .ratios {
   display: flex;
@@ -341,12 +348,30 @@
 
 .timelineHeader {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-1);
   align-items: center;
+  margin-bottom: var(--space-1);
 }
 
 .timelineHeader h2 {
   flex: 1;
+  margin-inline-end: var(--space-2);
+}
+
+.timelineHeader :global(.btn) {
+  min-height: 2.25rem;
+}
+
+.timelineHeader :global(.btn)[aria-disabled='true'] {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.timelineStatus {
+  margin-bottom: var(--space-1);
+  color: var(--text-muted);
+  font-size: var(--text-xs);
 }
 
 .tracks {

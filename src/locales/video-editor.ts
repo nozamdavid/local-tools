@@ -3,13 +3,8 @@ import type { Locale } from '../lib/i18n';
 // Spanish, Italian, German, Portuguese, French.
 const rows: Record<string, [string, string, string, string, string]> = {
   'Back to home': ['Volver al inicio', 'Torna alla home', 'Zur Startseite', 'Voltar ao início', 'Retour à l’accueil'],
-  'Drop a video here': [
-    'Suelta un vídeo aquí',
-    'Trascina qui un video',
-    'Video hier ablegen',
-    'Largue um vídeo aqui',
-    'Déposez une vidéo ici',
-  ],
+  'Add videos': ['Añadir vídeos', 'Aggiungi video', 'Videos hinzufügen', 'Adicionar vídeos', 'Ajouter des vidéos'],
+  'Drop videos here': ['Suelta vídeos aquí', 'Trascina qui i video', 'Videos hier ablegen', 'Largue vídeos aqui', 'Déposez des vidéos ici'],
   'Try a sample video': [
     'Probar con un vídeo de ejemplo',
     'Prova un video di esempio',
@@ -18,6 +13,7 @@ const rows: Record<string, [string, string, string, string, string]> = {
     'Essayer une vidéo d’exemple',
   ],
   'Opening video…': ['Abriendo vídeo…', 'Apertura del video…', 'Video wird geöffnet…', 'A abrir vídeo…', 'Ouverture de la vidéo…'],
+  'Opening videos…': ['Abriendo vídeos…', 'Apertura dei video…', 'Videos werden geöffnet…', 'A abrir vídeos…', 'Ouverture des vidéos…'],
   'Video editing tools': [
     'Herramientas de edición de vídeo',
     'Strumenti di montaggio video',
@@ -171,6 +167,13 @@ const rows: Record<string, [string, string, string, string, string]> = {
     'Dieses Video konnte nicht geöffnet werden. Versuche eine MP4-Datei mit H.264-Video oder eine WebM-Datei.',
     'Não foi possível abrir este vídeo. Experimente um MP4 com vídeo H.264 ou um ficheiro WebM.',
     'Impossible d’ouvrir cette vidéo. Essayez un MP4 avec une vidéo H.264 ou un fichier WebM.',
+  ],
+  '{file} could not be opened. Try an MP4 with H.264 video or a WebM file.': [
+    'No se ha podido abrir {file}. Prueba con un MP4 con vídeo H.264 o un archivo WebM.',
+    'Impossibile aprire {file}. Prova un MP4 con video H.264 o un file WebM.',
+    'Die Datei {file} konnte nicht geöffnet werden. Versuche eine MP4-Datei mit H.264-Video oder eine WebM-Datei.',
+    'Não foi possível abrir {file}. Experimente um MP4 com vídeo H.264 ou um ficheiro WebM.',
+    'Impossible d’ouvrir {file}. Essayez un MP4 avec une vidéo H.264 ou un fichier WebM.',
   ],
   'The sample video could not be loaded. Choose a video or try again.': [
     'No se ha podido cargar el vídeo de ejemplo. Elige un vídeo o inténtalo otra vez.',

@@ -3,9 +3,12 @@ import type { VideoEdit } from './engine';
 export interface Clip {
   start: number;
   end: number;
+  sourceIndex?: number;
   at: number;
   length: number;
 }
+
+export type FrameSize = { width: number; height: number };
 
 export function buildTimeline(edit: VideoEdit) {
   let duration = 0;
@@ -27,9 +30,27 @@ export function locateTime(clips: Clip[], time: number, speed: number) {
   };
 }
 
-export function drawFrame(canvas: HTMLCanvasElement, video: HTMLVideoElement, edit: VideoEdit, maxEdge = Infinity) {
-  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return false;
-  const { x, y, width, height } = edit.crop ?? { x: 0, y: 0, width: video.videoWidth, height: video.videoHeight };
+export function fitFrame(video: HTMLVideoElement, frame: FrameSize) {
+  const scale = Math.min(frame.width / video.videoWidth, frame.height / video.videoHeight);
+  const width = video.videoWidth * scale;
+  const height = video.videoHeight * scale;
+  return { x: (frame.width - width) / 2, y: (frame.height - height) / 2, width, height };
+}
+
+export function hasVideoFrame(video: HTMLVideoElement) {
+  return !video.seeking && video.currentSrc === video.src && video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA;
+}
+
+export function drawFrame(
+  canvas: HTMLCanvasElement,
+  video: HTMLVideoElement,
+  edit: VideoEdit,
+  maxEdge = Infinity,
+  projectSize: FrameSize | null = null,
+) {
+  if (!hasVideoFrame(video)) return false;
+  const frame = projectSize ?? { width: video.videoWidth, height: video.videoHeight };
+  const { x, y, width, height } = edit.crop ?? { x: 0, y: 0, ...frame };
   const turned = edit.rotation === 90 || edit.rotation === 270;
   const scale = Math.min(1, maxEdge / Math.max(width, height));
   const scaledWidth = Math.max(1, Math.round(width * scale));
@@ -41,10 +62,22 @@ export function drawFrame(canvas: HTMLCanvasElement, video: HTMLVideoElement, ed
   const context = canvas.getContext('2d', { alpha: false });
   if (!context) return false;
 
+  const fitted = fitFrame(video, frame);
+  const scaleX = scaledWidth / width;
+  const scaleY = scaledHeight / height;
+  context.resetTransform();
+  context.fillStyle = 'black';
+  context.fillRect(0, 0, outputWidth, outputHeight);
   context.setTransform(1, 0, 0, 1, outputWidth / 2, outputHeight / 2);
   context.scale(edit.flipH ? -1 : 1, edit.flipV ? -1 : 1);
   context.rotate((edit.rotation * Math.PI) / 180);
-  context.drawImage(video, x, y, width, height, -scaledWidth / 2, -scaledHeight / 2, scaledWidth, scaledHeight);
+  context.drawImage(
+    video,
+    (fitted.x - x) * scaleX - scaledWidth / 2,
+    (fitted.y - y) * scaleY - scaledHeight / 2,
+    fitted.width * scaleX,
+    fitted.height * scaleY,
+  );
   return true;
 }
 

@@ -576,7 +576,7 @@ export function isToolEligibleForFile(tool: ToolMeta, file: File): boolean {
     return VIDEO_CONTAINERS.has(c.format);
   }
 
-  // 3. Other Video Tools (single video)
+  // 3. Other Video Tools
   if (tool.media === 'video') {
     if (tool.id === 'video-editor') return VIDEO_EDITOR_FORMATS.has(c.format);
     if (tool.id === 'merge') return false; // min 2
@@ -689,6 +689,10 @@ export function isToolEligibleForBatch(tool: ToolMeta, files: File[]): boolean {
   // PDF Compare (exactly 2 PDFs)
   if (tool.id === 'pdf-compare') {
     return count === 2 && classes.every((c) => c.isPdf);
+  }
+
+  if (tool.id === 'video-editor') {
+    return classes.every((c) => VIDEO_EDITOR_FORMATS.has(c.format));
   }
 
   // Video Merge (min 2 videos)
