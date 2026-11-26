@@ -25,7 +25,7 @@ This report documents the concrete implementation and empirical browser-level ve
 ## 2. Genuine Failure Observed & Minimal Remediation
 
 ### Defect: Broken DOCTYPE Internal Subset `[...]` Stripping in `neutralizeOfficeRels`
-- **Location:** [src/lib/inertMarkup.ts](file:///home/david/.t3/projects/loconvert/src/lib/inertMarkup.ts#L105-L109)
+- **Location:** [src/lib/inertMarkup.ts](../src/lib/inertMarkup.ts)
 - **Symptom:** In browser environments where `DOMParser` is active, XML `.rels` files containing `<!DOCTYPE ... [ <!ENTITY ...> ]>` failed parsing with `parsererror` because the original regex `/<!DOCTYPE[\s\S]*?>/gi` terminated at the first `>` inside the entity declaration, leaving trailing `\n]>\n` before `<Relationships>`. In Node CLI runs, this failure was masked because Node lacked `DOMParser` and took the regex fallback.
 - **Fix:** Enhanced the DTD stripping regex to match bracketed internal subsets:
   ```ts

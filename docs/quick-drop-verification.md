@@ -5,12 +5,12 @@
 This report documents the verification and fixes for home quick-drop file handoff, tool format eligibility, mode initializers, and batch delimiter handling across Loconvert.
 
 ### Modified Files:
-- [src/lib/handoff.ts](file:///home/david/.t3/projects/loconvert/src/lib/handoff.ts): Removed unused `EXT_MIME` import resolving TS6133.
-- [src/lib/handoff.verify.ts](file:///home/david/.t3/projects/loconvert/src/lib/handoff.verify.ts): Added regression tests for extensionless files with recognized MIME types and mixed TSV+CSV batch delimiter autodetection (29/29 tests passed).
-- [src/tools/json-csv/Tool.tsx](file:///home/david/.t3/projects/loconvert/src/tools/json-csv/Tool.tsx): Adopted `classifyFile` for lazy mode and delimiter initialization; removed redundant mount `useEffect`; restored normal whitespace in JSX batch results map; implemented per-file delimiter autodetection for CSV files in mixed batches.
-- [src/tools/gpx-kml/Tool.tsx](file:///home/david/.t3/projects/loconvert/src/tools/gpx-kml/Tool.tsx): Adopted `classifyFile` for lazy direction initialization; removed redundant mount `useEffect`; ensured extensionless KML/GPX files choose proper direction.
-- [src/tools/image/icon-converter/Tool.tsx](file:///home/david/.t3/projects/loconvert/src/tools/image/icon-converter/Tool.tsx): Adopted `classifyFile` for mode initialization and batch validation; removed redundant mount `useEffect`; restored normal whitespace in JSX extracted frames block.
-- [src/tools/pdf/compare/Tool.tsx](file:///home/david/.t3/projects/loconvert/src/tools/pdf/compare/Tool.tsx): Restored normal whitespace in JSX diff line map; preserved parent mount take and child FileDrop handling for PDF pairs.
+- [src/lib/handoff.ts](../src/lib/handoff.ts): Removed unused `EXT_MIME` import resolving TS6133.
+- [src/lib/handoff.verify.ts](../src/lib/handoff.verify.ts): Added regression tests for extensionless files with recognized MIME types and mixed TSV+CSV batch delimiter autodetection (29/29 tests passed).
+- [src/tools/json-csv/Tool.tsx](../src/tools/json-csv/Tool.tsx): Adopted `classifyFile` for lazy mode and delimiter initialization; removed redundant mount `useEffect`; restored normal whitespace in JSX batch results map; implemented per-file delimiter autodetection for CSV files in mixed batches.
+- [src/tools/gpx-kml/Tool.tsx](../src/tools/gpx-kml/Tool.tsx): Adopted `classifyFile` for lazy direction initialization; removed redundant mount `useEffect`; ensured extensionless KML/GPX files choose proper direction.
+- [src/tools/image/icon-converter/Tool.tsx](../src/tools/image/icon-converter/Tool.tsx): Adopted `classifyFile` for mode initialization and batch validation; removed redundant mount `useEffect`; restored normal whitespace in JSX extracted frames block.
+- [src/tools/pdf/compare/Tool.tsx](../src/tools/pdf/compare/Tool.tsx): Restored normal whitespace in JSX diff line map; preserved parent mount take and child FileDrop handling for PDF pairs.
 
 ---
 

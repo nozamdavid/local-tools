@@ -133,7 +133,7 @@ Executed inside the collaborative browser environment via `preview_evaluate`:
 - **Production Build:** Executed `npm run build` capped under `MemoryMax=3G`. Exited **0** in 1.50s, outputting all tool chunks, WASM modules, and 11 Geist font assets to `dist/assets/`.
 
 ### (c) Defect Remediation
-- **Bug Fixed:** In [src/lib/inertMarkup.ts](file:///home/david/.t3/projects/loconvert/src/lib/inertMarkup.ts#L105-L109), `neutralizeOfficeRels` failed to parse XML containing DOCTYPE with bracketed internal subsets (`<!DOCTYPE ... [ <!ENTITY ...> ]>`) in browser `DOMParser`, causing `parsererror` and falling back to regex. Fixed by improving the DOCTYPE stripping regex to handle bracketed subsets.
+- **Bug Fixed:** In [src/lib/inertMarkup.ts](../src/lib/inertMarkup.ts), `neutralizeOfficeRels` failed to parse XML containing DOCTYPE with bracketed internal subsets (`<!DOCTYPE ... [ <!ENTITY ...> ]>`) in browser `DOMParser`, causing `parsererror` and falling back to regex. Fixed by improving the DOCTYPE stripping regex to handle bracketed subsets.
 
 ### (d) Live Browser Same-Origin Request Audit (Port 5301)
 Served production `dist/` on port 5301 under memory-capped node runner (`systemd-run -p MemoryMax=1G`). Configured route fallback and request counter for `/privacy-canary*`.

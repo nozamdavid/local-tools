@@ -5,14 +5,14 @@
 This verification report covers the implementation and validation of Taproot tasks `lc-robust`, `lc-error-boundary`, `lc-404`, and `lc-codec-errors`.
 
 ### File Scope
-- [`src/App.tsx`](file:///home/david/.t3/projects/loconvert/src/App.tsx): Wrapped each tool route element in `<RouteErrorBoundary>`; replaced home wildcard redirect with `<NotFound />`.
-- [`src/components/ErrorBoundary.tsx`](file:///home/david/.t3/projects/loconvert/src/components/ErrorBoundary.tsx) (new): Class component with `getDerivedStateFromError` and `componentDidCatch`, friendly error panel, privacy reassurance, "Try again" reset button, "Back to all tools" navigation, and `RouteErrorBoundary` functional wrapper resetting on pathname changes.
-- [`src/pages/NotFound.tsx`](file:///home/david/.t3/projects/loconvert/src/pages/NotFound.tsx) (new): Real 404 page with page heading, short copy, media category cards linking to `/video`, `/image`, `/file`, `/pdf`, `/3d`, and document title update.
-- [`src/lib/errors.ts`](file:///home/david/.t3/projects/loconvert/src/lib/errors.ts) (new): `describeError(err: unknown): string` with case-insensitive mapping for AVIF encode unsupported, HEIC/HEIF decode failures, JPEG XL decode failures, FFmpeg stream errors, encoder missing, out-of-memory, Canvas 2D unavailability, and corrupt images. Preserves original message when unmapped.
-- [`src/design/errors.css`](file:///home/david/.t3/projects/loconvert/src/design/errors.css) (new): Light and dark theme styles using existing design tokens (`tokens.css`) for error panels, cards, and 404 links.
-- [`src/lib/useJob.ts`](file:///home/david/.t3/projects/loconvert/src/lib/useJob.ts): Adopted `describeError(err)` in `run()` catch handler to automatically format errors across all job-based tools.
-- [`src/lib/image.ts`](file:///home/david/.t3/projects/loconvert/src/lib/image.ts): Wrapped HEIC/HEIF and JPEG XL decode failures with format-specific context while preserving AVIF fallbacks and encoding behaviors.
-- [`docs/quality-verification.md`](file:///home/david/.t3/projects/loconvert/docs/quality-verification.md) (new): Verification report.
+- [`src/App.tsx`](../src/App.tsx): Wrapped each tool route element in `<RouteErrorBoundary>`; replaced home wildcard redirect with `<NotFound />`.
+- [`src/components/ErrorBoundary.tsx`](../src/components/ErrorBoundary.tsx) (new): Class component with `getDerivedStateFromError` and `componentDidCatch`, friendly error panel, privacy reassurance, "Try again" reset button, "Back to all tools" navigation, and `RouteErrorBoundary` functional wrapper resetting on pathname changes.
+- [`src/pages/NotFound.tsx`](../src/pages/NotFound.tsx) (new): Real 404 page with page heading, short copy, media category cards linking to `/video`, `/image`, `/file`, `/pdf`, `/3d`, and document title update.
+- [`src/lib/errors.ts`](../src/lib/errors.ts) (new): `describeError(err: unknown): string` with case-insensitive mapping for AVIF encode unsupported, HEIC/HEIF decode failures, JPEG XL decode failures, FFmpeg stream errors, encoder missing, out-of-memory, Canvas 2D unavailability, and corrupt images. Preserves original message when unmapped.
+- [`src/design/errors.css`](../src/design/errors.css) (new): Light and dark theme styles using existing design tokens (`tokens.css`) for error panels, cards, and 404 links.
+- [`src/lib/useJob.ts`](../src/lib/useJob.ts): Adopted `describeError(err)` in `run()` catch handler to automatically format errors across all job-based tools.
+- [`src/lib/image.ts`](../src/lib/image.ts): Wrapped HEIC/HEIF and JPEG XL decode failures with format-specific context while preserving AVIF fallbacks and encoding behaviors.
+- [`docs/quality-verification.md`](./quality-verification.md) (new): Verification report.
 
 ---
 
