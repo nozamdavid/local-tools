@@ -18,7 +18,7 @@ export interface VerifyResult {
   message?: string;
 }
 
-function makeMockFile(bytes: Uint8Array) {
+function makeMockFile(bytes: Uint8Array<ArrayBuffer>) {
   return {
     size: bytes.length,
     slice: (s: number, e: number) => ({
@@ -378,7 +378,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
   validBmff.set(new TextEncoder().encode('mdat'), 36);
 
   const mockBmffFile = makeMockFile(validBmff);
-  const bmffValidResult = await inspectBmff(mockBmffFile as any);
+  const bmffValidResult = await inspectBmff(mockBmffFile);
   assert(
     bmffValidResult.isValidContainer,
     'bmff-valid-fixture',
@@ -392,7 +392,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
   truncatedBmff.set(new TextEncoder().encode('ftyp'), 4);
 
   const mockTruncBmffFile = makeMockFile(truncatedBmff);
-  const bmffTruncResult = await inspectBmff(mockTruncBmffFile as any);
+  const bmffTruncResult = await inspectBmff(mockTruncBmffFile);
   assert(!bmffTruncResult.isValidContainer, 'bmff-truncated-fixture', 'Truncated BMFF fixture must be flagged invalid');
   assert(
     bmffTruncResult.issues.some((iss) => iss.includes('exceeds total file size')),
@@ -407,7 +407,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
   validRiff.set(new TextEncoder().encode('AVI '), 8);
 
   const mockRiffFile = makeMockFile(validRiff);
-  const riffValidResult = await inspectRiff(mockRiffFile as any);
+  const riffValidResult = await inspectRiff(mockRiffFile);
   assert(riffValidResult.isValidContainer, 'riff-valid-fixture', 'Valid minimal RIFF fixture must pass');
 
   const truncRiff = new Uint8Array(12);
@@ -416,7 +416,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
   truncRiff.set(new TextEncoder().encode('AVI '), 8);
 
   const mockTruncRiffFile = makeMockFile(truncRiff);
-  const riffTruncResult = await inspectRiff(mockTruncRiffFile as any);
+  const riffTruncResult = await inspectRiff(mockTruncRiffFile);
   assert(!riffTruncResult.isValidContainer, 'riff-truncated-fixture', 'Truncated RIFF fixture must be flagged invalid');
   assert(
     riffTruncResult.issues.some((iss) => iss.includes('File truncated')),
@@ -445,7 +445,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
     0x04, // Segment size VINT = 4, body = 4 bytes
   ]);
   const mockEbmlFile = makeMockFile(validEbml);
-  const ebmlValidResult = await inspectEbml(mockEbmlFile as any);
+  const ebmlValidResult = await inspectEbml(mockEbmlFile);
   assert(ebmlValidResult.isValidContainer, 'ebml-valid-fixture', `Valid EBML fixture must pass, got: ${ebmlValidResult.issues.join(', ')}`);
 
   // 4b. Allowed EBML Void before Segment (bounded skip)
@@ -472,7 +472,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
     0x04, // Segment size VINT = 4, body = 4 bytes
   ]);
   const mockEbmlVoidFile = makeMockFile(validEbmlWithVoid);
-  const ebmlVoidResult = await inspectEbml(mockEbmlVoidFile as any);
+  const ebmlVoidResult = await inspectEbml(mockEbmlVoidFile);
   assert(
     ebmlVoidResult.isValidContainer,
     'ebml-allowed-void',
@@ -487,7 +487,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
   // 4c. Absent Segment ID (file truncated after EBML header)
   const absentSegEbml = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0x82, 0x42, 0x86]);
   const mockAbsentSeg = makeMockFile(absentSegEbml);
-  const ebmlAbsentResult = await inspectEbml(mockAbsentSeg as any);
+  const ebmlAbsentResult = await inspectEbml(mockAbsentSeg);
   assert(!ebmlAbsentResult.isValidContainer, 'ebml-absent-seg', 'File truncated before Segment ID must be flagged invalid');
   assert(ebmlAbsentResult.issues.length > 0, 'ebml-absent-seg-issues', 'Must emit issue on missing Segment');
 
@@ -504,7 +504,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
     0x53, // Only 2 bytes of Segment ID
   ]);
   const mockTruncId = makeMockFile(truncIdEbml);
-  const ebmlTruncIdResult = await inspectEbml(mockTruncId as any);
+  const ebmlTruncIdResult = await inspectEbml(mockTruncId);
   assert(!ebmlTruncIdResult.isValidContainer, 'ebml-truncated-id', 'Truncated 4-byte Segment ID must be flagged invalid');
   assert(
     ebmlTruncIdResult.issues.some((iss) => iss.includes('Segment ID')),
@@ -532,7 +532,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
     0x04,
   ]);
   const mockWrongId = makeMockFile(wrongIdEbml);
-  const ebmlWrongIdResult = await inspectEbml(mockWrongId as any);
+  const ebmlWrongIdResult = await inspectEbml(mockWrongId);
   assert(!ebmlWrongIdResult.isValidContainer, 'ebml-wrong-id', 'Wrong Segment ID must be flagged invalid');
   assert(
     ebmlWrongIdResult.issues.some((iss) => iss.includes('Expected Segment ID')),
@@ -555,7 +555,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
     0x67, // Segment ID with NO following size VINT
   ]);
   const mockNoVint = makeMockFile(noVintEbml);
-  const ebmlNoVintResult = await inspectEbml(mockNoVint as any);
+  const ebmlNoVintResult = await inspectEbml(mockNoVint);
   assert(!ebmlNoVintResult.isValidContainer, 'ebml-no-vint', 'Missing Segment size VINT must be flagged invalid');
   assert(
     ebmlNoVintResult.issues.some((iss) => iss.includes('size field') || iss.includes('Segment')),
@@ -566,7 +566,7 @@ export async function runAllUtilityTests(): Promise<{ allPassed: boolean; result
   // 4g. Declared Segment size exceeds file size
   const truncEbml = new Uint8Array([0x1a, 0x45, 0xdf, 0xa3, 0x82, 0x42, 0x86, 0x18, 0x53, 0x80, 0x67, 0xe4, 0x01, 0x02]);
   const mockTruncEbmlFile = makeMockFile(truncEbml);
-  const ebmlTruncResult = await inspectEbml(mockTruncEbmlFile as any);
+  const ebmlTruncResult = await inspectEbml(mockTruncEbmlFile);
   assert(!ebmlTruncResult.isValidContainer, 'ebml-truncated-fixture', 'Truncated EBML fixture must be flagged invalid');
   assert(
     ebmlTruncResult.issues.some((iss) => iss.includes('exceeds total file size')),

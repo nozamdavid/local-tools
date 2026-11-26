@@ -24,7 +24,7 @@ interface FileInspection {
   first256Bytes: Uint8Array;
   hexDump: string;
   digests: FileDigests | null;
-  exif: Record<string, any> | null;
+  exif: Record<string, unknown> | null | undefined;
   mediaDimensions?: { width: number; height: number; duration?: number };
   imagePreviewUrl?: string;
 }
@@ -115,7 +115,7 @@ export default function FileInspectorTool() {
     const extensionMismatch = detected ? detected.extensionMismatch : false;
 
     // Optional EXIF extraction
-    let exifData: Record<string, any> | null;
+    let exifData: FileInspection['exif'];
     try {
       exifData = await exifr.parse(file, { tiff: true, xmp: true, icc: false });
     } catch {

@@ -153,7 +153,10 @@ export default function BatchRenameTool() {
                   <select
                     className={styles.selectInput}
                     value={config.mode}
-                    onChange={(e) => setConfig({ ...config, mode: e.target.value as any })}
+                    onChange={(e) => {
+                      const mode = e.currentTarget.value;
+                      if (mode === 'custom' || mode === 'original') setConfig({ ...config, mode });
+                    }}
                   >
                     <option value="custom">{t('Custom base name')}</option>
                     <option value="original">{t('Keep original name')}</option>
@@ -225,7 +228,10 @@ export default function BatchRenameTool() {
                           <select
                             className={styles.selectInput}
                             value={config.numberPosition}
-                            onChange={(e) => setConfig({ ...config, numberPosition: e.target.value as any })}
+                            onChange={(e) => {
+                              const numberPosition = e.currentTarget.value;
+                              if (numberPosition === 'suffix' || numberPosition === 'prefix') setConfig({ ...config, numberPosition });
+                            }}
                           >
                             <option value="suffix">{t('After name')}</option>
                             <option value="prefix">{t('Before name')}</option>
@@ -255,7 +261,17 @@ export default function BatchRenameTool() {
                       <select
                         className={styles.selectInput}
                         value={config.caseTransform}
-                        onChange={(e) => setConfig({ ...config, caseTransform: e.target.value as any })}
+                        onChange={(e) => {
+                          const caseTransform = e.currentTarget.value;
+                          if (
+                            caseTransform === 'none' ||
+                            caseTransform === 'lower' ||
+                            caseTransform === 'upper' ||
+                            caseTransform === 'title'
+                          ) {
+                            setConfig({ ...config, caseTransform });
+                          }
+                        }}
                       >
                         <option value="none">{t('Keep original')}</option>
                         <option value="lower">{t('lowercase')}</option>
