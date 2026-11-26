@@ -123,7 +123,7 @@ npx tsc -b
 npm test
 
 # Lint and format checks
-npm run lint
+npm run lint -- --max-warnings=0
 npm run format:check
 ```
 

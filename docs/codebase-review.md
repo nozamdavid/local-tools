@@ -17,7 +17,9 @@ The DOCX-to-PNG and DOCX-to-JPEG tools now use one export workflow. DOCX and Pow
 
 ## Verification and limits
 
-On Node 24, a clean install from the lockfile passed the production build, formatting, and all **273 tests across 52 files**. ESLint reported **zero errors and 85 warnings**, down from 91 warnings at baseline. The npm audit reported zero known vulnerabilities. Run `npm ci`, `npm test -- --maxWorkers=1`, `npm run lint`, `npm run format:check`, and `npm run build` to repeat the static and unit checks.
+On Node 24, a clean install from the lockfile passed the production build, formatting, and all **273 tests across 52 files**. The npm audit reported zero known vulnerabilities. The review left 85 ESLint warnings. A follow-up fixed all 67 explicit `any` warnings and 18 React hook dependency warnings. Chromium checks verified that changing languages updates an existing search and changing PDF page-number settings updates both the preview and the download.
+
+Run `npm ci`, `npm test -- --maxWorkers=1`, `npm run lint -- --max-warnings=0`, `npm run format:check`, and `npm run build` to repeat the static and unit checks.
 
 The Chromium route sweep covers 140 tools, seven static pages, 22 redirects, and the unknown-route fallback. Each tool must load its interface. Separate export checks inspect downloaded CSV, PNG, PDF, WebM, WAV, STL, JPEG, AVIF, GIF, and VTT files. Transparent WebM checks compare all 38,400 decoded alpha samples. Deployment checks exercise staging, repeated staging, retained assets, hash collision rejection, and rollback.
 
