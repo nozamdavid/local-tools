@@ -29,7 +29,7 @@ export function CommandPalette() {
   const listId = useId();
   const { t, locale } = useI18n();
 
-  const results: ToolMeta[] = useMemo(() => (query.trim() ? searchTools(query, 30) : []), [query, locale]);
+  const results: ToolMeta[] = useMemo(() => (query.trim() ? searchTools(query, 30, locale) : []), [query, locale]);
 
   useEffect(() => {
     function show(initial: string) {

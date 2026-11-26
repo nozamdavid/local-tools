@@ -327,7 +327,9 @@ export function Home() {
           {MEDIA_LIST.map((rawInfo) => {
             const info = localizeMediaInfo(rawInfo);
             const Icon = info.icon;
-            const mediaCategories = categories.filter((category) => category.media === info.media).map(localizeCategory);
+            const mediaCategories = categories
+              .filter((category) => category.media === info.media)
+              .map((category) => localizeCategory(category));
             const toolCount = toolsByMedia(info.media).length;
             return (
               <section key={info.media} className={styles.row} data-media={info.media}>

@@ -1,5 +1,5 @@
 import { lazy, type ComponentType, type LazyExoticComponent } from 'react';
-import { translate } from '../lib/i18n';
+import { translate, type Locale } from '../lib/i18n';
 
 export type Media = 'video' | 'image' | 'pdf' | 'file' | '3d';
 
@@ -1023,14 +1023,14 @@ function loaderFor(meta: ToolMeta): () => Promise<{ default: ComponentType }> {
 
 export const tools: ToolDef[] = TOOL_METAS.map((meta) => ({ ...meta, component: lazy(loaderFor(meta)) }));
 
-export function localizeToolMeta(meta: ToolMeta): ToolMeta {
+export function localizeToolMeta(meta: ToolMeta, locale?: Locale): ToolMeta {
   const source = TOOL_METAS.find((tool) => tool.id === meta.id) ?? meta;
-  return { ...source, title: translate(source.title), description: translate(source.description) };
+  return { ...source, title: translate(source.title, undefined, locale), description: translate(source.description, undefined, locale) };
 }
 
-export function localizeCategory(category: Category): Category {
+export function localizeCategory(category: Category, locale?: Locale): Category {
   const source = categories.find((item) => item.id === category.id) ?? category;
-  return { ...source, title: translate(source.title), description: translate(source.description) };
+  return { ...source, title: translate(source.title, undefined, locale), description: translate(source.description, undefined, locale) };
 }
 
 export function getToolMeta(id: string): ToolMeta {

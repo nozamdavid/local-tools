@@ -102,10 +102,10 @@ function indexForLocale(locale: Locale): Indexed[] {
 
   const index = TOOL_METAS.map((tool) => {
     const category = categories.find((item) => item.id === tool.category);
-    const localizedTool = localizeToolMeta(tool);
-    const localizedCategory = category ? localizeCategory(category) : null;
+    const localizedTool = localizeToolMeta(tool, locale);
+    const localizedCategory = category ? localizeCategory(category, locale) : null;
     const media = MEDIA_INFO[tool.media];
-    const localizedMedia = getMediaInfo(tool.media);
+    const localizedMedia = getMediaInfo(tool.media, locale);
     const titleVariants = [tokens(tool.title), tokens(localizedTool.title), ...(TITLE_ALIASES[tool.id] ?? []).map(tokens)];
     const body = tokens(
       [
@@ -262,12 +262,11 @@ function queryTokens(query: string): string[] | null {
   return words;
 }
 
-/** Ranks tools for a free-text query using local metadata and the current interface locale. */
-export function searchTools(query: string, limit = 40): ToolMeta[] {
+/** Ranks tools for a free-text query using local metadata, defaulting to the current interface locale. */
+export function searchTools(query: string, limit = 40, locale = getLocale()): ToolMeta[] {
   const normalizedQuery = queryTokens(query);
   if (!normalizedQuery || !Number.isFinite(limit) || limit <= 0) return [];
 
-  const locale = getLocale();
   const index = indexForLocale(locale);
   const direction = queryDirection(normalizedQuery);
   const meaningfulWords = normalizedQuery.filter((word) => !FILLER_WORDS.has(word) && word !== 'to' && word !== 'from');
@@ -303,5 +302,5 @@ export function searchTools(query: string, limit = 40): ToolMeta[] {
   return results
     .sort((a, b) => b.score - a.score || a.tool.title.length - b.tool.title.length)
     .slice(0, Math.floor(limit))
-    .map((result) => localizeToolMeta(result.tool));
+    .map((result) => localizeToolMeta(result.tool, locale));
 }

@@ -339,30 +339,28 @@ export default function OverlayTool() {
     videoMeta,
   ]);
 
+  const overlayWidth = overlayResult?.width ?? 0;
+  const overlayHeight = overlayResult?.height ?? 0;
+  const videoWidth = videoMeta?.width;
+  const videoHeight = videoMeta?.height;
+
   // Keep position anchored or clamped when overlay size changes
   useEffect(() => {
-    if (!videoMeta || !overlayResult || overlayResult.width <= 0 || overlayResult.height <= 0) {
+    if (videoWidth === undefined || videoHeight === undefined || overlayWidth <= 0 || overlayHeight <= 0) {
       return;
     }
     if (activeQuickPos) {
-      const updated = calculateQuickPosition(
-        activeQuickPos,
-        overlayResult.width,
-        overlayResult.height,
-        videoMeta.width,
-        videoMeta.height,
-        marginPercent,
-      );
+      const updated = calculateQuickPosition(activeQuickPos, overlayWidth, overlayHeight, videoWidth, videoHeight, marginPercent);
       setPos(updated);
     } else {
-      const fw = overlayResult.width / videoMeta.width;
-      const fh = overlayResult.height / videoMeta.height;
+      const fw = overlayWidth / videoWidth;
+      const fh = overlayHeight / videoHeight;
       setPos((prev) => ({
         x: Math.max(0, Math.min(Math.max(0, 1 - fw), prev.x)),
         y: Math.max(0, Math.min(Math.max(0, 1 - fh), prev.y)),
       }));
     }
-  }, [overlayResult?.width, overlayResult?.height, videoMeta?.width, videoMeta?.height, activeQuickPos, marginPercent]);
+  }, [overlayWidth, overlayHeight, videoWidth, videoHeight, activeQuickPos, marginPercent]);
 
   // Global window listeners during active dragging
   useEffect(() => {

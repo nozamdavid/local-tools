@@ -18,7 +18,7 @@ export function MediaIndex({ media }: { media: Media }) {
   const matches = useMemo(() => {
     if (!query.trim()) return null;
     return new Set(
-      searchTools(query, 500)
+      searchTools(query, 500, locale)
         .filter((t) => t.media === media)
         .map((t) => t.id),
     );
@@ -75,7 +75,7 @@ export function MediaIndex({ media }: { media: Media }) {
           <nav className="index-categories" aria-label={t('Categories')}>
             {categories
               .filter((c) => c.media === media)
-              .map(localizeCategory)
+              .map((category) => localizeCategory(category))
               .map((c) => (
                 <a key={c.id} href={`#${c.id}`}>
                   {c.title}

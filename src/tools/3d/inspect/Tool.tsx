@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Button, Alert, Badge } from '../../../components/Controls';
@@ -43,8 +43,6 @@ export default function InspectTool() {
   const [analyzing, setAnalyzing] = useState<boolean>(false);
   const [analysisError, setAnalysisError] = useState<string | null>(null);
 
-  const inspectJobRef = useRef<number>(0);
-
   useEffect(() => {
     if (!currentModel) {
       setStats(null);
@@ -53,28 +51,28 @@ export default function InspectTool() {
       return;
     }
 
-    const currentJob = ++inspectJobRef.current;
+    let cancelled = false;
     setAnalyzing(true);
     setAnalysisError(null);
 
     inspectModel(currentModel)
       .then((res) => {
-        if (currentJob === inspectJobRef.current) {
+        if (!cancelled) {
           setStats(res);
         }
       })
       .catch((err) => {
-        if (currentJob === inspectJobRef.current) {
+        if (!cancelled) {
           setAnalysisError(err instanceof Error ? err.message : String(err));
         }
       })
       .finally(() => {
-        if (currentJob === inspectJobRef.current) {
+        if (!cancelled) {
           setAnalyzing(false);
         }
       });
     return () => {
-      inspectJobRef.current++;
+      cancelled = true;
     };
   }, [currentModel]);
 

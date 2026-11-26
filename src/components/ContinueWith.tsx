@@ -18,7 +18,7 @@ export function ContinueWith({ results }: ContinueWithProps) {
   const navigate = useNavigate();
   const outputFiles = useMemo(() => createResultFiles(results), [results]);
   const targets = useMemo(() => getContinueWithTools(pathname, outputFiles), [pathname, outputFiles]);
-  const [next, ...more] = targets.map(localizeToolMeta);
+  const [next, ...more] = targets.map((target) => localizeToolMeta(target));
 
   if (!next) return null;
 

@@ -1,6 +1,6 @@
 import { Box, FileText, Film, Files, Image, type LucideIcon } from 'lucide-react';
 import type { Media } from '../tools/registry';
-import { translate } from '../lib/i18n';
+import { translate, type Locale } from '../lib/i18n';
 
 export interface MediaInfo {
   media: Media;
@@ -59,16 +59,16 @@ export const MEDIA_LIST: MediaInfo[] = [
 
 export const MEDIA_INFO = Object.fromEntries(MEDIA_LIST.map((m) => [m.media, m])) as Record<Media, MediaInfo>;
 
-export function localizeMediaInfo(info: MediaInfo): MediaInfo {
+export function localizeMediaInfo(info: MediaInfo, locale?: Locale): MediaInfo {
   const source = MEDIA_INFO[info.media] ?? info;
   return {
     ...source,
-    label: translate(source.label),
-    title: translate(source.title),
-    description: translate(source.description),
+    label: translate(source.label, undefined, locale),
+    title: translate(source.title, undefined, locale),
+    description: translate(source.description, undefined, locale),
   };
 }
 
-export function getMediaInfo(media: Media): MediaInfo {
-  return localizeMediaInfo(MEDIA_INFO[media]);
+export function getMediaInfo(media: Media, locale?: Locale): MediaInfo {
+  return localizeMediaInfo(MEDIA_INFO[media], locale);
 }

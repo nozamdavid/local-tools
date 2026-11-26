@@ -138,7 +138,7 @@ export function Layout() {
   const activeMedia = MEDIA_LIST.find(
     (m) => location.pathname === m.path || TOOL_METAS.some((t) => t.media === m.media && t.path === location.pathname),
   )?.media;
-  const mediaList = MEDIA_LIST.map(localizeMediaInfo);
+  const mediaList = MEDIA_LIST.map((info) => localizeMediaInfo(info));
 
   return (
     <div className="layout" onPointerDownCapture={trackSelectFocus} onKeyDownCapture={trackSelectFocus} onBlurCapture={trackSelectFocus}>

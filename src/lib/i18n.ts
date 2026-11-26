@@ -115,8 +115,8 @@ function subscribe(listener: () => void) {
   };
 }
 
-export function translate(sourceEnglish: string, params: Record<string, string | number> = {}): string {
-  const catalog = messagesByLocale[currentLocale];
+export function translate(sourceEnglish: string, params: Record<string, string | number> = {}, locale = getLocale()): string {
+  const catalog = messagesByLocale[locale];
   const translated = Object.hasOwn(catalog, sourceEnglish) ? catalog[sourceEnglish] : sourceEnglish;
   return translated.replace(/\{([A-Za-z][A-Za-z0-9_]*)\}/g, (placeholder, key: string) =>
     Object.prototype.hasOwnProperty.call(params, key) ? String(params[key]) : placeholder,

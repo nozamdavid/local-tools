@@ -38,8 +38,12 @@ describe('tool search', () => {
   });
 
   it('finds the editor workspaces by task phrase and localized title', () => {
+    setLocale('en');
     expect(ids('edit image')[0]).toBe('img-photo-editor');
     expect(ids('edit video')[0]).toBe('video-editor');
+    expect(searchTools('edit video', 1)[0]?.title).toBe('Video Editor');
+    expect(searchTools('edit video', 1, 'fr')[0]?.title).toBe('Éditeur vidéo');
+    expect(searchTools('éditeur vidéo', 1, 'fr')[0]?.id).toBe('video-editor');
     setLocale('fr');
     expect(ids('éditeur vidéo')[0]).toBe('video-editor');
   });
