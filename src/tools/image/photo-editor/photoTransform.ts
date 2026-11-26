@@ -1,25 +1,10 @@
-import { getRotationCrop } from '../../../lib/rotationCrop';
+import { getRotationBounds, getRotationCrop, rotationAxes } from '../../../lib/rotationCrop';
 import type { CanvasDocument, Layer, RedactLayer } from '../_canvas/types';
 
 type Point = { x: number; y: number };
 
 export function getBaseTransform(doc: CanvasDocument): NonNullable<CanvasDocument['baseTransform']> {
   return doc.baseTransform ?? { width: doc.width, height: doc.height, angle: 0 };
-}
-
-function rotationAxes(angle: number) {
-  const radians = (angle * Math.PI) / 180;
-  const cos = Math.cos(radians);
-  const sin = Math.sin(radians);
-  return angle % 90 === 0 ? { cos: Math.round(cos), sin: Math.round(sin) } : { cos, sin };
-}
-
-export function rotatedSize(width: number, height: number, angle: number) {
-  const { cos, sin } = rotationAxes(angle);
-  return {
-    width: Math.ceil(width * Math.abs(cos) + height * Math.abs(sin)),
-    height: Math.ceil(width * Math.abs(sin) + height * Math.abs(cos)),
-  };
 }
 
 function alignSolidMaskToPixelGrid(layer: RedactLayer): RedactLayer {
@@ -54,11 +39,6 @@ function transformLayers(layers: Layer[], point: (p: Point) => Point, angle: num
     const rotation = layer.rotation ?? 0;
     const { x, y, width, height } = layer;
     const center = point({ x: x + width / 2, y: y + height / 2 });
-
-    if (layer.type === 'redact' && layer.redactType !== 'solid') {
-      const bounds = rotatedSize(width, height, angle);
-      return { ...layer, ...bounds, x: center.x - bounds.width / 2, y: center.y - bounds.height / 2 };
-    }
 
     return {
       ...layer,
@@ -122,7 +102,7 @@ export function rotatePhoto(doc: CanvasDocument, angle: number): CanvasDocument 
 }
 
 export function getPhotoRotationSurround(width: number, height: number, angle: number, kept: { width: number; height: number }) {
-  const bounds = rotatedSize(width, height, angle);
+  const bounds = getRotationBounds(width, height, angle);
   // An integer offset keeps the preview and output aligned to the same pixel grid.
   return {
     width: kept.width + 2 * Math.ceil((bounds.width - kept.width) / 2),

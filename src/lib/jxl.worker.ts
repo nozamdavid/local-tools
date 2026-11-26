@@ -51,7 +51,10 @@ async function getDecoder() {
       const bytes = await res.arrayBuffer();
       const module = await WebAssembly.compile(bytes);
       await initDecode(module);
-    })();
+    })().catch((error: unknown) => {
+      decodeReadyPromise = null;
+      throw error;
+    });
   }
   return decodeReadyPromise;
 }
@@ -66,7 +69,10 @@ async function getEncoder() {
       const bytes = await res.arrayBuffer();
       const module = await WebAssembly.compile(bytes);
       await initEncode(module);
-    })();
+    })().catch((error: unknown) => {
+      encodeReadyPromise = null;
+      throw error;
+    });
   }
   return encodeReadyPromise;
 }

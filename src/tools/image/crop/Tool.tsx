@@ -6,7 +6,7 @@ import { ResultPanel } from '../../../components/ResultPanel';
 import { Field, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
-import { decodeImage, canvasToBlob, IMAGE_ACCEPT, type EncodableMime } from '../../../lib/image';
+import { decodeImage, canvasToBlob, IMAGE_ACCEPT } from '../../../lib/image';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
 import { useObjectUrl } from '../../../lib/useObjectUrl';
@@ -295,9 +295,7 @@ export default function CropTool() {
       ctx.drawImage(decodedImg, outputCrop.x, outputCrop.y, outputCrop.width, outputCrop.height, 0, 0, outputCrop.width, outputCrop.height);
       setProgress(0.6);
 
-      const defaultFmt = getDefaultFormat(file, 'image/png');
-      const mime: EncodableMime = defaultFmt.mime;
-      const ext = mime === 'image/jpeg' ? 'jpg' : mime === 'image/webp' ? 'webp' : 'png';
+      const { mime, ext } = getDefaultFormat(file, 'image/png');
       const blob = await canvasToBlob(canvas, mime, mime === 'image/png' ? undefined : 0.92);
       setProgress(1);
 

@@ -6,7 +6,7 @@ import { ResultPanel } from '../../../components/ResultPanel';
 import { Field, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
 import { useI18n } from '../../../lib/i18n';
-import { decodeImage, canvasToBlob, IMAGE_ACCEPT, type EncodableMime } from '../../../lib/image';
+import { decodeImage, canvasToBlob, IMAGE_ACCEPT } from '../../../lib/image';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
 import { useObjectUrl } from '../../../lib/useObjectUrl';
@@ -70,9 +70,7 @@ export default function FlipTool() {
       ctx.scale(flipH ? -1 : 1, flipV ? -1 : 1);
       ctx.drawImage(img, -img.width / 2, -img.height / 2);
 
-      const defaultFmt = getDefaultFormat(file, 'image/png');
-      const mime: EncodableMime = defaultFmt.mime;
-      const ext = mime === 'image/jpeg' ? 'jpg' : mime === 'image/webp' ? 'webp' : 'png';
+      const { mime, ext } = getDefaultFormat(file, 'image/png');
 
       const blob = await canvasToBlob(canvas, mime, mime === 'image/png' ? undefined : 0.92);
       setProgress(1.0);

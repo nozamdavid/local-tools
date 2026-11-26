@@ -10,6 +10,7 @@ import { downloadBlob } from '../../../lib/download';
 import { withSuffix } from '../../../lib/format';
 import { hexToRgb, rgbToHex, detectCornerColor } from '../_generate/color';
 import { removeSolidBackground, applyAiMask } from '../_generate/canvas';
+import { drawWithImageFilters } from '../_filters/canvasFilters';
 import { SegmentClient } from '../../_segment/segmentClient';
 import { useI18n } from '../../../lib/i18n';
 import styles from './Tool.module.css';
@@ -55,6 +56,7 @@ export default function RemoveBgTool() {
 
   const bgSelectId = useId();
   const segmentClientRef = useRef<SegmentClient | null>(null);
+  const sourceRequest = useRef(0);
 
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const compareCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -62,6 +64,7 @@ export default function RemoveBgTool() {
   // Cleanup segment client on unmount
   useEffect(() => {
     return () => {
+      sourceRequest.current++;
       if (segmentClientRef.current) {
         segmentClientRef.current.terminate();
         segmentClientRef.current = null;
@@ -73,13 +76,11 @@ export default function RemoveBgTool() {
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
-    setFile(selected);
-    setAiMask(null);
-    setAiError(null);
+    const request = ++sourceRequest.current;
 
     try {
       const img = await decodeImage(selected);
-      setSourceImg(img);
+      if (request !== sourceRequest.current) return;
 
       // Extract raw image data
       const canvas = document.createElement('canvas');
@@ -90,29 +91,32 @@ export default function RemoveBgTool() {
 
       ctx.drawImage(img, 0, 0);
       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-      setSourceData(imgData);
 
       // Auto detect corner color
       const detected = detectCornerColor(imgData.data, canvas.width, canvas.height);
+      setFile(selected);
+      setSourceImg(img);
+      setSourceData(imgData);
       setBgColorHex(detected.hex);
-    } catch (err: any) {
-      console.error('Failed to load image:', err);
+    } catch (err) {
+      if (request === sourceRequest.current) console.error('Failed to load image:', err);
     }
   };
 
   // Run AI segmentation
   const runAiSegmentation = useCallback(async () => {
     if (!sourceData) return;
+    const request = sourceRequest.current;
+    const isCurrent = () => request === sourceRequest.current;
     setIsAiLoading(true);
     setAiError(null);
     setAiProgress({ text: 'Initializing AI background removal model…', percent: 10 });
 
     try {
-      if (!segmentClientRef.current) {
-        segmentClientRef.current = new SegmentClient();
-      }
+      const client = (segmentClientRef.current ??= new SegmentClient());
 
-      await segmentClientRef.current.init((progress) => {
+      await client.init((progress) => {
+        if (!isCurrent()) return;
         if (progress.status === 'downloading') {
           const pct = progress.progress ? Math.round(progress.progress) : 30;
           setAiProgress({ text: 'Downloading model weights ({percent}%)…', percent: Math.min(80, 20 + pct * 0.6), modelPercent: pct });
@@ -121,18 +125,25 @@ export default function RemoveBgTool() {
         }
       });
 
+      if (!isCurrent()) return;
       setAiProgress({ text: 'Segmenting subject from background…', percent: 90 });
-      const { mask } = await segmentClientRef.current.segmentFrame(sourceData.data, sourceData.width, sourceData.height);
+      const { mask } = await client.segmentFrame(sourceData.data, sourceData.width, sourceData.height);
 
-      setAiMask(mask);
-      setAiProgress(null);
-    } catch (err: any) {
+      if (isCurrent()) setAiMask(mask);
+    } catch (err) {
+      if (!isCurrent()) return;
+      // A failed initialization is cached by the client. Retry with a fresh worker.
+      segmentClientRef.current?.terminate();
+      segmentClientRef.current = null;
       console.error('AI segmentation failed:', err);
       setAiError('AI segmentation failed to run.');
     } finally {
-      setIsAiLoading(false);
+      if (isCurrent()) {
+        setAiProgress(null);
+        setIsAiLoading(false);
+      }
     }
-  }, [sourceData, t]);
+  }, [sourceData]);
 
   // When switching to AI mode, run segmentation if not yet computed
   useEffect(() => {
@@ -180,10 +191,7 @@ export default function RemoveBgTool() {
         ctx.fillStyle = customBgColor;
         ctx.fillRect(0, 0, width, height);
       } else if (bgReplacement === 'blur') {
-        ctx.save();
-        ctx.filter = 'blur(16px)';
-        ctx.drawImage(sourceImg, -10, -10, width + 20, height + 20);
-        ctx.restore();
+        drawWithImageFilters(ctx, target => target.drawImage(sourceImg, -10, -10, width + 20, height + 20), { blur: 16 });
       }
 
       // 3. Draw subject on top
@@ -251,33 +259,44 @@ export default function RemoveBgTool() {
   };
 
   const exportFilename = withSuffix(file?.name || 'image.png', '-nobg', exportFormat);
-  const isWaitingForMask = mode === 'ai' && isAiLoading;
+  const needsMask = mode === 'ai' && !aiMask;
 
   const getExportBlob = async () => {
+    const request = sourceRequest.current;
     setIsExporting(true);
     try {
       const exportCanvas = document.createElement('canvas');
       renderResultToCanvas(exportCanvas);
       return await canvasToBlob(exportCanvas, `image/${exportFormat}`);
     } finally {
-      setIsExporting(false);
+      if (request === sourceRequest.current) setIsExporting(false);
     }
   };
 
   const handleDownload = async () => {
+    const request = sourceRequest.current;
     try {
-      downloadBlob(await getExportBlob(), exportFilename);
+      const blob = await getExportBlob();
+      if (request === sourceRequest.current) downloadBlob(blob, exportFilename);
     } catch (err) {
       console.error('Failed to download image:', err);
     }
   };
 
   const handleReset = () => {
+    sourceRequest.current++;
+    if (isAiLoading) {
+      segmentClientRef.current?.terminate();
+      segmentClientRef.current = null;
+    }
     setFile(null);
     setSourceImg(null);
     setSourceData(null);
     setAiMask(null);
     setAiProgress(null);
+    setAiError(null);
+    setIsAiLoading(false);
+    setIsExporting(false);
   };
 
   return (
@@ -532,10 +551,10 @@ export default function RemoveBgTool() {
                   />
                 </Field>
                 <div className={styles.actionButtons}>
-                  <Button onClick={handleDownload} loading={isExporting} disabled={isWaitingForMask}>
+                  <Button onClick={handleDownload} loading={isExporting} disabled={needsMask}>
                     {t('Download')}
                   </Button>
-                  <CopyImageButton getImage={getExportBlob} disabled={isExporting || isWaitingForMask} filename={exportFilename} />
+                  <CopyImageButton getImage={getExportBlob} disabled={isExporting || needsMask} filename={exportFilename} />
                 </div>
               </div>
             </div>

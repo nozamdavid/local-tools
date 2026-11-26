@@ -1,4 +1,5 @@
 import { FilterEditorShell } from '../_filters/FilterEditorShell';
+import { drawWithImageFilters, type ColorAdjustment } from '../_filters/canvasFilters';
 import { Slider } from '../../../components/Controls';
 import styles from '../_filters/FilterEditorShell.module.css';
 
@@ -27,13 +28,12 @@ function renderAdjust(source: HTMLCanvasElement, options: AdjustOptions): HTMLCa
   const ctx = canvas.getContext('2d');
   if (!ctx) return source;
 
-  const b = 100 + options.brightness;
-  const c = 100 + options.contrast;
-  const s = 100 + options.saturation;
-  const h = options.hueRotate;
-
-  ctx.filter = `brightness(${b}%) contrast(${c}%) saturate(${s}%) hue-rotate(${h}deg)`;
-  ctx.drawImage(source, 0, 0);
+  const colors: ColorAdjustment[] = [];
+  if (options.brightness !== 0) colors.push(['brightness', 100 + options.brightness]);
+  if (options.contrast !== 0) colors.push(['contrast', 100 + options.contrast]);
+  if (options.saturation !== 0) colors.push(['saturate', 100 + options.saturation]);
+  if (options.hueRotate !== 0) colors.push(['hue-rotate', options.hueRotate]);
+  drawWithImageFilters(ctx, target => target.drawImage(source, 0, 0), { colors });
 
   if (options.exposure !== 0 || options.warmth !== 0) {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);

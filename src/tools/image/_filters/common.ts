@@ -5,14 +5,17 @@ export type OutputFormat = 'image/png' | 'image/jpeg' | 'image/webp';
 
 export { detectAlpha as hasAlphaChannel };
 
-export function createPreviewCanvas(
-  source: CanvasImageSource & { width: number; height: number },
-  maxDim: number = 1200,
-): HTMLCanvasElement {
+const FILTER_PREVIEW_EDGE = 1200;
+
+export function getFilterExportScale(source: { width: number; height: number }, isPreview: boolean): number {
+  return isPreview ? 1 : Math.max(1, Math.max(source.width, source.height) / FILTER_PREVIEW_EDGE);
+}
+
+export function createPreviewCanvas(source: CanvasImageSource & { width: number; height: number }): HTMLCanvasElement {
   const canvas = document.createElement('canvas');
   const w = source.width;
   const h = source.height;
-  const scale = Math.min(1, maxDim / Math.max(w, h));
+  const scale = 1 / getFilterExportScale(source, false);
   canvas.width = Math.max(1, Math.round(w * scale));
   canvas.height = Math.max(1, Math.round(h * scale));
 

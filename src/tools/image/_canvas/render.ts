@@ -2,50 +2,46 @@ import { CanvasDocument, Layer, TextLayer, RedactLayer } from './types';
 import { getFontStack } from './fonts';
 import { canvasToBlob, EncodableMime } from '../../../lib/image';
 import { translate } from '../../../lib/i18n';
+import { rotationAxes } from '../../../lib/rotationCrop';
+import { drawWithImageFilters, type ColorAdjustment } from '../_filters/canvasFilters';
 
-export function getAdjustmentFilter(doc: CanvasDocument): string {
+function getColorAdjustments(doc: CanvasDocument): ColorAdjustment[] {
   const adj = doc.adjustments;
-  if (!adj) return 'none';
+  if (!adj) return [];
 
-  const parts: string[] = [];
-
-  if (adj.preset && adj.preset !== 'none') {
-    switch (adj.preset) {
-      case 'vivid':
-        parts.push('contrast(130%)', 'saturate(150%)');
-        break;
-      case 'mono':
-        parts.push('grayscale(100%)', 'contrast(115%)');
-        break;
-      case 'sepia':
-        parts.push('sepia(100%)');
-        break;
-      case 'vintage':
-        parts.push('sepia(45%)', 'contrast(120%)', 'brightness(95%)', 'hue-rotate(-15deg)');
-        break;
-      case 'cool':
-        parts.push('contrast(105%)', 'hue-rotate(30deg)', 'saturate(110%)');
-        break;
-      case 'warm':
-        parts.push('sepia(25%)', 'saturate(135%)', 'brightness(105%)');
-        break;
-    }
+  const parts: ColorAdjustment[] = [];
+  switch (adj.preset) {
+    case 'vivid':
+      parts.push(['contrast', 130], ['saturate', 150]);
+      break;
+    case 'mono':
+      parts.push(['grayscale', 100], ['contrast', 115]);
+      break;
+    case 'sepia':
+      parts.push(['sepia', 100]);
+      break;
+    case 'vintage':
+      parts.push(['sepia', 45], ['contrast', 120], ['brightness', 95], ['hue-rotate', -15]);
+      break;
+    case 'cool':
+      parts.push(['contrast', 105], ['hue-rotate', 30], ['saturate', 110]);
+      break;
+    case 'warm':
+      parts.push(['sepia', 25], ['saturate', 135], ['brightness', 105]);
+      break;
   }
 
   if (adj.brightness !== undefined && adj.brightness !== 100) {
-    parts.push(`brightness(${adj.brightness}%)`);
+    parts.push(['brightness', adj.brightness]);
   }
   if (adj.contrast !== undefined && adj.contrast !== 100) {
-    parts.push(`contrast(${adj.contrast}%)`);
+    parts.push(['contrast', adj.contrast]);
   }
   if (adj.saturation !== undefined && adj.saturation !== 100) {
-    parts.push(`saturate(${adj.saturation}%)`);
-  }
-  if (adj.blur !== undefined && adj.blur > 0) {
-    parts.push(`blur(${adj.blur}px)`);
+    parts.push(['saturate', adj.saturation]);
   }
 
-  return parts.length > 0 ? parts.join(' ') : 'none';
+  return parts;
 }
 
 function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) {
@@ -88,55 +84,51 @@ function renderRedactLayer(ctx: CanvasRenderingContext2D, layer: RedactLayer, is
     return;
   }
 
-  const x = Math.max(0, Math.round(layer.x));
-  const y = Math.max(0, Math.round(layer.y));
-  const w = Math.round(layer.width);
-  const h = Math.round(layer.height);
-
-  if (w <= 0 || h <= 0) return;
-
+  const cx = layer.x + layer.width / 2;
+  const cy = layer.y + layer.height / 2;
+  const { cos, sin } = rotationAxes(layer.rotation ?? 0);
+  const corners = [
+    [-layer.width / 2, -layer.height / 2],
+    [layer.width / 2, -layer.height / 2],
+    [layer.width / 2, layer.height / 2],
+    [-layer.width / 2, layer.height / 2],
+  ].map(([dx, dy]) => [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos]);
   const canvas = ctx.canvas;
-  const rw = Math.min(canvas.width - x, w);
-  const rh = Math.min(canvas.height - y, h);
+  // Rotation followed by Reset can leave an integer boundary a fraction of a pixel off.
+  const epsilon = 1e-9;
+  const x = Math.max(0, Math.floor(Math.min(...corners.map(([px]) => px)) + epsilon));
+  const y = Math.max(0, Math.floor(Math.min(...corners.map(([, py]) => py)) + epsilon));
+  const rw = Math.min(canvas.width, Math.ceil(Math.max(...corners.map(([px]) => px)) - epsilon)) - x;
+  const rh = Math.min(canvas.height, Math.ceil(Math.max(...corners.map(([, py]) => py)) - epsilon)) - y;
   if (rw <= 0 || rh <= 0) return;
 
-  if (layer.redactType === 'pixelate') {
-    const pixelSize = Math.max(6, Math.round(Math.min(rw, rh) / 10));
-    const smallW = Math.max(1, Math.round(rw / pixelSize));
-    const smallH = Math.max(1, Math.round(rh / pixelSize));
+  const pixelate = layer.redactType === 'pixelate';
+  const pixelSize = Math.max(6, Math.round(Math.min(rw, rh) / 10));
+  const temp = document.createElement('canvas');
+  temp.width = pixelate ? Math.max(1, Math.round(rw / pixelSize)) : rw;
+  temp.height = pixelate ? Math.max(1, Math.round(rh / pixelSize)) : rh;
+  const tctx = temp.getContext('2d');
+  if (!tctx) return;
+  if (pixelate) tctx.drawImage(canvas, x, y, rw, rh, 0, 0, temp.width, temp.height);
+  else drawWithImageFilters(tctx, (sample) => sample.drawImage(canvas, -x, -y), { blur: 10 });
 
-    const temp = document.createElement('canvas');
-    temp.width = smallW;
-    temp.height = smallH;
-    const tctx = temp.getContext('2d');
-    if (tctx) {
-      tctx.drawImage(canvas, x, y, rw, rh, 0, 0, smallW, smallH);
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(temp, 0, 0, smallW, smallH, x, y, rw, rh);
-      ctx.restore();
-    }
-  } else {
-    // blur
-    const temp = document.createElement('canvas');
-    temp.width = rw;
-    temp.height = rh;
-    const tctx = temp.getContext('2d');
-    if (tctx) {
-      tctx.filter = 'blur(10px)';
-      tctx.drawImage(canvas, x, y, rw, rh, 0, 0, rw, rh);
-      ctx.save();
-      ctx.drawImage(temp, x, y);
-      ctx.restore();
-    }
-  }
-
+  ctx.beginPath();
+  ctx.moveTo(corners[0][0], corners[0][1]);
+  for (const [px, py] of corners.slice(1)) ctx.lineTo(px, py);
+  ctx.closePath();
+  ctx.save();
+  ctx.clip();
+  // Replace pixels in the mask so translucent output cannot reveal the original beneath it.
+  ctx.globalCompositeOperation = 'copy';
+  ctx.imageSmoothingEnabled = !pixelate;
+  ctx.drawImage(temp, x, y, rw, rh);
+  ctx.restore();
   if (isPreview) {
     ctx.save();
     ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
-    ctx.strokeRect(x, y, rw, rh);
+    ctx.stroke();
     ctx.restore();
   }
 }
@@ -409,19 +401,25 @@ export function renderLayer(ctx: CanvasRenderingContext2D, layer: Layer, isPrevi
 }
 
 export function drawDocumentBase(ctx: CanvasRenderingContext2D, doc: CanvasDocument, withAdjustments = true) {
-  if (!doc.baseImage) return;
-  ctx.save();
-  if (withAdjustments) ctx.filter = getAdjustmentFilter(doc);
+  const image = doc.baseImage;
+  if (!image) return;
   const base = doc.baseTransform;
-  if (base) {
-    ctx.translate(doc.width / 2, doc.height / 2);
-    ctx.rotate((base.angle * Math.PI) / 180);
-    ctx.scale(base.flipX ? -1 : 1, base.flipY ? -1 : 1);
-    ctx.drawImage(doc.baseImage, -base.width / 2, -base.height / 2, base.width, base.height);
-  } else {
-    ctx.drawImage(doc.baseImage, 0, 0, doc.width, doc.height);
-  }
-  ctx.restore();
+  drawWithImageFilters(
+    ctx,
+    (target) => {
+      if (base) {
+        target.save();
+        target.translate(doc.width / 2, doc.height / 2);
+        target.rotate((base.angle * Math.PI) / 180);
+        target.scale(base.flipX ? -1 : 1, base.flipY ? -1 : 1);
+        target.drawImage(image, -base.width / 2, -base.height / 2, base.width, base.height);
+        target.restore();
+      } else {
+        target.drawImage(image, 0, 0, doc.width, doc.height);
+      }
+    },
+    withAdjustments ? { colors: getColorAdjustments(doc), blur: Math.max(0, doc.adjustments?.blur || 0) } : {},
+  );
 }
 
 export function renderDocument(ctx: CanvasRenderingContext2D, doc: CanvasDocument, isPreview = false) {

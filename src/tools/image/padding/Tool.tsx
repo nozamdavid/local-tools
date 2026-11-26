@@ -1,4 +1,5 @@
 import { FilterEditorShell } from '../_filters/FilterEditorShell';
+import { getFilterExportScale } from '../_filters/common';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
 
 export type AspectRatioPreset = 'none' | '1:1' | '4:5' | '16:9' | '9:16';
@@ -72,7 +73,7 @@ function renderPadding(source: HTMLCanvasElement, options: PaddingOptions, isPre
       padRight = 0;
     }
   } else {
-    const scaleRatio = isPreview ? 1 : source.width / Math.min(1200, source.width);
+    const scaleRatio = getFilterExportScale(source, isPreview);
 
     if (options.unit === '%') {
       const topVal = options.uniform ? options.uniformValue : options.top;

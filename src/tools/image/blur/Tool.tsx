@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { FilterEditorShell } from '../_filters/FilterEditorShell';
+import { drawWithImageFilters } from '../_filters/canvasFilters';
+import { getFilterExportScale } from '../_filters/common';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
 
 export interface BlurRegion {
@@ -38,17 +40,12 @@ function renderBlur(source: HTMLCanvasElement, options: BlurOptions, isPreview: 
   const ctx = canvas.getContext('2d');
   if (!ctx) return source;
 
-  // Scale factor relative to 1200px preview width for consistent visual radius
-  const scaleRatio = isPreview ? 1 : canvas.width / Math.min(1200, canvas.width);
+  const scaleRatio = getFilterExportScale(source, isPreview);
+  const drawSource = (target: CanvasRenderingContext2D) => target.drawImage(source, 0, 0);
 
   if (options.mode === 'whole') {
-    if (options.wholeBlur > 0) {
-      const radius = Math.round(options.wholeBlur * scaleRatio);
-      ctx.filter = `blur(${radius}px)`;
-    } else {
-      ctx.filter = 'none';
-    }
-    ctx.drawImage(source, 0, 0);
+    const blur = Math.max(0, Math.round(options.wholeBlur * scaleRatio));
+    drawWithImageFilters(ctx, drawSource, { blur });
     return canvas;
   }
 
@@ -67,9 +64,8 @@ function renderBlur(source: HTMLCanvasElement, options: BlurOptions, isPreview: 
       ctx.beginPath();
       ctx.rect(rx, ry, rw, rh);
       ctx.clip();
-      const r = Math.max(1, Math.round(reg.amount * scaleRatio));
-      ctx.filter = `blur(${r}px)`;
-      ctx.drawImage(source, 0, 0);
+      const blur = Math.max(1, Math.round(reg.amount * scaleRatio));
+      drawWithImageFilters(ctx, drawSource, { blur, bounds: { x: rx, y: ry, width: rw, height: rh } });
       ctx.restore();
     } else if (reg.type === 'pixelate') {
       // Pixelate

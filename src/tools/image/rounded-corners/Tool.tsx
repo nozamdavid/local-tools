@@ -1,4 +1,5 @@
 import { FilterEditorShell } from '../_filters/FilterEditorShell';
+import { getFilterExportScale } from '../_filters/common';
 import { Field, Slider } from '../../../components/Controls';
 
 interface RoundedCornersOptions {
@@ -62,7 +63,7 @@ function renderRoundedCorners(source: HTMLCanvasElement, options: RoundedCorners
 
   const w = source.width;
   const h = source.height;
-  const scaleRatio = isPreview ? 1 : source.width / Math.min(1200, source.width);
+  const scaleRatio = getFilterExportScale(source, isPreview);
   const baseR = Math.max(0, Math.round(options.radius * scaleRatio));
 
   const rTL = Math.round(options.independent ? (options.tlActive ? options.tlRadius * scaleRatio : 0) : options.tlActive ? baseR : 0);

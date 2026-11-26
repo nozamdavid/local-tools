@@ -5,11 +5,12 @@ import { ProgressBar } from '../../../components/ProgressBar';
 import { ResultPanel } from '../../../components/ResultPanel';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
-import { decodeImage, canvasToBlob, IMAGE_ACCEPT, type EncodableMime } from '../../../lib/image';
+import { decodeImage, canvasToBlob, IMAGE_ACCEPT } from '../../../lib/image';
 import { formatBytes } from '../../../lib/format';
 import { useJob } from '../../../lib/useJob';
 import { useObjectUrl } from '../../../lib/useObjectUrl';
 import { useI18n } from '../../../lib/i18n';
+import { getRotationBounds } from '../../../lib/rotationCrop';
 import { getDefaultFormat, formatOutputFile } from '../_basic';
 import styles from '../_basic/basic.module.css';
 
@@ -36,6 +37,7 @@ export default function RotateTool() {
   const [resultInfo, setResultInfo] = useState<RotateResult | null>(null);
 
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const loadSequence = useRef(0);
 
   const job = useJob();
   const originalUrl = useObjectUrl(file);
@@ -45,6 +47,7 @@ export default function RotateTool() {
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const selected = files[0];
+    const sequence = ++loadSequence.current;
     setFile(selected);
     setMetaError(null);
     setDecodedImg(null);
@@ -56,13 +59,14 @@ export default function RotateTool() {
 
     try {
       const img = await decodeImage(selected);
-      setDecodedImg(img);
+      if (sequence === loadSequence.current) setDecodedImg(img);
     } catch {
-      setMetaError('Could not decode image. The file may be corrupt or unsupported.');
+      if (sequence === loadSequence.current) setMetaError('Could not decode image. The file may be corrupt or unsupported.');
     }
   };
 
   const handleReset = () => {
+    loadSequence.current++;
     setFile(null);
     setDecodedImg(null);
     setAngle(0);
@@ -90,13 +94,10 @@ export default function RotateTool() {
     hexColor: string,
   ): HTMLCanvasElement => {
     const rad = (rotDeg * Math.PI) / 180;
-    const cos = Math.abs(Math.cos(rad));
-    const sin = Math.abs(Math.sin(rad));
 
     const w = img.width;
     const h = img.height;
-    const newW = Math.max(1, Math.round(w * cos + h * sin));
-    const newH = Math.max(1, Math.round(w * sin + h * cos));
+    const { width: newW, height: newH } = getRotationBounds(w, h, rotDeg);
 
     const canvas = document.createElement('canvas');
     canvas.width = newW;
@@ -153,13 +154,8 @@ export default function RotateTool() {
       setProgress(0.6);
 
       const defaultFmt = getDefaultFormat(file, 'image/png');
-      // If transparent background is chosen, use PNG (or WEBP if original was WEBP)
-      let outMime: EncodableMime = defaultFmt.mime;
-      if (bgOption === 'transparent' && outMime === 'image/jpeg') {
-        outMime = 'image/png';
-      }
-
-      const ext = outMime === 'image/jpeg' ? 'jpg' : outMime === 'image/webp' ? 'webp' : 'png';
+      const { mime: outMime, ext } =
+        bgOption === 'transparent' && defaultFmt.mime === 'image/jpeg' ? { mime: 'image/png' as const, ext: 'png' } : defaultFmt;
       const blob = await canvasToBlob(canvas, outMime, outMime === 'image/png' ? undefined : 0.9);
       setProgress(1.0);
 

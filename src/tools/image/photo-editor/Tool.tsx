@@ -510,11 +510,12 @@ function PhotoWorkspace({ file, original, initialDoc }: PhotoSource) {
     setExportError('');
     setIsExporting(true);
     try {
-      downloadBlob(await getExportBlob(), exportFilename);
+      const blob = await getExportBlob();
+      if (attached.current && !leaving.current) downloadBlob(blob, exportFilename);
     } catch (error) {
-      setExportError(error instanceof Error ? error.message : 'Export failed.');
+      if (attached.current) setExportError(error instanceof Error ? error.message : 'Export failed.');
     } finally {
-      setIsExporting(false);
+      if (attached.current) setIsExporting(false);
     }
   };
 

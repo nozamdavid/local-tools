@@ -84,8 +84,8 @@ const TEMPLATES: TemplateDef[] = [
     name: '1 Big + 2 Small (Left)',
     cells: [
       { x: 0, y: 0, w: 0.5, h: 0.5 },
-      { x: 0.5, y: 0.5, w: 0.5, h: 0.5 },
-      { x: 0.5, y: 0.5, w: 0.5, h: 1 },
+      { x: 0, y: 0.5, w: 0.5, h: 0.5 },
+      { x: 0.5, y: 0, w: 0.5, h: 1 },
     ],
   },
   {
@@ -170,11 +170,13 @@ function getCellPxRect(cell: CellDef, totalW: number, totalH: number, spacing: n
   const y0 = cell.y === 0 ? spacing : cell.y * totalH + spacing / 2;
   const x1 = Math.abs(cell.x + cell.w - 1) < 0.001 ? totalW - spacing : (cell.x + cell.w) * totalW - spacing / 2;
   const y1 = Math.abs(cell.y + cell.h - 1) < 0.001 ? totalH - spacing : (cell.y + cell.h) * totalH - spacing / 2;
+  const x = Math.round(x0);
+  const y = Math.round(y0);
   return {
-    x: Math.round(x0),
-    y: Math.round(y0),
-    w: Math.max(1, Math.round(x1 - x0)),
-    h: Math.max(1, Math.round(y1 - y0)),
+    x,
+    y,
+    w: Math.max(1, Math.round(x1) - x),
+    h: Math.max(1, Math.round(y1) - y),
   };
 }
 
@@ -235,10 +237,12 @@ export default function CollageTool() {
         // Auto assign photos to empty cells
         setCellStates((prevCells) => {
           const next = [...prevCells];
+          const assigned = new Set(prevCells.slice(0, currentTemplate.cells.length).map((cell) => cell.photoId));
+          const unassigned = updated.filter((photo) => !assigned.has(photo.id));
           let photoIndex = 0;
           for (let i = 0; i < currentTemplate.cells.length; i++) {
-            if (!next[i]?.photoId && updated[photoIndex]) {
-              next[i] = { ...next[i], photoId: updated[photoIndex].id };
+            if (!next[i]?.photoId && unassigned[photoIndex]) {
+              next[i] = { ...next[i], photoId: unassigned[photoIndex].id };
               photoIndex++;
             }
           }

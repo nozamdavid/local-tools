@@ -1,4 +1,5 @@
 import { FilterEditorShell } from '../_filters/FilterEditorShell';
+import { getFilterExportScale } from '../_filters/common';
 import { Field, Select, Slider } from '../../../components/Controls';
 
 export type BorderStyle = 'solid' | 'gradient' | 'dashed';
@@ -35,7 +36,7 @@ function renderAddBorder(source: HTMLCanvasElement, options: AddBorderOptions, i
 
   const w = source.width;
   const h = source.height;
-  const scaleRatio = isPreview ? 1 : canvas.width ? canvas.width / 1200 : source.width / Math.min(1200, source.width);
+  const scaleRatio = getFilterExportScale(source, isPreview);
   const bw = Math.max(1, Math.round(options.width * scaleRatio));
   const r = Math.max(0, Math.round(options.radius * scaleRatio));
 

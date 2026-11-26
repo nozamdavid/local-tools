@@ -75,21 +75,27 @@ export function FilterEditorShell<T>({
 
   const previewDisplayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
-  const renderSeqRef = useRef<number>(0);
+  const sourceRequest = useRef(0);
 
   const formatSelectId = useId();
+
+  useEffect(() => () => {
+    sourceRequest.current++;
+  }, []);
 
   // Reset when loading a new file
   const handleFiles = async (files: File[]) => {
     if (!files.length) return;
     const selected = files[0];
+    const request = ++sourceRequest.current;
     setLoadError(null);
     setResultBlob(null);
 
     try {
       const img = await decodeImage(selected);
+      if (request !== sourceRequest.current) return;
       const full = imageToCanvas(img);
-      const preview = createPreviewCanvas(full, 1200);
+      const preview = createPreviewCanvas(full);
 
       const hasAlpha = hasAlphaChannel(preview);
       const initialFormat: EncodableMime = forcedDefaultFormat || (hasAlpha ? 'image/png' : 'image/jpeg');
@@ -101,7 +107,7 @@ export function FilterEditorShell<T>({
       setOptions(defaultOptions);
       setFile(selected);
     } catch (err: any) {
-      setLoadError(err?.message || 'Failed to decode image');
+      if (request === sourceRequest.current) setLoadError(err?.message || 'Failed to decode image');
     }
   };
 
@@ -110,19 +116,20 @@ export function FilterEditorShell<T>({
   };
 
   const handleFullReset = () => {
+    sourceRequest.current++;
     setFile(null);
     setFullSourceCanvas(null);
     setPreviewSourceCanvas(null);
     setResultBlob(null);
     setOptions(defaultOptions);
     setLoadError(null);
+    setIsProcessing(false);
   };
 
   // Re-run preview render when options or previewSourceCanvas changes
   useEffect(() => {
     if (!previewSourceCanvas || !previewDisplayCanvasRef.current) return;
 
-    const seq = ++renderSeqRef.current;
     const targetCanvas = previewDisplayCanvasRef.current;
 
     if (showOriginal) {
@@ -137,9 +144,11 @@ export function FilterEditorShell<T>({
       return;
     }
 
-    Promise.resolve(render(previewSourceCanvas, options, true))
+    let active = true;
+    Promise.resolve()
+      .then(() => render(previewSourceCanvas, options, true))
       .then((renderedCanvas) => {
-        if (seq !== renderSeqRef.current) return; // Stale render
+        if (!active) return;
         targetCanvas.width = renderedCanvas.width;
         targetCanvas.height = renderedCanvas.height;
         const ctx = targetCanvas.getContext('2d');
@@ -149,9 +158,11 @@ export function FilterEditorShell<T>({
         }
       })
       .catch((err) => {
-        if (seq !== renderSeqRef.current) return;
-        console.error('Preview render failed:', err);
+        if (active) console.error('Preview render failed:', err);
       });
+    return () => {
+      active = false;
+    };
   }, [previewSourceCanvas, options, showOriginal, render]);
 
   const exportExt = format === 'image/png' ? 'png' : format === 'image/webp' ? 'webp' : 'jpg';
@@ -159,24 +170,27 @@ export function FilterEditorShell<T>({
 
   const getExportBlob = async () => {
     if (!fullSourceCanvas) throw new Error(t('Failed to decode image'));
+    const request = sourceRequest.current;
     setIsProcessing(true);
     try {
       const renderedCanvas = await render(fullSourceCanvas, options, false);
       const q = format === 'image/png' ? undefined : quality / 100;
       return await canvasToBlob(renderedCanvas, format, q);
     } finally {
-      setIsProcessing(false);
+      if (request === sourceRequest.current) setIsProcessing(false);
     }
   };
 
   const handleDownload = async () => {
+    const request = sourceRequest.current;
     try {
       const blob = await getExportBlob();
+      if (request !== sourceRequest.current) return;
       downloadBlob(blob, exportFilename);
       setResultBlob(blob);
       setResultFilename(exportFilename);
     } catch (err: any) {
-      alert(t('Export failed: {error}', { error: err?.message || String(err) }));
+      if (request === sourceRequest.current) alert(t('Export failed: {error}', { error: err?.message || String(err) }));
     }
   };
 

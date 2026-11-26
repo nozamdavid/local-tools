@@ -1,5 +1,6 @@
 import type { FitMode, BgType, TransformState } from './types';
 import { translate } from '../../../lib/i18n';
+import { drawWithImageFilters } from '../_filters/canvasFilters';
 
 export interface RenderOptions {
   width: number;
@@ -29,16 +30,8 @@ export function renderFrameCanvas(img: HTMLImageElement, options: RenderOptions)
       ctx.fillRect(0, 0, width, height);
     }
   } else if (bgType === 'blur' && fitMode === 'contain') {
-    // Draw blurred image to fill frame
-    ctx.save();
-    try {
-      ctx.filter = 'blur(40px)';
-    } catch {
-      // Fallback if browser doesn't support ctx.filter
-    }
     // Margin of 80px to avoid border artifacts
-    ctx.drawImage(img, -80, -80, width + 160, height + 160);
-    ctx.restore();
+    drawWithImageFilters(ctx, target => target.drawImage(img, -80, -80, width + 160, height + 160), { blur: 40 });
 
     // Subtle dark tint to improve contrast
     ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';

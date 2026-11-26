@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { canvasToBlob, imageToCanvas, loadImage } from '../../../lib/image';
 import { readRecentDraft, writeRecentDraft } from '../../../lib/recentFiles';
+import { getRotationBounds } from '../../../lib/rotationCrop';
 import type { CanvasDocument, ImageLayer } from '../_canvas/types';
 import { restorePhotoDraft, savePhotoDraft } from './photoDraft';
 import { flipPhoto, getPhotoRotationPreview, rotatePhoto } from './photoTransform';
@@ -171,6 +172,23 @@ it('round trips the cropped base, pasted image and other edits', async () => {
   expect(restored?.baseImage).toBe(decodedCrop);
   const restoredPaste = restored?.layers[0];
   expect(restoredPaste?.type === 'image' && restoredPaste.image).toBe(decodedPaste);
+});
+
+it.each(['blur', 'pixelate'] as const)('keeps a %s mask the same size when the photo is straightened and restored', (redactType) => {
+  const mask = { id: 'mask', type: 'redact', redactType, x: 180, y: 170, width: 80, height: 30 } as const;
+  const doc = { ...originalDoc, layers: [mask] };
+  const rotated = rotatePhoto(doc, 22);
+  expect(rotated.layers[0]).toMatchObject({ width: mask.width, height: mask.height, rotation: 22 });
+  const [restored] = rotatePhoto(rotatePhoto(rotated, -17), 0).layers;
+  expect(restored).toMatchObject({ width: mask.width, height: mask.height, rotation: 0 });
+  expect(restored.x).toBeCloseTo(mask.x);
+  expect(restored.y).toBeCloseTo(mask.y);
+});
+
+it('contains the full rotated source without adding pixels at exact right angles', () => {
+  // At one degree the exact bounds are approximately 100.334 × 21.742.
+  expect(getRotationBounds(100, 20, 1)).toEqual({ width: 101, height: 22 });
+  expect(getRotationBounds(100, 20, 90)).toEqual({ width: 20, height: 100 });
 });
 
 it('keeps the newer edit when an older raster finishes encoding after it was saved', async () => {

@@ -3,7 +3,7 @@ import { ToolPage } from '../../../components/ToolPage';
 import { FileDrop } from '../../../components/FileDrop';
 import { Field, Select, Slider, Button } from '../../../components/Controls';
 import { getToolMeta } from '../../registry';
-import { decodeImage, IMAGE_ACCEPT } from '../../../lib/image';
+import { canvasToBlob, decodeImage, IMAGE_ACCEPT } from '../../../lib/image';
 import { downloadBlob } from '../../../lib/download';
 import { CopyImageButton } from '../../../components/CopyImageButton';
 import { formatBytes } from '../../../lib/format';
@@ -38,6 +38,7 @@ export default function SignatureCleanerTool() {
   const [error, setError] = useState<string | null>(null);
 
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const loadSequence = useRef(0);
 
   // Switch presets
   const handlePresetChange = (newPreset: PresetType) => {
@@ -57,12 +58,14 @@ export default function SignatureCleanerTool() {
   const handleFiles = useCallback(async (files: File[]) => {
     if (!files || files.length === 0) return;
     const selected = files[0];
+    const sequence = ++loadSequence.current;
     setFile(selected);
     setError(null);
     setIsEmpty(false);
 
     try {
       const img = await decodeImage(selected);
+      if (sequence !== loadSequence.current) return;
       setSourceImg(img);
 
       const canvas = document.createElement('canvas');
@@ -74,14 +77,16 @@ export default function SignatureCleanerTool() {
       ctx.drawImage(img, 0, 0);
       const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       setSourceData(imgData);
-    } catch (err: any) {
-      setError(err instanceof Error ? err.message : 'Failed to load image');
+    } catch (err) {
+      if (sequence === loadSequence.current) setError(err instanceof Error ? err.message : 'Failed to load image');
     }
   }, []);
 
   // Process image whenever settings or source data change
   useEffect(() => {
     if (!sourceData) return;
+    let active = true;
+    setResultBlob(null);
 
     try {
       const options: CleanerOptions = {
@@ -129,17 +134,26 @@ export default function SignatureCleanerTool() {
       outputImageData.data.set(finalData);
       ctx.putImageData(outputImageData, 0, 0);
 
-      canvas.toBlob((blob) => {
-        if (blob) setResultBlob(blob);
-      }, 'image/png');
-    } catch (err: any) {
+      canvasToBlob(canvas, 'image/png').then(
+        (blob) => {
+          if (active) setResultBlob(blob);
+        },
+        (err: unknown) => {
+          if (active) setError(err instanceof Error ? err.message : 'Error cleaning signature');
+        },
+      );
+    } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cleaning signature');
     }
+    return () => {
+      active = false;
+    };
   }, [sourceData, preset, threshold, detail, contrast, outputMode, cropToInk]);
 
   const resultFilename = file ? `${file.name.replace(/\.[^.]+$/, '')}-cleaned.png` : '';
 
   const handleReset = () => {
+    loadSequence.current++;
     setFile(null);
     setSourceImg(null);
     setSourceData(null);
