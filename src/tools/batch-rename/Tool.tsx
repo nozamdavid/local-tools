@@ -71,12 +71,7 @@ export default function BatchRenameTool() {
   };
 
   // Live computed renamed items
-  const renamedItems = useMemo(() => {
-    return computeBatchRename(
-      files.map((f) => ({ id: f.id, name: f.name, size: f.size })),
-      config,
-    );
-  }, [files, config]);
+  const renamedItems = useMemo(() => computeBatchRename(files, config), [files, config]);
 
   // Combined size & memory check
   const totalSizeBytes = useMemo(() => {

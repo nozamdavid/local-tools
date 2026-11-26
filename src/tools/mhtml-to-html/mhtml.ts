@@ -114,20 +114,24 @@ export function parseHeaderLines(lines: string[]): Record<string, string> {
  * Extracts boundary string from Content-Type header.
  */
 export function extractBoundary(contentType: string): string | null {
-  const match = contentType.match(/boundary=(?:"([^"]+)"|([^\s;]+))/i);
+  const match = contentType.match(/(?:^|;)\s*boundary\s*=\s*(?:"([^"]+)"|([^\s;]+))/i);
   return match ? match[1] || match[2] || null : null;
 }
 
 /**
  * Parses an entire MHTML document into its root HTML and referenced MIME parts.
  */
-export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
+export function parseMhtml(input: string | Uint8Array): ParseMhtmlResult {
+  const byteInput = typeof input !== 'string';
+  const mhtmlText = byteInput ? bytesToBinaryString(input) : input;
+  const utf8 = new TextDecoder();
+  const decodeHeader = (header: string) => (byteInput ? utf8.decode(binaryStringToBytes(header)) : header);
   const splitIdx = mhtmlText.search(/\r?\n\r?\n/);
   if (splitIdx === -1) {
     throw new Error(translate('Invalid MHTML: Missing MIME header separator.'));
   }
 
-  const topHeaderText = mhtmlText.slice(0, splitIdx);
+  const topHeaderText = decodeHeader(mhtmlText.slice(0, splitIdx));
   const bodyText = mhtmlText.slice(splitIdx);
 
   const topHeaderLines = unfoldHeaders(topHeaderText);
@@ -141,7 +145,7 @@ export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
   }
 
   const subject = topHeaders['subject'];
-  const startCid = (contentType.match(/start="?([^";]+)"?/i)?.[1] || '').replace(/[<>]/g, '');
+  const startCid = (contentType.match(/;\s*start\s*=\s*"?([^";]+)"?/i)?.[1] || '').trim().replace(/[<>]/g, '');
 
   const escapedBoundary = boundary.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const delimiters = bodyText.matchAll(new RegExp(`^--${escapedBoundary}(--)?[\\t ]*(?:\\r?\\n|$)`, 'gm'));
@@ -168,7 +172,7 @@ export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
     const partHeaderSplit = rawPart.search(/\r?\n\r?\n/);
     if (partHeaderSplit === -1) continue;
 
-    const partHeaderStr = rawPart.slice(0, partHeaderSplit);
+    const partHeaderStr = decodeHeader(rawPart.slice(0, partHeaderSplit));
     const partBodyStr = rawPart
       .slice(partHeaderSplit)
       .replace(/^\r?\n\r?\n/, '')
@@ -184,32 +188,27 @@ export function parseMhtml(mhtmlText: string): ParseMhtmlResult {
     const mimeMatch = partContentType.match(/^([^;]+)/);
     const mimeType = mimeMatch ? mimeMatch[1].trim().toLowerCase() : 'text/plain';
 
-    const charsetMatch = partContentType.match(/charset=(?:"([^"]+)"|([^\s;]+))/i);
+    const charsetMatch = partContentType.match(/;\s*charset\s*=\s*(?:"([^"]+)"|([^\s;]+))/i);
     const charset = (charsetMatch ? charsetMatch[1] || charsetMatch[2] : 'utf-8').toLowerCase();
 
     let data: Uint8Array;
-    let text: string | undefined;
-
     if (encoding === 'base64') {
       data = decodeBase64(partBodyStr);
-      if (mimeType.startsWith('text/') || mimeType.includes('javascript') || mimeType.includes('json') || mimeType.includes('xml')) {
-        try {
-          text = new TextDecoder(charset).decode(data);
-        } catch {
-          text = new TextDecoder('utf-8').decode(data);
-        }
-      }
     } else if (encoding === 'quoted-printable') {
       data = decodeQuotedPrintable(partBodyStr);
+    } else {
+      data = byteInput ? binaryStringToBytes(partBodyStr) : new TextEncoder().encode(partBodyStr);
+    }
+
+    let text: string | undefined;
+    if (!byteInput && encoding !== 'base64' && encoding !== 'quoted-printable') {
+      text = partBodyStr;
+    } else if (mimeType.startsWith('text/') || mimeType.includes('javascript') || mimeType.includes('json') || mimeType.includes('xml')) {
       try {
         text = new TextDecoder(charset).decode(data);
       } catch {
-        text = new TextDecoder('utf-8').decode(data);
+        text = utf8.decode(data);
       }
-    } else {
-      const encoder = new TextEncoder();
-      data = encoder.encode(partBodyStr);
-      text = partBodyStr;
     }
 
     const part: MhtmlPart = {
@@ -268,16 +267,20 @@ export function safeAssetFilename(name: string, index: number, mimeType: string)
 /**
  * Converts Uint8Array to Base64 safely.
  */
-export function bytesToBase64(bytes: Uint8Array): string {
-  if (typeof Buffer !== 'undefined') {
-    return Buffer.from(bytes).toString('base64');
-  }
+function bytesToBinaryString(bytes: Uint8Array): string {
   let binary = '';
-  const len = bytes.byteLength;
-  for (let i = 0; i < len; i++) {
-    binary += String.fromCharCode(bytes[i]);
+  for (let i = 0; i < bytes.length; i += 8192) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 8192));
   }
-  return btoa(binary);
+  return binary;
+}
+
+function binaryStringToBytes(binary: string): Uint8Array {
+  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
+}
+
+export function bytesToBase64(bytes: Uint8Array): string {
+  return typeof Buffer !== 'undefined' ? Buffer.from(bytes).toString('base64') : btoa(bytesToBinaryString(bytes));
 }
 
 /**
@@ -308,7 +311,7 @@ export function injectStrictCsp(html: string, mode: 'standalone' | 'zip'): strin
       ? "default-src 'none'; img-src data: blob:; style-src 'unsafe-inline' data:; font-src data:; media-src data: blob:; script-src 'none'; object-src 'none'; frame-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none';"
       : "default-src 'none'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' data:; font-src 'self' data:; media-src 'self' data: blob:; script-src 'none'; object-src 'none'; frame-src 'none'; connect-src 'none'; base-uri 'none'; form-action 'none';";
 
-  const metaTag = `<meta http-equiv="Content-Security-Policy" content="${cspContent}">`;
+  const metaTag = `<meta http-equiv="Content-Security-Policy" content="${cspContent}">\n  <meta charset="utf-8">`;
 
   if (/<head\b[^>]*>/i.test(html)) {
     return html.replace(/<head\b[^>]*>/i, (match) => `${match}\n  ${metaTag}`);
@@ -325,7 +328,7 @@ export function injectStrictCsp(html: string, mode: 'standalone' | 'zip'): strin
  * and injects authoritative mode-aware Content Security Policy.
  */
 export function convertMhtmlToHtml(
-  mhtmlText: string,
+  mhtmlText: string | Uint8Array,
   options: ConvertMhtmlOptions = { mode: 'standalone', blockRemoteUrls: true, stripScripts: true },
 ): ConvertedMhtmlOutput {
   const { rootHtml, parts } = parseMhtml(mhtmlText);

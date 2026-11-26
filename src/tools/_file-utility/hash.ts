@@ -237,7 +237,7 @@ export async function computeAllDigests(data: Uint8Array): Promise<FileDigests> 
   };
 }
 
-async function computeFileDigestsFallback(file: Blob, onProgress?: (ratio: number) => void, signal?: AbortSignal): Promise<FileDigests> {
+async function computeFileDigestsInChunks(file: Blob, onProgress?: (ratio: number) => void, signal?: AbortSignal): Promise<FileDigests> {
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
   const fallback = await loadShaFallback();
   const md5State = new MD5();
@@ -285,84 +285,17 @@ export async function computeFileDigests(
   onProgress?: (ratio: number) => void,
   signal?: AbortSignal,
 ): Promise<FileDigests> {
-  if (!globalThis.crypto?.subtle) {
-    return computeFileDigestsFallback(file, onProgress, signal);
+  if (!globalThis.crypto?.subtle || file.size > 64 * 1024 * 1024) {
+    return computeFileDigestsInChunks(file, onProgress, signal);
   }
 
-  const size = file.size;
-  const chunkSize = 2 * 1024 * 1024; // 2MB chunks
-
-  // For small to medium files (<= 64MB), read whole buffer for subtle.digest and stream MD5
-  if (size <= 64 * 1024 * 1024) {
-    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-    onProgress?.(0.1);
-
-    const buffer = await file.arrayBuffer();
-    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-    onProgress?.(0.4);
-
-    const uint8 = new Uint8Array(buffer);
-    const md5Hex = MD5.hash(uint8);
-    onProgress?.(0.6);
-
-    const [sha1Hex, sha256Hex, sha384Hex, sha512Hex] = await Promise.all([sha1(uint8), sha256(uint8), sha384(uint8), sha512(uint8)]);
-    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-    onProgress?.(1.0);
-
-    return {
-      md5: md5Hex,
-      sha1: sha1Hex,
-      sha256: sha256Hex,
-      sha384: sha384Hex,
-      sha512: sha512Hex,
-    };
-  }
-
-  // For larger files, stream MD5 across chunks first, and then subtle crypto
-  const md5State = new MD5();
-  let offset = 0;
-
-  while (offset < size) {
-    if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-    const end = Math.min(offset + chunkSize, size);
-    const slice = file.slice(offset, end);
-    const chunkBuffer = await slice.arrayBuffer();
-    md5State.update(new Uint8Array(chunkBuffer));
-    offset = end;
-    onProgress?.((offset / size) * 0.4);
-    await new Promise((resolve) => setTimeout(resolve, 0));
-  }
-
-  const md5Hex = md5State.digestHex();
-
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-  onProgress?.(0.45);
-  const fullBuffer = await file.arrayBuffer();
-  const fullUint8 = new Uint8Array(fullBuffer);
-
+  onProgress?.(0.1);
+  const buffer = await file.arrayBuffer();
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-  onProgress?.(0.6);
-  const sha1Hex = await sha1(fullUint8);
-
+  onProgress?.(0.4);
+  const digests = await computeAllDigests(new Uint8Array(buffer));
   if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-  onProgress?.(0.75);
-  const sha256Hex = await sha256(fullUint8);
-
-  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-  onProgress?.(0.85);
-  const sha384Hex = await sha384(fullUint8);
-
-  if (signal?.aborted) throw new DOMException('Aborted', 'AbortError');
-  onProgress?.(0.95);
-  const sha512Hex = await sha512(fullUint8);
-
-  onProgress?.(1.0);
-
-  return {
-    md5: md5Hex,
-    sha1: sha1Hex,
-    sha256: sha256Hex,
-    sha384: sha384Hex,
-    sha512: sha512Hex,
-  };
+  onProgress?.(1);
+  return digests;
 }

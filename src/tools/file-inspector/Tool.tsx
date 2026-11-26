@@ -98,10 +98,8 @@ export default function FileInspectorTool() {
     setHashing(false);
     setHashProgress(0);
 
-    // Read first 4096 bytes for signature detection and first 256 for hex dump
-    const slice4k = await file.slice(0, 4096).arrayBuffer();
-    const bytes4k = new Uint8Array(slice4k);
-    const bytes256 = bytes4k.subarray(0, 256);
+    const bytes256 = new Uint8Array(await file.slice(0, 256).arrayBuffer());
+    if (abortCtrl.signal.aborted) return;
     const hexDump = generateHexDump(bytes256);
 
     // Format detection
@@ -134,12 +132,23 @@ export default function FileInspectorTool() {
       previewUrl = imageUrl;
       try {
         const img = new Image();
-        await new Promise((res) => {
+        await new Promise<void>((resolve) => {
+          const finish = () => {
+            img.onload = null;
+            img.onerror = null;
+            abortCtrl.signal.removeEventListener('abort', cancelProbe);
+            resolve();
+          };
+          const cancelProbe = () => {
+            finish();
+            img.removeAttribute('src');
+          };
           img.onload = () => {
             mediaDims = { width: img.naturalWidth, height: img.naturalHeight };
-            res(true);
+            finish();
           };
-          img.onerror = () => res(false);
+          img.onerror = finish;
+          abortCtrl.signal.addEventListener('abort', cancelProbe, { once: true });
           img.src = imageUrl;
         });
       } catch {

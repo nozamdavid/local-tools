@@ -112,7 +112,7 @@ export function sanitizeFileName(name: string, fallback = 'file'): { name: strin
     .replace(/[<>:"|?*]/g, '_')
     // Remove leading/trailing spaces and trailing dots
     .trim()
-    .replace(/\.+$/, '');
+    .replace(/[. ]+$/, '');
 
   if (!cleaned) {
     cleaned = fallback;
@@ -174,7 +174,7 @@ export function computeBatchRename(items: { id: string; name: string; size: numb
 
     // 2. Find and replace if specified
     if (config.findText) {
-      base = base.replaceAll(config.findText, config.replaceText ?? '');
+      base = base.replaceAll(config.findText, () => config.replaceText ?? '');
     }
 
     // 3. Case transform
@@ -215,18 +215,12 @@ export function computeBatchRename(items: { id: string; name: string; size: numb
 
   // Second pass: Collision detection and optional auto-resolution
   const finalResults: RenameResultItem[] = [];
+  // Count and reserve all preliminary names before assigning collision suffixes.
   const nameCounts = new Map<string, number>();
 
   for (const entry of preliminary) {
     const lower = entry.preliminaryName.toLowerCase();
     nameCounts.set(lower, (nameCounts.get(lower) || 0) + 1);
-  }
-
-  // Reserve all preliminary names case-insensitively so that auto-resolution
-  // does not generate a suffix that collides with another preliminary item in the batch.
-  const reservedPreliminaryNames = new Set<string>();
-  for (const entry of preliminary) {
-    reservedPreliminaryNames.add(entry.preliminaryName.toLowerCase());
   }
 
   const assignedNames = new Set<string>();
@@ -243,7 +237,7 @@ export function computeBatchRename(items: { id: string; name: string; size: numb
         let candidate = `${parsed.base}_${idx}${parsed.ext}`;
         let candidateLower = candidate.toLowerCase();
 
-        while (assignedNames.has(candidateLower) || reservedPreliminaryNames.has(candidateLower)) {
+        while (assignedNames.has(candidateLower) || nameCounts.has(candidateLower)) {
           idx++;
           candidate = `${parsed.base}_${idx}${parsed.ext}`;
           candidateLower = candidate.toLowerCase();

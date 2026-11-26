@@ -27,12 +27,12 @@ export default function TxtToCsvTool() {
   const handleFiles = (files: File[]) => {
     if (files.length === 0) return;
     const file = files[0];
-    const baseName = file.name.replace(/\.[^/.]+$/, '');
-    setSourceName(`${baseName}.csv`);
+    const baseName = file.name.replace(/(?<=.)\.[^/.]+$/, '');
 
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = (e.target?.result as string) || '';
+      setSourceName(`${baseName}.csv`);
       setInputText(text);
       setInputTab('paste');
     };
@@ -53,12 +53,7 @@ export default function TxtToCsvTool() {
 
   // Parse rows
   const parsedRows = useMemo(() => {
-    if (!inputText.trim()) return [];
-    try {
-      return parseCsv(inputText, { delimiter: activeDelimiter });
-    } catch {
-      return [];
-    }
+    return parseCsv(inputText, { delimiter: activeDelimiter });
   }, [inputText, activeDelimiter]);
 
   // Preview data

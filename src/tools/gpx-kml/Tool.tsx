@@ -37,11 +37,9 @@ export default function GpxKmlTool() {
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const file = files[0];
-    const base = file.name.replace(/\.[^/.]+$/, '');
-    setSourceName(base);
-
     const c = classifyFile(file);
     const text = await file.text();
+    setSourceName(file.name.replace(/(?<=.)\.[^/.]+$/, ''));
 
     if (c.isKml) {
       setDirection('kml-to-gpx');

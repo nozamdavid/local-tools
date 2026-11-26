@@ -29,11 +29,10 @@ export default function CsvViewerTool() {
   const handleFiles = (files: File[]) => {
     if (files.length === 0) return;
     const file = files[0];
-    setSourceName(file.name);
-
     const reader = new FileReader();
     reader.onload = (e) => {
       const text = (e.target?.result as string) || '';
+      setSourceName(file.name.replace(/(?<=.)\.tsv$/i, '.csv'));
       setInputText(text);
       setInputTab('paste');
       setCurrentPage(1);
@@ -52,12 +51,7 @@ export default function CsvViewerTool() {
   }, [delimiterMode, detectedDelim]);
 
   const allRows = useMemo(() => {
-    if (!inputText.trim()) return [];
-    try {
-      return parseCsv(inputText, { delimiter: activeDelimiter });
-    } catch {
-      return [];
-    }
+    return parseCsv(inputText, { delimiter: activeDelimiter });
   }, [inputText, activeDelimiter]);
 
   const maxCols = useMemo(() => {
@@ -108,7 +102,7 @@ export default function CsvViewerTool() {
     if (allRows.length === 0) return;
     const csvContent = serializeCsv(allRows, ',');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' });
-    downloadBlob(blob, sourceName.endsWith('.csv') ? sourceName : `${sourceName}.csv`);
+    downloadBlob(blob, /\.csv$/i.test(sourceName) ? sourceName : `${sourceName}.csv`);
   };
 
   const handleReset = () => {

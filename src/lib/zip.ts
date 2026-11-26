@@ -5,10 +5,11 @@ export async function zipFiles(files: { name: string; blob: Blob }[]): Promise<B
   const used = new Set<string>();
 
   for (const { name, blob } of files) {
+    const dot = name.lastIndexOf('.');
+    const extensionStart = dot > name.lastIndexOf('/') + 1 ? dot : name.length;
     let finalName = name;
     for (let n = 2; used.has(finalName); n++) {
-      const dot = name.lastIndexOf('.');
-      finalName = dot > 0 ? `${name.slice(0, dot)} (${n})${name.slice(dot)}` : `${name} (${n})`;
+      finalName = `${name.slice(0, extensionStart)} (${n})${name.slice(extensionStart)}`;
     }
     used.add(finalName);
     zip.file(finalName, blob);

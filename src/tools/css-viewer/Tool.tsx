@@ -162,6 +162,7 @@ export default function CssViewerTool() {
   };
 
   const [cssCode, setCssCode] = useState<string>(DEFAULT_CSS);
+  const [sourceName, setSourceName] = useState('styles.css');
   const [selectedPreset, setSelectedPreset] = useState<string>('card');
   const [sampleHtml, setSampleHtml] = useState<string>(HTML_PRESETS.card.html);
   const [deviceWidth, setDeviceWidth] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
@@ -176,6 +177,7 @@ export default function CssViewerTool() {
     reader.onload = (e) => {
       const text = (e.target?.result as string) || '';
       setCssCode(text);
+      setSourceName(/\.css$/i.test(file.name) ? file.name : `${file.name}.css`);
     };
     reader.readAsText(file);
   };
@@ -299,7 +301,7 @@ ${safeHtml}
 
   const handleDownload = () => {
     const blob = new Blob([cssCode], { type: 'text/css;charset=utf-8' });
-    downloadBlob(blob, 'styles.css');
+    downloadBlob(blob, sourceName);
   };
 
   return (

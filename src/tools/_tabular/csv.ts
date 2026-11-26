@@ -26,7 +26,7 @@ export function detectDelimiter(text: string, candidates: readonly string[] = CO
   if (text.charCodeAt(0) === 0xfeff) {
     text = text.slice(1);
   }
-  if (!text.trim()) return ',';
+  if (!text) return ',';
 
   let bestDelimiter = ',';
   let bestScore = -1;
@@ -122,33 +122,12 @@ export function parseCsv(text: string, options: CsvParseOptions = {}): string[][
       continue;
     }
 
-    if (char === '\r') {
-      if (i + 1 < len && text[i + 1] === '\n') {
+    if (char === '\r' || char === '\n') {
+      if (char === '\r' && text[i + 1] === '\n') {
         i++;
       }
-      if (rowStarted || currentRow.length > 0) {
-        currentRow.push(trimFields && !fieldQuoted ? currentField.trim() : currentField);
-        rows.push(currentRow);
-      } else {
-        // Blank line: retain intended blank-line policy
-        rows.push(['']);
-      }
-      currentRow = [];
-      currentField = '';
-      fieldQuoted = false;
-      rowStarted = false;
-      i++;
-      continue;
-    }
-
-    if (char === '\n') {
-      if (rowStarted || currentRow.length > 0) {
-        currentRow.push(trimFields && !fieldQuoted ? currentField.trim() : currentField);
-        rows.push(currentRow);
-      } else {
-        // Blank line: retain intended blank-line policy
-        rows.push(['']);
-      }
+      currentRow.push(trimFields && !fieldQuoted ? currentField.trim() : currentField);
+      rows.push(currentRow);
       currentRow = [];
       currentField = '';
       fieldQuoted = false;
@@ -216,7 +195,7 @@ export function csvToRecords(rows: string[][], options: CsvToRecordsOptions = {}
   let dataRows: string[][];
 
   if (hasHeader) {
-    headers = rows[0].map((h) => h.trim());
+    headers = rows[0];
     validateHeaders(headers);
     dataRows = rows.slice(1);
   } else {
@@ -243,7 +222,7 @@ export function csvToRecords(rows: string[][], options: CsvToRecordsOptions = {}
       } else {
         // If user enabled parseNumbersAndBooleans:
         // Check for leading zero: e.g. "0123", "007", "00"
-        const hasLeadingZero = preserveLeadingZeros && /^0\d+/.test(cellVal);
+        const hasLeadingZero = preserveLeadingZeros && /^[+-]?0\d/.test(cellVal.trim());
 
         if (hasLeadingZero) {
           // Always preserve strings with leading zeros (postal codes, phone numbers, IDs)

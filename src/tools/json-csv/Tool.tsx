@@ -95,10 +95,11 @@ export default function JsonCsvTool() {
   // Batch states
   const [batchResults, setBatchResults] = useState<BatchResult[]>([]);
   const [isBatch, setIsBatch] = useState<boolean>(false);
+  const outputDelimiter = delimiter === 'auto' ? ',' : delimiter;
 
   // Single conversion logic
   const conversion = useMemo(() => {
-    if (!inputText.trim()) {
+    if (!inputText) {
       return { outputText: '', error: null };
     }
 
@@ -110,7 +111,7 @@ export default function JsonCsvTool() {
         } catch (e: unknown) {
           throw new Error('Invalid JSON format: ' + (e instanceof Error ? e.message : String(e)), { cause: e });
         }
-        const csv = jsonToCsv(data, { delimiter });
+        const csv = jsonToCsv(data, { delimiter: outputDelimiter });
         return { outputText: csv, error: null };
       } else {
         // CSV to JSON
@@ -143,7 +144,7 @@ export default function JsonCsvTool() {
       const msg = err instanceof Error ? err.message : String(err);
       return { outputText: '', error: msg };
     }
-  }, [inputText, direction, delimiter, hasHeader, preserveLeadingZeros, parseNumbers]);
+  }, [inputText, direction, delimiter, outputDelimiter, hasHeader, preserveLeadingZeros, parseNumbers]);
 
   const outputFilename = useMemo(() => {
     const ext = direction === 'json-to-csv' ? '.csv' : '.json';
@@ -157,7 +158,7 @@ export default function JsonCsvTool() {
       // Single file mode
       setIsBatch(false);
       const file = files[0];
-      const base = file.name.replace(/\.[^/.]+$/, '');
+      const base = file.name.replace(/(?<=.)\.[^/.]+$/, '');
       setSourceName(base);
 
       const c = classifyFile(file);
@@ -197,8 +198,8 @@ export default function JsonCsvTool() {
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const c = classifyFile(file);
-      const base = file.name.replace(/\.[^/.]+$/, '');
+      const c = classes[i];
+      const base = file.name.replace(/(?<=.)\.[^/.]+$/, '');
       const isJsonFile = c.isJson;
       const isTsvFile = c.isTsv;
       const isCsvFile = c.isCsv;
@@ -241,7 +242,7 @@ export default function JsonCsvTool() {
           } catch {
             throw new Error('Invalid JSON format: file does not contain valid JSON');
           }
-          outText = jsonToCsv(data, { delimiter });
+          outText = jsonToCsv(data, { delimiter: outputDelimiter });
         } else {
           const effectiveDelim = isTsvFile ? '\t' : delimiter === '\t' || delimiter === 'auto' ? detectDelimiter(text) : delimiter;
 
@@ -411,7 +412,7 @@ export default function JsonCsvTool() {
           <div className={styles.controlsRow}>
             <Field label={t('Delimiter')}>
               <Select
-                value={delimiter}
+                value={direction === 'json-to-csv' ? outputDelimiter : delimiter}
                 onChange={(e) => setDelimiter(e.target.value)}
                 options={[
                   { value: ',', label: t('Comma (,)') },

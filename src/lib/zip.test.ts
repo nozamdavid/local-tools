@@ -58,4 +58,23 @@ describe('zipFiles', () => {
     expect(await zip.file('File.txt')?.async('text')).toBe('uppercase');
     expect(await zip.file('file.txt')?.async('text')).toBe('lowercase');
   });
+
+  it('adds duplicate suffixes to basenames inside dotted folders', async () => {
+    const blob = await zipFiles([
+      { name: 'release.1/README', blob: new Blob(['first']) },
+      { name: 'release.1/README', blob: new Blob(['second']) },
+      { name: 'release.1/.config', blob: new Blob(['third']) },
+      { name: 'release.1/.config', blob: new Blob(['fourth']) },
+    ]);
+    const zip = await JSZip.loadAsync(await blob.arrayBuffer());
+    expect(Object.keys(zip.files)).toEqual([
+      'release.1/',
+      'release.1/README',
+      'release.1/README (2)',
+      'release.1/.config',
+      'release.1/.config (2)',
+    ]);
+    await expect(zip.file('release.1/README (2)')?.async('text')).resolves.toBe('second');
+    await expect(zip.file('release.1/.config (2)')?.async('text')).resolves.toBe('fourth');
+  });
 });

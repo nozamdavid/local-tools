@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { expect, it, vi } from 'vitest';
 import { computeFileDigests } from './hash';
 
@@ -18,3 +19,20 @@ it('computes all five file digests when Web Crypto subtle is unavailable', async
     vi.unstubAllGlobals();
   }
 });
+
+it('hashes large files without reading the whole file into memory', async () => {
+  const chunk = new Uint8Array(1024 * 1024).fill(97);
+  const part = new Blob([chunk]);
+  const copies = 64;
+  const file = new Blob([...Array<Blob>(copies).fill(part), 'abc']);
+  const wholeFileRead = vi.spyOn(file, 'arrayBuffer');
+  const expected = Object.fromEntries(
+    ['md5', 'sha1', 'sha256', 'sha384', 'sha512'].map((algorithm) => {
+      const digest = createHash(algorithm);
+      for (let i = 0; i < copies; i++) digest.update(chunk);
+      return [algorithm, digest.update('abc').digest('hex')];
+    }),
+  );
+  await expect(computeFileDigests(file)).resolves.toEqual(expected);
+  expect(wholeFileRead).not.toHaveBeenCalled();
+}, 15000);

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ToolPage } from '../../components/ToolPage';
 import { FileDrop } from '../../components/FileDrop';
 import { Button, Field, Select } from '../../components/Controls';
@@ -6,7 +6,7 @@ import { getToolMeta } from '../registry';
 import { useI18n } from '../../lib/i18n';
 import { downloadBlob } from '../../lib/download';
 import { zipFiles } from '../../lib/zip';
-import { convertMhtmlToHtml, type ConvertedMhtmlOutput } from './mhtml';
+import { convertMhtmlToHtml } from './mhtml';
 import styles from './Tool.module.css';
 
 export default function MhtmlToHtmlTool() {
@@ -15,51 +15,42 @@ export default function MhtmlToHtmlTool() {
   const title = meta.title !== 'mhtml-to-html' ? meta.title : t('MHTML to HTML Converter');
   const description = meta.description || t('Convert MHTML/MHT web archives into standalone HTML or ZIP with safely extracted assets.');
 
-  const [rawMhtml, setRawMhtml] = useState<string>('');
+  const [rawMhtml, setRawMhtml] = useState<Uint8Array | null>(null);
   const [sourceName, setSourceName] = useState<string>('archive');
   const [outputMode, setOutputMode] = useState<'standalone' | 'zip'>('standalone');
   const [blockRemote, setBlockRemote] = useState<boolean>(true);
   const [stripScripts, setStripScripts] = useState<boolean>(true);
-  const [conversionResult, setConversionResult] = useState<ConvertedMhtmlOutput | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [readError, setReadError] = useState<string | null>(null);
+  const { conversionResult, conversionError } = useMemo(() => {
+    if (!rawMhtml) return { conversionResult: null, conversionError: null };
+    try {
+      return {
+        conversionResult: convertMhtmlToHtml(rawMhtml, {
+          mode: outputMode,
+          blockRemoteUrls: blockRemote,
+          stripScripts,
+        }),
+        conversionError: null,
+      };
+    } catch (err) {
+      return { conversionResult: null, conversionError: err instanceof Error ? err.message : String(err) };
+    }
+  }, [rawMhtml, outputMode, blockRemote, stripScripts]);
+  const error = readError ?? conversionError;
 
   const handleFiles = async (files: File[]) => {
     if (files.length === 0) return;
     const file = files[0];
-    const base = file.name.replace(/\.[^/.]+$/, '');
-    setSourceName(base);
-    setError(null);
+    const base = file.name.replace(/(?<=.)\.[^/.]+$/, '');
+    setReadError(null);
 
     try {
-      const text = await file.text();
-      setRawMhtml(text);
-
-      const res = convertMhtmlToHtml(text, {
-        mode: outputMode,
-        blockRemoteUrls: blockRemote,
-        stripScripts,
-      });
-      setConversionResult(res);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
-      setConversionResult(null);
-    }
-  };
-
-  const reprocess = (mode: 'standalone' | 'zip', block: boolean, scripts: boolean) => {
-    if (!rawMhtml) return;
-    try {
-      setError(null);
-      const res = convertMhtmlToHtml(rawMhtml, {
-        mode,
-        blockRemoteUrls: block,
-        stripScripts: scripts,
-      });
-      setConversionResult(res);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      setRawMhtml(bytes);
+      setSourceName(base);
+    } catch (err) {
+      setRawMhtml(null);
+      setReadError(err instanceof Error ? err.message : String(err));
     }
   };
 
@@ -84,9 +75,8 @@ export default function MhtmlToHtmlTool() {
   };
 
   const handleReset = () => {
-    setRawMhtml('');
-    setConversionResult(null);
-    setError(null);
+    setRawMhtml(null);
+    setReadError(null);
     setSourceName('archive');
   };
 
@@ -105,11 +95,7 @@ export default function MhtmlToHtmlTool() {
             <Field label={t('Output format')}>
               <Select
                 value={outputMode}
-                onChange={(e) => {
-                  const mode = e.target.value as 'standalone' | 'zip';
-                  setOutputMode(mode);
-                  reprocess(mode, blockRemote, stripScripts);
-                }}
+                onChange={(e) => setOutputMode(e.target.value as 'standalone' | 'zip')}
                 options={[
                   { value: 'standalone', label: t('Standalone single HTML (inlined assets)') },
                   { value: 'zip', label: t('ZIP package (index.html + /assets)') },
@@ -118,28 +104,12 @@ export default function MhtmlToHtmlTool() {
             </Field>
 
             <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
-              <input
-                type="checkbox"
-                checked={blockRemote}
-                onChange={(e) => {
-                  const val = e.target.checked;
-                  setBlockRemote(val);
-                  reprocess(outputMode, val, stripScripts);
-                }}
-              />
+              <input type="checkbox" checked={blockRemote} onChange={(e) => setBlockRemote(e.target.checked)} />
               {t('Block unmapped remote URLs (shields private data)')}
             </label>
 
             <label className="checkbox-label" style={{ paddingBottom: '0.65rem' }}>
-              <input
-                type="checkbox"
-                checked={stripScripts}
-                onChange={(e) => {
-                  const val = e.target.checked;
-                  setStripScripts(val);
-                  reprocess(outputMode, blockRemote, val);
-                }}
-              />
+              <input type="checkbox" checked={stripScripts} onChange={(e) => setStripScripts(e.target.checked)} />
               {t('Strip JavaScript and event handlers')}
             </label>
           </div>

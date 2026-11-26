@@ -1,7 +1,7 @@
 import type { DetectedFormat } from './detect';
 import type { TargetFormat } from './matrix';
 import type { BatchResultItem } from '../../components/BatchResults';
-import { runFFmpeg, runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
+import { runFFmpeg, runFFmpegWithinMediaJob, WEBM_AUDIO_ENCODER } from '../../lib/ffmpeg';
 import { convertTransparentWebm } from '../../lib/transparentWebm';
 import { withMediabunnyFallback, type MediabunnyOutput } from '../../lib/mediabunny';
 import { readZipEntry } from '../../lib/zip';
@@ -29,7 +29,7 @@ export type ConvertResult = { type: 'single'; name: string; blob: Blob } | { typ
 
 function getBaseName(filename: string): string {
   const dot = filename.lastIndexOf('.');
-  return dot >= 0 ? filename.slice(0, dot) : filename;
+  return dot > 0 ? filename.slice(0, dot) : filename;
 }
 
 const NATIVE_OFFICE_DOCUMENTS = new Set([
@@ -66,6 +66,7 @@ function cachedCellValue(cell: import('exceljs').Cell): string | number | boolea
       if (result === null || result === undefined) return null;
       if (result instanceof Date) return result.toISOString();
       if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') return result;
+      if (typeof result === 'object' && 'error' in result) return String(result.error);
       return null;
     }
     if ('formula' in record || 'sharedFormula' in record) return null;
@@ -127,7 +128,9 @@ async function convertXlsxData(file: File, targetId: string, outName: string): P
   const worksheet = workbook.worksheets[0];
   if (!worksheet) throw new Error('The spreadsheet contains no worksheets to export.');
   const delimiter = targetId === 'csv' ? ',' : '\t';
-  const rows = worksheetRows(worksheet, budget).map((row) => row.map((value) => quoteDelimitedValue(value, delimiter)).join(delimiter));
+  const rows = worksheetRows(worksheet, budget).map((row) =>
+    row.length === 1 && row[0] === '' ? '""' : row.map((value) => quoteDelimitedValue(value, delimiter)).join(delimiter),
+  );
   const mime = targetId === 'csv' ? 'text/csv' : targetId === 'tsv' ? 'text/tab-separated-values' : 'text/plain';
   return { type: 'single', name: outName, blob: new Blob([rows.join('\n')], { type: mime }) };
 }
@@ -441,7 +444,7 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
         '-pix_fmt',
         'yuv420p',
         '-c:a',
-        'libopus',
+        WEBM_AUDIO_ENCODER,
         '-b:a',
         '96k',
       );
@@ -470,7 +473,8 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
     } else if (target.id === 'flac') {
       ffmpegArgs.push('-vn', '-c:a', 'flac');
     } else if (target.id === 'opus') {
-      ffmpegArgs.push('-vn', '-c:a', 'libopus', '-b:a', bitrate || '96k');
+      // The bundled libopus encoder can trap at complexity 5 or higher.
+      ffmpegArgs.push('-vn', '-c:a', 'libopus', '-compression_level', '4', '-b:a', bitrate || '96k');
     }
 
     ffmpegArgs.push(outputName);
@@ -559,25 +563,28 @@ export async function executeConversion(options: ConvertOptions): Promise<Conver
 
     if (target.id === 'png' || target.id === 'jpg') {
       const pdfDoc = await loadPdfDocument(file);
-      const scale = dpi / 72;
-      const mime = target.id === 'jpg' ? 'image/jpeg' : 'image/png';
-      const ext = target.id === 'jpg' ? 'jpg' : 'png';
-      const numPages = pdfDoc.numPages;
-      const clampedQ = Math.max(0.01, Math.min(1, quality / 100));
+      try {
+        const scale = dpi / 72;
+        const mime = target.id === 'jpg' ? 'image/jpeg' : 'image/png';
+        const numPages = pdfDoc.numPages;
+        const clampedQ = Math.max(0.01, Math.min(1, quality / 100));
 
-      const items: BatchResultItem[] = [];
-      for (let i = 1; i <= numPages; i++) {
-        onProgress?.((i - 1) / numPages);
-        const pageBlob = await renderPdfPageToBlob(pdfDoc, i, scale, mime, clampedQ);
-        const itemName = numPages === 1 ? `${baseName}.${ext}` : `${baseName}-page-${i}.${ext}`;
-        items.push({ name: itemName, blob: pageBlob });
-      }
-      onProgress?.(1);
+        const items: BatchResultItem[] = [];
+        for (let i = 1; i <= numPages; i++) {
+          onProgress?.((i - 1) / numPages);
+          const pageBlob = await renderPdfPageToBlob(pdfDoc, i, scale, mime, clampedQ);
+          const itemName = numPages === 1 ? outName : `${baseName}-page-${i}.${target.ext}`;
+          items.push({ name: itemName, blob: pageBlob });
+        }
+        onProgress?.(1);
 
-      if (items.length === 1) {
-        return { type: 'single', name: items[0].name, blob: items[0].blob };
+        if (items.length === 1) {
+          return { type: 'single', name: items[0].name, blob: items[0].blob };
+        }
+        return { type: 'batch', items };
+      } finally {
+        await pdfDoc.loadingTask.destroy();
       }
-      return { type: 'batch', items };
     }
   }
 

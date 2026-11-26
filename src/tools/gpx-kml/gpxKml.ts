@@ -88,6 +88,10 @@ interface SimpleElement {
   getAttribute(name: string): string | null;
 }
 
+function childText(element: SimpleElement, name: string): string | undefined {
+  return element.children.find((child) => child.tagName.split(':').pop()?.toLowerCase() === name)?.textContent.trim() || undefined;
+}
+
 /**
  * Parses XML text into a SimpleElement tree.
  * Works seamlessly in both Browser and Node.js without external dependencies,
@@ -332,8 +336,8 @@ export function gpxToGeoData(gpxText: string): GeoData {
   const routes: Route[] = [];
   const rteElements = root.getElementsByTagName('rte');
   for (const rte of rteElements) {
-    const rteName = rte.getElementsByTagName('name')[0]?.textContent.trim();
-    const rteDesc = rte.getElementsByTagName('desc')[0]?.textContent.trim();
+    const rteName = childText(rte, 'name');
+    const rteDesc = childText(rte, 'desc');
     const points: GeoPoint[] = [];
 
     const rteptElements = rte.getElementsByTagName('rtept');
@@ -368,8 +372,8 @@ export function gpxToGeoData(gpxText: string): GeoData {
   const tracks: Track[] = [];
   const trkElements = root.getElementsByTagName('trk');
   for (const trk of trkElements) {
-    const trkName = trk.getElementsByTagName('name')[0]?.textContent.trim();
-    const trkDesc = trk.getElementsByTagName('desc')[0]?.textContent.trim();
+    const trkName = childText(trk, 'name');
+    const trkDesc = childText(trk, 'desc');
     const segments: TrackSegment[] = [];
 
     const segElements = trk.getElementsByTagName('trkseg');
@@ -461,8 +465,8 @@ export function kmlToGeoData(kmlText: string): GeoData {
   }
 
   const docNode = root.getElementsByTagName('Document')[0] || root;
-  const name = docNode.getElementsByTagName('name')[0]?.textContent.trim();
-  const desc = docNode.getElementsByTagName('description')[0]?.textContent.trim();
+  const name = childText(docNode, 'name');
+  const desc = childText(docNode, 'description');
 
   const waypoints: Waypoint[] = [];
   const tracks: Track[] = [];
@@ -471,13 +475,11 @@ export function kmlToGeoData(kmlText: string): GeoData {
   const placemarks = root.getElementsByTagName('Placemark');
 
   for (const pm of placemarks) {
-    const pmName = pm.getElementsByTagName('name')[0]?.textContent.trim();
-    const pmDesc = pm.getElementsByTagName('description')[0]?.textContent.trim();
+    const pmName = childText(pm, 'name');
+    const pmDesc = childText(pm, 'description');
     const pmTime = pm.getElementsByTagName('when')[0]?.textContent.trim();
 
-    // 1. Point -> Waypoint
-    const pointNode = pm.getElementsByTagName('Point')[0];
-    if (pointNode) {
+    for (const pointNode of pm.getElementsByTagName('Point')) {
       const coordText = pointNode.getElementsByTagName('coordinates')[0]?.textContent.trim() || '';
       const pts = parseKmlCoordinates(coordText);
       if (pts.length > 0) {
@@ -488,47 +490,15 @@ export function kmlToGeoData(kmlText: string): GeoData {
           time: pmTime || undefined,
         });
       }
-      continue;
     }
 
-    // 2. MultiGeometry -> Multi-segment Track
-    const multiNode = pm.getElementsByTagName('MultiGeometry')[0];
-    if (multiNode) {
-      const lineStrings = multiNode.getElementsByTagName('LineString');
-      const segments: TrackSegment[] = [];
-
-      for (const ls of lineStrings) {
-        const coordText = ls.getElementsByTagName('coordinates')[0]?.textContent.trim() || '';
-        const pts = parseKmlCoordinates(coordText);
-        if (pts.length > 0) {
-          segments.push({ points: pts });
-        }
-      }
-
-      if (segments.length > 0) {
-        tracks.push({
-          name: pmName || undefined,
-          desc: pmDesc || undefined,
-          segments,
-        });
-      }
-      continue;
-    }
-
-    // 3. LineString -> Single-segment Track
-    const lineNode = pm.getElementsByTagName('LineString')[0];
-    if (lineNode) {
+    const segments: TrackSegment[] = [];
+    for (const lineNode of pm.getElementsByTagName('LineString')) {
       const coordText = lineNode.getElementsByTagName('coordinates')[0]?.textContent.trim() || '';
-      const pts = parseKmlCoordinates(coordText);
-      if (pts.length > 0) {
-        tracks.push({
-          name: pmName || undefined,
-          desc: pmDesc || undefined,
-          segments: [{ points: pts }],
-        });
-      }
-      continue;
+      const points = parseKmlCoordinates(coordText);
+      if (points.length > 0) segments.push({ points });
     }
+    if (segments.length > 0) tracks.push({ name: pmName, desc: pmDesc, segments });
   }
 
   return {
