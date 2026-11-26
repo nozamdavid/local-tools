@@ -31,7 +31,7 @@ export function renderFrameCanvas(img: HTMLImageElement, options: RenderOptions)
     }
   } else if (bgType === 'blur' && fitMode === 'contain') {
     // Margin of 80px to avoid border artifacts
-    drawWithImageFilters(ctx, target => target.drawImage(img, -80, -80, width + 160, height + 160), { blur: 40 });
+    drawWithImageFilters(ctx, (target) => target.drawImage(img, -80, -80, width + 160, height + 160), { blur: 40 });
 
     // Subtle dark tint to improve contrast
     ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';

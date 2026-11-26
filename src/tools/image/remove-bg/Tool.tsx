@@ -191,7 +191,7 @@ export default function RemoveBgTool() {
         ctx.fillStyle = customBgColor;
         ctx.fillRect(0, 0, width, height);
       } else if (bgReplacement === 'blur') {
-        drawWithImageFilters(ctx, target => target.drawImage(sourceImg, -10, -10, width + 20, height + 20), { blur: 16 });
+        drawWithImageFilters(ctx, (target) => target.drawImage(sourceImg, -10, -10, width + 20, height + 20), { blur: 16 });
       }
 
       // 3. Draw subject on top

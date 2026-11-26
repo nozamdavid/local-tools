@@ -79,9 +79,12 @@ export function FilterEditorShell<T>({
 
   const formatSelectId = useId();
 
-  useEffect(() => () => {
-    sourceRequest.current++;
-  }, []);
+  useEffect(
+    () => () => {
+      sourceRequest.current++;
+    },
+    [],
+  );
 
   // Reset when loading a new file
   const handleFiles = async (files: File[]) => {

@@ -33,7 +33,7 @@ function renderAdjust(source: HTMLCanvasElement, options: AdjustOptions): HTMLCa
   if (options.contrast !== 0) colors.push(['contrast', 100 + options.contrast]);
   if (options.saturation !== 0) colors.push(['saturate', 100 + options.saturation]);
   if (options.hueRotate !== 0) colors.push(['hue-rotate', options.hueRotate]);
-  drawWithImageFilters(ctx, target => target.drawImage(source, 0, 0), { colors });
+  drawWithImageFilters(ctx, (target) => target.drawImage(source, 0, 0), { colors });
 
   if (options.exposure !== 0 || options.warmth !== 0) {
     const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
