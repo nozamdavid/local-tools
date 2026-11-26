@@ -82,10 +82,13 @@ export function FileDrop({
   // Paste files (e.g. a screenshot) while the drop zone is on screen.
   useEffect(() => {
     function handlePaste(event: ClipboardEvent) {
-      const target = event.target as HTMLElement | null;
+      if (event.defaultPrevented) return;
+      const target = event.target instanceof Element ? event.target : null;
       if (target?.closest('input, textarea, [contenteditable="true"]')) return;
       const files = Array.from(event.clipboardData?.files ?? []);
       if (files.length === 0) return;
+      const zone = target?.closest('.file-drop') ?? document.querySelector('.file-drop');
+      if (zone !== rootRef.current) return;
       event.preventDefault();
       deliver(files);
     }

@@ -1,5 +1,5 @@
 import { getToolMeta, TOOL_METAS, type ToolMeta } from '../tools/registry';
-import { classifyFile, extensionOf, isToolEligibleForBatch, isToolEligibleForFile, mimeOf } from './toolInputs';
+import { classifyFile, extensionOf, isToolEligibleForBatch, isToolEligibleForFile } from './toolInputs';
 
 export { extensionOf };
 
@@ -17,19 +17,24 @@ interface Pending {
 
 const MAX_AGE_MS = 5 * 60 * 1000;
 let pending: Pending | null = null;
+let expiry: ReturnType<typeof setTimeout> | undefined;
 
 export function setPendingFiles(files: File[], path: string) {
+  clearPendingFiles();
   pending = { files, path, at: Date.now() };
+  expiry = setTimeout(clearPendingFiles, MAX_AGE_MS);
 }
 
 export function clearPendingFiles() {
+  clearTimeout(expiry);
+  expiry = undefined;
   pending = null;
 }
 
 /** Non-consuming: returns pending files for lazy initializers without consuming them. */
 export function peekPendingFiles(path: string): File[] | null {
-  if (!pending || pending.path !== path || Date.now() - pending.at > MAX_AGE_MS) return null;
-  return pending.files;
+  if (pending && Date.now() - pending.at >= MAX_AGE_MS) clearPendingFiles();
+  return pending?.path === path ? pending.files : null;
 }
 
 /**
@@ -37,9 +42,9 @@ export function peekPendingFiles(path: string): File[] | null {
  * accept are returned in `rejected` so the drop zone can explain why nothing loaded.
  */
 export function takePendingFiles(path: string, accept?: string, multiple = false) {
-  if (!pending || pending.path !== path || Date.now() - pending.at > MAX_AGE_MS) return null;
-  const { files } = pending;
-  pending = null;
+  const files = peekPendingFiles(path);
+  if (!files) return null;
+  clearPendingFiles();
   const accepted = files.filter((file) => matchesAccept(file, accept));
   const rejected = files.filter((file) => !accepted.includes(file));
   return { accepted: multiple ? accepted : accepted.slice(0, 1), rejected };
@@ -48,9 +53,9 @@ export function takePendingFiles(path: string, accept?: string, multiple = false
 /** Mirrors the browser's <input accept> rules: extensions, exact MIME types and type/* wildcards. */
 export function matchesAccept(file: File, accept?: string): boolean {
   if (!accept || accept.trim() === '' || accept.trim() === '*') return true;
-  const ext = `.${extensionOf(file.name)}`;
-  const mime = mimeOf(file);
   const c = classifyFile(file);
+  const ext = `.${c.ext}`;
+  const { mime } = c;
 
   return accept
     .split(',')
@@ -70,6 +75,8 @@ export function matchesAccept(file: File, accept?: string): boolean {
         return false;
       }
       if (token === mime) return true;
+      if (c.format === 'jpg' && token === 'image/jpeg') return true;
+      if (c.format === 'bmp' && token === 'image/bmp') return true;
       if (c.isDocx && token === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') return true;
       if (c.format === 'obj' && (token === 'model/obj' || token === 'text/obj' || token === 'application/x-tgif')) return true;
       if (c.format === 'stl' && (token === 'model/stl' || token === 'application/sla')) return true;

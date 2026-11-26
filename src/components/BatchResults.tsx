@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { formatBytes, formatNumber } from '../lib/format';
 import { downloadBlob } from '../lib/download';
 import { useObjectUrl } from '../lib/useObjectUrl';
@@ -28,7 +28,7 @@ function BatchRow({ item }: { item: BatchResultItem }) {
   const { t } = useI18n();
   const { blob, name } = item;
   const image = useMemo(() => {
-    const mime = mimeOf(new File([], name, { type: blob.type }));
+    const mime = mimeOf({ name, type: blob.type });
     if (!mime.startsWith('image/') || extensionOf(name) === 'zip') return undefined;
     return mime === blob.type ? blob : blob.slice(0, blob.size, mime);
   }, [blob, name]);
@@ -91,7 +91,10 @@ export function BatchResults({ items, onReset }: BatchResultsProps) {
   const [zipping, setZipping] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
+  const archiveRequest = useRef<AbortController | null>(null);
   useFocusFallback(panelRef);
+
+  useLayoutEffect(() => () => archiveRequest.current?.abort(), []);
 
   // The button that started the batch has left the page; move focus here so the outcome is announced.
   useEffect(() => {
@@ -99,15 +102,19 @@ export function BatchResults({ items, onReset }: BatchResultsProps) {
   }, []);
 
   async function downloadAll() {
+    if (archiveRequest.current) return;
+    const request = new AbortController();
+    archiveRequest.current = request;
     setZipping(true);
     setError(null);
     try {
-      const zip = await zipFiles(items.map(({ name, blob }) => ({ name, blob })));
-      downloadBlob(zip, ARCHIVE_FILENAME);
+      const zip = await zipFiles(items);
+      if (!request.signal.aborted) downloadBlob(zip, ARCHIVE_FILENAME);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('Could not create the ZIP file.'));
+      if (!request.signal.aborted) setError(err instanceof Error ? err.message : t('Could not create the ZIP file.'));
     } finally {
-      setZipping(false);
+      archiveRequest.current = null;
+      if (!request.signal.aborted) setZipping(false);
     }
   }
 

@@ -35,8 +35,23 @@ describe('Continue with result workflows', () => {
     setPendingFiles([createFile('output.png', 'image/png')], '/image/compress');
 
     vi.advanceTimersByTime(5 * 60 * 1000 + 1);
+    // Moving the clock back must not make the expired selection available again.
+    vi.setSystemTime(new Date('2026-10-29T12:00:01Z'));
 
     expect(takePendingFiles('/image/compress', 'image/*')).toBeNull();
+  });
+
+  it('hands off both outputs with the same name and their distinct bytes', async () => {
+    const files = createResultFiles(
+      ['first frame', 'second frame'].map((bytes) => ({ name: 'frame.png', blob: new Blob([bytes], { type: 'image/png' }) })),
+    );
+    const [target] = getContinueWithTools('/image/bulk-resize', files);
+    expect(target.path).toBe('/image/compare');
+
+    setPendingFiles(files, target.path);
+    const handoff = takePendingFiles(target.path, 'image/png,.png', true);
+    expect(handoff?.accepted.map(({ name }) => name)).toEqual(['frame.png', 'frame.png']);
+    expect(await Promise.all(handoff!.accepted.map((file) => file.text()))).toEqual(['first frame', 'second frame']);
   });
 
   it('ranks a same-format contextual next step first', () => {

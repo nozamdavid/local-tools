@@ -10,9 +10,15 @@ export function ScrollToTop() {
       window.scrollTo(0, 0);
       return;
     }
+    let id = hash.slice(1);
+    try {
+      id = decodeURIComponent(id);
+    } catch {
+      // A literal percent sign is valid in an element ID.
+    }
     // Wait a frame so the target section has rendered.
     const frame = requestAnimationFrame(() => {
-      document.getElementById(decodeURIComponent(hash.slice(1)))?.scrollIntoView();
+      document.getElementById(id)?.scrollIntoView();
     });
     return () => cancelAnimationFrame(frame);
   }, [pathname, hash]);

@@ -196,6 +196,17 @@ describe('toolInputs and handoff classification', () => {
     expect(batch).not.toContain('img-photo-editor');
   });
 
+  it('hands off JPEG and BMP aliases that qualify for image comparison', () => {
+    const files = [createFile('photo.jfif', 'image/pjpeg'), createFile('drawing.dib', 'image/x-ms-bmp')];
+    const [target] = suggestToolsForFiles(files);
+    expect(target.id).toBe('img-compare');
+
+    setPendingFiles(files, target.path);
+    expect(
+      takePendingFiles(target.path, 'image/jpeg,image/png,image/webp,image/gif,image/bmp,.jpg,.jpeg,.png,.webp,.gif,.bmp', true),
+    ).toEqual({ accepted: files, rejected: [] });
+  });
+
   it('hands a single mesh or CAD drop to the 3D Viewer and keeps model batches on the merger', () => {
     const mesh = createFile('part.obj', 'text/plain');
     const cad = createFile('assembly.stp', 'application/octet-stream');

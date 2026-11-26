@@ -47,9 +47,10 @@ export function useJob(): UseJobReturn {
       setError(undefined);
       setResult(undefined);
 
+      let settled = false;
       try {
         const blob = await fn((ratio) => {
-          if (current === generation.current) setProgress(ratio);
+          if (!settled && current === generation.current) setProgress(ratio);
         });
         if (current !== generation.current) return;
         setResult(blob);
@@ -60,6 +61,8 @@ export function useJob(): UseJobReturn {
         const msg = describeError(err);
         setError(msg);
         setStatus('error');
+      } finally {
+        settled = true;
       }
     },
     [setProgress],

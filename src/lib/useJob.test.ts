@@ -74,4 +74,16 @@ describe('useJob asynchronous results', () => {
     await running;
     hooks.setters.forEach((setter) => expect(setter).not.toHaveBeenCalled());
   });
+
+  it('keeps progress at completion when a queued progress event arrives later', async () => {
+    const job = useJob();
+    let reportProgress!: (ratio: number) => void;
+    await job.run(async (progress) => {
+      reportProgress = progress;
+      return new Blob();
+    });
+
+    reportProgress(0.5);
+    expect(hooks.setters[1]).toHaveBeenLastCalledWith(1);
+  });
 });
