@@ -1,14 +1,14 @@
-import { pipeline, env, type ProgressInfo } from '@huggingface/transformers';
+import { pipeline, env, type AutomaticSpeechRecognitionPipeline, type ProgressInfo } from '@huggingface/transformers';
 import type { WhisperChunk, WorkerInMessage, WorkerOutMessage } from './types';
 
 // Configure transformers environment for browser execution
 env.allowLocalModels = false;
 env.useBrowserCache = true;
 
-let cachedPipeline: any = null;
+let cachedPipeline: AutomaticSpeechRecognitionPipeline | null = null;
 let cachedModelKey = '';
 
-async function getTranscriber(model: string, onProgress: (info: ProgressInfo) => void): Promise<any> {
+async function getTranscriber(model: string, onProgress: (info: ProgressInfo) => void): Promise<AutomaticSpeechRecognitionPipeline> {
   let isWebGpu = false;
   if (typeof navigator !== 'undefined' && 'gpu' in navigator && Boolean(navigator.gpu)) {
     try {
@@ -123,7 +123,7 @@ self.onmessage = async (e: MessageEvent<WorkerInMessage>) => {
       self.postMessage(statusMsg);
     }, 1000);
 
-    const transcribeOptions: Record<string, unknown> = {
+    const transcribeOptions: NonNullable<Parameters<AutomaticSpeechRecognitionPipeline>[1]> = {
       return_timestamps: true,
       chunk_length_s: 30,
       stride_length_s: 5,
@@ -144,7 +144,7 @@ self.onmessage = async (e: MessageEvent<WorkerInMessage>) => {
     }
 
     const rawChunks = Array.isArray(output?.chunks) ? output.chunks : [];
-    const chunks: WhisperChunk[] = rawChunks.map((chunk: any) => ({
+    const chunks: WhisperChunk[] = rawChunks.map((chunk) => ({
       text: chunk.text ?? '',
       timestamp: chunk.timestamp ?? [0, null],
     }));

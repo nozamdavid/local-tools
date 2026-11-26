@@ -12,6 +12,7 @@ import { useI18n } from '../../lib/i18n';
 import { SegmentClient } from '../_segment/segmentClient';
 import { processVideo, waitForVideoEvent } from '../_segment/videoProcessor';
 import { drawTextLayers, drawSubjectOnTop, calculateTargetSize } from '../_segment/composite';
+import { getSegmentErrorMessage } from '../_segment/errors';
 import type { TextLayer, VideoMaxResolution, FrameProcessingProgress } from '../_segment/types';
 import styles from './Tool.module.css';
 
@@ -204,9 +205,9 @@ export default function TextBehindVideoTool() {
 
       setLoadingPreview(false);
       setLoadingProgress(1);
-    } catch (err: any) {
+    } catch (err) {
       if (signal.aborted) return;
-      setError(err?.message || t('Failed to prepare video preview.'));
+      setError(getSegmentErrorMessage(err) || t('Failed to prepare video preview.'));
       setLoadingPreview(false);
     } finally {
       client?.terminate();
@@ -335,9 +336,9 @@ export default function TextBehindVideoTool() {
 
       setResultBlob(blob);
       setStatus('done');
-    } catch (err: any) {
+    } catch (err) {
       if (abortController.signal.aborted) return;
-      setError(err?.message || t('Failed to render text behind video.'));
+      setError(getSegmentErrorMessage(err) || t('Failed to render text behind video.'));
       setStatus('error');
     } finally {
       segmentClient.terminate();

@@ -12,6 +12,7 @@ import { useI18n } from '../../lib/i18n';
 import { SegmentClient } from '../_segment/segmentClient';
 import { processVideo } from '../_segment/videoProcessor';
 import { compositeRemoveBackgroundFrame } from '../_segment/composite';
+import { getSegmentErrorMessage } from '../_segment/errors';
 import type { VideoMaxResolution, FrameProcessingProgress } from '../_segment/types';
 import styles from './Tool.module.css';
 
@@ -154,11 +155,11 @@ export default function RemoveBackgroundTool() {
 
       setResultBlob(blob);
       setStatus('done');
-    } catch (err: any) {
+    } catch (err) {
       if (abortController.signal.aborted) return;
       console.error('Remove background error:', err);
-      (window as any).__lastError = err;
-      const msg = err?.message || (typeof err === 'string' ? err : JSON.stringify(err));
+      Object.assign(window, { __lastError: err });
+      const msg = getSegmentErrorMessage(err) || (typeof err === 'string' ? err : JSON.stringify(err));
       setError(msg || 'Failed to remove background from video.');
       setStatus('error');
     } finally {

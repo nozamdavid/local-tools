@@ -1,4 +1,7 @@
-import { pipeline, env, RawImage } from '@huggingface/transformers';
+/// <reference lib="webworker" />
+
+import { pipeline, env, RawImage, type ImageSegmentationPipeline, type ProgressInfo } from '@huggingface/transformers';
+import { getSegmentErrorMessage } from './errors';
 import type { SegmentWorkerInMessage, SegmentWorkerOutMessage } from './types';
 
 // Configure transformers environment for browser/worker
@@ -8,7 +11,7 @@ env.useBrowserCache = true;
 // Default portrait segmentation model
 const DEFAULT_MODEL = 'Xenova/modnet';
 
-let segmenterPromise: Promise<any> | null = null;
+let segmenterPromise: Promise<ImageSegmentationPipeline> | null = null;
 let currentModelId = DEFAULT_MODEL;
 let activeDevice = 'wasm';
 
@@ -21,26 +24,27 @@ async function getSegmenter(modelId: string = DEFAULT_MODEL) {
   segmenterPromise = (async () => {
     let canUseWebGPU = false;
     try {
-      if (typeof navigator !== 'undefined' && 'gpu' in navigator && !!(navigator as any).gpu) {
-        const adapter = await (navigator as any).gpu.requestAdapter();
+      if (typeof navigator !== 'undefined' && 'gpu' in navigator && navigator.gpu) {
+        const adapter = await navigator.gpu.requestAdapter();
         canUseWebGPU = !!adapter;
       }
     } catch {
       canUseWebGPU = false;
     }
 
-    const progressCallback = (progress: any) => {
+    const progressCallback = (info: ProgressInfo) => {
+      const bytes = info?.status === 'progress' || info?.status === 'progress_total' ? info : undefined;
       const msg: SegmentWorkerOutMessage = {
         type: 'progress',
         progress: {
-          status: progress?.status,
-          file: progress?.file,
-          progress: progress?.progress,
-          total: progress?.total,
-          loaded: progress?.loaded,
+          status: info?.status,
+          file: info && 'file' in info ? info.file : undefined,
+          progress: bytes?.progress,
+          total: bytes?.total,
+          loaded: bytes?.loaded,
         },
       };
-      (self as any).postMessage(msg);
+      postMessage(msg);
     };
 
     if (canUseWebGPU) {
@@ -82,13 +86,13 @@ self.onmessage = async (e: MessageEvent<SegmentWorkerInMessage>) => {
         device: activeDevice,
         model: currentModelId,
       };
-      (self as any).postMessage(readyMsg);
-    } catch (err: any) {
+      postMessage(readyMsg);
+    } catch (err) {
       const errMsg: SegmentWorkerOutMessage = {
         type: 'error',
-        error: err?.message || String(err),
+        error: getSegmentErrorMessage(err) || String(err),
       };
-      (self as any).postMessage(errMsg);
+      postMessage(errMsg);
     }
     return;
   }
@@ -100,13 +104,12 @@ self.onmessage = async (e: MessageEvent<SegmentWorkerInMessage>) => {
       const rawImage = new RawImage(data, width, height, 4);
       const out = await pipe(rawImage);
 
-      if (!out || !out[0] || !out[0].mask) {
+      const mask = out?.[0]?.mask;
+      if (!mask) {
         throw new Error('Pipeline produced invalid mask output');
       }
 
-      const maskData = out[0].mask.data as Uint8ClampedArray;
-      const maskBuffer = maskData.buffer.slice(maskData.byteOffset, maskData.byteOffset + maskData.byteLength);
-      const transferableMask = new Uint8ClampedArray(maskBuffer);
+      const transferableMask = new Uint8ClampedArray(mask.data);
 
       const resultMsg: SegmentWorkerOutMessage = {
         type: 'result',
@@ -115,14 +118,14 @@ self.onmessage = async (e: MessageEvent<SegmentWorkerInMessage>) => {
         width,
         height,
       };
-      (self as any).postMessage(resultMsg, [transferableMask.buffer]);
-    } catch (err: any) {
+      postMessage(resultMsg, [transferableMask.buffer]);
+    } catch (err) {
       const errMsg: SegmentWorkerOutMessage = {
         type: 'error',
         id,
-        error: err?.message || String(err),
+        error: getSegmentErrorMessage(err) || String(err),
       };
-      (self as any).postMessage(errMsg);
+      postMessage(errMsg);
     }
   }
 };

@@ -1,4 +1,4 @@
-import type { SegmentWorkerOutMessage } from './types';
+import type { SegmentWorkerInMessage, SegmentWorkerOutMessage, SegmentWorkerProgressMessage } from './types';
 import { translate } from '../../lib/i18n';
 
 function translateSegmentError(message: string): string {
@@ -13,13 +13,13 @@ export class SegmentClient {
     number,
     {
       resolve: (value: { mask: Uint8ClampedArray; width: number; height: number }) => void;
-      reject: (reason: any) => void;
+      reject: (reason: Error) => void;
     }
   >();
   private initPromise: Promise<{ device: string; model: string }> | null = null;
   private initResolve: ((val: { device: string; model: string }) => void) | null = null;
-  private initReject: ((err: any) => void) | null = null;
-  private onProgressCallback?: (progress: any) => void;
+  private initReject: ((err: Error) => void) | null = null;
+  private onProgressCallback?: (progress: SegmentWorkerProgressMessage['progress']) => void;
 
   constructor() {
     this.spawnWorker();
@@ -77,7 +77,10 @@ export class SegmentClient {
     this.worker.onmessageerror = () => handleWorkerFailure();
   }
 
-  public async init(onProgress?: (progress: any) => void, modelId?: string): Promise<{ device: string; model: string }> {
+  public async init(
+    onProgress?: (progress: SegmentWorkerProgressMessage['progress']) => void,
+    modelId?: string,
+  ): Promise<{ device: string; model: string }> {
     const worker = this.worker;
     if (!worker) throw new Error(translate('Video segmentation worker is not running.'));
     if (this.initPromise) {
@@ -89,7 +92,8 @@ export class SegmentClient {
     this.initPromise = new Promise((resolve, reject) => {
       this.initResolve = resolve;
       this.initReject = reject;
-      worker.postMessage({ type: 'init', modelId });
+      const message: SegmentWorkerInMessage = { type: 'init', modelId };
+      worker.postMessage(message);
     });
 
     return this.initPromise;
@@ -111,16 +115,8 @@ export class SegmentClient {
 
     return new Promise((resolve, reject) => {
       this.pendingRequests.set(id, { resolve, reject });
-      this.worker?.postMessage(
-        {
-          type: 'segment',
-          id,
-          data: transferableData,
-          width,
-          height,
-        },
-        [transferableData.buffer],
-      );
+      const message: SegmentWorkerInMessage = { type: 'segment', id, data: transferableData, width, height };
+      this.worker?.postMessage(message, [transferableData.buffer]);
     });
   }
 

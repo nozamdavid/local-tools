@@ -52,7 +52,7 @@ export function drawTextLayers(ctx: CanvasRenderingContext2D, layers: TextLayer[
 
     // Canvas letterSpacing support
     if ('letterSpacing' in ctx) {
-      (ctx as any).letterSpacing = `${layer.letterSpacing * baseScale}px`;
+      ctx.letterSpacing = `${layer.letterSpacing * baseScale}px`;
     }
 
     const posX = layer.x * width;

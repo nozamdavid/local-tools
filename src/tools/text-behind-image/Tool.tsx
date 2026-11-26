@@ -11,6 +11,7 @@ import { canvasToBlob } from '../../lib/image';
 import { useI18n } from '../../lib/i18n';
 import { SegmentClient } from '../_segment/segmentClient';
 import { drawTextLayers, calculateTargetSize } from '../_segment/composite';
+import { getSegmentErrorMessage } from '../_segment/errors';
 import type { TextLayer } from '../_segment/types';
 import styles from './Tool.module.css';
 
@@ -195,9 +196,9 @@ export default function TextBehindImageTool() {
 
       setSegmenting(false);
       setSegmentProgress(1);
-    } catch (err: any) {
+    } catch (err) {
       if (imageRequest.current !== request) return;
-      setError(err?.message || 'Failed to segment image.');
+      setError(getSegmentErrorMessage(err) || 'Failed to segment image.');
       setSegmenting(false);
     } finally {
       client?.terminate();
