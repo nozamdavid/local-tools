@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { Maximize, Minus, Plus } from 'lucide-react';
 import { CanvasDocument, Layer, TransformHandle, PathLayer } from './types';
 import { renderDocument } from './render';
 import { useI18n } from '../../../lib/i18n';
@@ -18,7 +19,7 @@ export interface ShapeConfig {
   stroke: string;
   strokeWidth: number;
   fill?: string;
-  redactType?: 'blur' | 'pixelate';
+  redactType?: 'blur' | 'pixelate' | 'solid';
 }
 
 export interface DrawConfig {
@@ -35,9 +36,9 @@ export interface CanvasStageProps {
   shapeConfig?: ShapeConfig;
   drawConfig?: DrawConfig;
   cropRect?: CropRect;
+  workspace?: boolean;
   onCropChange?: (rect: CropRect) => void;
   onSelectLayer: (layerId: string | null) => void;
-  onUpdateDocSilent: (updater: (prev: CanvasDocument) => CanvasDocument) => void;
   onPushDoc: (newDoc: CanvasDocument) => void;
   onDeleteLayer?: (layerId: string) => void;
 }
@@ -62,9 +63,10 @@ type DragAction =
       origY: number;
       origW: number;
       origH: number;
+      rotation: number;
     }
   | { type: 'rotate'; layerId: string; centerX: number; centerY: number; origRotation: number; startAngle: number }
-  | { type: 'draw'; layerId: string }
+  | { type: 'draw'; layer: PathLayer }
   | { type: 'create-shape'; startX: number; startY: number; shape: ShapeConfig }
   | { type: 'crop-move'; startX: number; startY: number; origRect: CropRect }
   | { type: 'crop-resize'; handle: string; startX: number; startY: number; origRect: CropRect };
@@ -76,29 +78,35 @@ export function CanvasStage({
   shapeConfig,
   drawConfig,
   cropRect,
+  workspace = false,
   onCropChange,
   onSelectLayer,
-  onUpdateDocSilent,
   onPushDoc,
   onDeleteLayer,
 }: CanvasStageProps) {
   const { t } = useI18n();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [scale, setScale] = useState<number>(1);
+  const [fitScale, setFitScale] = useState(1);
+  const [zoomStep, setZoomStep] = useState(0);
+  const scale = fitScale * 2 ** (zoomStep / 2);
+  const nextLayer = useRef(0);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const pointerId = useRef<number | null>(null);
   const dragActionRef = useRef<DragAction | null>(null);
-  const [isModifiedDuringDrag, setIsModifiedDuringDrag] = useState(false);
+  const [draftLayer, setDraftLayer] = useState<Layer | null>(null);
 
   // Resize listener to fit viewport
   useEffect(() => {
     const updateScale = () => {
       if (!containerRef.current) return;
       const { clientWidth, clientHeight } = containerRef.current;
-      const pad = 32;
-      const availW = Math.max(100, clientWidth - pad);
-      const availH = Math.max(100, (clientHeight || 520) - pad);
+      const pad = workspace ? 56 : 32;
+      const minimum = workspace ? 1 : 100;
+      const availW = Math.max(minimum, clientWidth - pad);
+      const availH = Math.max(minimum, (clientHeight || 520) - pad);
       const s = Math.min(availW / doc.width, availH / doc.height, 1);
-      setScale(Math.max(0.05, s));
+      setFitScale(workspace ? s : Math.max(0.05, s));
     };
 
     updateScale();
@@ -109,7 +117,14 @@ export function CanvasStage({
       ro.disconnect();
       window.removeEventListener('resize', updateScale);
     };
-  }, [doc.width, doc.height]);
+  }, [doc.width, doc.height, workspace]);
+
+  useEffect(() => {
+    const viewport = scrollRef.current;
+    if (!workspace || !viewport) return;
+    viewport.scrollLeft = (viewport.scrollWidth - viewport.clientWidth) / 2;
+    viewport.scrollTop = (viewport.scrollHeight - viewport.clientHeight) / 2;
+  }, [scale, doc.width, doc.height, workspace]);
 
   // Redraw canvas with layers & overlays
   const redraw = useCallback(() => {
@@ -118,14 +133,20 @@ export function CanvasStage({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    renderDocument(ctx, doc, true);
+    const layers = draftLayer
+      ? doc.layers.some((layer) => layer.id === draftLayer.id)
+        ? doc.layers.map((layer) => (layer.id === draftLayer.id ? draftLayer : layer))
+        : [...doc.layers, draftLayer]
+      : doc.layers;
+    renderDocument(ctx, { ...doc, layers }, true);
 
     const handleRadius = 6 / scale;
     const lineWidth = 1.5 / scale;
+    const selectionColor = workspace ? '#c4f65d' : '#c026d3';
 
     // Draw active layer handles
     if (mode === 'select' && selectedLayerId) {
-      const layer = doc.layers.find((l) => l.id === selectedLayerId);
+      const layer = layers.find((l) => l.id === selectedLayerId);
       if (layer && layer.type !== 'path') {
         ctx.save();
         const cx = layer.x + layer.width / 2;
@@ -137,7 +158,7 @@ export function CanvasStage({
         ctx.translate(-layer.width / 2, -layer.height / 2);
 
         // Bounding box
-        ctx.strokeStyle = '#c026d3';
+        ctx.strokeStyle = selectionColor;
         ctx.lineWidth = lineWidth;
         ctx.setLineDash([4 / scale, 4 / scale]);
         ctx.strokeRect(0, 0, layer.width, layer.height);
@@ -152,7 +173,7 @@ export function CanvasStage({
         ];
 
         ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = '#c026d3';
+        ctx.strokeStyle = selectionColor;
         ctx.lineWidth = lineWidth;
 
         handles.forEach(({ x, y }) => {
@@ -168,12 +189,12 @@ export function CanvasStage({
           ctx.beginPath();
           ctx.moveTo(layer.width / 2, 0);
           ctx.lineTo(layer.width / 2, rotY);
-          ctx.strokeStyle = '#c026d3';
+          ctx.strokeStyle = selectionColor;
           ctx.stroke();
 
           ctx.beginPath();
           ctx.arc(layer.width / 2, rotY, handleRadius * 1.1, 0, Math.PI * 2);
-          ctx.fillStyle = '#c026d3';
+          ctx.fillStyle = selectionColor;
           ctx.fill();
         }
 
@@ -236,7 +257,7 @@ export function CanvasStage({
 
       ctx.restore();
     }
-  }, [doc, selectedLayerId, mode, scale, cropRect]);
+  }, [doc, selectedLayerId, mode, scale, cropRect, draftLayer, workspace]);
 
   useEffect(() => {
     redraw();
@@ -311,14 +332,22 @@ export function CanvasStage({
     const unrotX = cx + dx * Math.cos(rad) - dy * Math.sin(rad);
     const unrotY = cy + dx * Math.sin(rad) + dy * Math.cos(rad);
 
-    return unrotX >= layer.x && unrotX <= layer.x + layer.width && unrotY >= layer.y && unrotY <= layer.y + layer.height;
+    const padding = layer.type === 'arrow' || layer.type === 'line' ? 8 / scale : 0;
+    return (
+      unrotX >= layer.x - padding &&
+      unrotX <= layer.x + layer.width + padding &&
+      unrotY >= layer.y - padding &&
+      unrotY <= layer.y + layer.height + padding
+    );
   };
 
   // Pointer Down
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (e.button !== 0 || pointerId.current !== null) return;
+    if (workspace) e.currentTarget.focus({ preventScroll: true });
+    pointerId.current = e.pointerId;
     e.currentTarget.setPointerCapture(e.pointerId);
     const { x: sx, y: sy } = getCanvasCoords(e);
-    setIsModifiedDuringDrag(false);
 
     // CROP MODE
     if (mode === 'crop' && cropRect && onCropChange) {
@@ -350,7 +379,7 @@ export function CanvasStage({
 
     // DRAW MODE
     if (mode === 'draw' && drawConfig) {
-      const newPathId = 'path-' + Date.now();
+      const newPathId = `path-${Date.now()}-${nextLayer.current++}`;
       const newPathLayer: PathLayer = {
         id: newPathId,
         type: 'path',
@@ -366,12 +395,8 @@ export function CanvasStage({
         opacity: 1,
       };
 
-      onUpdateDocSilent((prev) => ({
-        ...prev,
-        layers: [...prev.layers, newPathLayer],
-      }));
-      dragActionRef.current = { type: 'draw', layerId: newPathId };
-      setIsModifiedDuringDrag(true);
+      dragActionRef.current = { type: 'draw', layer: newPathLayer };
+      setDraftLayer(newPathLayer);
       return;
     }
 
@@ -412,6 +437,7 @@ export function CanvasStage({
                 origY: activeLayer.y,
                 origW: activeLayer.width,
                 origH: activeLayer.height,
+                rotation: activeLayer.rotation ?? 0,
               };
             }
             return;
@@ -442,317 +468,197 @@ export function CanvasStage({
     }
   };
 
-  // Pointer Move
-  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    const action = dragActionRef.current;
-    if (!action) return;
+  const getShapeLayer = (action: Extract<DragAction, { type: 'create-shape' }>, x: number, y: number): Layer | null => {
+    if (workspace) {
+      x = Math.max(0, Math.min(doc.width, x));
+      y = Math.max(0, Math.min(doc.height, y));
+    }
+    const { startX, startY, shape } = action;
+    const dx = x - startX;
+    const dy = y - startY;
+    const distance = Math.hypot(dx, dy);
+    if (workspace && distance * scale < 3) return null;
 
-    const { x: sx, y: sy } = getCanvasCoords(e);
-    setIsModifiedDuringDrag(true);
-
-    if (action.type === 'crop-move' && cropRect && onCropChange) {
-      const dx = sx - action.startX;
-      const dy = sy - action.startY;
-      const newX = Math.max(0, Math.min(doc.width - action.origRect.width, action.origRect.x + dx));
-      const newY = Math.max(0, Math.min(doc.height - action.origRect.height, action.origRect.y + dy));
-      onCropChange({ ...action.origRect, x: Math.round(newX), y: Math.round(newY) });
-      return;
+    const id = 'shape-gesture';
+    if (shape.type === 'arrow' || shape.type === 'line') {
+      const width = workspace ? distance : Math.max(20, distance);
+      const height = Math.max(1, shape.strokeWidth * 3);
+      return {
+        id,
+        type: shape.type,
+        x: (startX + x - width) / 2,
+        y: (startY + y - height) / 2,
+        width,
+        height,
+        rotation: (Math.atan2(dy, dx) * 180) / Math.PI,
+        stroke: shape.stroke,
+        strokeWidth: shape.strokeWidth,
+      };
     }
 
-    if (action.type === 'crop-resize' && cropRect && onCropChange) {
-      const dx = sx - action.startX;
-      const dy = sy - action.startY;
-      const orig = action.origRect;
-      let nx = orig.x;
-      let ny = orig.y;
-      let nw = orig.width;
-      let nh = orig.height;
-
-      if (action.handle === 'se') {
-        nw = Math.max(20, orig.width + dx);
-        nh = Math.max(20, orig.height + dy);
-      } else if (action.handle === 'sw') {
-        nx = Math.min(orig.x + orig.width - 20, orig.x + dx);
-        nw = orig.width - (nx - orig.x);
-        nh = Math.max(20, orig.height + dy);
-      } else if (action.handle === 'ne') {
-        ny = Math.min(orig.y + orig.height - 20, orig.y + dy);
-        nw = Math.max(20, orig.width + dx);
-        nh = orig.height - (ny - orig.y);
-      } else if (action.handle === 'nw') {
-        nx = Math.min(orig.x + orig.width - 20, orig.x + dx);
-        ny = Math.min(orig.y + orig.height - 20, orig.y + dy);
-        nw = orig.width - (nx - orig.x);
-        nh = orig.height - (ny - orig.y);
-      }
-
-      onCropChange({
-        x: Math.max(0, Math.round(nx)),
-        y: Math.max(0, Math.round(ny)),
-        width: Math.min(doc.width - nx, Math.round(nw)),
-        height: Math.min(doc.height - ny, Math.round(nh)),
-      });
-      return;
+    const bounds = {
+      id,
+      x: Math.min(startX, x),
+      y: Math.min(startY, y),
+      width: Math.max(workspace ? 1 : 20, Math.abs(dx)),
+      height: Math.max(workspace ? 1 : 20, Math.abs(dy)),
+    };
+    if (shape.type === 'redact') {
+      return { ...bounds, type: 'redact', redactType: shape.redactType ?? 'pixelate' };
     }
+    return { ...bounds, type: shape.type, stroke: shape.stroke, strokeWidth: shape.strokeWidth, fill: shape.fill };
+  };
 
-    if (action.type === 'draw') {
-      onUpdateDocSilent((prev) => ({
-        ...prev,
-        layers: prev.layers.map((l) =>
-          l.id === action.layerId && l.type === 'path' ? { ...l, points: [...l.points, { x: sx, y: sy }] } : l,
-        ),
-      }));
-      return;
-    }
-
-    if (action.type === 'create-shape') {
-      const x = Math.min(action.startX, sx);
-      const y = Math.min(action.startY, sy);
-      const w = Math.max(4, Math.abs(sx - action.startX));
-      const h = Math.max(4, Math.abs(sy - action.startY));
-
-      // Live preview by rendering or updating
-      onUpdateDocSilent((prev) => {
-        const filtered = prev.layers.filter((l) => l.id !== 'preview-shape');
-        let previewLayer: Layer;
-
-        if (action.shape.type === 'redact') {
-          previewLayer = {
-            id: 'preview-shape',
-            type: 'redact',
-            x,
-            y,
-            width: w,
-            height: h,
-            redactType: action.shape.redactType || 'pixelate',
-          };
-        } else if (action.shape.type === 'arrow') {
-          const dx = sx - action.startX;
-          const dy = sy - action.startY;
-          const len = Math.max(10, Math.hypot(dx, dy));
-          const rot = (Math.atan2(dy, dx) * 180) / Math.PI;
-          previewLayer = {
-            id: 'preview-shape',
-            type: 'arrow',
-            x: action.startX,
-            y: action.startY - (action.shape.strokeWidth * 3) / 2,
-            width: len,
-            height: action.shape.strokeWidth * 3,
-            rotation: rot,
-            stroke: action.shape.stroke,
-            strokeWidth: action.shape.strokeWidth,
-          };
-        } else if (action.shape.type === 'line') {
-          previewLayer = {
-            id: 'preview-shape',
-            type: 'line',
-            x,
-            y,
-            width: w,
-            height: h,
-            stroke: action.shape.stroke,
-            strokeWidth: action.shape.strokeWidth,
-          };
-        } else if (action.shape.type === 'ellipse') {
-          previewLayer = {
-            id: 'preview-shape',
-            type: 'ellipse',
-            x,
-            y,
-            width: w,
-            height: h,
-            stroke: action.shape.stroke,
-            strokeWidth: action.shape.strokeWidth,
-            fill: action.shape.fill,
-          };
-        } else {
-          previewLayer = {
-            id: 'preview-shape',
-            type: 'rect',
-            x,
-            y,
-            width: w,
-            height: h,
-            stroke: action.shape.stroke,
-            strokeWidth: action.shape.strokeWidth,
-            fill: action.shape.fill,
-          };
-        }
-
-        return { ...prev, layers: [...filtered, previewLayer] };
-      });
-      return;
-    }
-
-    if (action.type === 'move') {
-      const dx = sx - action.startX;
-      const dy = sy - action.startY;
-
-      onUpdateDocSilent((prev) => ({
-        ...prev,
-        layers: prev.layers.map((l) => {
-          if (l.id !== action.layerId) return l;
-          if (l.type === 'path' && action.origPoints) {
-            return {
-              ...l,
-              points: action.origPoints.map((p) => ({ x: p.x + dx, y: p.y + dy })),
-            };
-          }
-          return {
-            ...l,
-            x: Math.round(action.origLayerX + dx),
-            y: Math.round(action.origLayerY + dy),
-          };
-        }),
-      }));
-      return;
-    }
+  const changeLayer = (action: Extract<DragAction, { layerId: string }>, sx: number, sy: number): Layer | null => {
+    const layer = doc.layers.find((item) => item.id === action.layerId);
+    if (!layer) return null;
 
     if (action.type === 'rotate') {
-      const currAngle = Math.atan2(sy - action.centerY, sx - action.centerX);
-      const angleDelta = ((currAngle - action.startAngle) * 180) / Math.PI;
-      const newRotation = Math.round((action.origRotation + angleDelta) % 360);
+      const angle = Math.atan2(sy - action.centerY, sx - action.centerX);
+      const rotation = Math.round((action.origRotation + ((angle - action.startAngle) * 180) / Math.PI) % 360);
+      return rotation === (layer.rotation ?? 0) ? null : { ...layer, rotation };
+    }
 
-      onUpdateDocSilent((prev) => ({
-        ...prev,
-        layers: prev.layers.map((l) => (l.id === action.layerId ? { ...l, rotation: newRotation } : l)),
-      }));
+    const dx = sx - action.startX;
+    const dy = sy - action.startY;
+    if (dx === 0 && dy === 0) return null;
+
+    if (action.type === 'move') {
+      if (layer.type === 'path' && action.origPoints) {
+        return { ...layer, points: action.origPoints.map((p) => ({ x: p.x + dx, y: p.y + dy })) };
+      }
+      return { ...layer, x: action.origLayerX + dx, y: action.origLayerY + dy };
+    }
+
+    // Resize in layer coordinates and keep the opposite corner fixed on the image.
+    const angle = (action.rotation * Math.PI) / 180;
+    const cos = Math.cos(angle);
+    const sin = Math.sin(angle);
+    const signX = action.handle.endsWith('w') ? -1 : 1;
+    const signY = action.handle.startsWith('n') ? -1 : 1;
+    const width = Math.max(Math.min(16, action.origW), action.origW + signX * (dx * cos + dy * sin));
+    const height = Math.max(Math.min(16, action.origH), action.origH + signY * (dy * cos - dx * sin));
+    const shiftX = (signX * (width - action.origW)) / 2;
+    const shiftY = (signY * (height - action.origH)) / 2;
+    return {
+      ...layer,
+      x: action.origX + (action.origW - width) / 2 + shiftX * cos - shiftY * sin,
+      y: action.origY + (action.origH - height) / 2 + shiftX * sin + shiftY * cos,
+      width,
+      height,
+    };
+  };
+
+  const updateCrop = (action: Extract<DragAction, { origRect: CropRect }>, sx: number, sy: number) => {
+    if (!onCropChange) return;
+    const dx = Math.round(sx - action.startX);
+    const dy = Math.round(sy - action.startY);
+    const orig = action.origRect;
+    if (action.type === 'crop-move') {
+      onCropChange({
+        ...orig,
+        x: Math.max(0, Math.min(doc.width - orig.width, orig.x + dx)),
+        y: Math.max(0, Math.min(doc.height - orig.height, orig.y + dy)),
+      });
       return;
     }
 
-    if (action.type === 'resize') {
-      const dx = sx - action.startX;
-      const dy = sy - action.startY;
-      const orig = action;
+    const minWidth = Math.min(orig.width, 20);
+    const minHeight = Math.min(orig.height, 20);
+    const right = orig.x + orig.width;
+    const bottom = orig.y + orig.height;
+    const leftEdge = action.handle.endsWith('w');
+    const topEdge = action.handle.startsWith('n');
+    const x = leftEdge ? Math.max(0, Math.min(right - minWidth, orig.x + dx)) : orig.x;
+    const y = topEdge ? Math.max(0, Math.min(bottom - minHeight, orig.y + dy)) : orig.y;
+    onCropChange({
+      x,
+      y,
+      width: leftEdge ? right - x : Math.max(minWidth, Math.min(doc.width - x, orig.width + dx)),
+      height: topEdge ? bottom - y : Math.max(minHeight, Math.min(doc.height - y, orig.height + dy)),
+    });
+  };
 
-      let nx = orig.origX;
-      let ny = orig.origY;
-      let nw = orig.origW;
-      let nh = orig.origH;
+  const appendPoint = (layer: PathLayer, x: number, y: number) => {
+    const previous = layer.points.at(-1);
+    if (previous?.x !== x || previous.y !== y) layer.points.push({ x, y });
+  };
 
-      if (orig.handle === 'se') {
-        nw = Math.max(16, orig.origW + dx);
-        nh = Math.max(16, orig.origH + dy);
-      } else if (orig.handle === 'sw') {
-        nx = Math.min(orig.origX + orig.origW - 16, orig.origX + dx);
-        nw = orig.origW - (nx - orig.origX);
-        nh = Math.max(16, orig.origH + dy);
-      } else if (orig.handle === 'ne') {
-        ny = Math.min(orig.origY + orig.origH - 16, orig.origY + dy);
-        nw = Math.max(16, orig.origW + dx);
-        nh = orig.origH - (ny - orig.origY);
-      } else if (orig.handle === 'nw') {
-        nx = Math.min(orig.origX + orig.origW - 16, orig.origX + dx);
-        ny = Math.min(orig.origY + orig.origH - 16, orig.origY + dy);
-        nw = orig.origW - (nx - orig.origX);
-        nh = orig.origH - (ny - orig.origY);
-      }
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const action = dragActionRef.current;
+    if (!action || pointerId.current !== e.pointerId) return;
 
-      onUpdateDocSilent((prev) => ({
-        ...prev,
-        layers: prev.layers.map((l) =>
-          l.id === orig.layerId ? { ...l, x: Math.round(nx), y: Math.round(ny), width: Math.round(nw), height: Math.round(nh) } : l,
-        ),
-      }));
+    const { x, y } = getCanvasCoords(e);
+    if (action.type === 'crop-move' || action.type === 'crop-resize') {
+      updateCrop(action, x, y);
+    } else if (action.type === 'draw') {
+      appendPoint(action.layer, x, y);
+      setDraftLayer({ ...action.layer });
+    } else if (action.type === 'create-shape') {
+      setDraftLayer(getShapeLayer(action, x, y));
+    } else {
+      setDraftLayer(changeLayer(action, x, y));
     }
   };
 
-  // Pointer Up
-  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      // Ignore if not captured
-    }
-
-    const action = dragActionRef.current;
+  const clearGesture = () => {
+    pointerId.current = null;
     dragActionRef.current = null;
+    setDraftLayer(null);
+  };
 
-    if (action && action.type === 'create-shape') {
-      const { x: sx, y: sy } = getCanvasCoords(e);
-      const newId = 'shape-' + Date.now();
-      const x = Math.min(action.startX, sx);
-      const y = Math.min(action.startY, sy);
-      const w = Math.max(20, Math.abs(sx - action.startX));
-      const h = Math.max(20, Math.abs(sy - action.startY));
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (pointerId.current !== e.pointerId) return;
+    const action = dragActionRef.current;
+    clearGesture();
+    if (!action) return;
 
-      let newLayer: Layer;
-
-      if (action.shape.type === 'redact') {
-        newLayer = {
-          id: newId,
-          type: 'redact',
-          x,
-          y,
-          width: w,
-          height: h,
-          redactType: action.shape.redactType || 'pixelate',
-        };
-      } else if (action.shape.type === 'arrow') {
-        const dx = sx - action.startX;
-        const dy = sy - action.startY;
-        const len = Math.max(20, Math.hypot(dx, dy));
-        const rot = (Math.atan2(dy, dx) * 180) / Math.PI;
-        newLayer = {
-          id: newId,
-          type: 'arrow',
-          x: action.startX,
-          y: action.startY - (action.shape.strokeWidth * 3) / 2,
-          width: len,
-          height: Math.max(16, action.shape.strokeWidth * 3),
-          rotation: rot,
-          stroke: action.shape.stroke,
-          strokeWidth: action.shape.strokeWidth,
-        };
-      } else if (action.shape.type === 'line') {
-        newLayer = {
-          id: newId,
-          type: 'line',
-          x,
-          y,
-          width: w,
-          height: h,
-          stroke: action.shape.stroke,
-          strokeWidth: action.shape.strokeWidth,
-        };
-      } else if (action.shape.type === 'ellipse') {
-        newLayer = {
-          id: newId,
-          type: 'ellipse',
-          x,
-          y,
-          width: w,
-          height: h,
-          stroke: action.shape.stroke,
-          strokeWidth: action.shape.strokeWidth,
-          fill: action.shape.fill || 'transparent',
-        };
-      } else {
-        newLayer = {
-          id: newId,
-          type: 'rect',
-          x,
-          y,
-          width: w,
-          height: h,
-          stroke: action.shape.stroke,
-          strokeWidth: action.shape.strokeWidth,
-          fill: action.shape.fill || 'transparent',
-        };
-      }
-
-      const cleanLayers = doc.layers.filter((l) => l.id !== 'preview-shape');
-      onPushDoc({
-        ...doc,
-        layers: [...cleanLayers, newLayer],
-      });
-      onSelectLayer(newId);
+    const { x, y } = getCanvasCoords(e);
+    if (action.type === 'crop-move' || action.type === 'crop-resize') {
+      updateCrop(action, x, y);
       return;
     }
 
-    if (isModifiedDuringDrag) {
-      onPushDoc({ ...doc });
+    let layer: Layer | null;
+    if (action.type === 'draw') {
+      appendPoint(action.layer, x, y);
+      layer = action.layer;
+    } else if (action.type === 'create-shape') {
+      const shape = getShapeLayer(action, x, y);
+      if (!shape) return;
+      layer = { ...shape, id: `shape-${Date.now()}-${nextLayer.current++}` };
+      onSelectLayer(layer.id);
+    } else {
+      layer = changeLayer(action, x, y);
     }
+    if (!layer) return;
+
+    const layers = doc.layers.some((item) => item.id === layer.id)
+      ? doc.layers.map((item) => (item.id === layer.id ? layer : item))
+      : [...doc.layers, layer];
+    onPushDoc({ ...doc, layers });
+  };
+
+  const handlePointerCancel = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    if (pointerId.current !== e.pointerId) return;
+    const action = dragActionRef.current;
+    if (action?.type === 'crop-resize' || action?.type === 'crop-move') onCropChange?.(action.origRect);
+    clearGesture();
+  };
+
+  const handleCanvasKey = (e: React.KeyboardEvent<HTMLCanvasElement>) => {
+    if (mode !== 'select' || e.altKey || e.ctrlKey || e.metaKey) return;
+    const layer = doc.layers.find((item) => item.id === selectedLayerId);
+    const dx = Number(e.key === 'ArrowRight') - Number(e.key === 'ArrowLeft');
+    const dy = Number(e.key === 'ArrowDown') - Number(e.key === 'ArrowUp');
+    if (!layer || (!dx && !dy)) return;
+    e.preventDefault();
+    const step = e.shiftKey ? 10 : 1;
+    const moved =
+      layer.type === 'path'
+        ? { ...layer, points: layer.points.map((p) => ({ x: p.x + dx * step, y: p.y + dy * step })) }
+        : { ...layer, x: layer.x + dx * step, y: layer.y + dy * step };
+    onPushDoc({ ...doc, layers: doc.layers.map((item) => (item.id === layer.id ? moved : item)) });
   };
 
   // Keyboard listener for Delete
@@ -779,28 +685,76 @@ export function CanvasStage({
     return '';
   };
 
+  const canvas = (
+    <canvas
+      ref={canvasRef}
+      data-testid="canvas-stage"
+      role="img"
+      aria-label={t(
+        'Editing canvas. Placing, moving and resizing layers needs a pointer; the side panel controls and the Delete key edit the selected layer.',
+      )}
+      className={`${styles.canvasElement} ${getCursorClass()}`}
+      tabIndex={workspace ? 0 : undefined}
+      width={doc.width}
+      height={doc.height}
+      style={{
+        width: `${Math.max(1, doc.width * scale)}px`,
+        height: `${Math.max(1, doc.height * scale)}px`,
+      }}
+      onKeyDown={workspace ? handleCanvasKey : undefined}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onLostPointerCapture={handlePointerCancel}
+    />
+  );
+
+  if (workspace) {
+    return (
+      <div className={styles.workspace}>
+        <div ref={containerRef} className={styles.workspaceFrame}>
+          <div ref={scrollRef} className={styles.workspaceScroll}>
+            <div className={styles.workspaceCanvas}>{canvas}</div>
+          </div>
+        </div>
+        <footer className={styles.workspaceFooter}>
+          <span>
+            {doc.width} × {doc.height} px
+          </span>
+          <div className={styles.zoomControls} role="group" aria-label={t('Canvas zoom')}>
+            <button
+              type="button"
+              aria-label={t('Zoom out')}
+              title={t('Zoom out')}
+              disabled={zoomStep <= -2}
+              onClick={() => setZoomStep(zoomStep - 1)}
+            >
+              <Minus aria-hidden="true" />
+            </button>
+            <output aria-live="polite">{Math.max(1, Math.round(scale * 100))}%</output>
+            <button
+              type="button"
+              aria-label={t('Zoom in')}
+              title={t('Zoom in')}
+              disabled={zoomStep >= 8}
+              onClick={() => setZoomStep(zoomStep + 1)}
+            >
+              <Plus aria-hidden="true" />
+            </button>
+            <button type="button" aria-label={t('Fit to view')} title={t('Fit to view')} onClick={() => setZoomStep(0)}>
+              <Maximize aria-hidden="true" />
+              {t('Fit')}
+            </button>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
   return (
     <div ref={containerRef} className={styles.stageWrapper}>
-      <div className={styles.stageViewport}>
-        <canvas
-          ref={canvasRef}
-          data-testid="canvas-stage"
-          role="img"
-          aria-label={t(
-            'Editing canvas. Placing, moving and resizing layers needs a pointer; the side panel controls and the Delete key edit the selected layer.',
-          )}
-          className={`${styles.canvasElement} ${getCursorClass()}`}
-          width={doc.width}
-          height={doc.height}
-          style={{
-            width: `${Math.round(doc.width * scale)}px`,
-            height: `${Math.round(doc.height * scale)}px`,
-          }}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-        />
-      </div>
+      <div className={styles.stageViewport}>{canvas}</div>
       <div className={styles.stageInfo}>
         {doc.width} × {doc.height} px ({Math.round(scale * 100)}%)
       </div>

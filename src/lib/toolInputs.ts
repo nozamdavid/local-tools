@@ -538,6 +538,7 @@ const FILE_CONVERTER_FORMATS = new Set<CanonicalFormat>([
 ]);
 
 const VIDEO_CONTAINERS = new Set<CanonicalFormat>(['mp4', 'mov', 'webm-video', 'mkv', 'avi']);
+const VIDEO_EDITOR_FORMATS = new Set<CanonicalFormat>(['mp4', 'mov', 'webm-video']);
 
 const EXIF_VIEWER_FORMATS = new Set<CanonicalFormat>(['jpg', 'heic', 'png', 'webp', 'tiff']);
 
@@ -577,6 +578,7 @@ export function isToolEligibleForFile(tool: ToolMeta, file: File): boolean {
 
   // 3. Other Video Tools (single video)
   if (tool.media === 'video') {
+    if (tool.id === 'video-editor') return VIDEO_EDITOR_FORMATS.has(c.format);
     if (tool.id === 'merge') return false; // min 2
     if (tool.id === 'text-behind-image') return c.isStandardImage;
     return c.isVideo;

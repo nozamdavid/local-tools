@@ -1,15 +1,29 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { ArrowUpRight, X } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowUpRight, File as FileIcon, Film, Image, X } from 'lucide-react';
 import { FileDrop } from '../components/FileDrop';
 import { ToolGrid } from '../components/ToolGrid';
 import { Button } from '../components/Controls';
-import { categories, localizeCategory, tools, toolsByMedia, type ToolMeta } from '../tools/registry';
+import { categories, localizeCategory, localizeToolMeta, tools, toolsByMedia, type ToolMeta } from '../tools/registry';
 import { MEDIA_LIST, localizeMediaInfo } from '../design/media';
-import { clearPendingFiles, setPendingFiles, suggestToolsForFiles } from '../lib/handoff';
+import { clearPendingFiles, extensionOf, setPendingFiles, suggestToolsForFiles } from '../lib/handoff';
 import { formatBytes, formatNumber } from '../lib/format';
 import { useI18n } from '../lib/i18n';
+import { useObjectUrl } from '../lib/useObjectUrl';
+import {
+  clearRecentFiles,
+  isRecentEditorPath,
+  listRecentFiles,
+  rememberRecentFiles,
+  removeRecentFiles,
+  restoreRecentFiles,
+  subscribeToRecentFiles,
+  type RecentFilesEntry,
+} from '../lib/recentFiles';
 import styles from './Home.module.css';
+
+const recentTools = new Map(tools.map((tool) => [tool.path, tool]));
+const thumbnailTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
 
 function FileRoutes() {
   return (
@@ -99,8 +113,138 @@ function QuickDropResult({
         </Button>
       </div>
       <div className="quick-drop-heading">{t('Choose a tool to open these files.')}</div>
-      <ToolGrid tools={suggestions} variant="compact" onSelect={(tool) => setPendingFiles(files, tool.path)} />
+      <ToolGrid
+        tools={suggestions}
+        variant="compact"
+        onSelect={(tool) => {
+          setPendingFiles(files, tool.path);
+          if (!isRecentEditorPath(tool.path)) void rememberRecentFiles(files, tool.path);
+        }}
+      />
     </div>
+  );
+}
+
+function RecentThumbnail({ blob }: { blob: Blob }) {
+  const url = useObjectUrl(blob.size <= 8 * 1024 * 1024 && thumbnailTypes.has(blob.type) ? blob : null);
+
+  return (
+    <span className={styles.recentThumbnail} aria-hidden="true">
+      <FileIcon />
+      {url && (
+        <img
+          key={url}
+          src={url}
+          alt=""
+          decoding="async"
+          loading="lazy"
+          onLoad={(event) => {
+            event.currentTarget.dataset.loaded = 'true';
+          }}
+        />
+      )}
+    </span>
+  );
+}
+
+function RecentFiles() {
+  const { t, locale } = useI18n();
+  const navigate = useNavigate();
+  const [entries, setEntries] = useState<RecentFilesEntry[]>([]);
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    let revision = 0;
+    const refresh = async () => {
+      const current = ++revision;
+      const next = await listRecentFiles();
+      if (current === revision) setEntries(next.filter(({ toolPath }) => recentTools.has(toolPath)));
+    };
+    const unsubscribe = subscribeToRecentFiles(refresh);
+    void refresh();
+    return () => {
+      revision++;
+      unsubscribe();
+    };
+  }, []);
+
+  if (entries.length === 0) return null;
+
+  const date = new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' });
+  const remove = async (trigger: HTMLButtonElement, id?: string) => {
+    const success = await (id ? removeRecentFiles(id) : clearRecentFiles());
+    setError(!success);
+    if (success && document.activeElement === trigger) {
+      const row = trigger.closest('li');
+      const next = row?.nextElementSibling ?? row?.previousElementSibling;
+      const target = next?.querySelector('button') ?? document.getElementById('browse-title');
+      target?.focus({ preventScroll: true });
+    }
+  };
+
+  return (
+    <section className={styles.recent} aria-labelledby="recent-files-title">
+      <header className={styles.catalogHeader}>
+        <h2 id="recent-files-title">{t('Recent files')}</h2>
+        <Button
+          variant="ghost"
+          onClick={(event) => {
+            if (window.confirm(t('Clear all recent files and their saved editor drafts?'))) void remove(event.currentTarget);
+          }}
+        >
+          {t('Clear recent files')}
+        </Button>
+      </header>
+      <p>{t('Originals and editor drafts stay in this browser. Remove or clear entries to delete their stored copies and drafts.')}</p>
+      {error && <p role="alert">{t('Could not update recent files. Try again.')}</p>}
+      <ul className={styles.recentList}>
+        {entries.map((entry, index) => {
+          const first = entry.files[0];
+          const name =
+            entry.files.length === 1
+              ? first.name
+              : `${first.name} ${t('and {count} more', { count: formatNumber(entry.files.length - 1) })}`;
+          const type = extensionOf(first.name).toUpperCase() || first.blob.type || t('File');
+          const tool = recentTools.get(entry.toolPath);
+          const detailsId = `recent-file-details-${index}`;
+          return (
+            <li key={entry.id} className={styles.recentRow}>
+              <button
+                type="button"
+                className={styles.recentOpen}
+                aria-label={t('Reopen {name}', { name })}
+                aria-describedby={detailsId}
+                onClick={() => {
+                  const files = restoreRecentFiles(entry);
+                  setPendingFiles(files, entry.toolPath);
+                  if (!isRecentEditorPath(entry.toolPath)) void rememberRecentFiles(files, entry.toolPath);
+                  void navigate(entry.toolPath);
+                }}
+              >
+                <RecentThumbnail blob={first.blob} />
+                <span className={styles.recentDetails}>
+                  <span className={styles.recentName} title={name}>
+                    {name}
+                  </span>
+                  <span className={styles.recentMeta} id={detailsId}>
+                    {type} · {formatBytes(entry.size)} ·{' '}
+                    <time dateTime={new Date(entry.openedAt).toISOString()}>{date.format(entry.openedAt)}</time>
+                    {tool && <> · {localizeToolMeta(tool).title}</>}
+                  </span>
+                </span>
+                <ArrowUpRight className={styles.recentArrow} aria-hidden="true" />
+              </button>
+              <Button
+                variant="ghost"
+                icon={<X aria-hidden="true" />}
+                aria-label={t('Remove {name} from recent files', { name })}
+                onClick={(event) => void remove(event.currentTarget, entry.id)}
+              />
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -116,15 +260,29 @@ export function Home() {
           <p className={styles.description}>
             {t('Convert, edit, and inspect files in your browser. Open a file to see which tools can work with it.')}
           </p>
+          <nav className={styles.editorLinks} aria-label={t('Editors')}>
+            <Link to="/image/photo-editor" className="btn btn-secondary">
+              <Image aria-hidden="true" />
+              {t('Photo Editor')}
+            </Link>
+            <Link to="/video/video-editor" className="btn btn-secondary">
+              <Film aria-hidden="true" />
+              {t('Video Editor')}
+            </Link>
+          </nav>
         </div>
         <section className={styles.drop} aria-label={t('Open a file')}>
           <QuickDrop />
         </section>
       </section>
 
+      <RecentFiles />
+
       <section aria-labelledby="browse-title">
         <header className={styles.catalogHeader}>
-          <h2 id="browse-title">{t('Browse tools')}</h2>
+          <h2 id="browse-title" tabIndex={-1}>
+            {t('Browse tools')}
+          </h2>
           <span className={styles.count}>{t('{count} tools', { count: formatNumber(tools.length) })}</span>
         </header>
         <div className={styles.catalog}>

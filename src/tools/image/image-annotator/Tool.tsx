@@ -53,7 +53,6 @@ export default function Tool() {
     undo,
     redo,
     pushDoc,
-    updateDocSilent,
     resetHistory,
   } = useCanvasHistory({
     width: 800,
@@ -366,7 +365,6 @@ export default function Tool() {
             drawConfig={drawConfig}
             shapeConfig={shapeConfig}
             onSelectLayer={setSelectedLayerId}
-            onUpdateDocSilent={updateDocSilent}
             onPushDoc={pushDoc}
             onDeleteLayer={deleteLayer}
           />

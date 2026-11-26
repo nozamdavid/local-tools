@@ -58,6 +58,8 @@ const MIN_PREFIX_LENGTH = 3;
 const MIN_FUZZY_LENGTH = 4;
 
 const TITLE_ALIASES: Record<string, string[]> = {
+  'video-editor': ['Edit video'],
+  'img-photo-editor': ['Edit image'],
   'remove-audio': ['Remove audio from video'],
 };
 

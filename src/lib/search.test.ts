@@ -37,6 +37,13 @@ describe('tool search', () => {
     expect(ids('add pdf password')[0]).toBe('pdf-protect');
   });
 
+  it('finds the editor workspaces by task phrase and localized title', () => {
+    expect(ids('edit image')[0]).toBe('img-photo-editor');
+    expect(ids('edit video')[0]).toBe('video-editor');
+    setLocale('fr');
+    expect(ids('éditeur vidéo')[0]).toBe('video-editor');
+  });
+
   it('matches one insertion, deletion, substitution, and adjacent transposition', () => {
     expect(ids('compreess pdf')[0]).toBe('pdf-compress');
     expect(ids('compres pdf')[0]).toBe('pdf-compress');

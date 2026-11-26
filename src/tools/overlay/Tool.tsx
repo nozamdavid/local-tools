@@ -795,6 +795,7 @@ export default function OverlayTool() {
                           {!imageFile ? (
                             <FileDrop
                               accept="image/*"
+                              rememberInHistory={false}
                               label={t('Choose a watermark image')}
                               hint={t('Supports PNG, JPG, WebP, SVG (PNG with transparency recommended)')}
                               onFiles={handleImageFiles}

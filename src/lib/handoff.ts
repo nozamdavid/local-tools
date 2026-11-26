@@ -138,9 +138,9 @@ const PRIMARY_SINGLE_TOOLS: Record<string, string[]> = {
   ico: ['img-icon-converter', 'file-converter'],
   tiff: ['img-exif-viewer', 'img-exif-remover', 'file-converter'],
 
-  mp4: ['video-health', 'convert', 'compress', 'trim', 'video-info'],
-  mov: ['video-health', 'convert', 'compress', 'trim', 'video-info'],
-  'webm-video': ['video-health', 'convert', 'compress', 'trim', 'video-info'],
+  mp4: ['video-editor', 'video-health', 'convert', 'compress', 'trim', 'video-info'],
+  mov: ['video-editor', 'video-health', 'convert', 'compress', 'trim', 'video-info'],
+  'webm-video': ['video-editor', 'video-health', 'convert', 'compress', 'trim', 'video-info'],
   mkv: ['video-health', 'convert', 'compress', 'trim', 'video-info'],
   avi: ['video-health', 'convert', 'compress', 'trim', 'video-info'],
 
@@ -246,8 +246,12 @@ export function suggestToolsForFiles(files: File[]): ToolMeta[] {
   const eligible = TOOL_METAS.filter((t) => isToolEligibleForFile(t, file));
   const eligibleIds = new Set(eligible.map((t) => t.id));
 
-  // 1. Primary format-specific tools first
+  // 1. Prefer photo editing for regular images, with dedicated routes first for HEIC and SVG.
+  const photoEditorEligible = eligibleIds.has('img-photo-editor');
+  const preferPhotoSpecialist = c.format === 'heic' || c.format === 'svg';
+  if (photoEditorEligible && !preferPhotoSpecialist) push('img-photo-editor');
   (PRIMARY_SINGLE_TOOLS[c.format] ?? []).filter((id) => eligibleIds.has(id)).forEach(push);
+  if (photoEditorEligible) push('img-photo-editor');
   if (c.isStandardImage) push('img-icon-converter');
 
   // 2. Popular eligible tools

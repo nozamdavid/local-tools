@@ -8,6 +8,8 @@ export interface BaseLayer {
   width: number;
   height: number;
   rotation?: number; // in degrees
+  flipX?: boolean;
+  flipY?: boolean;
   opacity?: number; // 0 to 1
 }
 
@@ -95,7 +97,7 @@ export interface CalloutLayer extends BaseLayer {
 
 export interface RedactLayer extends BaseLayer {
   type: 'redact';
-  redactType: 'blur' | 'pixelate';
+  redactType: 'blur' | 'pixelate' | 'solid';
 }
 
 export type Layer =

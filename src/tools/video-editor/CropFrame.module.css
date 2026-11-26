@@ -1,0 +1,93 @@
+.stage {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  min-height: 0;
+  container-type: size;
+}
+
+.frame {
+  position: relative;
+  width: min(calc(100cqw - 0.5rem), calc((100cqh - 0.5rem) * var(--aspect)));
+  aspect-ratio: var(--aspect);
+  background: #000;
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+}
+
+.frame canvas,
+.mask {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.mask {
+  overflow: hidden;
+}
+
+.aperture,
+.selection {
+  position: absolute;
+}
+
+.aperture {
+  box-shadow: 0 0 0 100vmax rgb(0 0 0 / 62%);
+}
+
+.selection {
+  --crop-edge: var(--signal, var(--accent));
+  outline: 2px solid var(--crop-edge);
+  outline-offset: -1px;
+}
+
+.selection[data-drag='move'] {
+  cursor: move;
+}
+
+.grip {
+  position: absolute;
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  transform: translate(-50%, -50%);
+}
+
+.grip::after {
+  content: '';
+  width: 10px;
+  height: 10px;
+  border: 1px solid var(--signal-ink, #000);
+  border-radius: 2px;
+  background: var(--crop-edge);
+}
+
+.nw {
+  top: 0;
+  left: 0;
+  cursor: nwse-resize;
+}
+
+.ne {
+  top: 0;
+  left: 100%;
+  cursor: nesw-resize;
+}
+
+.sw {
+  top: 100%;
+  left: 0;
+  cursor: nesw-resize;
+}
+
+.se {
+  top: 100%;
+  left: 100%;
+  cursor: nwse-resize;
+}

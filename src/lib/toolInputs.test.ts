@@ -139,6 +139,29 @@ describe('toolInputs and handoff classification', () => {
     expect(isToolEligibleForFile(getToolMeta('pdf-metadata-cleaner'), svg)).toBe(false);
   });
 
+  it('prioritizes editors for compatible single-file drops and preserves specialized routes', () => {
+    for (const [name, path, accept] of [
+      ['photo.jpg', '/image/photo-editor', 'image/*'],
+      ['graphic.png', '/image/photo-editor', 'image/*'],
+      ['clip.mp4', '/video/video-editor', 'video/*'],
+      ['clip.mov', '/video/video-editor', 'video/*'],
+      ['clip.webm', '/video/video-editor', 'video/*'],
+    ]) {
+      const file = createFile(name);
+      expect(suggestToolsForFiles([file])[0].path).toBe(path);
+      setPendingFiles([file], path);
+      expect(takePendingFiles(path, accept)).toEqual({ accepted: [file], rejected: [] });
+    }
+
+    expect(suggestToolsForFiles([createFile('photo.heic')])[0].id).toBe('img-heic-to-jpg');
+    expect(suggestToolsForFiles([createFile('clip.avi')])[0].id).toBe('video-health');
+    expect(suggestToolsForFiles([createFile('voice.webm', 'audio/webm')]).map(({ id }) => id)).not.toContain('video-editor');
+
+    const batch = suggestToolsForFiles([createFile('first.mp4'), createFile('second.webm')]).map(({ id }) => id);
+    expect(batch[0]).toBe('merge');
+    expect(batch).not.toContain('video-editor');
+  });
+
   it('suggests image comparison only for exactly two supported images', () => {
     const first = createFile('first.png', 'image/png');
     const second = createFile('second.jpg', 'image/jpeg');
@@ -149,7 +172,9 @@ describe('toolInputs and handoff classification', () => {
     expect(isToolEligibleForBatch(compare, [first, second])).toBe(true);
     expect(isToolEligibleForBatch(compare, [first, second, third])).toBe(false);
     expect(isToolEligibleForBatch(compare, [first, createFile('archive.zip', 'application/zip')])).toBe(false);
-    expect(suggestToolsForFiles([first, second]).map((tool) => tool.id)[0]).toBe('img-compare');
+    const batch = suggestToolsForFiles([first, second]).map(({ id }) => id);
+    expect(batch[0]).toBe('img-compare');
+    expect(batch).not.toContain('img-photo-editor');
   });
 
   it('hands a single mesh or CAD drop to the 3D Viewer and keeps model batches on the merger', () => {

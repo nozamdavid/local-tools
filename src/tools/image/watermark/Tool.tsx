@@ -69,7 +69,6 @@ export default function Tool() {
     undo,
     redo,
     pushDoc,
-    updateDocSilent,
     resetHistory,
   } = useCanvasHistory({
     width: 800,
@@ -379,7 +378,6 @@ export default function Tool() {
             selectedLayerId={isTiled ? null : selectedLayerId}
             mode="select"
             onSelectLayer={setSelectedLayerId}
-            onUpdateDocSilent={updateDocSilent}
             onPushDoc={pushDoc}
           />
 
@@ -413,6 +411,7 @@ export default function Tool() {
                   {!logoImg ? (
                     <FileDrop
                       accept="image/*"
+                      rememberInHistory={false}
                       label={t('Upload logo')}
                       hint={t('PNG with transparency recommended')}
                       onFiles={handleLogoDrop}

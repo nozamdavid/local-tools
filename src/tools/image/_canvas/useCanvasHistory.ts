@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { CanvasDocument } from './types';
 
 const MAX_HISTORY = 40;
@@ -20,10 +20,6 @@ export function useCanvasHistory(initialDoc: CanvasDocument) {
   const [history, setHistory] = useState<CanvasDocument[]>([cloneDoc(initialDoc)]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
 
-  // Keep a ref to the current doc to avoid stale closures in event handlers
-  const currentDocRef = useRef<CanvasDocument>(initialDoc);
-  currentDocRef.current = history[currentIndex] || initialDoc;
-
   const pushDoc = useCallback(
     (newDoc: CanvasDocument) => {
       const cloned = cloneDoc(newDoc);
@@ -36,18 +32,6 @@ export function useCanvasHistory(initialDoc: CanvasDocument) {
         return updated;
       });
       setCurrentIndex((prev) => Math.min(prev + 1, MAX_HISTORY - 1));
-    },
-    [currentIndex],
-  );
-
-  const updateDocSilent = useCallback(
-    (updater: (prev: CanvasDocument) => CanvasDocument) => {
-      setHistory((prev) => {
-        const updated = [...prev];
-        const newDoc = updater(updated[currentIndex]);
-        updated[currentIndex] = newDoc;
-        return updated;
-      });
     },
     [currentIndex],
   );
@@ -105,7 +89,6 @@ export function useCanvasHistory(initialDoc: CanvasDocument) {
     undo,
     redo,
     pushDoc,
-    updateDocSilent,
     resetHistory,
   };
 }

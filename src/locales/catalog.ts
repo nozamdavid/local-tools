@@ -461,6 +461,14 @@ const translations: Record<string, [string, string, string, string, string]> = {
     'Edite CSS e pré-visualize com um exemplo de HTML',
     'Modifiez le CSS et prévisualisez-le avec un exemple HTML',
   ],
+  'Video Editor': ['Editor de vídeo', 'Editor video', 'Videoeditor', 'Editor de vídeo', 'Éditeur vidéo'],
+  'Trim, crop, rotate and add a soundtrack to a video': [
+    'Recorta, reencuadra, gira y añade una pista de audio a un vídeo',
+    'Taglia, ritaglia, ruota e aggiungi una traccia audio a un video',
+    'Videos kürzen, zuschneiden, drehen und eine Tonspur hinzufügen',
+    'Corte, reenquadre, rode e adicione uma faixa de áudio a um vídeo',
+    'Découpez, recadrez et faites pivoter une vidéo ou ajoutez une piste audio',
+  ],
   Trim: ['Recortar', 'Taglia', 'Kürzen', 'Cortar', 'Découper'],
   'Cut the start and end of a video': [
     'Recorta el principio y el final de un vídeo',
@@ -805,12 +813,12 @@ const translations: Record<string, [string, string, string, string, string]> = {
     'Supprimez l’arrière-plan des photos avec l’IA sur l’appareil',
   ],
   'Photo Editor': ['Editor de fotos', 'Editor di foto', 'Fotoeditor', 'Editor de fotografias', 'Éditeur photo'],
-  'Adjust brightness, contrast, saturation and apply filters': [
-    'Ajusta el brillo, el contraste y la saturación, y aplica filtros',
-    'Regola luminosità, contrasto e saturazione e applica filtri',
-    'Helligkeit, Kontrast und Sättigung anpassen und Filter anwenden',
-    'Ajuste o brilho, o contraste e a saturação e aplique filtros',
-    'Ajustez la luminosité, le contraste et la saturation, et appliquez des filtres',
+  'Adjust photos, apply filters, add text and shapes, or redact areas': [
+    'Ajusta fotos, aplica filtros, añade texto y formas u oculta zonas',
+    'Regola le foto, applica filtri, aggiungi testo e forme oppure oscura delle aree',
+    'Fotos anpassen, Filter anwenden, Text und Formen hinzufügen oder Bereiche schwärzen',
+    'Ajuste fotografias, aplique filtros, adicione texto e formas ou oculte áreas',
+    'Ajustez vos photos, appliquez des filtres, ajoutez du texte et des formes ou masquez des zones',
   ],
   'Adjust Image': ['Ajustar imagen', 'Regola immagine', 'Bild anpassen', 'Ajustar imagem', 'Ajuster l’image'],
   'Fine-tune brightness, contrast, saturation and exposure': [

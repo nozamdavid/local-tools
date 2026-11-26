@@ -198,6 +198,7 @@ export default function CompareTool() {
                 <FileDrop
                   accept="application/pdf,.pdf"
                   multiple={true}
+                  rememberInHistory={!sourceB.file}
                   label={t('Drop Document A (Base PDF)')}
                   hint={t('First document to compare against.')}
                   onFiles={(files) => {
@@ -230,6 +231,7 @@ export default function CompareTool() {
               {!sourceB.file ? (
                 <FileDrop
                   accept="application/pdf,.pdf"
+                  rememberInHistory={false}
                   label={t('Drop Document B (New PDF)')}
                   hint={t('Second document to compare with Document A.')}
                   onFiles={(files) => files[0] && sourceB.open(files[0])}

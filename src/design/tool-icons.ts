@@ -116,6 +116,7 @@ export const TOOL_ICONS: Record<string, LucideIcon> = {
   'video-health': Stethoscope,
   'css-viewer': CodeXml,
 
+  'video-editor': Clapperboard,
   trim: Scissors,
   crop: Crop,
   loop: Repeat2,

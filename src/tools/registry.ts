@@ -307,6 +307,15 @@ export const TOOL_METAS: ToolMeta[] = [
   ]),
 
   // Video: Edit
+  video(
+    'video-editor',
+    'Video Editor',
+    'Trim, crop, rotate and add a soundtrack to a video',
+    '🎬',
+    'video-edit',
+    ['trim', 'crop', 'rotate', 'timeline', 'soundtrack', 'mp4', 'webm'],
+    true,
+  ),
   video('trim', 'Trim', 'Cut the start and end of a video', '✂️', 'video-edit', ['trim', 'mp4', 'webm', 'mov'], true),
   video('crop', 'Crop', 'Crop for social media or remove unwanted parts', '📐', 'video-edit', [
     'crop',
@@ -494,10 +503,10 @@ export const TOOL_METAS: ToolMeta[] = [
   image(
     'photo-editor',
     'Photo Editor',
-    'Adjust brightness, contrast, saturation and apply filters',
+    'Adjust photos, apply filters, add text and shapes, or redact areas',
     '🎨',
     'image-edit',
-    ['filter', 'color', 'jpg', 'png'],
+    ['filter', 'color', 'jpg', 'png', 'annotate', 'redact', 'draw'],
     true,
   ),
   image('adjust', 'Adjust Image', 'Fine-tune brightness, contrast, saturation and exposure', '🎚️', 'image-edit', [

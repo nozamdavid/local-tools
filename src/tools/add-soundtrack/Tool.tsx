@@ -209,6 +209,7 @@ export default function AddSoundtrackTool() {
                   <div className={styles.sectionTitle}>{t('Step 2: Select Audio / Soundtrack')}</div>
                   <FileDrop
                     accept="audio/*"
+                    rememberInHistory={false}
                     label={t('Choose an audio track or drag it here')}
                     hint={t('Supports MP3, WAV, AAC, OGG, and more.')}
                     onFiles={handleAudioFile}

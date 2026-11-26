@@ -56,6 +56,19 @@ describe('Continue with result workflows', () => {
     expect(unsupported).toEqual([]);
   });
 
+  it('offers applicable editors among the visible next tools', () => {
+    const photo = createFile('resized.webp', 'image/webp');
+    const video = createFile('trimmed.mp4', 'video/mp4');
+
+    expect(
+      getContinueWithTools('/image/resize', [photo])
+        .slice(0, 4)
+        .map(({ id }) => id),
+    ).toContain('img-photo-editor');
+    expect(getContinueWithTools('/video/trim', [video])[0].id).toBe('video-editor');
+    expect(getContinueWithTools('/video/video-editor', [video]).map(({ id }) => id)).not.toContain('video-editor');
+  });
+
   it('offers image comparison only when the complete output batch is exactly two images', () => {
     const twoImages = [createFile('one.png', 'image/png'), createFile('two.webp', 'image/webp')];
     const threeImages = [...twoImages, createFile('three.jpg', 'image/jpeg')];

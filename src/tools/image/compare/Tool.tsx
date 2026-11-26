@@ -201,6 +201,7 @@ export default function CompareTool() {
     <FileDrop
       accept={COMPARE_ACCEPT}
       multiple
+      rememberInHistory={!hasAnyImage}
       label={hasAnyImage ? t('Choose the missing image or drop it here') : t('Choose two images or drop them here')}
       hint={t('PNG, JPG, WebP, GIF or BMP. Convert other formats first.')}
       onFiles={loadIntoSlots}

@@ -2,6 +2,9 @@ import React, { useEffect, useId, useRef, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { ShieldCheck, Upload } from 'lucide-react';
 import { matchesAccept, takePendingFiles } from '../lib/handoff';
+import { isRecentEditorPath, rememberRecentFiles } from '../lib/recentFiles';
+import { isToolEligibleForBatch, isToolEligibleForFile } from '../lib/toolInputs';
+import { TOOL_METAS } from '../tools/registry';
 import { Button, Kbd } from './Controls';
 import { useFocusFallback } from './useFocusFallback';
 import { useI18n } from '../lib/i18n';
@@ -12,6 +15,7 @@ export interface FileDropProps {
   label?: string;
   hint?: string;
   icon?: React.ReactNode;
+  rememberInHistory?: boolean;
   onFiles: (files: File[]) => void;
 }
 
@@ -23,6 +27,7 @@ export function FileDrop({
   label = multiple ? 'Drop files here' : 'Drop a file here',
   hint,
   icon,
+  rememberInHistory = true,
   onFiles,
 }: FileDropProps) {
   const [isDragOver, setIsDragOver] = useState(false);
@@ -51,10 +56,18 @@ export function FileDrop({
       return;
     }
     setNotice(null);
-    onFilesRef.current(multiple ? accepted : [accepted[0]]);
+    const selection = multiple ? accepted : [accepted[0]];
+    onFilesRef.current(selection);
+
+    if (!rememberInHistory) return;
+    const tool = TOOL_METAS.find((item) => item.path === pathname);
+    // The editors record a source after they decode it successfully.
+    if (!tool || isRecentEditorPath(tool.path)) return;
+    const canReopen = selection.length === 1 ? isToolEligibleForFile(tool, selection[0]) : isToolEligibleForBatch(tool, selection);
+    if (canReopen) void rememberRecentFiles(selection, tool.path);
   }
 
-  // Pick up a file handed over from the home page drop zone.
+  // Pick up a handoff without recording the selection again.
   useEffect(() => {
     const handed = takePendingFiles(pathname, accept, multiple);
     if (!handed) return;

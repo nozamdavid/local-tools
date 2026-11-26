@@ -42,6 +42,7 @@ Loconvert processes supported files locally in the user's web browser using clie
 - **Route:** `/file-converter` (promoted on Home and Navigation)
 - **Engine:** `src/tools/file-converter/engines.ts`
 - **Supported Families:** Images, Videos, Audio, Documents (DOCX, PDF), Data & Text (JSON, CSV, TSV).
+- Dropping one compatible raster image or MP4, MOV, or WebM video suggests its editor first. HEIC and SVG prioritize their dedicated tools, and batches prioritize tools that can open the whole selection.
 - **Format Detection:** Inspects true binary magic bytes independently of file extensions via `src/tools/file-converter/detect.ts`.
 - **Office Document Limitations:** Document conversions (such as DOCX to PDF/images) render client-side via DOM and canvas elements (`docx-preview`), which has inherent layout and font rendering constraints compared to native desktop office applications.
 - **AVIF Encoding Support:** Prioritizes native browser canvas `toBlob('image/avif')` encoding and transparently falls back to the lazy bundled local `@jsquash/avif` WebAssembly worker (`src/lib/avif.worker.ts`) when native encoding is unavailable or unsupported.

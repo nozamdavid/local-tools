@@ -1,0 +1,262 @@
+import { getFFmpeg, runFFmpegWithinMediaJob } from '../../lib/ffmpeg';
+import { withMediaJobLock } from '../../lib/mediaQueue';
+
+export type Segment = { start: number; end: number };
+
+export type VideoEdit = {
+  segments: Segment[];
+  speed: number;
+  crop: { x: number; y: number; width: number; height: number } | null;
+  rotation: 0 | 90 | 180 | 270;
+  flipH: boolean;
+  flipV: boolean;
+  volume: number;
+  fadeIn: number;
+  fadeOut: number;
+  audioOffset: number;
+  audioVolume: number;
+};
+
+type ProbeStream = {
+  index: number;
+  codec_type: string;
+  start_time?: string;
+  duration?: string;
+  disposition?: { attached_pic?: number };
+};
+
+const sourceName = 'video-editor-source';
+const probeName = 'video-editor-probe.json';
+const musicName = 'video-editor-soundtrack';
+const sampleRate = 48000;
+
+function seconds(value: number): string {
+  return value.toFixed(6);
+}
+
+function tempoFilters(speed: number): string[] {
+  const filters: string[] = [];
+  while (speed > 2) {
+    filters.push('atempo=2');
+    speed /= 2;
+  }
+  while (speed < 0.5) {
+    filters.push('atempo=0.5');
+    speed *= 2;
+  }
+  if (speed !== 1) filters.push(`atempo=${speed}`);
+  return filters;
+}
+
+async function probeSource(ffmpeg: Awaited<ReturnType<typeof getFFmpeg>>) {
+  const exitCode = await ffmpeg.ffprobe([
+    '-hide_banner',
+    '-show_entries',
+    'stream=index,codec_type,start_time,duration:stream_disposition=attached_pic:format=start_time,duration',
+    '-of',
+    'json',
+    '-o',
+    probeName,
+    sourceName,
+  ]);
+  // Some builds leave the return code unset (-1) when ffprobe writes its report.
+  if (exitCode > 0) throw new Error('FFmpeg could not read the source video metadata.');
+  const result = await ffmpeg.readFile(probeName, 'utf8').catch(() => {
+    throw new Error('FFmpeg could not read the source video metadata.');
+  });
+  const probe = JSON.parse(String(result)) as {
+    streams?: ProbeStream[];
+    format?: { start_time?: string; duration?: string };
+  };
+  const video = probe.streams?.find((stream) => stream.codec_type === 'video' && !stream.disposition?.attached_pic);
+  if (!video) throw new Error('The source file has no video track.');
+  const audio = probe.streams?.find((stream) => stream.codec_type === 'audio');
+  const videoDuration = Number(video.duration);
+  const startOffset = Number(video.start_time ?? 0) - Number(probe.format?.start_time ?? 0);
+  const duration = videoDuration > 0 ? videoDuration + Math.max(0, startOffset) : Number(probe.format?.duration);
+  return { video, audio, duration };
+}
+
+function videoFilters(edit: VideoEdit): string[] {
+  const filters: string[] = [];
+  if (edit.crop) {
+    const { x, y, width, height } = edit.crop;
+    filters.push(`crop=${Math.round(width)}:${Math.round(height)}:${Math.round(x)}:${Math.round(y)}:exact=1`);
+  }
+  if (edit.rotation === 90) filters.push('transpose=clock');
+  if (edit.rotation === 180) filters.push('hflip', 'vflip');
+  if (edit.rotation === 270) filters.push('transpose=cclock');
+  if (edit.flipH) filters.push('hflip');
+  if (edit.flipV) filters.push('vflip');
+  filters.push('pad=ceil(iw/2)*2:ceil(ih/2)*2:0:0', 'format=yuv420p');
+  return filters;
+}
+
+function validateEdit(edit: VideoEdit) {
+  const { segments, speed, crop, volume, fadeIn, fadeOut, audioOffset, audioVolume } = edit;
+  if (!Number.isFinite(speed) || speed <= 0) throw new Error('Video speed must be greater than zero.');
+  if (
+    !segments.length ||
+    segments.some(({ start, end }) => !Number.isFinite(start) || !Number.isFinite(end) || start < 0 || end <= start)
+  ) {
+    throw new Error('Select at least one valid video range.');
+  }
+  if (
+    crop &&
+    (![crop.x, crop.y, crop.width, crop.height].every(Number.isFinite) || crop.x < 0 || crop.y < 0 || crop.width < 1 || crop.height < 1)
+  ) {
+    throw new Error('Select a valid crop rectangle.');
+  }
+  if (![volume, fadeIn, fadeOut, audioVolume].every((value) => Number.isFinite(value) && value >= 0) || !Number.isFinite(audioOffset)) {
+    throw new Error('Invalid audio settings.');
+  }
+}
+
+export async function exportVideoEdit(
+  file: File,
+  edit: VideoEdit,
+  soundtrack: File | null,
+  format: 'mp4' | 'webm',
+  onProgress: (value: number) => void,
+  signal: AbortSignal,
+): Promise<Blob> {
+  signal.throwIfAborted();
+  validateEdit(edit);
+
+  return withMediaJobLock(async () => {
+    signal.throwIfAborted();
+    const ffmpeg = await getFFmpeg();
+    signal.throwIfAborted();
+    const sourceBytes = new Uint8Array(await file.arrayBuffer());
+    signal.throwIfAborted();
+    onProgress(0);
+    try {
+      await ffmpeg.writeFile(sourceName, sourceBytes);
+      signal.throwIfAborted();
+      const { video, audio, duration: sourceDuration } = await probeSource(ffmpeg);
+      signal.throwIfAborted();
+      const segments = edit.segments.map(({ start, end }) => ({
+        start,
+        end: sourceDuration > 0 ? Math.min(end, sourceDuration) : end,
+      }));
+      if (segments.some(({ start, end }) => end - start < 0.000001)) throw new Error('A video range falls outside the source.');
+      const duration = segments.reduce((total, { start, end }) => total + (end - start) / edit.speed, 0);
+      if (!Number.isFinite(duration) || duration < 0.000001) throw new Error('Invalid output duration.');
+
+      const args: string[] = ['-hide_banner', '-loglevel', 'info'];
+      const graph: string[] = [];
+      const videoLabels: string[] = [];
+      const audioLabels: string[] = [];
+      const audioFormat = `aformat=sample_rates=${sampleRate}:channel_layouts=stereo`;
+      const activeSoundtrack = edit.audioOffset < duration ? soundtrack : null;
+      let outputStart = 0;
+
+      // Give each range a separate input seek so reordering does not buffer decoded frames from other ranges.
+      for (const [index, { start, end }] of segments.entries()) {
+        const length = seconds(end - start);
+        args.push('-ss', seconds(start), '-i', sourceName);
+        const videoLabel = `[v${index}]`;
+        videoLabels.push(videoLabel);
+        graph.push(
+          `[${index}:${video.index}]trim=end=${length},settb=AVTB,setpts=(PTS-STARTPTS)/${edit.speed}+${seconds(outputStart)}/TB${videoLabel}`,
+        );
+        if (audio) {
+          const audioLabel = `[a${index}]`;
+          audioLabels.push(audioLabel);
+          graph.push(
+            `[${index}:${audio.index}]aresample=${sampleRate}:async=1:first_pts=0,${audioFormat},apad,atrim=duration=${length}${audioLabel}`,
+          );
+        }
+        outputStart += (end - start) / edit.speed;
+      }
+
+      const videoJoin = videoLabels.length > 1 ? `interleave=nb_inputs=${videoLabels.length},` : '';
+      graph.push(`${videoLabels.join('')}${videoJoin}${videoFilters(edit).join(',')}[video]`);
+
+      const mixLabels: string[] = [];
+      const durationArg = seconds(duration);
+      if (audio) {
+        const sourceFilters = [
+          ...(audioLabels.length > 1 ? [`concat=n=${audioLabels.length}:v=0:a=1`] : []),
+          ...tempoFilters(edit.speed),
+          `volume=${edit.volume}`,
+          'apad',
+          `atrim=duration=${durationArg}`,
+        ];
+        if (edit.fadeIn > 0) sourceFilters.push(`afade=t=in:d=${seconds(Math.min(duration, edit.fadeIn))}`);
+        if (edit.fadeOut > 0) {
+          const fadeLength = Math.min(duration, edit.fadeOut);
+          sourceFilters.push(`afade=t=out:st=${seconds(duration - fadeLength)}:d=${seconds(fadeLength)}`);
+        }
+        graph.push(`${audioLabels.join('')}${sourceFilters.join(',')}[sourceAudio]`);
+        mixLabels.push('[sourceAudio]');
+      }
+      if (activeSoundtrack) {
+        args.push('-i', musicName);
+        const musicFilters = [audioFormat];
+        if (edit.audioOffset < 0) musicFilters.push(`atrim=start=${seconds(-edit.audioOffset)}`);
+        musicFilters.push('asetpts=PTS-STARTPTS');
+        if (edit.audioOffset > 0) musicFilters.push(`adelay=${Math.round(edit.audioOffset * sampleRate)}S:all=1`);
+        musicFilters.push(`volume=${edit.audioVolume}`, 'apad', `atrim=duration=${durationArg}`, 'asetpts=N/SR/TB');
+        graph.push(`[${segments.length}:a:0]${musicFilters.join(',')}[music]`);
+        mixLabels.push('[music]');
+      }
+      if (mixLabels.length === 2) graph.push(`${mixLabels.join('')}amix=inputs=2:duration=first:normalize=0[audio]`);
+
+      const output = `video-editor-export.${format}`;
+      // VP9 and Opus can trap in the bundled WASM build. WebM supports VP8 and Vorbis.
+      const videoCodec =
+        format === 'mp4'
+          ? ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-movflags', '+faststart']
+          : ['-c:v', 'libvpx', '-deadline', 'good', '-cpu-used', '4', '-crf', '10', '-b:v', '1M'];
+      const audioCodec = format === 'mp4' ? 'aac' : 'libvorbis';
+      const audioMap = mixLabels.length === 2 ? '[audio]' : mixLabels[0];
+      let progress = 0;
+      const reportProgress = ({ time }: { time: number }) => {
+        const ratio = Math.min(0.99, time / (duration * 1_000_000));
+        if (ratio > progress) {
+          progress = ratio;
+          onProgress(ratio);
+        }
+      };
+      ffmpeg.on('progress', reportProgress);
+      try {
+        const blob = await runFFmpegWithinMediaJob({
+          inputs: activeSoundtrack ? [{ name: musicName, data: activeSoundtrack }] : [],
+          args: [
+            ...args,
+            '-filter_complex',
+            graph.join(';'),
+            '-map',
+            '[video]',
+            ...videoCodec,
+            '-fps_mode',
+            'vfr',
+            '-enc_time_base:v',
+            '1:1000',
+            ...(audioMap ? ['-map', audioMap, '-c:a', audioCodec, '-b:a', '128k'] : []),
+            '-t',
+            durationArg,
+            output,
+          ],
+          output,
+          signal,
+        });
+        signal.throwIfAborted();
+        onProgress(1);
+        return blob;
+      } finally {
+        ffmpeg.off('progress', reportProgress);
+      }
+    } catch (error) {
+      signal.throwIfAborted();
+      throw error;
+    } finally {
+      if (ffmpeg.loaded) {
+        for (const name of [sourceName, probeName]) {
+          await ffmpeg.deleteFile(name).catch(() => undefined);
+        }
+      }
+    }
+  });
+}

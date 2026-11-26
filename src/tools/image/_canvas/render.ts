@@ -64,6 +64,14 @@ function drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, w:
 }
 
 function renderRedactLayer(ctx: CanvasRenderingContext2D, layer: RedactLayer, isPreview: boolean) {
+  if (layer.redactType === 'solid') {
+    const x = Math.floor(layer.x);
+    const y = Math.floor(layer.y);
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(x, y, Math.ceil(layer.x + layer.width) - x, Math.ceil(layer.y + layer.height) - y);
+    return;
+  }
+
   const x = Math.max(0, Math.round(layer.x));
   const y = Math.max(0, Math.round(layer.y));
   const w = Math.round(layer.width);
@@ -225,6 +233,9 @@ export function renderLayer(ctx: CanvasRenderingContext2D, layer: Layer, isPrevi
     if (layer.points.length > 0) {
       ctx.beginPath();
       ctx.moveTo(layer.points[0].x, layer.points[0].y);
+      if (layer.points.length === 1) {
+        ctx.lineTo(layer.points[0].x + 0.01, layer.points[0].y);
+      }
       for (let i = 1; i < layer.points.length; i++) {
         ctx.lineTo(layer.points[i].x, layer.points[i].y);
       }
@@ -256,6 +267,7 @@ export function renderLayer(ctx: CanvasRenderingContext2D, layer: Layer, isPrevi
     ctx.rotate((layer.rotation * Math.PI) / 180);
   }
 
+  ctx.scale(layer.flipX ? -1 : 1, layer.flipY ? -1 : 1);
   ctx.translate(-layer.width / 2, -layer.height / 2);
 
   const w = layer.width;
@@ -312,7 +324,7 @@ export function renderLayer(ctx: CanvasRenderingContext2D, layer: Layer, isPrevi
 
     case 'arrow': {
       const arrowCy = h / 2;
-      const headLen = Math.max(14, layer.strokeWidth * 3.2);
+      const headLen = Math.min(w, Math.max(14, layer.strokeWidth * 3.2));
 
       // Line
       ctx.beginPath();
@@ -396,9 +408,16 @@ export function renderDocument(ctx: CanvasRenderingContext2D, doc: CanvasDocumen
     ctx.restore();
   }
 
+  const solidRedactions: RedactLayer[] = [];
   for (const layer of doc.layers) {
+    if (layer.type === 'redact' && layer.redactType === 'solid') {
+      solidRedactions.push(layer);
+      continue;
+    }
     renderLayer(ctx, layer, isPreview);
   }
+  // Keep redacted pixels covered even when a later brush stroke erases pixels.
+  for (const layer of solidRedactions) renderLayer(ctx, layer, isPreview);
 }
 
 export async function exportDocument(doc: CanvasDocument, mime: EncodableMime, quality = 0.92): Promise<Blob> {

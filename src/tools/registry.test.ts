@@ -31,8 +31,10 @@ describe('Tool Registry', () => {
     const paths: Record<string, string> = {
       'zip-extract': '/zip-extract',
       'img-compare': '/image/compare',
+      'img-photo-editor': '/image/photo-editor',
       'img-svg-optimize': '/image/svg-optimize',
       'audio-trim': '/video/audio-trim',
+      'video-editor': '/video/video-editor',
       'pdf-metadata-cleaner': '/pdf/metadata-cleaner',
       'three-viewer': '/3d/viewer',
     };

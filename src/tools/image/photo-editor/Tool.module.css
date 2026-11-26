@@ -1,140 +1,326 @@
-.editorContainer {
+.workspace {
+  color-scheme: dark;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  max-width: none;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+
+.workspace[open] {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  width: 100%;
 }
 
 .topBar {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 0.75rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  padding: 0.5rem 0.875rem;
+}
+
+.filename {
+  margin: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-weight: 650;
+  letter-spacing: normal;
+}
+
+.historyGroup,
+.exportActions,
+.btnGroup,
+.colorInputRow {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  gap: 0.375rem;
+  min-width: 0;
 }
 
 .historyGroup {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  border-inline: 1px solid var(--border);
+  padding-inline: 0.5rem;
 }
 
-.iconBtn {
+.exportActions {
+  position: relative;
+}
+
+.exportActions > :global(.field-error) {
+  position: absolute;
+  z-index: 1;
+  inset-inline-end: 0;
+  top: 100%;
+  width: max-content;
+  max-width: 15rem;
+  padding: 0.5rem;
+  border: 1px solid var(--danger-border);
+  background: var(--surface-raised);
+}
+
+.iconBtn,
+.toolButton,
+.layerList button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: transparent;
-  color: var(--text);
-  font-size: 1rem;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.iconBtn:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-
-.iconBtn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.tabsRow {
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  overflow-x: auto;
-  padding-bottom: 2px;
-}
-
-.tabBtn {
-  padding: 0.45rem 0.85rem;
-  font-size: 0.9rem;
-  font-weight: 500;
-  border-radius: var(--radius-sm);
-  border: 1px solid transparent;
-  background: transparent;
   color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  font: inherit;
   cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s ease;
 }
 
-.tabBtn:hover {
+.iconBtn {
+  flex: none;
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.iconBtn svg,
+.toolButton svg,
+.layerHeading svg {
+  width: 1rem;
+  height: 1rem;
+  flex: none;
+}
+
+.iconBtn:hover:not(:disabled),
+.toolButton:hover,
+.layerList button:hover {
+  background: var(--surface-hover);
   color: var(--text);
-  background: var(--accent-soft);
 }
 
-.tabBtnActive {
-  color: var(--accent);
-  background: var(--accent-soft);
-  border-color: var(--accent);
-  font-weight: 600;
+.iconBtn:disabled,
+.iconBtn[aria-disabled='true'] {
+  opacity: 0.4;
+  cursor: default;
 }
 
-.controlsPanel {
+.workspace :is(button, canvas):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.workArea {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 5.75rem minmax(0, 1fr) minmax(15rem, 18rem);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.toolRail {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
-  padding: 1rem;
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
+  gap: 0.25rem;
+  padding: 0.5rem;
+  border-inline-end: 1px solid var(--border);
+  background: var(--surface);
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.toolButton {
+  flex: none;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-height: 2.75rem;
+  padding: 0.375rem 0.125rem;
+  font-size: 0.75rem;
+  font-weight: 550;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.toolButton[aria-pressed='true'],
+.layerList button[aria-pressed='true'] {
+  color: var(--accent-text);
+  border-color: var(--accent-border);
+  background: var(--accent-soft);
+}
+
+.inspector {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  border-inline-start: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.controlsPanel,
+.layerSection {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.875rem;
+  padding: 0.875rem;
+}
+
+.inspector h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 650;
 }
 
 .controlGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
+  min-width: 0;
+  gap: 0.75rem;
+}
+
+.controlGrid > :global(.field),
+.controlsPanel :global(.slider) {
+  min-width: 0;
+}
+
+.controlGrid > :global(.btn) {
+  align-self: center;
+  white-space: normal;
+}
+
+.cropFields {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .btnGroup {
-  display: flex;
   flex-wrap: wrap;
-  gap: 0.5rem;
-  align-items: center;
 }
 
-.colorInputRow {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+.btnGroup > button {
+  white-space: normal;
+  text-align: start;
 }
 
 .colorInput {
-  width: 36px;
-  height: 36px;
-  padding: 0;
-  border: 1px solid var(--border);
+  width: 2.25rem;
+  height: 2rem;
+  flex: none;
+  padding: 0.125rem;
+  border: 1px solid var(--input-border);
   border-radius: var(--radius-sm);
+  background: var(--input-bg);
   cursor: pointer;
 }
 
-.exportRow {
+.colorInputRow span {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+}
+
+.hint {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.layerSection {
+  border-top: 1px solid var(--border);
+  gap: 0.375rem;
+}
+
+.layerHeading {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 1rem;
-  padding: 1rem;
-  background-color: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
 }
 
-.exportControls {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  flex-wrap: wrap;
+.layerList {
+  display: grid;
+  gap: 0.25rem;
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.layerList button {
+  display: block;
+  width: 100%;
+  padding: 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: start;
+  font-size: 0.8125rem;
+}
+
+.notice {
+  padding: 0.5rem 0.875rem;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-raised);
+  font-size: 0.875rem;
+}
+
+.notice p {
+  margin: 0 0 0.5rem;
+}
+
+@media (max-width: 700px) {
+  .workArea {
+    grid-template: auto minmax(0, 1fr) auto / minmax(0, 1fr);
+  }
+
+  .toolRail {
+    flex-direction: row;
+    border-inline-end: 0;
+    border-bottom: 1px solid var(--border);
+    padding: 0.375rem 0.5rem;
+  }
+
+  .toolButton {
+    width: 4.75rem;
+  }
+
+  .inspector {
+    max-height: 33dvh;
+    border-inline-start: 0;
+    border-top: 1px solid var(--border);
+  }
+
+  .controlGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .controlGrid > .hint {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 500px) {
+  .topBar {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 0.25rem 0.375rem;
+    padding: 0.375rem 0.5rem;
+  }
+
+  .historyGroup {
+    border-inline-end: 0;
+  }
+
+  .exportActions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
 }
