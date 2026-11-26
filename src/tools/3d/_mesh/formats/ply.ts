@@ -9,12 +9,13 @@ export function parsePLY(buffer: ArrayBuffer, name = 'model'): MeshModel {
 
   const loader = new PLYLoader();
   let geom;
-  let ignoredAttributes = false;
   try {
     geom = loader.parse(buffer);
     const hasColors = Boolean(geom.getAttribute('color'));
     const hasUVs = Boolean(geom.getAttribute('uv'));
-    ignoredAttributes = hasColors || hasUVs || Boolean(geom.getAttribute('normal'));
+    if (hasColors || hasUVs || geom.getAttribute('normal')) {
+      warnings.push('Vertex colors and custom attributes were ignored (geometry-only import).');
+    }
     if (!geom.getIndex()?.count && (hasColors || hasUVs)) {
       // Face attributes can make PLYLoader expand the geometry. Read the original
       // indices without those attributes so coincident vertices stay distinct.
@@ -41,7 +42,6 @@ export function parsePLY(buffer: ArrayBuffer, name = 'model'): MeshModel {
     if (!indexAttr?.count) {
       throw new Error('PLY contains no supported faces. Point clouds are not supported.');
     }
-    if (ignoredAttributes) warnings.push('Vertex colors and custom attributes were ignored (geometry-only import).');
 
     return {
       name,
