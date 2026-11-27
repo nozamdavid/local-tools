@@ -37,7 +37,8 @@ const ASPECTS = ['16:9', '9:16', '1:1', '4:3'];
 const FILENAMES = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 const OUTPUT_NAME = 'timelapse.mp4';
 const DEMO_FRAME_COUNT = 240;
-const LOCAL_IMPORT_CONCURRENCY = 6;
+const DEFAULT_IMPORT_CONCURRENCY = 6;
+const MAX_IMPORT_CONCURRENCY = 8;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -277,6 +278,8 @@ export default function Tool() {
   const focusPreview = useRef(false);
   const importRequest = useRef<AbortController | null>(null);
   const importWork = useRef<Promise<void> | null>(null);
+  const importConcurrency = useRef(DEFAULT_IMPORT_CONCURRENCY);
+  const fillImportSlots = useRef<(() => void) | null>(null);
   const exportRequest = useRef<AbortController | null>(null);
   const previewUrls = useRef(new Set<string>());
 
@@ -377,17 +380,40 @@ export default function Tool() {
         return;
       }
 
-      let nextIndex = 0;
-      const workers = Array.from({ length: Math.min(LOCAL_IMPORT_CONCURRENCY, files.length) }, async () => {
-        while (!signal.aborted && nextIndex < files.length) {
-          const index = nextIndex++;
-          await loadPhoto(files[index], index);
-        }
-      });
-      // Drain every worker before the caller revokes uncommitted preview URLs.
-      const settled = await Promise.allSettled(workers);
-      for (const result of settled) {
-        if (result.status === 'rejected') throw result.reason;
+      const localFiles = files;
+      try {
+        await new Promise<void>((resolve, reject) => {
+          let nextIndex = 0;
+          let active = 0;
+          let failure: { reason: unknown } | undefined;
+
+          function completePhoto() {
+            active -= 1;
+            fillSlots();
+          }
+
+          function fillSlots() {
+            while (!signal.aborted && !failure && nextIndex < localFiles.length && active < importConcurrency.current) {
+              const index = nextIndex++;
+              active += 1;
+              void loadPhoto(localFiles[index], index).then(completePhoto, (reason: unknown) => {
+                failure ??= { reason };
+                completePhoto();
+              });
+            }
+
+            // Drain in-flight work before the caller revokes uncommitted preview URLs.
+            if (active === 0) {
+              if (failure) reject(failure.reason);
+              else resolve();
+            }
+          }
+
+          fillImportSlots.current = fillSlots;
+          fillSlots();
+        });
+      } finally {
+        fillImportSlots.current = null;
       }
     }
 
@@ -412,7 +438,10 @@ export default function Tool() {
       const sequence = [...photos, ...added].sort((a, b) => FILENAMES.compare(a.file.name, b.file.name));
       for (const item of added) previewUrls.current.add(item.previewUrl);
       committed = true;
-      if (!hasPhotos) focusPreview.current = !!start.current?.contains(document.activeElement);
+      if (!hasPhotos) {
+        const focused = document.activeElement;
+        focusPreview.current = !!start.current?.contains(focused) && !focused?.matches('select');
+      }
       setPhotos(sequence);
       setPosition(photo ? Math.max(0, sequence.indexOf(photo)) : 0);
       invalidateExport();
@@ -565,8 +594,8 @@ export default function Tool() {
 
   return (
     <ToolPage currentId="timelapse" title={t('Timelapse')} description={t('Turn a sequence of photos into a video.')}>
-      {!hasPhotos && (
-        <div ref={start} className={styles.start}>
+      <div ref={start} className={styles.importArea}>
+        {!hasPhotos && (
           <FileDrop
             accept={IMAGE_ACCEPT}
             multiple
@@ -576,11 +605,64 @@ export default function Tool() {
             icon={<Images />}
             onFiles={(files) => void importPhotos(files)}
           />
-          <Button variant="secondary" disabled={loading} onClick={() => void importPhotos()}>
-            {t('Try the demo')}
-          </Button>
+        )}
+        <div className={styles.toolbar}>
+          <div className={styles.importActions}>
+            {hasPhotos ? (
+              <>
+                <input
+                  ref={addInput}
+                  type="file"
+                  accept={IMAGE_ACCEPT}
+                  multiple
+                  hidden
+                  onChange={(event) => {
+                    const files = Array.from(event.target.files ?? []);
+                    event.target.value = '';
+                    void importPhotos(files);
+                  }}
+                />
+                <Button variant="secondary" icon={<Plus aria-hidden="true" />} disabled={busy} onClick={() => addInput.current?.click()}>
+                  {t('Import more photos')}
+                </Button>
+                <Button variant="ghost" disabled={busy} onClick={reset}>
+                  {t('Start over')}
+                </Button>
+              </>
+            ) : (
+              <Button variant="secondary" disabled={loading} onClick={() => void importPhotos()}>
+                {t('Try the demo')}
+              </Button>
+            )}
+            <label className={styles.importConcurrency}>
+              <span>{t('Parallel photo imports')}</span>
+              <Select
+                defaultValue={DEFAULT_IMPORT_CONCURRENCY}
+                options={Array.from({ length: MAX_IMPORT_CONCURRENCY }, (_, index) => ({
+                  value: String(index + 1),
+                  label: formatNumber(index + 1),
+                }))}
+                onChange={(event) => {
+                  const limit = Number(event.currentTarget.value);
+                  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_IMPORT_CONCURRENCY) return;
+                  importConcurrency.current = limit;
+                  fillImportSlots.current?.();
+                }}
+              />
+            </label>
+          </div>
+          {hasPhotos &&
+            (running ? (
+              <Button variant="secondary" disabled={canceling} onClick={cancelExport}>
+                {t('Cancel export')}
+              </Button>
+            ) : (
+              <Button icon={<Download aria-hidden="true" />} disabled={loading} onClick={() => void exportVideo()}>
+                {t('Export MP4')}
+              </Button>
+            ))}
         </div>
-      )}
+      </div>
 
       {importProgress && (
         <ProgressBar
@@ -600,38 +682,6 @@ export default function Tool() {
 
       {project && photo && output && (
         <>
-          <div className={styles.toolbar}>
-            <div className={styles.importActions}>
-              <input
-                ref={addInput}
-                type="file"
-                accept={IMAGE_ACCEPT}
-                multiple
-                hidden
-                onChange={(event) => {
-                  const files = Array.from(event.target.files ?? []);
-                  event.target.value = '';
-                  void importPhotos(files);
-                }}
-              />
-              <Button variant="secondary" icon={<Plus aria-hidden="true" />} disabled={busy} onClick={() => addInput.current?.click()}>
-                {t('Import more photos')}
-              </Button>
-              <Button variant="ghost" disabled={busy} onClick={reset}>
-                {t('Start over')}
-              </Button>
-            </div>
-            {running ? (
-              <Button variant="secondary" disabled={canceling} onClick={cancelExport}>
-                {t('Cancel export')}
-              </Button>
-            ) : (
-              <Button icon={<Download aria-hidden="true" />} disabled={loading} onClick={() => void exportVideo()}>
-                {t('Export MP4')}
-              </Button>
-            )}
-          </div>
-
           {running && (
             <ProgressBar
               value={job.progress}

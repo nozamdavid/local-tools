@@ -1,11 +1,7 @@
-.start {
+.importArea {
   display: grid;
-  justify-items: start;
   gap: var(--space-3);
-}
-
-.start :global(.file-drop) {
-  width: 100%;
+  margin-block-end: var(--space-4);
 }
 
 .toolbar,
@@ -22,7 +18,18 @@
 .toolbar {
   justify-content: space-between;
   gap: var(--space-3);
-  margin-block-end: var(--space-4);
+}
+
+.importConcurrency {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--text-muted);
+  font-size: var(--text-sm);
+}
+
+.importConcurrency select {
+  width: auto;
 }
 
 .result {

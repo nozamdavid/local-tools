@@ -76,6 +76,13 @@ const rows: Record<string, [string, string, string, string, string]> = {
     'Importar mais fotografias',
     'Importer d’autres photos',
   ],
+  'Parallel photo imports': [
+    'Importaciones de fotos en paralelo',
+    'Importazioni di foto in parallelo',
+    'Parallele Fotoimporte',
+    'Importações de fotografias em paralelo',
+    'Imports de photos en parallèle',
+  ],
   'Cancel export': ['Cancelar exportación', 'Annulla esportazione', 'Export abbrechen', 'Cancelar exportação', 'Annuler l’exportation'],
   'Canceling export…': [
     'Cancelando la exportación…',
