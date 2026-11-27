@@ -37,7 +37,7 @@ const ASPECTS = ['16:9', '9:16', '1:1', '4:3'];
 const FILENAMES = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 const OUTPUT_NAME = 'timelapse.mp4';
 const DEMO_FRAME_COUNT = 240;
-const LOCAL_IMPORT_CONCURRENCY = 3;
+const LOCAL_IMPORT_CONCURRENCY = 6;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
