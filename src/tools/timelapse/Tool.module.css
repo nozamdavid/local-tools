@@ -103,6 +103,14 @@
 .frame {
   position: relative;
   width: min(100%, calc(var(--preview-height) * var(--aspect)));
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.frameContent {
+  position: relative;
+  width: 100%;
+  transform-origin: top left;
 }
 
 .frame canvas {

@@ -7,6 +7,7 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type PointerEvent,
+  type WheelEvent,
 } from 'react';
 import { Crop, Download, Images, Pause, Play, Plus, RotateCw, SkipBack, SkipForward } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
@@ -131,6 +132,8 @@ function FramePreview({ photo, project, settings, output, editingCrop, onCrop }:
   const canvas = useRef<HTMLCanvasElement>(null);
   const frame = useRef<HTMLDivElement>(null);
   const drag = useRef<{ id: number; handle: CropHandle; start: Position; crop: CropRect } | null>(null);
+  const view = useRef({ zoom: 1, x: 0, y: 0 });
+  const [visual, setVisual] = useState(view.current);
   const [ready, setReady] = useState<{ photo: Photo; image: HTMLImageElement } | null>(null);
   const [failedPhoto, setFailedPhoto] = useState<Photo | null>(null);
   const displayCrop = editingCrop ? FULL_CROP : settings.crop;
@@ -138,6 +141,14 @@ function FramePreview({ photo, project, settings, output, editingCrop, onCrop }:
   const scale = Math.min(1, 960 / Math.max(size.width, size.height));
   const canvasWidth = Math.max(1, Math.round(size.width * scale));
   const canvasHeight = Math.max(1, Math.round(size.height * scale));
+
+  useEffect(() => {
+    if (!editingCrop) {
+      drag.current = null;
+      view.current = { zoom: 1, x: 0, y: 0 };
+      setVisual(view.current);
+    }
+  }, [editingCrop]);
 
   useEffect(() => {
     const image = new Image();
@@ -165,7 +176,32 @@ function FramePreview({ photo, project, settings, output, editingCrop, onCrop }:
 
   function point(event: PointerEvent): Position {
     const bounds = frame.current!.getBoundingClientRect();
-    return { x: (event.clientX - bounds.left) / bounds.width, y: (event.clientY - bounds.top) / bounds.height };
+    const current = view.current;
+    return {
+      x: (event.clientX - bounds.left - current.x) / (bounds.width * current.zoom),
+      y: (event.clientY - bounds.top - current.y) / (bounds.height * current.zoom),
+    };
+  }
+
+  function handleWheel(event: WheelEvent<HTMLDivElement>) {
+    if (!editingCrop) return;
+    event.preventDefault();
+    const bounds = frame.current!.getBoundingClientRect();
+    const current = view.current;
+    const nextZoom = clamp(current.zoom * Math.pow(1.001, -event.deltaY), 1, 4);
+    const cursorX = event.clientX - bounds.left;
+    const cursorY = event.clientY - bounds.top;
+    const contentX = (cursorX - current.x) / current.zoom;
+    const contentY = (cursorY - current.y) / current.zoom;
+    const maxX = Math.max(0, bounds.width * nextZoom - bounds.width);
+    const maxY = Math.max(0, bounds.height * nextZoom - bounds.height);
+    const next = {
+      zoom: nextZoom,
+      x: clamp(cursorX - contentX * nextZoom, -maxX, 0),
+      y: clamp(cursorY - contentY * nextZoom, -maxY, 0),
+    };
+    view.current = next;
+    setVisual(next);
   }
 
   function startDrag(event: PointerEvent<HTMLButtonElement>, handle: CropHandle) {
@@ -216,6 +252,7 @@ function FramePreview({ photo, project, settings, output, editingCrop, onCrop }:
         ref={frame}
         className={styles.frame}
         style={{ '--aspect': size.width / size.height } as CSSProperties}
+        onWheel={handleWheel}
         onPointerMove={updateDrag}
         onPointerCancel={endDrag}
         onLostPointerCapture={endDrag}
@@ -224,24 +261,26 @@ function FramePreview({ photo, project, settings, output, editingCrop, onCrop }:
           endDrag(event);
         }}
       >
-        <canvas ref={canvas} width={canvasWidth} height={canvasHeight} role="img" aria-label={t('Timelapse frame preview')} />
-        {editingCrop && (
-          <div
-            className={styles.selection}
-            style={{ left: `${crop.x * 100}%`, top: `${crop.y * 100}%`, width: `${crop.width * 100}%`, height: `${crop.height * 100}%` }}
-          >
-            {labels.map(([handle, label]) => (
-              <button
-                key={handle}
-                type="button"
-                className={`${styles.cropControl} ${styles[handle]}`}
-                aria-label={label}
-                onPointerDown={(event) => startDrag(event, handle)}
-                onKeyDown={(event) => handleKeys(event, handle)}
-              />
-            ))}
-          </div>
-        )}
+        <div className={styles.frameContent} style={{ transform: `translate(${visual.x}px, ${visual.y}px) scale(${visual.zoom})` }}>
+          <canvas ref={canvas} width={canvasWidth} height={canvasHeight} role="img" aria-label={t('Timelapse frame preview')} />
+          {editingCrop && (
+            <div
+              className={styles.selection}
+              style={{ left: `${crop.x * 100}%`, top: `${crop.y * 100}%`, width: `${crop.width * 100}%`, height: `${crop.height * 100}%` }}
+            >
+              {labels.map(([handle, label]) => (
+                <button
+                  key={handle}
+                  type="button"
+                  className={`${styles.cropControl} ${styles[handle]}`}
+                  aria-label={label}
+                  onPointerDown={(event) => startDrag(event, handle)}
+                  onKeyDown={(event) => handleKeys(event, handle)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
       {failedPhoto === photo && (
         <p role="status" className={styles.previewError}>
