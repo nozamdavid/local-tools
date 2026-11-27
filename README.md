@@ -58,7 +58,7 @@ Selected image, video, and PDF tools provide visual feedback before export. Wher
 
 ## Additional browser tools and workflows
 
-- **Timelapse Editor (`/video/timelapse`, `/image/timelapse`):** Turn a sequence of images into a video in your browser. Based on [Interval](https://github.com/nozamdavid/interval).
+- **Timelapse Editor (`/video/timelapse`, `/image/timelapse`):** Turn a sequence of images into a video in your browser. Try the demo with 240 compressed 640×360 WebP frames. Based on [Interval](https://github.com/nozamdavid/interval).
 - **ZIP Inspector & Extractor (`/zip-extract`):** Inspect entries and save selected files or bundle them. Supports standard STORE and DEFLATE archives up to 64 MiB, with at most 1,000 entries, 64 MiB per extracted file, and 128 MiB expanded total. Encrypted, multi-volume, and ZIP64 archives are unsupported.
 - **Compare Images (`/image/compare`):** Compare two PNG, JPG, WebP, GIF, or BMP images with a wipe or side-by-side view. Inputs are limited to 100 MiB; dimensions are checked before full decoding, with limits of 40 megapixels and a 32,768-pixel edge. Convert other formats first.
 - **Optimize SVG (`/image/svg-optimize`):** Run SVGO 4.1 lazily in the browser, preserving SVG IDs and `viewBox`. External-resource references cause the preview to be withheld. SVG inputs are limited to 5 MiB.
