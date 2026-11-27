@@ -1,7 +1,7 @@
 # Tool Coverage & Source Mapping Report
 
 ## Overview
-This document maps all 15 source entries from WebUtilityHub (`/category/converter/` and `/category/file-utility/`) to their Loconvert implementation, route, registration details, verified behavior, and limitations.
+This document maps all 15 source entries from WebUtilityHub (`/category/converter/` and `/category/file-utility/`) to their Loconvert implementation, route, registration details, verified behavior, and limitations. It also records the integration of Interval.
 
 Loconvert processes supported files locally in the user's web browser using client-side WebAssembly (WASM), Web Workers, and WebGPU. User file content is not transmitted to external servers. Static assets, compiled WASM codecs, and model weights are downloaded to the browser from static hosting as needed.
 
@@ -37,6 +37,14 @@ Loconvert processes supported files locally in the user's web browser using clie
 | 15 | **Blur Image & Solid Redaction** | `img-blur` | `/image/blur` | Existing tool in `image-edit` (`image('blur', ...)`) | Area-based privacy protection: Gaussian blur, pixelation, and opaque solid redaction boxes (`#000000` or custom color) permanently burned into the exported canvas. | Irreversible redaction: underlying pixels are completely overwritten before export. |
 
 ---
+
+## Timelapse Editor (`timelapse`)
+
+The Video catalog links to `/video/timelapse` and the Image catalog links to `/image/timelapse`. Both open the same workspace at `src/tools/timelapse/Tool.tsx`. Global search and file suggestions link to the Video route. Home offers the editor when every file in an image batch is supported, including HEIC/HEIF and JPEG XL. [Upstream Interval project](https://github.com/nozamdavid/interval)
+
+Photos play in natural filename order. The default holds each photo for three frames at 24 fps. Crop and rotation apply to the whole sequence. The editor downloads a silent H.264 MP4 with a maximum long edge of 3840 pixels. It uses WebCodecs when available and bundled FFmpeg otherwise, including on plain HTTP.
+
+The optional demo uses 24 resized frames from [Interval’s sample sequence](https://github.com/nozamdavid/interval/blob/e70002408153e976010646a9a419faddf0418750/assets/demo-frames.js). Recent files can reopen imported photos within the app’s history limits.
 
 ## Universal Format Converter (`file-converter`)
 - **Route:** `/file-converter` (promoted on Home and Navigation)

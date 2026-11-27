@@ -1,7 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { Menu, Search, X } from 'lucide-react';
-import { TOOL_METAS, type Media } from '../tools/registry';
+import { findToolByPath, type Media } from '../tools/registry';
 import { MEDIA_LIST, localizeMediaInfo } from '../design/media';
 import { CommandPalette, openCommandPalette } from './CommandPalette';
 import { Kbd } from './Controls';
@@ -64,7 +64,7 @@ function MobileNav({
 /** Document title for the current route, so each page has its own name in tabs, history and screen readers. */
 function titleForPath(pathname: string): string | null {
   if (pathname === '/') return translate('Tools. In your browser.');
-  const tool = TOOL_METAS.find((t) => t.path === pathname);
+  const tool = findToolByPath(pathname);
   if (tool) return translate(tool.title);
   const media = MEDIA_LIST.find((m) => m.path === pathname);
   if (media) return localizeMediaInfo(media).title;
@@ -135,9 +135,7 @@ export function Layout() {
     openCommandPalette();
   }
 
-  const activeMedia = MEDIA_LIST.find(
-    (m) => location.pathname === m.path || TOOL_METAS.some((t) => t.media === m.media && t.path === location.pathname),
-  )?.media;
+  const activeMedia = findToolByPath(location.pathname)?.media ?? MEDIA_LIST.find((m) => location.pathname === m.path)?.media;
   const mediaList = MEDIA_LIST.map((info) => localizeMediaInfo(info));
 
   return (

@@ -209,6 +209,17 @@ function three(
   };
 }
 
+const timelapse = video('timelapse', 'Timelapse Editor', 'Turn a sequence of images into a timelapse video', '🎞️', 'video-edit', [
+  'interval',
+  'time-lapse',
+  'image-sequence',
+  'frames',
+  'photos',
+]);
+
+const timelapseImage: ToolMeta = { ...timelapse, path: '/image/timelapse', media: 'image', category: 'image-transform' };
+
+/** Canonical metadata for each tool, independent of its catalog routes. */
 export const TOOL_METAS: ToolMeta[] = [
   // File: Format converters
   fileTool(
@@ -316,6 +327,7 @@ export const TOOL_METAS: ToolMeta[] = [
     ['trim', 'crop', 'rotate', 'timeline', 'soundtrack', 'mp4', 'webm'],
     true,
   ),
+  timelapse,
   video('trim', 'Trim', 'Cut the start and end of a video', '✂️', 'video-edit', ['trim', 'mp4', 'webm', 'mov'], true),
   video('crop', 'Crop', 'Crop for social media or remove unwanted parts', '📐', 'video-edit', [
     'crop',
@@ -1021,10 +1033,20 @@ function loaderFor(meta: ToolMeta): () => Promise<{ default: ComponentType }> {
   return loader;
 }
 
-export const tools: ToolDef[] = TOOL_METAS.map((meta) => ({ ...meta, component: lazy(loaderFor(meta)) }));
+const routeMetas = [...TOOL_METAS, timelapseImage];
+const timelapseComponent = lazy(loaderFor(timelapse));
+
+export const toolRoutes: ToolDef[] = routeMetas.map((meta) => ({
+  ...meta,
+  component: meta.id === timelapse.id ? timelapseComponent : lazy(loaderFor(meta)),
+}));
+
+export function findToolByPath(path: string): ToolMeta | undefined {
+  return routeMetas.find((tool) => tool.path === path);
+}
 
 export function localizeToolMeta(meta: ToolMeta, locale?: Locale): ToolMeta {
-  const source = TOOL_METAS.find((tool) => tool.id === meta.id) ?? meta;
+  const source = findToolByPath(meta.path) ?? meta;
   return { ...source, title: translate(source.title, undefined, locale), description: translate(source.description, undefined, locale) };
 }
 
@@ -1042,11 +1064,11 @@ export function getToolMeta(id: string): ToolMeta {
 }
 
 export function toolsByMedia(media: Media): ToolMeta[] {
-  return TOOL_METAS.filter((t) => t.media === media);
+  return routeMetas.filter((t) => t.media === media);
 }
 
 export function toolsByCategory(categoryId: CategoryId): ToolMeta[] {
-  return TOOL_METAS.filter((t) => t.category === categoryId);
+  return routeMetas.filter((t) => t.category === categoryId);
 }
 
 export function toolsByTag(tag: string): ToolMeta[] {

@@ -4,7 +4,7 @@ import { ArrowUpRight, AudioLines, File as FileIcon, FileText, Film, Image, X } 
 import { FileDrop } from '../components/FileDrop';
 import { ToolGrid } from '../components/ToolGrid';
 import { Button } from '../components/Controls';
-import { categories, localizeCategory, localizeToolMeta, tools, toolsByMedia, type ToolMeta } from '../tools/registry';
+import { categories, localizeCategory, localizeToolMeta, TOOL_METAS, toolRoutes, toolsByMedia, type ToolMeta } from '../tools/registry';
 import { MEDIA_LIST, localizeMediaInfo } from '../design/media';
 import { clearPendingFiles, extensionOf, setPendingFiles, suggestToolsForFiles } from '../lib/handoff';
 import { formatBytes, formatNumber } from '../lib/format';
@@ -23,7 +23,7 @@ import {
 import { recentVideoThumbnail } from './recentVideoThumbnail';
 import styles from './Home.module.css';
 
-const recentTools = new Map(tools.map((tool) => [tool.path, tool]));
+const recentTools = new Map(toolRoutes.map((tool) => [tool.path, tool]));
 const thumbnailTypes = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/avif']);
 
 function FileRoutes() {
@@ -321,7 +321,7 @@ export function Home() {
           <h2 id="browse-title" tabIndex={-1}>
             {t('Browse tools')}
           </h2>
-          <span className={styles.count}>{t('{count} tools', { count: formatNumber(tools.length) })}</span>
+          <span className={styles.count}>{t('{count} tools', { count: formatNumber(TOOL_METAS.length) })}</span>
         </header>
         <div className={styles.catalog}>
           {MEDIA_LIST.map((rawInfo) => {

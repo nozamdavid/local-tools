@@ -1,4 +1,4 @@
-import { TOOL_METAS, type ToolMeta } from '../tools/registry';
+import { findToolByPath, TOOL_METAS, type ToolMeta } from '../tools/registry';
 import { classifyFile, isToolEligibleForBatch, isToolEligibleForFile } from './toolInputs';
 import { suggestToolsForFiles } from './handoff';
 
@@ -28,7 +28,7 @@ function acceptsAllFiles(tool: ToolMeta, files: File[]): boolean {
 export function getContinueWithTools(sourcePath: string, files: File[]): ToolMeta[] {
   if (files.length === 0) return [];
 
-  const source = TOOL_METAS.find((tool) => tool.path === sourcePath);
+  const source = findToolByPath(sourcePath);
   const preferredIds = [...(source ? (CONTEXTUAL_NEXT_TOOLS[source.id] ?? []) : [])];
 
   if (files.length === 1) {

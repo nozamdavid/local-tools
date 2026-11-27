@@ -117,6 +117,7 @@ export const TOOL_ICONS: Record<string, LucideIcon> = {
   'css-viewer': CodeXml,
 
   'video-editor': Clapperboard,
+  timelapse: ImagePlay,
   trim: Scissors,
   crop: Crop,
   loop: Repeat2,

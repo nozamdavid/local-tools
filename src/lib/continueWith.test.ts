@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createResultFiles, getContinueWithTools } from './continueWith';
 import { clearPendingFiles, setPendingFiles, takePendingFiles } from './handoff';
+import { IMAGE_ACCEPT } from './image';
 
 function createFile(name: string, type: string): File {
   const blob = new Blob(['sample data'], { type });
@@ -82,6 +83,25 @@ describe('Continue with result workflows', () => {
     ).toContain('img-photo-editor');
     expect(getContinueWithTools('/video/trim', [video])[0].id).toBe('video-editor');
     expect(getContinueWithTools('/video/video-editor', [video]).map(({ id }) => id)).not.toContain('video-editor');
+  });
+
+  it('offers Timelapse once for image batches and keeps handoffs on the chosen route', () => {
+    const files = [createFile('frame.png', 'image/png'), createFile('next.jpg', 'image/jpeg')];
+    const targets = getContinueWithTools('/image/bulk-resize', files);
+    expect(targets[0].id).toBe('img-compare');
+    expect(
+      targets
+        .slice(0, 4)
+        .filter((tool) => tool.id === 'timelapse')
+        .map((tool) => tool.path),
+    ).toEqual(['/video/timelapse']);
+
+    for (const path of ['/video/timelapse', '/image/timelapse']) {
+      expect(getContinueWithTools(path, files).some((tool) => tool.id === 'timelapse')).toBe(false);
+    }
+    setPendingFiles(files, '/image/timelapse');
+    expect(takePendingFiles('/video/timelapse', IMAGE_ACCEPT, true)).toBeNull();
+    expect(takePendingFiles('/image/timelapse', IMAGE_ACCEPT, true)).toEqual({ accepted: files, rejected: [] });
   });
 
   it('offers image comparison only when the complete output batch is exactly two images', () => {

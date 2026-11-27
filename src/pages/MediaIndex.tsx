@@ -17,11 +17,7 @@ export function MediaIndex({ media }: { media: Media }) {
 
   const matches = useMemo(() => {
     if (!query.trim()) return null;
-    return new Set(
-      searchTools(query, 500, locale)
-        .filter((t) => t.media === media)
-        .map((t) => t.id),
-    );
+    return new Set(searchTools(query, 500, locale, media).map((t) => t.id));
   }, [query, media, locale]);
 
   return (

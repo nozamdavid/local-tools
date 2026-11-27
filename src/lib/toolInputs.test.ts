@@ -207,6 +207,23 @@ describe('toolInputs and handoff classification', () => {
     ).toEqual({ accepted: files, rejected: [] });
   });
 
+  it('offers the canonical Timelapse route for an eligible batch while preserving image defaults', () => {
+    const editor = getToolMeta('timelapse');
+    const heic = createFile('photo.heic');
+    const jxl = createFile('frame.jxl', 'image/jxl');
+    const png = createFile('frame.png', 'image/png');
+    const video = createFile('clip.mp4', 'video/mp4');
+    const singles = suggestToolsForFiles([heic]);
+    const batch = suggestToolsForFiles([png, heic, jxl]).slice(0, 12);
+
+    expect(singles[0].id).toBe('img-heic-to-jpg');
+    expect(singles).toContainEqual(editor);
+    expect(batch[0].id).toBe('img-bulk-convert');
+    expect(batch.filter((tool) => tool.id === editor.id)).toEqual([editor]);
+    expect(isToolEligibleForFile(editor, video)).toBe(false);
+    expect(isToolEligibleForBatch(editor, [png, video])).toBe(false);
+  });
+
   it('hands a single mesh or CAD drop to the 3D Viewer and keeps model batches on the merger', () => {
     const mesh = createFile('part.obj', 'text/plain');
     const cad = createFile('assembly.stp', 'application/octet-stream');

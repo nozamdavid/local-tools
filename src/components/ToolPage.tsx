@@ -1,8 +1,8 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
 import { MediaTile } from './Controls';
-import { categories, getToolMeta, localizeCategory } from '../tools/registry';
+import { categories, findToolByPath, getToolMeta, localizeCategory, localizeToolMeta } from '../tools/registry';
 import { getMediaInfo } from '../design/media';
 import { getToolIcon } from '../design/tool-icons';
 import { useI18n } from '../lib/i18n';
@@ -16,7 +16,9 @@ export interface ToolPageProps {
 
 export function ToolPage({ title, description, currentId, children }: ToolPageProps) {
   const { t } = useI18n();
-  const meta = currentId ? getToolMeta(currentId) : null;
+  const { pathname } = useLocation();
+  const route = findToolByPath(pathname);
+  const meta = route && route.id === currentId ? localizeToolMeta(route) : currentId ? getToolMeta(currentId) : null;
   const media = meta ? getMediaInfo(meta.media) : null;
   const rawCategory = meta ? categories.find((c) => c.id === meta.category) : null;
   const category = rawCategory ? localizeCategory(rawCategory) : null;

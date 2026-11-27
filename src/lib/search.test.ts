@@ -48,6 +48,15 @@ describe('tool search', () => {
     expect(ids('éditeur vidéo')[0]).toBe('video-editor');
   });
 
+  it('finds one Timelapse result globally and uses the Image route in the Image catalog', () => {
+    expect(
+      searchTools('Time-lapse editor', 40, 'en')
+        .filter((tool) => tool.id === 'timelapse')
+        .map((tool) => tool.path),
+    ).toEqual(['/video/timelapse']);
+    expect(searchTools('Timelapse Editor', 1, 'en', 'image')[0]?.path).toBe('/image/timelapse');
+  });
+
   it('matches one insertion, deletion, substitution, and adjacent transposition', () => {
     expect(ids('compreess pdf')[0]).toBe('pdf-compress');
     expect(ids('compres pdf')[0]).toBe('pdf-compress');

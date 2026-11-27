@@ -7,7 +7,7 @@ import { MediaIndex } from './pages/MediaIndex';
 import { DesignSystem } from './pages/DesignSystem';
 import { NotFound } from './pages/NotFound';
 import { RouteErrorBoundary } from './components/ErrorBoundary';
-import { tools } from './tools/registry';
+import { toolRoutes } from './tools/registry';
 import { useI18n } from './lib/i18n';
 
 function LoadingFallback() {
@@ -33,11 +33,11 @@ export function App() {
           <Route path="/pdf" element={<MediaIndex key="pdf" media="pdf" />} />
           <Route path="/3d" element={<MediaIndex key="3d" media="3d" />} />
           <Route path="/design" element={<DesignSystem />} />
-          {tools.map((tool) => {
+          {toolRoutes.map((tool) => {
             const Component = tool.component;
             return (
               <Route
-                key={tool.id}
+                key={tool.path}
                 path={tool.path}
                 element={
                   <RouteErrorBoundary>
@@ -50,7 +50,7 @@ export function App() {
             );
           })}
           {/* Legacy video URLs: /<id> -> /video/<id> */}
-          {tools
+          {toolRoutes
             .filter((tool) => tool.media === 'video')
             .map((tool) => (
               <Route key={`legacy-${tool.id}`} path={`/${tool.id}`} element={<Navigate to={tool.path} replace />} />

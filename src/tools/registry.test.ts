@@ -1,7 +1,16 @@
 import { describe, it, expect } from 'vitest';
 import fs from 'node:fs';
 import path from 'node:path';
-import { TOOL_METAS, categories, type Media, type CategoryId } from './registry';
+import {
+  TOOL_METAS,
+  categories,
+  findToolByPath,
+  localizeToolMeta,
+  toolRoutes,
+  toolsByCategory,
+  type Media,
+  type CategoryId,
+} from './registry';
 
 const MEDIA_VALUES = new Set<Media>(['video', 'image', 'pdf', 'file', '3d']);
 const CATEGORY_IDS = new Set<CategoryId>(categories.map((c) => c.id));
@@ -21,10 +30,19 @@ describe('Tool Registry', () => {
 
   it('ensures ids and paths are unique', () => {
     const ids = TOOL_METAS.map((t) => t.id);
-    const paths = TOOL_METAS.map((t) => t.path);
+    const paths = toolRoutes.map((t) => t.path);
 
     expect(new Set(ids).size, 'Expected all tool ids to be unique').toBe(TOOL_METAS.length);
-    expect(new Set(paths).size, 'Expected all tool paths to be unique').toBe(TOOL_METAS.length);
+    expect(new Set(paths).size, 'Expected all tool paths to be unique').toBe(toolRoutes.length);
+  });
+
+  it('shares the Timelapse workspace across its Video and Image catalog routes', () => {
+    const routes = toolRoutes.filter((tool) => tool.id === 'timelapse');
+    expect(routes.map((tool) => tool.path)).toEqual(['/video/timelapse', '/image/timelapse']);
+    expect(routes[0].component).toBe(routes[1].component);
+    const imageRoute = findToolByPath('/image/timelapse')!;
+    expect(toolsByCategory('image-transform')).toContain(imageRoute);
+    expect(localizeToolMeta(imageRoute, 'en')).toMatchObject({ id: 'timelapse', media: 'image', path: '/image/timelapse' });
   });
 
   it('keeps the reserved routes for the new tools', () => {

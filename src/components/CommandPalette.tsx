@@ -2,7 +2,7 @@ import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent as Reac
 import { createPortal } from 'react-dom';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { CornerDownLeft, Search, X } from 'lucide-react';
-import { TOOL_METAS, type ToolMeta } from '../tools/registry';
+import { findToolByPath, TOOL_METAS, type ToolMeta } from '../tools/registry';
 import { searchTools } from '../lib/search';
 import { getMediaInfo } from '../design/media';
 import { getToolIcon } from '../design/tool-icons';
@@ -93,7 +93,7 @@ export function CommandPalette() {
   function choose(tool: ToolMeta | undefined) {
     if (!tool) return;
     close();
-    if (tool.path === pathname) return;
+    if (findToolByPath(pathname)?.id === tool.id) return;
     // Navigation moves focus to the new page, so skip the usual focus return.
     restoreFocus.current = null;
     navigate(tool.path);

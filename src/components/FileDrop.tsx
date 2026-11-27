@@ -4,7 +4,7 @@ import { ShieldCheck, Upload } from 'lucide-react';
 import { matchesAccept, takePendingFiles } from '../lib/handoff';
 import { isRecentEditorPath, rememberRecentFiles } from '../lib/recentFiles';
 import { isToolEligibleForBatch, isToolEligibleForFile } from '../lib/toolInputs';
-import { TOOL_METAS } from '../tools/registry';
+import { findToolByPath } from '../tools/registry';
 import { Button, Kbd } from './Controls';
 import { useFocusFallback } from './useFocusFallback';
 import { useI18n } from '../lib/i18n';
@@ -60,7 +60,7 @@ export function FileDrop({
     onFilesRef.current(selection);
 
     if (!rememberInHistory) return;
-    const tool = TOOL_METAS.find((item) => item.path === pathname);
+    const tool = findToolByPath(pathname);
     // The editors record a source after they decode it successfully.
     if (!tool || isRecentEditorPath(tool.path)) return;
     const canReopen = selection.length === 1 ? isToolEligibleForFile(tool, selection[0]) : isToolEligibleForBatch(tool, selection);

@@ -1,4 +1,4 @@
-import { categories, localizeCategory, localizeToolMeta, TOOL_METAS, type ToolMeta } from '../tools/registry';
+import { categories, localizeCategory, localizeToolMeta, TOOL_METAS, toolsByMedia, type Media, type ToolMeta } from '../tools/registry';
 import { getMediaInfo, MEDIA_INFO } from '../design/media';
 import { getLocale, type Locale } from './i18n';
 
@@ -60,6 +60,7 @@ const MIN_FUZZY_LENGTH = 4;
 const TITLE_ALIASES: Record<string, string[]> = {
   'video-editor': ['Edit video'],
   'img-photo-editor': ['Edit image'],
+  timelapse: ['Time-lapse editor', 'Image to video', 'Photos to video'],
   'remove-audio': ['Remove audio from video'],
 };
 
@@ -263,11 +264,12 @@ function queryTokens(query: string): string[] | null {
 }
 
 /** Ranks tools for a free-text query using local metadata, defaulting to the current interface locale. */
-export function searchTools(query: string, limit = 40, locale = getLocale()): ToolMeta[] {
+export function searchTools(query: string, limit = 40, locale = getLocale(), media?: Media): ToolMeta[] {
   const normalizedQuery = queryTokens(query);
   if (!normalizedQuery || !Number.isFinite(limit) || limit <= 0) return [];
 
   const index = indexForLocale(locale);
+  const catalog = media ? new Map(toolsByMedia(media).map((tool) => [tool.id, tool])) : null;
   const direction = queryDirection(normalizedQuery);
   const meaningfulWords = normalizedQuery.filter((word) => !FILLER_WORDS.has(word) && word !== 'to' && word !== 'from');
   const searchableWords = [...new Set([...meaningfulWords, ...(normalizedQuery.includes('from') && !direction ? ['from'] : [])])];
@@ -276,6 +278,9 @@ export function searchTools(query: string, limit = 40, locale = getLocale()): To
   const titleQuery = direction ? [direction.source, 'to', direction.target] : normalizedQuery.filter((word) => !FILLER_WORDS.has(word));
   const results: { tool: ToolMeta; score: number }[] = [];
   for (const entry of index) {
+    const tool = catalog ? catalog.get(entry.tool.id) : entry.tool;
+    if (!tool) continue;
+
     const directionalScore = directionScore(entry, direction);
     if (directionalScore === null) continue;
 
@@ -295,8 +300,8 @@ export function searchTools(query: string, limit = 40, locale = getLocale()): To
       score += 28;
     }
     score += directionalScore;
-    if (entry.tool.popular) score += 0.25;
-    results.push({ tool: entry.tool, score });
+    if (tool.popular) score += 0.25;
+    results.push({ tool, score });
   }
 
   return results

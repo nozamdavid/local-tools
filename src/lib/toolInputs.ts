@@ -548,6 +548,8 @@ export function isToolEligibleForFile(tool: ToolMeta, file: File): boolean {
 
   const c = classifyFile(file);
 
+  if (tool.id === 'timelapse') return c.isStandardImage;
+
   // Universal File Inspector
   if (tool.id === 'file-inspector') return true;
 
@@ -722,6 +724,8 @@ export function isToolEligibleForBatch(tool: ToolMeta, files: File[]): boolean {
 
   // Image Multi-file Tools
   const allStandardImages = classes.every((c) => c.isStandardImage);
+
+  if (tool.id === 'timelapse') return allStandardImages;
 
   if (tool.id === 'img-compare') {
     return count === 2 && classes.every((c) => ['jpg', 'png', 'webp', 'gif', 'bmp'].includes(c.format));

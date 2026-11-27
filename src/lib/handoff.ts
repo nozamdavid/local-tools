@@ -226,6 +226,7 @@ export function suggestToolsForFiles(files: File[]): ToolMeta[] {
       'three-merge',
       'img-bulk-convert',
       'img-icon-converter',
+      'timelapse',
       'img-image-to-pdf',
       'pdf-jpg-to-pdf',
       'img-bulk-resize',
