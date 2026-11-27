@@ -37,6 +37,7 @@ const ASPECTS = ['16:9', '9:16', '1:1', '4:3'];
 const FILENAMES = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 const OUTPUT_NAME = 'timelapse.mp4';
 const DEMO_FRAME_COUNT = 240;
+const LOCAL_IMPORT_CONCURRENCY = 3;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -275,6 +276,7 @@ export default function Tool() {
   const previewHeading = useRef<HTMLHeadingElement>(null);
   const focusPreview = useRef(false);
   const importRequest = useRef<AbortController | null>(null);
+  const importWork = useRef<Promise<void> | null>(null);
   const exportRequest = useRef<AbortController | null>(null);
   const previewUrls = useRef(new Set<string>());
 
@@ -336,44 +338,74 @@ export default function Tool() {
     const controller = new AbortController();
     const { signal } = controller;
     importRequest.current = controller;
-    const added: Photo[] = [];
-    const rejected: string[] = [];
+    const results: (Photo | string)[] = [];
     const total = files?.length ?? DEMO_FRAME_COUNT;
+    let imported = 0;
     let progressFrame: number | null = null;
     let committed = false;
+    let work: Promise<void> | undefined;
+
+    async function loadPhoto(file: File, index: number) {
+      let item: Photo | undefined;
+      if (matchesAccept(file, IMAGE_ACCEPT)) {
+        try {
+          item = await makePhoto(file, signal);
+        } catch {
+          signal.throwIfAborted();
+        }
+      }
+      results[index] = item ?? file.name;
+      if (!item) return;
+
+      imported += 1;
+      if (progressFrame === null) {
+        progressFrame = requestAnimationFrame(() => {
+          progressFrame = null;
+          if (importRequest.current === controller) setImportProgress({ imported, total });
+        });
+      }
+    }
+
+    async function loadPhotos() {
+      if (!files) {
+        for await (const batch of demoPhotoBatches(signal)) {
+          for (const file of batch) {
+            signal.throwIfAborted();
+            await loadPhoto(file, results.length);
+          }
+        }
+        return;
+      }
+
+      let nextIndex = 0;
+      const workers = Array.from({ length: Math.min(LOCAL_IMPORT_CONCURRENCY, files.length) }, async () => {
+        while (!signal.aborted && nextIndex < files.length) {
+          const index = nextIndex++;
+          await loadPhoto(files[index], index);
+        }
+      });
+      // Drain every worker before the caller revokes uncommitted preview URLs.
+      const settled = await Promise.allSettled(workers);
+      for (const result of settled) {
+        if (result.status === 'rejected') throw result.reason;
+      }
+    }
 
     setImportProgress({ imported: 0, total });
     setImportError(null);
     setPlayStart(null);
     setEditingCrop(false);
     try {
-      const batches = files ? [files] : demoPhotoBatches(signal);
-      for await (const batch of batches) {
-        for (const file of batch) {
-          signal.throwIfAborted();
-          if (!matchesAccept(file, IMAGE_ACCEPT)) {
-            rejected.push(file.name);
-            continue;
-          }
-          try {
-            added.push(await makePhoto(file, signal));
-          } catch {
-            signal.throwIfAborted();
-            rejected.push(file.name);
-            continue;
-          }
-          if (progressFrame === null) {
-            progressFrame = requestAnimationFrame(() => {
-              progressFrame = null;
-              if (importRequest.current === controller) {
-                setImportProgress({ imported: added.length, total });
-              }
-            });
-          }
-        }
-      }
+      // An aborted decode or canvas encode can still be running when a replacement arrives.
+      if (importWork.current) await Promise.allSettled([importWork.current]);
+      signal.throwIfAborted();
+      work = loadPhotos();
+      importWork.current = work;
+      await work;
 
       signal.throwIfAborted();
+      const added = results.filter((result) => typeof result !== 'string');
+      const rejected = results.filter((result) => typeof result === 'string');
       if (rejected.length) setImportError({ files: rejected.join(', ') });
       if (!added.length) return;
 
@@ -396,7 +428,12 @@ export default function Tool() {
       }
     } finally {
       if (progressFrame !== null) cancelAnimationFrame(progressFrame);
-      if (!committed) added.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl));
+      if (!committed) {
+        results.forEach((result) => {
+          if (typeof result !== 'string') URL.revokeObjectURL(result.previewUrl);
+        });
+      }
+      if (importWork.current === work) importWork.current = null;
       if (importRequest.current === controller) {
         importRequest.current = null;
         setImportProgress(null);
