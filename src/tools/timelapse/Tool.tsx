@@ -1,4 +1,13 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from 'react';
+import {
+  useEffect,
+  useEffectEvent,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type KeyboardEvent as ReactKeyboardEvent,
+  type PointerEvent,
+} from 'react';
 import { Crop, Download, Images, Pause, Play, Plus, RotateCw, SkipBack, SkipForward } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 import { ContinueWith } from '../../components/ContinueWith';
@@ -178,7 +187,7 @@ function FramePreview({ photo, project, settings, output, editingCrop, onCrop }:
     if (drag.current?.id === event.pointerId) drag.current = null;
   }
 
-  function handleKeys(event: KeyboardEvent<HTMLButtonElement>, handle: CropHandle) {
+  function handleKeys(event: ReactKeyboardEvent<HTMLButtonElement>, handle: CropHandle) {
     const directions: Record<string, Position> = {
       ArrowLeft: { x: -1, y: 0 },
       ArrowRight: { x: 1, y: 0 },
@@ -264,6 +273,8 @@ export default function Tool() {
   const [canceled, setCanceled] = useState(false);
   const addInput = useRef<HTMLInputElement>(null);
   const start = useRef<HTMLDivElement>(null);
+  const workspace = useRef<HTMLDivElement>(null);
+  const playheadInput = useRef<HTMLInputElement>(null);
   const previewHeading = useRef<HTMLHeadingElement>(null);
   const focusPreview = useRef(false);
   const importRequest = useRef<AbortController | null>(null);
@@ -282,6 +293,7 @@ export default function Tool() {
   const running = job.status === 'running';
   const busy = running || loading;
   const hasPhotos = photos.length > 0;
+  const canPlay = !busy && photos.length > 1 && !editingCrop;
 
   useEffect(() => {
     const urls = previewUrls.current;
@@ -405,6 +417,44 @@ export default function Tool() {
     setPlayStart(null);
     setPosition(clamp(index, 0, photos.length - 1));
   }
+
+  function togglePlayback() {
+    setPlayStart(playStart ? null : { index: position, time: performance.now() });
+  }
+
+  const handlePlaybackShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if (!canPlay || event.key !== ' ' || event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey || event.getModifierState('AltGraph')) return;
+
+    const root = workspace.current;
+    const target = event.target;
+    if (!root || !(target instanceof Element)) return;
+    if (!root.contains(target) && target !== document.body && target !== root.closest('main')) return;
+    if (
+      target.closest('dialog, [role="dialog"], [role="alertdialog"], [popover]') ||
+      document.querySelector('dialog[open], [role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]')
+    )
+      return;
+    if (
+      target !== playheadInput.current &&
+      !target.closest(`.${styles.thumbnail}`) &&
+      target.closest(
+        'input, select, textarea, [contenteditable], [role="textbox"], [role="combobox"], [role="spinbutton"], ' +
+          'button, a, [role="button"], [role="switch"]',
+      )
+    )
+      return;
+
+    event.preventDefault();
+    if (!event.repeat) togglePlayback();
+  });
+
+  useEffect(() => {
+    if (!canPlay) return;
+    const onKeyDown = (event: KeyboardEvent) => handlePlaybackShortcut(event);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [canPlay]);
 
   function changeRotation(text: string) {
     setPlayStart(null);
@@ -552,6 +602,7 @@ export default function Tool() {
           )}
 
           <div
+            ref={workspace}
             className={styles.workspace}
             onDragOver={(event) => {
               if (!event.dataTransfer.types.includes('Files')) return;
@@ -613,10 +664,11 @@ export default function Tool() {
                     <Button
                       variant="secondary"
                       icon={playStart ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
-                      title={playLabel}
+                      title={`${playLabel} (${t('Space')})`}
                       aria-label={playLabel}
-                      disabled={busy || photos.length < 2 || editingCrop}
-                      onClick={() => setPlayStart(playStart ? null : { index: position, time: performance.now() })}
+                      aria-keyshortcuts="Space"
+                      disabled={!canPlay}
+                      onClick={togglePlayback}
                     />
                     <Button
                       variant="ghost"
@@ -628,6 +680,7 @@ export default function Tool() {
                     />
                   </div>
                   <input
+                    ref={playheadInput}
                     type="range"
                     className={styles.scrubber}
                     min={0}

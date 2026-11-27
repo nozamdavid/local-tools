@@ -1,4 +1,4 @@
-import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react';
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -224,6 +224,7 @@ export default function VideoEditor() {
   const videosInput = useRef<HTMLInputElement>(null);
   const soundtrackInput = useRef<HTMLInputElement>(null);
   const playheadInput = useRef<HTMLInputElement>(null);
+  const workspace = useRef<HTMLDivElement>(null);
   const title = useRef<HTMLHeadingElement>(null);
   const { edit, soundtrack, soundtrackDuration, format, additionalSources } = history.present;
   const liveEdit = useMemo(
@@ -566,12 +567,15 @@ export default function VideoEditor() {
     preview.seek(time);
   }
 
-  function handleShortcut(event: KeyboardEvent<HTMLDivElement>) {
-    if (!ready || leaving || event.defaultPrevented || event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return;
+  const handleShortcut = useEffectEvent((event: KeyboardEvent) => {
+    if (!ready || leaving || event.defaultPrevented || event.isComposing || event.keyCode === 229) return;
     if (event.altKey || event.getModifierState('AltGraph')) return;
 
+    const key = event.key.toLowerCase();
+    const root = workspace.current;
     const target = event.target;
-    if (!(target instanceof Element) || !event.currentTarget.contains(target)) return;
+    if (!root || !(target instanceof Element)) return;
+    if (!root.contains(target) && !(key === ' ' && (target === document.body || target === root.closest('main')))) return;
     if (
       target.closest('dialog, [role="dialog"], [role="alertdialog"], [popover]') ||
       document.querySelector('dialog[open], [role="dialog"][aria-modal="true"], [role="alertdialog"][aria-modal="true"]')
@@ -583,7 +587,6 @@ export default function VideoEditor() {
     )
       return;
 
-    const key = event.key.toLowerCase();
     if (event.metaKey || event.ctrlKey) {
       if (event.metaKey && event.ctrlKey) return;
       if (key !== 'z' && (key !== 'y' || event.shiftKey)) return;
@@ -597,7 +600,8 @@ export default function VideoEditor() {
     if (paneTool) {
       event.preventDefault();
       if (!event.repeat) openPane(paneTool.id);
-    } else if (key === ' ' && !target.closest('button, a, [role="button"], [role="switch"]')) {
+    } else if (key === ' ') {
+      if (!target.closest(`.${styles.clip}`) && target.closest('button, a, [role="button"], [role="switch"]')) return;
       event.preventDefault();
       if (!event.repeat) void preview.togglePlayback();
     } else if (key === 'arrowleft' || key === 'arrowright') {
@@ -617,7 +621,14 @@ export default function VideoEditor() {
         removeClip();
       }
     }
-  }
+  });
+
+  useEffect(() => {
+    if (!ready || leaving) return;
+    const onKeyDown = (event: KeyboardEvent) => handleShortcut(event);
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [ready, leaving]);
 
   async function pickSoundtrack(file: File) {
     if (!matchesAccept(file, audioAccept)) {
@@ -716,12 +727,7 @@ export default function VideoEditor() {
   const cropVideo = pane === 'crop' && crop && metadata ? preview.videoRef.current : null;
 
   return (
-    <div
-      className={styles.workspace}
-      data-editor-workspace={ready ? '' : undefined}
-      tabIndex={ready ? -1 : undefined}
-      onKeyDown={handleShortcut}
-    >
+    <div ref={workspace} className={styles.workspace} data-editor-workspace={ready ? '' : undefined} tabIndex={ready ? -1 : undefined}>
       <header className={styles.header}>
         {source ? (
           <IconAction label={t('Back to home')} disabled={leaving} onClick={() => void leave(true)}>
