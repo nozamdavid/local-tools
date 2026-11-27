@@ -39,7 +39,7 @@ const FILENAMES = new Intl.Collator('en', { numeric: true, sensitivity: 'base' }
 const OUTPUT_NAME = 'timelapse.mp4';
 const DEMO_FRAME_COUNT = 240;
 const DEFAULT_IMPORT_CONCURRENCY = 6;
-const MAX_IMPORT_CONCURRENCY = 8;
+const MAX_IMPORT_CONCURRENCY = 20;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
