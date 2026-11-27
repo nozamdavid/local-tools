@@ -1,6 +1,6 @@
 <!-- impeccable:product-schema 1 -->
 
-# Loconvert
+# Browser file tools
 
 ## Platform
 
@@ -12,7 +12,7 @@ People who need to convert, edit, or inspect a file in their browser while keepi
 
 ## Product Purpose
 
-Loconvert helps people find a compatible tool, process their file locally, and preview or download the result. They can start with a file, browse by media family, or search by tool, format, or task.
+The collection helps people find a compatible tool, process their file locally, and preview or download the result. They can start with a file, browse by media family, or search by tool, format, or task.
 
 ## Capabilities and Constraints
 

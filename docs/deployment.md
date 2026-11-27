@@ -4,7 +4,7 @@ Arcane runs one Compose project, `loconvert`, from `/mnt/appdata/apps/arcane/pro
 
 ## Install the project files
 
-On the Arcane host, set `repo` to the absolute path of the Loconvert checkout. Run these commands as an operator with write access to the project directory. The publish script uses Bash, GNU coreutils, and `flock`.
+On the Arcane host, set `repo` to the absolute path of the repository checkout. Run these commands as an operator with write access to the project directory. The publish script uses Bash, GNU coreutils, and `flock`.
 
 ```bash
 repo=/path/to/loconvert
@@ -51,7 +51,7 @@ bash "$repo/deploy/publish.sh" switch "$previous_release"
 
 ## Verify HTTP responses
 
-Check that `/video/trim` serves the release HTML with HTTP 200 and `Cache-Control: no-cache`. Check that `/theme-init.js` and `/assets/icon.svg` return 200 with `no-cache`, a Vite hashed asset returns 200 with `public, max-age=31536000, immutable`, and `/assets/missing.js` and `/missing.js` return 404. From a tab opened before publishing, open a tool it has yet to load to check that retained chunks still work.
+Check that `/video/trim` serves the release HTML with HTTP 200 and `Cache-Control: no-cache`. Check that `/theme-init.js` returns 200 with `no-cache`, a Vite hashed asset returns 200 with `public, max-age=31536000, immutable`, and `/assets/missing.js` and `/missing.js` return 404. From a tab opened before publishing, open a tool it has yet to load to check that retained chunks still work.
 
 ## Use camera and secure browser APIs
 

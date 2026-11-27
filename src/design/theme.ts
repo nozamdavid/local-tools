@@ -22,12 +22,6 @@ function applyTheme(theme: Theme) {
   const themeColor = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
   const color = themeColor?.dataset[theme];
   if (color) themeColor.content = color;
-
-  const favicon = document.querySelector<HTMLLinkElement>('link[rel="icon"]');
-  if (favicon) {
-    const href = favicon.href.split('#')[0] + (theme === 'light' ? '#light' : '');
-    if (favicon.href !== href) favicon.href = href;
-  }
 }
 
 function readSystemTheme(): Theme {

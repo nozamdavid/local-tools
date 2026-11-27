@@ -1,4 +1,4 @@
-# Loconvert design system
+# Design system
 
 The in-app design reference is the `/design` route (`src/pages/DesignSystem.tsx`), which displays token swatches and shared component samples.
 

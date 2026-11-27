@@ -1,10 +1,10 @@
-# Loconvert 3D Mesh & CAD Tools Specification
+# 3D Mesh & CAD Tools Specification
 
 ## 1. Architectural Overview & Privacy Model
 
-Loconvert's 3D subsystem provides comprehensive, client-side 3D model inspection, repair, transformation, simplification, and conversion directly in the web browser.
+The 3D tools inspect, repair, transform, simplify, and convert 3D models directly in the browser.
 
-In strict adherence to Loconvert's privacy principles:
+All 3D processing runs locally:
 - **100% Client-Side Execution:** User files never leave the browser. All geometry parsing, mesh generation, topology analysis, decimation, and binary serialization execute in local memory.
 - **Zero Remote Telemetry & Network Isolation:** No analytics, external APIs, or cloud conversion backends are contacted. All runtime dependencies and WebAssembly binaries (`occt-import-js.wasm`, `meshoptimizer`) are bundled locally and served from the application origin (`'self'`) under the strict Content Security Policy defined in `index.html`.
 - **Worker Thread Isolation:** Compute-intensive operations (CAD tessellation, polygon decimation, topology analysis, and archive parsing) run in dedicated background Web Workers (`mesh.worker.ts`, `cad.worker.ts`), preventing main UI thread stutter and maintaining a 60fps responsive interface.
@@ -48,7 +48,7 @@ The 3D family comprises seven dedicated routes registered under the `3d` media t
    - The shipped 3D toolset focuses strictly on manufacturing, 3D printing, and CAD exchange formats (STL, OBJ, PLY, 3MF, STEP, IGES, BREP).
    - glTF/GLB import and export are not implemented in the current 3D engine.
 2. **No STEP Output in Selected Engine:**
-   - Loconvert's CAD engine is `occt-import-js` (v0.0.23), which is a lightweight, read-only tessellation library.
+   - The CAD engine is `occt-import-js` (v0.0.23), a lightweight, read-only tessellation library.
    - *Note on browser CAD export:* Exporting CAD from the browser is not universally impossible in principle—heavier OpenCASCADE distributions (such as `replicad` or full `opencascade.js` builds) can technically serialize B-Rep solids in WebAssembly. However, those runtimes require 23–49 MB WASM downloads and massive memory footprints. Furthermore, converting polygonal meshes to STEP results in "Faceted B-Rep" files (where every triangle is a separate planar face), causing severe file bloat (e.g. 50k triangles → ~50 MB STEP) that crashes desktop CAD systems without providing editable parametric features. For these reasons, CAD output is omitted.
 3. **Geometry-Only Processing:**
    - All tools process and output geometric topology only (vertex coordinates and face indices).

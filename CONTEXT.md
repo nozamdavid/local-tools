@@ -1,4 +1,4 @@
-# Loconvert Developer & Agent Context
+# Developer & Agent Context
 
 ## Privacy Rule (Hard Requirement)
 
@@ -35,7 +35,6 @@ loconvert/
 ├── package.json            # Project dependencies & scripts
 ├── tsconfig.json           # Strict TypeScript configuration
 ├── vite.config.ts          # Vite build configuration (ffmpeg excluded from optimizeDeps)
-├── assets/                 # Shared project assets (e.g. icon.svg)
 ├── public/                 # Static files served by Vite
 ├── src/
 │   ├── main.tsx            # Application entry

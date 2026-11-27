@@ -15,8 +15,4 @@
   document.querySelector('meta[name="color-scheme"]').content = theme;
   var themeColor = document.querySelector('meta[name="theme-color"]');
   themeColor.content = themeColor.dataset[theme];
-  if (theme === 'light') {
-    var favicon = document.querySelector('link[rel="icon"]');
-    favicon.href += '#light';
-  }
 })();

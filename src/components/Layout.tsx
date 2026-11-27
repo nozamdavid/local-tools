@@ -5,7 +5,6 @@ import { findToolByPath, type Media } from '../tools/registry';
 import { MEDIA_LIST, localizeMediaInfo } from '../design/media';
 import { CommandPalette, openCommandPalette } from './CommandPalette';
 import { Kbd } from './Controls';
-import { LogoMark } from './Logo';
 import { ThemeToggle } from './ThemeToggle';
 import { LanguageSwitcher } from './LanguageSwitcher';
 import { translate, useI18n } from '../lib/i18n';
@@ -62,7 +61,7 @@ function MobileNav({
 }
 
 /** Document title for the current route, so each page has its own name in tabs, history and screen readers. */
-function titleForPath(pathname: string): string | null {
+function titleForPath(pathname: string): string {
   if (pathname === '/') return translate('Tools. In your browser.');
   const tool = findToolByPath(pathname);
   if (tool) return translate(tool.title);
@@ -89,8 +88,7 @@ export function Layout() {
   // Name each page, and move focus to the main region after in-app navigation so keyboard and
   // screen reader users start at the new content instead of the link they just activated.
   useEffect(() => {
-    const name = titleForPath(location.pathname);
-    if (name) document.title = `${name} · Loconvert`;
+    document.title = titleForPath(location.pathname);
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute('content', translate('Free image, PDF, video and file tools that run entirely in your browser. Nothing is uploaded.'));
@@ -153,9 +151,8 @@ export function Layout() {
 
       <header className="site-header" ref={headerRef} onBlur={handleHeaderBlur}>
         <div className="container header-inner">
-          <Link to="/" className="brand" aria-label={t('Loconvert home')}>
-            <LogoMark size={26} />
-            <span className="brand-name">Loconvert</span>
+          <Link to="/" className="nav-trigger home-link" aria-current={location.pathname === '/' ? 'page' : undefined}>
+            {t('Home')}
           </Link>
 
           <nav className="primary-nav" aria-label={t('Tool categories')}>
@@ -220,10 +217,6 @@ export function Layout() {
 
       <footer className="site-footer">
         <div className="container footer-bottom">
-          <Link to="/" className="footer-brand" aria-label={t('Loconvert home')}>
-            <LogoMark size={18} />
-            <span>Loconvert</span>
-          </Link>
           <span className="footer-note">{t('Powered by WebAssembly, WebCodecs and WebGPU.')}</span>
           <button type="button" className="footer-search" aria-label={t('Search all tools')} aria-haspopup="dialog" onClick={openSearch}>
             <Kbd>{isMac ? '⌘' : 'Ctrl'}</Kbd>

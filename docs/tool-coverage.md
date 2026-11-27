@@ -1,9 +1,9 @@
 # Tool Coverage & Source Mapping Report
 
 ## Overview
-This document maps all 15 source entries from WebUtilityHub (`/category/converter/` and `/category/file-utility/`) to their Loconvert implementation, route, registration details, verified behavior, and limitations. It also records the integration of Interval.
+This document maps all 15 source entries from WebUtilityHub (`/category/converter/` and `/category/file-utility/`) to their implementation, route, registration details, verified behavior, and limitations. It also records the integration of Interval.
 
-Loconvert processes supported files locally in the user's web browser using client-side WebAssembly (WASM), Web Workers, and WebGPU. User file content is not transmitted to external servers. Static assets, compiled WASM codecs, and model weights are downloaded to the browser from static hosting as needed.
+The tools process supported files locally in the user's web browser using client-side WebAssembly (WASM), Web Workers, and WebGPU. User file content is not transmitted to external servers. Static assets, compiled WASM codecs, and model weights are downloaded to the browser from static hosting as needed.
 
 ---
 
@@ -11,7 +11,7 @@ Loconvert processes supported files locally in the user's web browser using clie
 
 ### Category: Converter (8 Tools)
 
-| # | Source Tool | Loconvert Tool ID | Route | Registration / Status | Verified Behavior | Limitations & Technical Details |
+| # | Source Tool | Tool ID | Route | Registration / Status | Verified Behavior | Limitations & Technical Details |
 |---|---|---|---|---|---|---|
 | 1 | **Video to MP3** | `audio-extract` | `/video/audio-extract` | Existing tool in `video-audio` category (`video('audio-extract', 'Video to MP3 & Audio Extract', ...)`) | Extracts audio tracks from MP4, WebM, MOV, MKV, AVI files into MP3, AAC, or WAV using FFmpeg WASM. | Requires browser WebAssembly support. Bitrate selection up to 320 kbps. |
 | 2 | **AVIF ↔ PNG** | `img-convert` & `file-converter` | `/image/convert`, `/file-converter` | Existing tool in `image-convert` category and promoted `file-converter` | Bidirectional conversion between supported formats (AVIF, PNG, JPG, WebP, JXL, BMP, GIF) via Canvas API, native encoder, and local WASM codecs (WASM fallback for AVIF, WASM for JXL). | AVIF encoding prioritizes browser native canvas `toBlob('image/avif')` with an automatic lazy bundled local `@jsquash/avif` WASM worker fallback. Decoding utilizes the browser native image engine. |
@@ -26,7 +26,7 @@ Loconvert processes supported files locally in the user's web browser using clie
 
 ### Category: File Utility (7 Tools)
 
-| # | Source Tool | Loconvert Tool ID | Route | Registration / Status | Verified Behavior | Limitations & Technical Details |
+| # | Source Tool | Tool ID | Route | Registration / Status | Verified Behavior | Limitations & Technical Details |
 |---|---|---|---|---|---|---|
 | 9 | **CSV Viewer** | `csv-viewer` | `/csv-viewer` | Registered in `file-data` (`fileTool('csv-viewer', ...)`) | Interactive read-only in-browser tabular viewer. Supports multi-column text search filtering, configurable pagination (10/25/50/100 rows per page), auto-detected or manual delimiter selection, first-row header toggle, visible-page TSV clipboard copy, and CSV export. | Read-only viewer: does not support column sorting, direct cell editing, or chunked streaming. Entire file is read into client memory as text. |
 | 10 | **File Inspector** | `file-inspector` | `/file-inspector` | Registered in `file-utility` (`fileTool('file-inspector', ...)`) | Binary magic-byte analysis, MIME signature identification, hex dump viewer, SHA-256 / MD5 cryptographic hashes, and file extension mismatch alerts. | Inspects initial 4 KB for signatures and streams full buffer for checksums. |

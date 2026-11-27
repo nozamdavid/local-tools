@@ -1,8 +1,4 @@
-<p align="center">
-  <img src="public/assets/icon.svg" width="80" height="80" alt="Loconvert Logo" />
-</p>
-
-# Loconvert
+# Browser file tools
 
 > **Private media and file tools that run in your browser.** Files are processed locally on your device using WebAssembly, WebCodecs, and WebGPU. No file data is uploaded to external servers; static assets, WASM codecs, and model weights are downloaded to the client on demand.
 
@@ -10,7 +6,7 @@
 
 ## Features
 
-Loconvert includes 141 tools, including eight for 3D meshes and CAD files.
+The collection includes 141 tools, including eight for 3D meshes and CAD files.
 
 - **🔒 Client-Side Privacy:** Your documents, photos, audio, videos, and 3D models are processed locally in your browser. Supported formats execute in client memory without uploading file data to external servers.
 - **Languages:** The interface supports English, Spanish, Italian, German, Portuguese, and French. It follows the browser's preferred supported language on first visit and remembers an explicit choice on the device.
@@ -130,7 +126,7 @@ npm run format:check
 
 Run the checks above locally before publishing. The codebase review records the latest fixes and verification, and the release review covers the initial release. [Codebase review](docs/codebase-review.md) · [Release review](docs/release-review.md)
 
-Arcane serves the production build on the LAN from a single container. Camera access requires a secure browser context. The deployment guide includes a localhost forwarding command for this case. [Open Loconvert](http://192.168.0.199:3052) · [Deployment guide](docs/deployment.md)
+Arcane serves the production build on the LAN from a single container. Camera access requires a secure browser context. The deployment guide includes a localhost forwarding command for this case. [Open the tools](http://192.168.0.199:3052) · [Deployment guide](docs/deployment.md)
 
 ---
 

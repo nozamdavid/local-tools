@@ -18,7 +18,6 @@ import {
 import { FileDrop } from '../components/FileDrop';
 import { ProgressBar } from '../components/ProgressBar';
 import { ToolGrid } from '../components/ToolGrid';
-import { LogoMark } from '../components/Logo';
 import { getToolMeta } from '../tools/registry';
 import { MEDIA_LIST } from '../design/media';
 
@@ -95,12 +94,11 @@ export function DesignSystem() {
   return (
     <div className="ds">
       <header className="page-hero">
-        <LogoMark size={56} />
         <div>
           <h1 className="page-title">Design system</h1>
           <p className="page-desc">
-            The tokens and components every Loconvert page and tool is built from. Tokens live in <code>src/design/tokens.css</code>,
-            components in <code>src/components/Controls.tsx</code>. Use the header appearance control to preview light and dark.
+            Tokens live in <code>src/design/tokens.css</code>, components in <code>src/components/Controls.tsx</code>. Use the header
+            appearance control to preview light and dark.
           </p>
         </div>
       </header>

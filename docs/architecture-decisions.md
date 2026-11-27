@@ -1,4 +1,4 @@
-# Loconvert Architecture Decisions
+# Architecture Decisions
 
 This is the durable log for choices that shape the codebase and are expensive to reverse. Each entry uses a lightweight ADR format: context, decision, consequences, status and date. The dates record when the decision was written down; several entries are retrospective records of choices already in force.
 
@@ -28,7 +28,7 @@ Status values:
 - **Status:** Accepted
 - **Date:** 2026-10-21
 
-**Context.** Loconvert handles private documents, photos, audio, video and 3D models. A server-side conversion path would simplify some codecs and large-file handling, but it would turn every tool into a data-collection and retention problem. The product promise is local processing.
+**Context.** These browser tools handle private documents, photos, audio, video and 3D models. A server-side conversion path would simplify some codecs and large-file handling, but it would turn every tool into a data-collection and retention problem. The product promise is local processing.
 
 **Decision.** User file bytes and data derived from them never leave the browser. Decoding, encoding, transcoding, analysis, OCR and model inference run in the tab through JavaScript, WebAssembly, WebCodecs, WebGPU or workers. Static code, fonts, WASM binaries and model weights may be downloaded on demand from the CSP allow-list. There are no uploads, remote processing APIs, accounts, analytics or server-side fallback.
 
@@ -146,7 +146,7 @@ Tools may import shared modules. Shared modules must not import a tool folder, a
 
 **Context.** `npm run build` already produces a self-contained `dist/` directory. The project needed to choose between serving those files statically and keeping a long-running `vite preview` process. The current development service maps `:5443` to the Vite dev server on `127.0.0.1:5300`; that is a development setup, not a production shape.
 
-**Decision.** Production Loconvert is served as static files from `dist/` by a static host. The host must support an SPA fallback that serves `index.html` for client-side routes. A long-running Vite dev or preview server is not part of the production runtime.
+**Decision.** The production build is served as static files from `dist/` by a static host. The host must support an SPA fallback that serves `index.html` for client-side routes. A long-running Vite dev or preview server is not part of the production runtime.
 
 **Production deployment, 2026-11-25.** One Arcane container serves the static build directly over HTTP on port 3052. A request to `/video/trim` returned the release HTML. Missing JavaScript, font and WASM URLs returned HTTP 404. [LAN site](http://192.168.0.199:3052) · [Deployment guide](deployment.md)
 
@@ -190,7 +190,7 @@ A Tangled remote or mirror must receive the same commits as the GitHub origin; T
 
 **Context.** Vite emits content-hashed files under `assets/`. The preview server sends `Cache-Control: no-cache` for everything, so repeat visits still make conditional requests. The performance audit recommends immutable caching for hashed assets and no-cache for the HTML entry point. [Performance audit](performance-verification.md)
 
-**Decision.** Content-hashed build assets use `Cache-Control: public, max-age=31536000, immutable`. HTML, the SPA fallback and stable URLs such as `/theme-init.js` and `/assets/icon.svg` use `Cache-Control: no-cache`. Missing files return 404 and `no-store`.
+**Decision.** Content-hashed build assets use `Cache-Control: public, max-age=31536000, immutable`. HTML, the SPA fallback and stable URLs such as `/theme-init.js` use `Cache-Control: no-cache`. Missing files return 404 and `no-store`.
 
 **Consequences.** Keep hashed assets available across releases so open tabs can still fetch the lazy chunks for their original release after a switch or rollback. Verify the headers at the Arcane HTTP endpoint. [Deployment guide](deployment.md)
 

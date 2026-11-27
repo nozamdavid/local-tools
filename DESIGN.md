@@ -1,11 +1,11 @@
 ---
-name: Loconvert
+name: Browser file tools
 description: A charcoal developer workspace with signal-lime actions.
 ---
 
 ## Overview
 
-Loconvert pairs a charcoal workspace with compact controls and a single strong action color. Keep the workspace legible across dark, light, and system appearance settings. See the [design system](docs/design-system.md) for tokens, component APIs, and implementation details.
+The browser tools pair a charcoal workspace with compact controls and a single strong action color. Keep the workspace legible across dark, light, and system appearance settings. See the [design system](docs/design-system.md) for tokens, component APIs, and implementation details.
 
 ## Colors
 

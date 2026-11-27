@@ -1,5 +1,5 @@
 /*
- * Loconvert styles
+ * Application styles
  *   design/tokens.css      design tokens (colour, type, space, radius, elevation, motion)
  *   design/base.css        reset and document defaults
  *   design/components.css  reusable component classes (buttons, fields, alerts, file drop, results…)
@@ -52,22 +52,7 @@
   height: var(--header-height);
 }
 
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  flex: none;
-  border-radius: var(--radius-md);
-}
-
-.brand-name {
-  font-size: var(--text-base);
-  font-weight: var(--weight-bold);
-  letter-spacing: -0.035em;
-}
-
-.logo-mark {
-  display: block;
+.home-link {
   flex: none;
 }
 
@@ -807,19 +792,10 @@
   color: var(--text-muted);
 }
 
-.footer-brand,
 .footer-search {
   display: inline-flex;
   align-items: center;
   gap: var(--space-1-5);
-}
-
-.footer-brand {
-  color: var(--text);
-  font-weight: var(--weight-semibold);
-}
-
-.footer-search {
   min-height: 36px;
   margin-inline-start: auto;
   padding-inline: var(--space-2);
@@ -1052,6 +1028,7 @@
   .mobile-nav {
     display: block;
   }
+  .home-link,
   .header-actions .btn-icon,
   .header-actions .search-trigger {
     min-height: 44px;
@@ -1154,18 +1131,15 @@
 }
 
 @media (max-width: 420px) {
+  .home-link {
+    padding-inline: 0;
+  }
   .header-actions .btn-icon,
   .header-actions .search-trigger {
     width: 32px;
   }
   .header-preferences select {
     width: 100px;
-  }
-}
-
-@media (390px <= width <= 420px) {
-  .site-header .brand-name {
-    display: inline;
   }
 }
 
