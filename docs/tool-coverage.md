@@ -44,7 +44,7 @@ The Video catalog links to `/video/timelapse` and the Image catalog links to `/i
 
 Photos play in natural filename order. The default holds each photo for three frames at 24 fps. Crop and rotation apply to the whole sequence. The editor downloads a silent H.264 MP4 with a maximum long edge of 3840 pixels. It uses WebCodecs when available and bundled FFmpeg otherwise, including on plain HTTP.
 
-The optional demo uses 24 resized frames from [Interval’s sample sequence](https://github.com/nozamdavid/interval/blob/e70002408153e976010646a9a419faddf0418750/assets/demo-frames.js). Recent files can reopen imported photos within the app’s history limits.
+The optional demo uses all 240 original WebP frames from [Interval’s sample sequence](https://github.com/nozamdavid/interval/blob/e70002408153e976010646a9a419faddf0418750/assets/demo-frames.js). Recent files can reopen imported photos within the app’s history limits.
 
 ## Universal Format Converter (`file-converter`)
 - **Route:** `/file-converter` (promoted on Home and Navigation)

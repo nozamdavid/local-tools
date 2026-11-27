@@ -91,14 +91,22 @@ async function makePhoto(file: File, signal: AbortSignal): Promise<Photo> {
 }
 
 async function demoPhotos(signal: AbortSignal) {
-  return Promise.all(
-    Array.from({ length: 24 }, async (_, index) => {
-      const name = `frame-${String(index + 1).padStart(2, '0')}.webp`;
-      const response = await fetch(`${import.meta.env.BASE_URL}samples/interval/${name}`, { signal });
-      if (!response.ok) throw new Error('The demo photos could not be loaded.');
-      return new File([await response.blob()], name, { type: 'image/webp' });
-    }),
-  );
+  const frameCount = 240;
+  const batchSize = 8;
+  const files: File[] = [];
+  for (let offset = 0; offset < frameCount; offset += batchSize) {
+    signal.throwIfAborted();
+    const batch = await Promise.all(
+      Array.from({ length: Math.min(batchSize, frameCount - offset) }, async (_, index) => {
+        const name = `frame-${String(offset + index + 1).padStart(3, '0')}.webp`;
+        const response = await fetch(`${import.meta.env.BASE_URL}samples/interval/${name}`, { signal });
+        if (!response.ok) throw new Error('The demo photos could not be loaded.');
+        return new File([await response.blob()], name, { type: 'image/webp' });
+      }),
+    );
+    files.push(...batch);
+  }
+  return files;
 }
 
 type FramePreviewProps = {
