@@ -1,5 +1,5 @@
 /**
- * Core 3D Mesh types and interfaces for Loconvert.
+ * Core 3D Mesh types and interfaces.
  *
  * All operations execute strictly client-side.
  * Positions are expressed in millimeters (mm), using indexed triangles with flattened transforms.

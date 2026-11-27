@@ -7,7 +7,7 @@ import { useI18n } from '../../../lib/i18n';
 import { downloadBlob } from '../../../lib/download';
 import { CopyImageButton } from '../../../components/CopyImageButton';
 import { canvasToBlob } from '../../../lib/image';
-import { BARCODE_FORMATS, validateBarcode, type BarcodeFormat, type BarcodeValidationResult } from '../_generate/barcode';
+import { BARCODE_FORMATS, CODE128_EXAMPLE, validateBarcode, type BarcodeFormat, type BarcodeValidationResult } from '../_generate/barcode';
 import styles from './Tool.module.css';
 
 export default function BarcodeGeneratorTool() {
@@ -15,7 +15,7 @@ export default function BarcodeGeneratorTool() {
   const meta = getToolMeta('img-barcode-generator');
 
   const [format, setFormat] = useState<BarcodeFormat>('CODE128');
-  const [inputValue, setInputValue] = useState<string>('LOCONVERT-2026');
+  const [inputValue, setInputValue] = useState<string>(CODE128_EXAMPLE);
 
   // Barcode options
   const [barWidth, setBarWidth] = useState<number>(2);
@@ -27,7 +27,7 @@ export default function BarcodeGeneratorTool() {
   const [bgColor, setBgColor] = useState<string>('#ffffff');
   const [transparentBg, setTransparentBg] = useState<boolean>(false);
 
-  const [validation, setValidation] = useState<BarcodeValidationResult>(() => validateBarcode('CODE128', 'LOCONVERT-2026'));
+  const [validation, setValidation] = useState<BarcodeValidationResult>(() => validateBarcode('CODE128', CODE128_EXAMPLE));
 
   const svgRef = useRef<SVGSVGElement | null>(null);
   const formatSelectId = useId();

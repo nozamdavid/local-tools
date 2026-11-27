@@ -237,7 +237,7 @@ export default function FileConverterTool() {
                     <div>
                       <strong>{t('File extension mismatch:')}</strong>{' '}
                       {t(
-                        'This file is named .{extension}, but its content is actually {format}. Loconvert will convert using its true detected format.',
+                        'This file is named .{extension}, but its content is actually {format}. The detected format will be used for conversion.',
                         { extension: detected.actualExtension, format: translateDetectedFormatLabel(detected.label, t) },
                       )}
                     </div>

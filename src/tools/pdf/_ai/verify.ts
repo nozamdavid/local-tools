@@ -146,7 +146,7 @@ export async function runActualSummarizationInference(onProgress?: (p: AiProgres
 
 export async function runActualTranslationInference(onProgress?: (p: AiProgress) => void): Promise<VerifyTestResult> {
   const modelId = 'Xenova/opus-mt-en-es';
-  const testInput = ['Loconvert executes all document processing locally inside your web browser.'];
+  const testInput = ['Document processing runs locally inside your web browser.'];
 
   let downloadBytes = 0;
   let totalBytes = 0;

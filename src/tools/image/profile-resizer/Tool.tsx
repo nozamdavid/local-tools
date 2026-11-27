@@ -189,7 +189,7 @@ export default function ProfileResizerTool() {
 
       // Generate ZIP and trigger automatic download
       const zip = await zipFiles(items);
-      downloadBlob(zip, 'loconvert-avatars.zip');
+      downloadBlob(zip, 'avatars.zip');
 
       setBatchItems(items.map((it) => ({ name: it.name, blob: it.blob, originalSize: file?.size })));
     } catch (err) {

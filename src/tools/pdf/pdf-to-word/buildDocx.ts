@@ -313,7 +313,7 @@ async function convert(doc: PDFDocumentProxy, textDoc: PDFDocumentProxy, options
   }
 
   const document = new docx.Document({
-    creator: 'LoConvert',
+    creator: '',
     sections,
   });
   return docx.Packer.toBlob(document);

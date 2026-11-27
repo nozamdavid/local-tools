@@ -1,4 +1,4 @@
-// Run against a local Loconvert server. Point PLAYWRIGHT_MODULE at an installed Playwright package.
+// Run against a local app server. Point PLAYWRIGHT_MODULE at an installed Playwright package.
 // node docs/frontend-regression.mjs http://localhost:5173
 import assert from 'node:assert/strict';
 import { Buffer } from 'node:buffer';
@@ -10,7 +10,7 @@ import JSZip from 'jszip';
 import { PDFDocument } from 'pdf-lib';
 
 const [origin] = process.argv.slice(2);
-assert(origin, 'Pass the Loconvert origin.');
+assert(origin, 'Pass the app origin.');
 const require = createRequire(import.meta.url);
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM_PATH });
@@ -72,6 +72,7 @@ try {
   const downloadEvent = page.waitForEvent('download');
   await results.getByRole('button', { name: 'Download all 2 (.zip)' }).click();
   const download = await downloadEvent;
+  assert.equal(download.suggestedFilename(), 'images.zip');
   const chunks = [];
   for await (const chunk of await download.createReadStream()) chunks.push(chunk);
   const archive = await JSZip.loadAsync(Buffer.concat(chunks));

@@ -158,11 +158,7 @@ export function parseOBJ(text: string, name = 'model'): MeshModel {
  */
 export function exportOBJ(model: MeshModel): string {
   const { positions, indices } = model;
-  const lines: string[] = [
-    '# Loconvert OBJ Export - Local Browser Processing',
-    `# Vertices: ${positions.length / 3}`,
-    `# Triangles: ${indices.length / 3}`,
-  ];
+  const lines: string[] = [`# Vertices: ${positions.length / 3}`, `# Triangles: ${indices.length / 3}`];
 
   for (let i = 0; i < positions.length; i += 3) {
     lines.push(`v ${positions[i]} ${positions[i + 1]} ${positions[i + 2]}`);

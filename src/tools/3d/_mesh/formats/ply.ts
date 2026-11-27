@@ -66,7 +66,6 @@ export function exportPLY(model: MeshModel): string {
     [
       'ply',
       'format ascii 1.0',
-      'comment Loconvert PLY Export - Local Browser Processing',
       `element vertex ${vertexCount}`,
       'property float x',
       'property float y',

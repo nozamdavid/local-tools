@@ -22,7 +22,7 @@ export interface BatchResultsProps {
   onReset: () => void;
 }
 
-const ARCHIVE_FILENAME = 'loconvert-images.zip';
+const ARCHIVE_FILENAME = 'images.zip';
 
 function BatchRow({ item }: { item: BatchResultItem }) {
   const { t } = useI18n();

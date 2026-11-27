@@ -266,7 +266,7 @@ export default function LabelDesignerTool() {
           y: 4,
           width: Math.min(18, labelWidth - 8),
           height: Math.min(18, labelHeight - 8),
-          text: 'https://loconvert.com',
+          text: 'https://example.com',
           ecLevel: 'M',
         };
         break;

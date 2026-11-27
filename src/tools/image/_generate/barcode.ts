@@ -9,12 +9,14 @@ export interface BarcodeFormatDef {
   example: string;
   description: string;
 }
+export const CODE128_EXAMPLE = 'SAMPLE-2026';
+
 export const BARCODE_FORMATS: BarcodeFormatDef[] = [
   {
     id: 'CODE128',
     label: 'Code 128 (Standard)',
     placeholder: 'Enter any text or numbers...',
-    example: 'LOCONVERT-2026',
+    example: CODE128_EXAMPLE,
     description: 'High-density alphanumeric barcode supporting full ASCII.',
   },
   {

@@ -56,7 +56,7 @@ export function toGrids(pages: PageBlocks[], includeText: boolean): Grid[] {
 export async function buildXlsx(grids: Grid[], mode: SheetMode): Promise<Blob> {
   const { default: ExcelJS } = await import('exceljs');
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'LoConvert';
+  workbook.creator = 'PDF conversion';
 
   const sheets = new Map<string, { sheet: import('exceljs').Worksheet; next: number }>();
   const sheetFor = (page: number) => {

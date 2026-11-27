@@ -907,12 +907,12 @@ const translations: Record<string, [string, string, string, string, string]> = {
     'A extensão do ficheiro não corresponde:',
     'L’extension du fichier ne correspond pas :',
   ],
-  'This file is named .{extension}, but its content is actually {format}. Loconvert will convert using its true detected format.': [
-    'El archivo se llama .{extension}, pero su contenido es {format}. Loconvert lo convertirá según el formato detectado.',
-    'Il file si chiama .{extension}, ma il contenuto è {format}. Loconvert lo convertirà usando il formato rilevato.',
-    'Die Datei heißt .{extension}, enthält aber {format}. Loconvert konvertiert anhand des erkannten Formats.',
-    'O ficheiro chama-se .{extension}, mas o conteúdo é {format}. O Loconvert fará a conversão pelo formato detetado.',
-    'Le fichier porte l’extension .{extension}, mais son contenu est en {format}. Loconvert utilisera le format détecté pour la conversion.',
+  'This file is named .{extension}, but its content is actually {format}. The detected format will be used for conversion.': [
+    'El archivo se llama .{extension}, pero su contenido es {format}. Se usará el formato detectado para la conversión.',
+    'Il file si chiama .{extension}, ma il contenuto è {format}. La conversione userà il formato rilevato.',
+    'Die Datei heißt .{extension}, enthält aber {format}. Für die Konvertierung wird das erkannte Format verwendet.',
+    'O ficheiro chama-se .{extension}, mas o conteúdo é {format}. A conversão usará o formato detetado.',
+    'Le fichier porte l’extension .{extension}, mais son contenu est en {format}. Le format détecté sera utilisé pour la conversion.',
   ],
   'This file could not be recognized. Detected formats include:': [
     'No se pudo reconocer este archivo. Los formatos detectados incluyen:',

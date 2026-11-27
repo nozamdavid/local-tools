@@ -110,7 +110,7 @@ export async function runVerification(): Promise<PageVerifyResults> {
     const SECRET_TEXT = 'TOP_SECRET_DELETED_CONTENT_REDACTED_888';
     page2.drawText(SECRET_TEXT, { x: 50, y: 350, size: 14, font });
 
-    const uriAction = doc.context.obj({ Type: 'Action', S: 'URI', URI: 'https://loconvert.local' });
+    const uriAction = doc.context.obj({ Type: 'Action', S: 'URI', URI: 'https://example.com' });
     const uriAnnot = doc.context.obj({ Type: 'Annot', Subtype: 'Link', Rect: [10, 10, 50, 50], A: uriAction });
 
     const hlAnnot = doc.context.obj({ Type: 'Annot', Subtype: 'Highlight', Rect: [10, 60, 50, 80] });

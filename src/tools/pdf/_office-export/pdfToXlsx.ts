@@ -154,7 +154,7 @@ export async function pdfToXlsx(doc: PDFDocumentProxy, options?: XlsxExportOptio
   }
 
   const workbook = new ExcelJS.Workbook();
-  workbook.creator = 'Loconvert';
+  workbook.creator = 'PDF conversion';
 
   let totalRowsFound = 0;
   let singleWorksheet: ExcelJS.Worksheet | undefined;

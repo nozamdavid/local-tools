@@ -27,8 +27,8 @@ export default function QrCodeGeneratorTool() {
   const { t } = useI18n();
 
   const [contentType, setContentType] = useState<QrContentType>('url');
-  const [urlVal, setUrlVal] = useState<string>('https://loconvert.com');
-  const [textVal, setTextVal] = useState<string>('Hello from Loconvert!');
+  const [urlVal, setUrlVal] = useState<string>('https://example.com');
+  const [textVal, setTextVal] = useState<string>('Hello, world!');
   const [wifiVal, setWifiVal] = useState<WifiData>({
     ssid: 'HomeWiFi',
     password: '',
@@ -48,7 +48,7 @@ export default function QrCodeGeneratorTool() {
   const [vcardVal, setVcardVal] = useState<VCardData>({
     firstName: 'Jane',
     lastName: 'Doe',
-    org: 'Loconvert',
+    org: 'Example Company',
     title: 'Developer',
     phone: '+1234567890',
     email: 'jane@example.com',

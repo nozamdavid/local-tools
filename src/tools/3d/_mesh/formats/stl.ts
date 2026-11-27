@@ -123,13 +123,7 @@ export function exportSTL(model: MeshModel): ArrayBuffer {
   const totalBytes = 84 + triangleCount * 50;
   const buffer = new ArrayBuffer(totalBytes);
   const view = new DataView(buffer);
-  const uint8 = new Uint8Array(buffer);
-
-  // 80 bytes header
-  const headerText = 'Loconvert Binary STL - Local Browser Processing';
-  for (let i = 0; i < Math.min(80, headerText.length); i++) {
-    uint8[i] = headerText.charCodeAt(i);
-  }
+  // The first 80 bytes are reserved for the header and stay zero-filled.
 
   // 4 bytes triangle count
   view.setUint32(80, triangleCount, true);

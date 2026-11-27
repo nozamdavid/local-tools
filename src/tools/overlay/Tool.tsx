@@ -108,7 +108,7 @@ export default function OverlayTool() {
   const [overlayType, setOverlayType] = useState<OverlayType>('text');
 
   // Text Overlay state
-  const [text, setText] = useState<string>('loconvert');
+  const [text, setText] = useState<string>('Sample text');
   const [fontFamily, setFontFamily] = useState<string>(FONT_OPTIONS[0].value);
   const [fontSize, setFontSize] = useState<number>(36);
   const [textColor, setTextColor] = useState<string>('#ffffff');
