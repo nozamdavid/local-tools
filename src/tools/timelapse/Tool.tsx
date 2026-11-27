@@ -36,6 +36,7 @@ const FULL_CROP: CropRect = { x: 0, y: 0, width: 1, height: 1 };
 const ASPECTS = ['16:9', '9:16', '1:1', '4:3'];
 const FILENAMES = new Intl.Collator('en', { numeric: true, sensitivity: 'base' });
 const OUTPUT_NAME = 'timelapse.mp4';
+const DEMO_FRAME_COUNT = 240;
 
 function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
@@ -99,23 +100,19 @@ async function makePhoto(file: File, signal: AbortSignal): Promise<Photo> {
   }
 }
 
-async function demoPhotos(signal: AbortSignal) {
-  const frameCount = 240;
+async function* demoPhotoBatches(signal: AbortSignal) {
   const batchSize = 8;
-  const files: File[] = [];
-  for (let offset = 0; offset < frameCount; offset += batchSize) {
+  for (let offset = 0; offset < DEMO_FRAME_COUNT; offset += batchSize) {
     signal.throwIfAborted();
-    const batch = await Promise.all(
-      Array.from({ length: Math.min(batchSize, frameCount - offset) }, async (_, index) => {
+    yield await Promise.all(
+      Array.from({ length: Math.min(batchSize, DEMO_FRAME_COUNT - offset) }, async (_, index) => {
         const name = `frame-${String(offset + index + 1).padStart(3, '0')}.webp`;
         const response = await fetch(`${import.meta.env.BASE_URL}samples/interval/${name}`, { signal });
         if (!response.ok) throw new Error('The demo photos could not be loaded.');
         return new File([await response.blob()], name, { type: 'image/webp' });
       }),
     );
-    files.push(...batch);
   }
-  return files;
 }
 
 type FramePreviewProps = {
@@ -267,7 +264,7 @@ export default function Tool() {
   const [aspect, setAspect] = useState('original');
   const [customCrop, setCustomCrop] = useState(FULL_CROP);
   const [editingCrop, setEditingCrop] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [importProgress, setImportProgress] = useState<{ imported: number; total: number } | null>(null);
   const [importError, setImportError] = useState<{ files: string } | 'demo' | null>(null);
   const [canceling, setCanceling] = useState(false);
   const [canceled, setCanceled] = useState(false);
@@ -291,6 +288,7 @@ export default function Tool() {
   const settings: FrameSettings = { angle, crop: presetCrop(aspect, cropSize, customCrop) };
   const duration = (photos.length * repeats) / fps;
   const running = job.status === 'running';
+  const loading = importProgress !== null;
   const busy = running || loading;
   const hasPhotos = photos.length > 0;
   const canPlay = !busy && photos.length > 1 && !editingCrop;
@@ -340,25 +338,38 @@ export default function Tool() {
     importRequest.current = controller;
     const added: Photo[] = [];
     const rejected: string[] = [];
+    const total = files?.length ?? DEMO_FRAME_COUNT;
+    let progressFrame: number | null = null;
     let committed = false;
 
-    setLoading(true);
+    setImportProgress({ imported: 0, total });
     setImportError(null);
     setPlayStart(null);
     setEditingCrop(false);
     try {
-      const selection = files ?? (await demoPhotos(signal));
-      for (const file of selection) {
-        signal.throwIfAborted();
-        if (!matchesAccept(file, IMAGE_ACCEPT)) {
-          rejected.push(file.name);
-          continue;
-        }
-        try {
-          added.push(await makePhoto(file, signal));
-        } catch {
+      const batches = files ? [files] : demoPhotoBatches(signal);
+      for await (const batch of batches) {
+        for (const file of batch) {
           signal.throwIfAborted();
-          rejected.push(file.name);
+          if (!matchesAccept(file, IMAGE_ACCEPT)) {
+            rejected.push(file.name);
+            continue;
+          }
+          try {
+            added.push(await makePhoto(file, signal));
+          } catch {
+            signal.throwIfAborted();
+            rejected.push(file.name);
+            continue;
+          }
+          if (progressFrame === null) {
+            progressFrame = requestAnimationFrame(() => {
+              progressFrame = null;
+              if (importRequest.current === controller) {
+                setImportProgress({ imported: added.length, total });
+              }
+            });
+          }
         }
       }
 
@@ -384,10 +395,11 @@ export default function Tool() {
         setImportError('demo');
       }
     } finally {
+      if (progressFrame !== null) cancelAnimationFrame(progressFrame);
       if (!committed) added.forEach(({ previewUrl }) => URL.revokeObjectURL(previewUrl));
       if (importRequest.current === controller) {
         importRequest.current = null;
-        setLoading(false);
+        setImportProgress(null);
       }
     }
   }
@@ -407,7 +419,7 @@ export default function Tool() {
     setAspect('original');
     setCustomCrop(FULL_CROP);
     setEditingCrop(false);
-    setLoading(false);
+    setImportProgress(null);
     setImportError(null);
     invalidateExport();
     document.getElementById('main')?.focus({ preventScroll: true });
@@ -533,7 +545,16 @@ export default function Tool() {
         </div>
       )}
 
-      {loading && <ProgressBar value={0} indeterminate label={t('Opening photos…')} />}
+      {importProgress && (
+        <ProgressBar
+          value={Math.floor((importProgress.imported * 100) / importProgress.total) / 100}
+          label="Opening photos…"
+          valueText={t('({imported}/{total} imported)', {
+            imported: formatNumber(importProgress.imported),
+            total: formatNumber(importProgress.total),
+          })}
+        />
+      )}
       {fileError && (
         <div className="error-banner" role="alert">
           {fileError}

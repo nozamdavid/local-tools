@@ -48,6 +48,13 @@ const rows: Record<string, [string, string, string, string, string]> = {
   ],
   'Try the demo': ['Probar la demostración', 'Prova la demo', 'Demo ausprobieren', 'Experimentar a demonstração', 'Essayer la démo'],
   'Opening photos…': ['Abriendo fotos…', 'Apertura delle foto…', 'Fotos werden geöffnet…', 'A abrir fotografias…', 'Ouverture des photos…'],
+  '({imported}/{total} imported)': [
+    '({imported}/{total} importadas)',
+    '({imported}/{total} importate)',
+    '({imported}/{total} importiert)',
+    '({imported}/{total} importadas)',
+    '({imported}/{total} importées)',
+  ],
   'The demo photos could not be loaded.': [
     'No se pudieron cargar las fotos de demostración.',
     'Impossibile caricare le foto della demo.',

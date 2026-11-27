@@ -4,15 +4,17 @@ import { formatNumber } from '../lib/format';
 export interface ProgressBarProps {
   value: number; // 0 to 1
   label?: string;
+  valueText?: string;
   /** Unknown duration: shows a moving bar instead of a percentage */
   indeterminate?: boolean;
 }
 
-export function ProgressBar({ value, label, indeterminate = false }: ProgressBarProps) {
+export function ProgressBar({ value, label, valueText, indeterminate = false }: ProgressBarProps) {
   const { t } = useI18n();
   const clamped = Math.max(0, Math.min(1, Number.isFinite(value) ? value : 0));
   const percent = Math.round(clamped * 100);
   const text = t(label || 'Processing…');
+  const progressText = valueText ?? `${formatNumber(percent)}%`;
 
   return (
     <div className="progress-bar-container">
@@ -24,7 +26,7 @@ export function ProgressBar({ value, label, indeterminate = false }: ProgressBar
         </span>
         {!indeterminate && (
           <span className="progress-percent" aria-hidden="true">
-            {formatNumber(percent)}%
+            {progressText}
           </span>
         )}
       </div>
@@ -33,7 +35,7 @@ export function ProgressBar({ value, label, indeterminate = false }: ProgressBar
         role="progressbar"
         aria-label={text}
         aria-valuenow={indeterminate ? undefined : percent}
-        aria-valuetext={indeterminate ? t('In progress') : `${formatNumber(percent)}%`}
+        aria-valuetext={indeterminate ? t('In progress') : progressText}
         aria-valuemin={0}
         aria-valuemax={100}
       >
